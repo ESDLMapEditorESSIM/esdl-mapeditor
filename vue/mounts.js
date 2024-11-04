@@ -12,6 +12,7 @@ import {
     Breadcrumb,
     Button,
     Card,
+    Cascader,
     Checkbox,
     Col,
     Collapse,
@@ -65,6 +66,7 @@ export function mountApp(component, elementSelector) {
     app.use(Breadcrumb);
     app.use(Button);
     app.use(Card);
+    app.use(Cascader);
     app.use(Checkbox);
     app.use(Col);
     app.use(Collapse);

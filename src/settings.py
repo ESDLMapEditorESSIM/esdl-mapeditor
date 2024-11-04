@@ -32,8 +32,9 @@ OIDC_CLIENT_SECRETS = os.environ.get('OIDC_CLIENT_SECRETS', None) # 'credentials
 _use_gevent = os.environ.get('MAPEDITOR_USE_GEVENT', '')
 USE_GEVENT = (_use_gevent.upper() == 'TRUE' or _use_gevent == '1')
 
-#SQLALCHEMY_DATABASE_URI = 'sqlite:///data_manager.db'  # os.environ.get('SQLALCHEMY_DATABASE_URI', 'sqlite:///data_manager.db')
-SQLALCHEMY_DATABASE_URI = os.environ.get('SQLALCHEMY_DATABASE_URI', 'sqlite:///data_manager.db')
+# TODO: migrate to SQLite
+SQLALCHEMY_DATABASE_URI = os.environ.get('SQLALCHEMY_DATABASE_URI', 'postgresql+psycopg2://{user}:{pw}@localhost:5432/scenario_dataset')
+# SQLALCHEMY_DATABASE_URI = os.environ.get('SQLALCHEMY_DATABASE_URI', 'sqlite:///data_manager.db')
 # sql lite in memory, requires check_same_thread set to False to allow multiple threads to access
 # the same database sqlite:///:memory:
 

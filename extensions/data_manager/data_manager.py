@@ -15,22 +15,30 @@ import copy
 import logging
 from datetime import datetime
 from enum import Enum
-from numbers import Number
-from typing import TypedDict, List, Dict, Optional, Sequence, Iterable
+from typing import Any, TypedDict, List, Dict, Optional, Sequence, Iterable
+import json
 
 from flask import Flask
 from flask_socketio import SocketIO
 from pyecore.valuecontainer import EList
-from sqlalchemy import select, distinct, text, literal_column
+from sqlalchemy import select, delete, column, literal_column, func
 from sqlalchemy.orm import Session
+import pandas as pd
 
 import esdl
 from esdl import QuantityAndUnitType, PipeDiameterEnum
 from esdl.processing.ESDLAsset import get_asset_capability_type
 from esdl.processing.ESDLQuantityAndUnits import unit_to_string, build_qau_from_unit_string, qau_to_string
 from extensions.data_manager import db
-from extensions.data_manager.db_interaction import create_db, drop_db, create_test_data
+from extensions.data_manager.data_manager_message import (MetadataUpdateRequestBody,
+                                                          MetadataDeleteRequestBody,
+                                                          MetadataOperationResp,
+                                                          GetVariablesRequestBody,
+                                                          GetColumnsRequestBody,
+                                                          QueryRequestBody)
+from extensions.data_manager.db_interaction import create_db, drop_db
 from extensions.data_manager.db_model import DataSet, Variable, DataType, Data, BaseModel
+from extensions.session_manager import get_handler, get_session
 from src import settings
 from src.log import get_logger
 import statistics
@@ -43,6 +51,10 @@ class ESDLScope(Enum):
     PROFILE = 1
     KPI = 2
 
+class MetadataCRUDStatus(Enum):
+    SUCCESS = "SUCCESS"
+    WARNING = "WARNING"
+    ERROR = "ERROR"
 
 class QueryMessage(TypedDict):
     es_id: str
@@ -208,6 +220,12 @@ def handle_profile(profile: esdl.GenericProfile, ds: DataSet, variable_name: str
     #     continue
     return d, qau, variable_name
 
+def preprocess_column(column_name: str) -> Any:
+    if '/' in column_name:
+        key_name = column_name.split('/')[1]
+        return Data.labels[key_name].astext.label(column_name)
+    else:
+        return column(column_name)
 
 class DataManager:
     def __init__(self, flask_app: Flask, socket: SocketIO):
@@ -225,15 +243,45 @@ class DataManager:
 
         # init database
         with self.flask_app.app_context():
-            #drop_db(self.flask_app.config["SQLALCHEMY_DATABASE_URI"])
+            # drop_db(self.flask_app.config["SQLALCHEMY_DATABASE_URI"])
             create_db(self.flask_app.config["SQLALCHEMY_DATABASE_URI"])
 
-        self.query_data(db.session)
+        @self.socketio.on("datamanager/metadata/add_update", namespace="/esdl")
+        def _add_or_update_metadata(params: Dict) -> str:
+            req_body = MetadataUpdateRequestBody(**params)
+            session_owner = get_session("user-email")
+            resp = self.add_or_update_metadata(db.session, es_id=req_body.es_id, scenario_name=req_body.scenario_name, owner=session_owner)
+            return json.dumps(resp.__dict__)
+        
+        @self.socketio.on("datamanager/metadata/delete", namespace="/esdl")
+        def _delete_dataset(params: Dict) -> str:
+            req_body = MetadataDeleteRequestBody(**params)
+            session_owner = get_session("user-email")
+            resp = self.delete_dataset(db.session, dataset_name=req_body.dataset_name, owner=session_owner)
+            return json.dumps(resp.__dict__)
 
+        @self.socketio.on("datamanager/datasets", namespace="/esdl")
+        def _get_datasets() -> list:
+            return self.get_datasets(db.session)
+        
+        @self.socketio.on("datamanager/variables", namespace="/esdl")
+        def _get_variables(params: Dict) -> list:
+            req_body = GetVariablesRequestBody(**params)
+            return self.get_variables(db.session, dataset_ids=req_body.dataset_ids)
+        
+        @self.socketio.on("datamanager/columns", namespace="/esdl")
+        def _get_columns(params: Dict) -> dict:
+            req_body = GetColumnsRequestBody(**params)
+            return self.get_columns(db.session, dataset_ids=req_body.dataset_ids, variable_name=req_body.variable_name)
+        
         @self.socketio.on("datamanager/query", namespace="/esdl")
-        def query_data(message):
-            with self.flask_app.app_context():
-                pass
+        def _query(params: Dict) -> list:
+            req_body = QueryRequestBody(**params)
+            return self.query(db.session,
+                              dataset_ids=req_body.dataset_ids,
+                              variable_name=req_body.variable_name,
+                              group_by=req_body.group_by,
+                              filters=req_body.filters)
 
     def process_esdl(self, es: esdl.EnergySystem, owner: str, scenario_name=None) -> List[BaseModel]:
         """
@@ -406,11 +454,253 @@ class DataManager:
             session.add(v)
             session.commit()
 
+    def add_or_update_metadata(self, session: Session, es_id: str, scenario_name: Optional[str], owner: str) -> MetadataOperationResp:
+        """
+        Adds or updates DataManager metadata for a given energy system.
+        
+        :param session: SQLAlchemy session object for database operations.
+        :param es_id: The ID of the energy system to be added or updated.
+        :param scenario_name: Optional name of the scenario associated with the energy system.
+        :param owner: Session owner (email)
 
-    def query_data(self, session: Session):
-        with self.flask_app.app_context():
-            print("Query data")
-            datasets = session.query(DataSet).all()
-            for d in datasets:
-                print(f"{d.name} @ {d.created}")
+        :return: MetadataOperationResp contains status and message strings
+        """
+        logger.info(f"Adding or updating an energy system to metadata.")
+        
+        esh = get_handler()
+        es = esh.get_energy_system(es_id=es_id)
 
+        if es is None:
+            msg = f"Energy system with ID {es_id} not found."
+            logger.error(msg)
+            return MetadataOperationResp(MetadataCRUDStatus.ERROR.value, msg)
+        
+        # Check if the dataset already exists in DB.
+        existing_ds = self.get_datasets_by_name_and_owner(session, dataset_name=es.name, owner=owner)
+        to_overwrite = False
+        warning_msg = ""
+        if len(existing_ds) > 0:
+            warning_msg = f"Dataset {es.name} created by {owner} already exist. "
+            resp = self.delete_dataset(session, dataset_name=es.name, owner=owner)
+            if resp.status == MetadataCRUDStatus.SUCCESS.value:
+                to_overwrite = True
+            else:
+                error_msg = f"{warning_msg} Failed to delete existing dataset: {resp.message}"
+                logger.error(error_msg)
+                return MetadataOperationResp(MetadataCRUDStatus.ERROR.value, error_msg)
+
+        try:
+            tables = self.process_esdl(es=es, owner=owner, scenario_name=scenario_name)
+            session.add_all(tables)
+            session.commit()
+            ds = [d for d in tables if isinstance(d, DataSet)][0]
+            self.update_filter_options(session, ds)
+            
+            if to_overwrite:
+                warning_msg += "The dataset is now overwritten with the latest changes."
+                logger.warning(warning_msg)
+                return MetadataOperationResp(MetadataCRUDStatus.WARNING.value, warning_msg)
+            else:
+                success_msg = f"Dataset {es.name} is successfully added."
+                logger.info(success_msg)
+                return MetadataOperationResp(MetadataCRUDStatus.SUCCESS.value, success_msg)
+        except Exception as e:
+            session.rollback()
+            msg = f"An error occurred while adding or updating metadata: {e}"
+            logger.error(msg)
+            return MetadataOperationResp(MetadataCRUDStatus.ERROR.value, msg)
+
+    def get_datasets_by_name_and_owner(self, session: Session, dataset_name: str, owner: str) -> List[DataSet]:
+        """
+        Retrieves datasets filtered by name and owner.
+
+        :param session: SQLAlchemy session object for database operations.
+        :param dataset_name: The name of the dataset to retrieve.
+        :param owner: The owner (creator) of the dataset.
+
+        :return: A list of datasets that match the name and owner.
+        """
+        datasets: List[DataSet] = session.query(DataSet)\
+                                .where(DataSet.name == dataset_name)\
+                                .where(DataSet.created_by == owner)\
+                                .all()
+        return datasets
+    
+    def delete_dataset(self, session: Session, dataset_name: Optional[str], owner: str) -> MetadataOperationResp:
+        """
+        Deletes dataset(s) by name and owner, with cascading deletions on related records.
+
+        :param session: SQLAlchemy session object for database operations.
+        :param dataset_name: The name of the dataset to delete; if None, all datasets by the owner will be deleted.
+        :param owner: The owner of the dataset(s) to delete.
+
+        :return: MetadataOperationResp contains status and message strings
+        """
+        logger.info(f"Deleting dataset(s) created by {owner} with name {dataset_name}.")
+        try:
+            query = session.query(DataSet).where(DataSet.created_by == owner)
+            if dataset_name:
+                query = query.where(DataSet.name == dataset_name)
+            
+            ds_to_delete = query.all()
+            if len(ds_to_delete) == 0:
+                msg = f"No dataset(s) found with name {dataset_name} created by {owner}."
+                logger.warning(msg)
+                return MetadataOperationResp(MetadataCRUDStatus.WARNING.value, msg)
+
+            deleted_ds = []
+            for ds in ds_to_delete:
+                # TODO: Update data model to enable cascading delete
+                session.execute(delete(Data).where(Data.dataset_id == ds.id))
+                session.execute(delete(Variable).where(Variable.dataset_id == ds.id))
+                session.execute(delete(DataSet).where(DataSet.id == ds.id))
+                deleted_ds.append(f"{ds.name} [{ds.id}]")
+            session.commit()
+            msg = f"Dataset(s) {', '.join(deleted_ds)} created by {owner} successfully deleted."
+            logger.info(msg)
+            return MetadataOperationResp(MetadataCRUDStatus.SUCCESS.value, msg)
+        except Exception as e:
+            session.rollback()
+            msg = f"An error occurred while deleting dataset(s): {e}"
+            logger.error(msg)
+            return MetadataOperationResp(MetadataCRUDStatus.ERROR.value, msg)
+
+    def get_datasets(self, session: Session) -> list:
+        """
+        Fetches and returns a list of dataset dictionaries ordered by their run_timestamp.
+        """
+        logger.info('Fetching DataManager datasets')
+        response = []
+        datasets: List[DataSet] = session.query(DataSet).order_by(DataSet.run_timestamp).all()
+        for dataset in datasets:
+            timestamp: datetime = dataset.run_timestamp
+            response.append({
+                'name': dataset.name,
+                'id': dataset.id,
+                'scenario': dataset.scenario,
+                'description': dataset.description,
+                'run_timestamp': timestamp.strftime('%Y-%m-%d %H:%M:%S')
+            })
+        return response
+
+    def get_variables(self, session: Session, dataset_ids: List[int]) -> list:
+        """
+        Fetches and returns a list of variable dictionaries from of the specified dataset IDs.
+        """
+        logger.info(f"Fetching DataManager variables from dataset ids: {dataset_ids}")
+        response = []
+        query = session.query(Variable)\
+            .where(Variable.dataset_id.in_(dataset_ids))\
+            .group_by(Variable.name, Variable.id, Variable.description, Variable.unit, Variable.datatype)
+
+        variables: List[Variable] = query.all()
+        for variable in variables:
+            response.append({
+                'name': variable.name,
+                'id': variable.id,
+                'description': variable.description,
+                'unit': variable.unit,
+                'datatype': variable.datatype.name
+            })
+        return response
+
+    def get_columns(self, session: Session, dataset_ids: List[int], variable_name: str) -> dict:
+        """
+        Fetches and returns filter options for a specified variable from one or multiple datasets.
+        """
+        logger.info(f"Fetching DataManager columns from dataset ids: {dataset_ids} and variable: {variable_name}")
+
+        filter_options = session.query(Variable.filter_options)\
+            .where(Variable.dataset_id.in_(dataset_ids))\
+            .where(Variable.name == variable_name)\
+            .all()
+        
+        if len(filter_options) == 0:
+            logger.warning(f"Filter options with variable {variable_name} and dataset_ids {dataset_ids} not found.")
+            return {}
+        elif len(filter_options) == 1:
+            return filter_options[0].filter_options
+        else:
+            # Merge filter options
+            merged = filter_options[0].filter_options
+            for option in filter_options[1:]:
+                filter = option.filter_options
+                for key in merged.keys():
+                    if key in filter:
+                        merged[key]['options'] = list(set(merged[key]['options'] + filter[key]['options']))
+                    else:
+                        del merged[key]
+            return merged
+    
+    def query(self,
+              session: Session,
+              dataset_ids: List[int],
+              variable_name: str,
+              group_by: List[str],
+              filters: Dict[str, List[str]]) -> list:
+        """
+        Queries and returns traces of data based on the specified dataset IDs, variable name, grouping, and filters.
+
+        TODO: profile data handling might need refinement
+        Note that group_by is ordered: the first element goes on the X axis, the rest goes in the grouping.
+        """
+        logger.info(f"Querying traces with dataset_ids: {dataset_ids}, variable: {variable_name}, group_by: {group_by}, and filters: {filters}")
+                
+        if len(group_by) == 0:
+            group_by = ['year']
+        if len(group_by) == 1 and group_by[0] != 'year':
+            group_by.insert(0, 'year')
+        
+        group_by_param = [DataSet.scenario, DataSet.name] + [preprocess_column(group) for group in group_by]
+
+        if 'datetime' in group_by:
+            # TODO: refinement needed
+            agg_func = func.avg
+        else:
+            agg_func = func.sum
+        
+        query = session.query(agg_func(Data.value).label('value'), *group_by_param)\
+            .join(Variable, Variable.id == Data.variable_id).join(DataSet, Data.dataset_id == DataSet.id)\
+            .where(Variable.name == variable_name)\
+            .where(Variable.dataset_id.in_(dataset_ids))\
+            .group_by(*group_by_param)
+        
+        for col, values in filters.items():
+            values = [x for x in values if x is not None]   # if all options of a filter are selected, values is null
+            if len(values) > 0:  # only filter when some of the values are selected, but not all.
+                query = query.where(preprocess_column(col).in_(values))
+
+        df = pd.read_sql_query(query.statement, session.get_bind())
+
+        traces = []
+        if 'datetime' in group_by:  # profile data, so x-axis should have datetime as value
+            # TODO: refinement needed
+            if group_by == ['datetime'] and len(dataset_ids) == 1:
+                # make sure we don't do a group by datetime: we get 8760 categories in the legend
+                traces.append({
+                    'name': variable_name,
+                    'x': list(df['datetime']),
+                    'y': list(df['value'])
+                })
+            else:
+                group_by.remove('datetime')  # make sure we never group by datetime
+                group_by.insert(0, 'scenario')  # if multiple scenarios are selected
+                for name, group in df.groupby(by=group_by, as_index=False):
+                    traces.append({
+                        'name': f'{name[-2]} - {name[-1]}' if isinstance(name, tuple) else name,
+                        'x': list(group['datetime']),
+                        'y': list(group['value']),
+                        'scenario': name[0] if isinstance(name, tuple) else name # scenario name to create subplots in frontend
+                    })
+        else:
+            for name, group in df.groupby(by=group_by[-1], as_index=False):
+                print(f'group by: {name}, {group}')
+                print(f'group by x: ', [str(x) for x in list(group[ group_by[0] ])])
+                traces.append({
+                    'name': name[-1] if isinstance(name, tuple) else name,
+                    #'x': [[f'{y} {x}' for x,y in zip( list(group['scenario']), list(group['name']) )], [str(x) for x in list(group['year'])] ],
+                    'x': [[f'{y} {x}' for x,y in zip( list(group['scenario']), list(group['name']) )], [str(x) for x in list(group[ group_by[0] ]) ]],
+                    'y': list(group['value'])
+                })
+
+        return traces
