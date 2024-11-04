@@ -84,9 +84,9 @@ const updateData = (jsonFormData) => {
   }
 
   // TODO for testing currently, to come via omotes-rest when sdk and protocol updated.
-  // if ("end_time" in schema["properties"]) {
-  //   schema["properties"]["end_time"]["formatMinimum"] = {$data: "1/start_time"};
-  // }
+  if ("end_time" in schema["properties"]) {
+    schema["properties"]["end_time"]["formatMinimum"] = {$data: "1/start_time"};
+  }
 
   if ("uischema" in jsonFormDataConfig) {
     uischema = jsonFormDataConfig.uischema;
@@ -126,10 +126,13 @@ const doGetData = async () => {
 
 const validateEvent = (event) => {
   const varName = event.target.id.replace("#/properties/", "").replace("-input", "");
-  if (schema["properties"][varName]["type"] === "string"
+
+  // skip if varName not in schema or date-time object
+  if (!(varName in schema["properties"]) || schema["properties"][varName]["type"] === "string"
       && schema["properties"][varName]["format"] === "date-time") {
     return;
   }
+  
   let varValue = event.target.value;
   if (schema["properties"][varName]["type"] === "number" && varValue !== "") {
     varValue = Number(varValue);
@@ -137,13 +140,14 @@ const validateEvent = (event) => {
 
   dataToSubmit[varName] = varValue;
   validateJsonForm(dataToSubmit);
-  goToNextStep();
+  if (autoNextStep.value) {
+    goToNextStep();
+  }
 };
 
 const onChange = (event) => {
   Object.assign(dataToSubmit, event.data);
   validateJsonForm(event.data);
-  goToNextStep();
   if (autoNextStep.value) {
     onSubmit();
   }
@@ -185,7 +189,7 @@ const onSubmit = async () => {
     try {
       const response = await postJsonForm(workflowStep.url, dataSubmitFormatted);
       console.log(response);
-      if (response != null && response.ok && workflowStep.auto) {
+      if (response != null && response.ok) {
         goToNextStep();
       }
     } finally {

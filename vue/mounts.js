@@ -9,6 +9,7 @@ import VueGridLayout from 'vue-grid-layout';
 // import 'ant-design-vue/dist/antd.min.css';
 // Import subset.
 import {
+    AutoComplete,
     Breadcrumb,
     Button,
     Card,
@@ -37,6 +38,7 @@ import {
     Tag,
     Transfer,
     Tree,
+    TreeSelect,
     Upload
 } from 'ant-design-vue';
 
@@ -70,6 +72,7 @@ export function mountApp(component, elementSelector) {
     const app = createApp(component);
 
     // Components from ant-design-vue
+    app.use(AutoComplete);
     app.use(Breadcrumb);
     app.use(Button);
     app.use(Card);
@@ -98,6 +101,7 @@ export function mountApp(component, elementSelector) {
     app.use(Tag);
     app.use(Transfer);
     app.use(Tree);
+    app.use(TreeSelect);
     app.use(Upload);
     app.use(VueGridLayout);
 

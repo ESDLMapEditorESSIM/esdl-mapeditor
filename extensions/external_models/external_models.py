@@ -159,6 +159,7 @@ class ExternalModels:
 
             return dict(
                 schema=dict(
+                    type="object",
                     properties=properties,
                     required=required,
                 ),

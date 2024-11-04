@@ -7,13 +7,16 @@
           <label>user group filter:</label>
         </a-col>
         <a-col>
-          <a-select
+          <a-tree-select
             v-model:value="selectedUserGroups"
             mode="multiple"
             style="width: 300px;"
             size="small"
             placeholder="Please select"
-            :options="userGroupsForUser"
+            tree-checkable
+            allow-clear
+            tree-default-expand-all
+            :tree-data="userGroupsForUser"
             :status="selectedUserGroups.length === 0 ? 'error' : ''"
             @change="updateFilteredRows"
             @mouseleave="hide_jquery_ui_popup"
@@ -85,13 +88,13 @@ const props = defineProps({
 
 let workflowStep = props.workflowStep;
 let workflowTrigger = props.workflowStep.workflowTrigger;
-// eslint-disable-next-line no-unused-vars
-watch(workflowTrigger, () => {
-  refresh();
-});
 
 onMounted(() => {
   doGetData();
+  refresh();
+});
+
+watch(workflowTrigger, () => {
   refresh();
 });
 
@@ -107,8 +110,8 @@ const additional_fields = ref(null);
 const actions = ref([]);
 const tableRows = ref([]);
 const filteredRows = ref([]);
-const selectedUserGroups = ref(["_owned"]);
-const userGroupsForUser = ref([{value: "_owned"}]);
+const selectedUserGroups = ref(["my_runs"]);
+const userGroupsForUser = ref([{value: "my_runs", label: "my runs"}]);
 
 const pagination = ref({"position": 'bottom', "hideOnSinglePage": true, "defaultPageSize": 9});
 
@@ -137,7 +140,7 @@ const getTagColor = (text) => {
 
 const doAction = (record, action) => {
   hide_jquery_ui_popup();
-  // console.log('Action selected: ', record[rowkey.value], action);
+  console.log('Action selected: ', record[rowkey.value], action);
   state[workflowStep.target_variable] = {};
   state[workflowStep.target_variable][rowkey.value] = record[rowkey.value];
   for (const field of additional_fields.value) {
@@ -186,9 +189,23 @@ const doGetData = async () => {
     );
   }
   window.socket.emit("get_user_group_paths", (user_group_paths) => {
+        const organizations = [];
+        const projects = [];
         for (const user_group_path of user_group_paths) {
-          userGroupsForUser.value.push({value: user_group_path});
+          if (user_group_path.startsWith("/Organizations")) {
+            organizations.push({
+              value: user_group_path,
+              label: user_group_path.replace("/Organizations/", "")
+            });
+          } else if (user_group_path.startsWith("/Projects")) {
+            projects.push({
+              value: user_group_path,
+              label: user_group_path.replace("/Projects/", "")
+            });
+          }
         }
+        userGroupsForUser.value.push({value: "Organizations", label: "Organizations", children: organizations});
+        userGroupsForUser.value.push({value: "Projects", label: "Projects", children: projects});
       }
   );
 };
@@ -266,7 +283,7 @@ const refresh = async () => {
 const updateFilteredRows = () => {
   filteredRows.value = [];
   for (const row of tableRows.value) {
-    if (row.is_owner && selectedUserGroups.value.some(r => r === "_owned")
+    if (row.is_owner && selectedUserGroups.value.some(r => r === "my_runs")
         || selectedUserGroups.value.some(r => row.user_group_paths.includes(r))) {
       filteredRows.value.push(row);
     }

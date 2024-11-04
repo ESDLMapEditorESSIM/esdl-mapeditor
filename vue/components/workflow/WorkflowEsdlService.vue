@@ -35,7 +35,7 @@ import {setattrd} from "@/utils/utils";
 
 import {RESET_WORKFLOW, useWorkflow} from "@/composables/workflow";
 import {useEsdlLayers} from "@/composables/esdlLayers";
-import {ref, watch} from "vue";
+import {onMounted, ref, watch} from "vue";
 
 const props = defineProps({
   workflowStep: {
@@ -54,6 +54,10 @@ const workflowStep = props.workflowStep;
 let workflowTrigger = props.workflowStep.workflowTrigger;
 const buttonDisabled = ref(false);
 
+onMounted(() => {
+  init(true);
+});
+
 watch(workflowTrigger, (currentValue) => {
   init(currentValue[RESET_WORKFLOW]);
 });
@@ -62,7 +66,6 @@ const esdlWasLoaded = () => {
   if (workflowStep.target_variable && workflowStep.target_variable_value) {
     setattrd(state, workflowStep.target_variable, workflowStep.target_variable_value);
   }
-
   goToFirstStep();
 };
 
@@ -102,6 +105,7 @@ const loadEsdl = () => {
       window.hide_loader();
     });
   } else {
+    console.log("CMD PARAMS", params)
     window.socket.emit("command", {cmd: "query_esdl_service", params: params}, () => {
       goToStep(workflowStep["next_step"]);
     });
