@@ -84,9 +84,9 @@ const updateData = (jsonFormData) => {
   }
 
   // TODO for testing currently, to come via omotes-rest when sdk and protocol updated.
-  if ("end_time" in schema["properties"]) {
-    schema["properties"]["end_time"]["formatMinimum"] = {$data: "1/start_time"};
-  }
+  // if ("end_time" in schema["properties"]) {
+  //   schema["properties"]["end_time"]["formatMinimum"] = {$data: "1/start_time"};
+  // }
 
   if ("uischema" in jsonFormDataConfig) {
     uischema = jsonFormDataConfig.uischema;

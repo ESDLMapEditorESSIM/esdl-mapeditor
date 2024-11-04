@@ -105,7 +105,6 @@ const loadEsdl = () => {
       window.hide_loader();
     });
   } else {
-    console.log("CMD PARAMS", params)
     window.socket.emit("command", {cmd: "query_esdl_service", params: params}, () => {
       goToStep(workflowStep["next_step"]);
     });
