@@ -63,9 +63,8 @@ export default {
     align-items: center;
     font-size: 20pt;
     color: grey;
-    font-style: italic;
-    border: solid 3px lightgrey;
+    border: dashed 1px lightgrey;
     border-radius: .5rem;
-    margin: 1rem;
+    margin-left: 1rem;
 }
 </style>

@@ -1,143 +1,149 @@
 <template>
+  <div v-if="isSyncingMetaData || isDeletingMetaData" class="loading">
+    <a-spin :indicator="loadingIcon" />
+  </div>
   <!-- TODO: responsive layout -->
-  <a-row>
-    <a-col span="22">
-      <h2 style="font-weight: bold; font-size: 24pt">ESDL Analytics (Experimental)</h2>
-    </a-col>
-    <a-col span="2" class="header-buttons-layout">
-      <a-tooltip title="Synchronize ESDL Analytics metadata">
-        <a-button
-          size="large"
-          :disabled="isSyncingMetaData"
-          @click="onSyncBtnClick"
-        >
-          <template #icon>
-            <component 
-              :is="SyncOutlined"
-              style="vertical-align: 0.1em"
-            />
-          </template>
-        </a-button>
-      </a-tooltip>
-      <!-- TODO & NOTE: A temporary implementation to clean up metadata -->
-      <a-tooltip title="Delete ESDL Analytics metadata">
-        <a-button
-          size="large"
-          :disabled="isDeletingMetaData"
-          @click="onDeleteBtnClick"
-        >
-          <template #icon>
-            <component 
-              :is="DeleteOutlined"
-              style="vertical-align: 0.1em"
-            />
-          </template>
-        </a-button>
-      </a-tooltip>
-    </a-col>
-  </a-row>
-  <br>
-  <!-- TODO: freeze panel when syncing or deleting metadata -->
-  <a-row type="flex">
-    <a-col v-if="showConfig" class="graph-options" flex="14rem">
-      <h2>Graph configuration</h2>
-      <div>
-        <h3>Scenario</h3>
-        <a-select
-          v-model:value="scenarioSelected"
-          :options="scenarioOptions"
-          :loading="scenarioOptions.length === 0"
-          :placeholder="scenarioSelectPlaceholder"
-          mode="multiple"
-          style="width: 17rem"
-          @change="onSelectScenario"
-        />
-      </div>
-      <div>
-        <h3>Variable</h3>
-        <a-select
-          v-model:value="variableSelected"
-          :options="Object.values(variableOptions)"
-          :disabled="scenarioSelected.length === 0"
-          :placeholder="scenarioSelected.length === 0 ? 'First select a scenario' : 'Select a variable'"
-          style="width: 17rem"
-          @change="onSelectVariable"
-        />
-      </div>
-      <div>
-        <h3>Group by</h3>
-        <a-select
-          v-model:value="groupbySelected"
-          :options="groupbyOptions"
-          :disabled="scenarioSelected.length === 0 || variableSelected === null" 
-          :placeholder="
-            scenarioSelected.length === 0 ? 'First select a scenario'
-            : variableSelected === null ? 'First select a variable'
-              : 'Select a category'"
-          allow-clear
-          mode="multiple"
-          style="width: 17rem"
-          @change="onSelectGroupBy"
-        />
-      </div>
-      <div>
-        <h3>Filter</h3>
-        <a-cascader
-          v-model:value="filterSelected"
-          :options="filterOptions"
-          style="width: 17rem"
-          :disabled="scenarioSelected.length === 0 || variableSelected === null" 
-          :placeholder="
-            scenarioSelected.length === 0 ? 'First select a scenario'
-            : variableSelected === null ? 'First select a variable'
-              : 'Select a category'" 
-          allow-clear multiple
-          @change="onSelectFilters"
-        />
-      </div>
+  <div class="dialog-content">
+    <a-row>
+      <a-col span="22">
+        <h2 style="font-weight: bold; font-size: 2rem">ESDL Analytics (Experimental)</h2>
+      </a-col>
+      <a-col span="2" class="header-buttons-layout">
+        <a-tooltip title="Synchronize ESDL Analytics metadata">
+          <a-button
+            size="large"
+            :disabled="isSyncingMetaData"
+            @click="onSyncBtnClick"
+          >
+            <template #icon>
+              <component 
+                :is="SyncOutlined"
+                style="vertical-align: 0.1rem"
+              />
+            </template>
+          </a-button>
+        </a-tooltip>
+        <!-- TODO & NOTE: A temporary implementation to clean up metadata -->
+        <a-tooltip title="Delete ESDL Analytics metadata">
+          <a-button
+            size="large"
+            :disabled="isDeletingMetaData"
+            @click="onDeleteBtnClick"
+          >
+            <template #icon>
+              <component 
+                :is="DeleteOutlined"
+                style="vertical-align: 0.1rem"
+              />
+            </template>
+          </a-button>
+        </a-tooltip>
+      </a-col>
+    </a-row>
+    <br>
+    <a-row style="display: flex; flex-direction: row; align-items: stretch">
+      <a-col v-if="showConfig" class="graph-options" :md="24" :lg="8">
+        <h2>Graph configuration</h2>
+        <a-row>
+          <h3>Scenario</h3>
+          <a-select
+            v-model:value="scenarioSelected"
+            :options="scenarioOptions"
+            :loading="scenarioOptions.length === 0"
+            :placeholder="scenarioSelectPlaceholder"
+            mode="multiple"
+            style="width: 100%"
+            @change="onSelectScenario"
+          />
+        </a-row>
+        <a-row>
+          <h3>Variable</h3>
+          <a-select
+            v-model:value="variableSelected"
+            :options="Object.values(variableOptions)"
+            :disabled="scenarioSelected.length === 0"
+            :placeholder="scenarioSelected.length === 0 ? 'First select a scenario' : 'Select a variable'"
+            style="width: 100%"
+            @change="onSelectVariable"
+          />
+        </a-row>
+        <a-row>
+          <h3>Group by</h3>
+          <a-select
+            v-model:value="groupbySelected"
+            :options="groupbyOptions"
+            :disabled="scenarioSelected.length === 0 || variableSelected === null" 
+            :placeholder="
+              scenarioSelected.length === 0 ? 'First select a scenario'
+              : variableSelected === null ? 'First select a variable'
+                : 'Select a category'"
+            allow-clear
+            mode="multiple"
+            style="width: 100%"
+            @change="onSelectGroupBy"
+          />
+        </a-row>
+        <a-row>
+          <h3>Filter</h3>
+          <a-cascader
+            v-model:value="filterSelected"
+            :options="filterOptions"
+            style="width: 100%"
+            :disabled="scenarioSelected.length === 0 || variableSelected === null" 
+            :placeholder="
+              scenarioSelected.length === 0 ? 'First select a scenario'
+              : variableSelected === null ? 'First select a variable'
+                : 'Select a category'" 
+            allow-clear multiple
+            @change="onSelectFilters"
+          />
+        </a-row>
 
-      <!-- TODO -->
-      <!-- <div>
-        <h3>Data visualisation:</h3>
-        <a-radio-group
-          v-model:value="dataGrouping" name="groupStackRadio" :options="groupStackOptions"
-          @change="groupstack"
-        />
-        <br><br>
-        <a-checkbox
-          v-model:checked="showBarNumbers" 
-          @click="groupstack"
-        >
-          Show numbers on bar chart
-        </a-checkbox>
-      </div> -->
-    </a-col>
+        <!-- TODO -->
+        <!-- <div>
+          <h3>Data visualisation:</h3>
+          <a-radio-group
+            v-model:value="dataGrouping" name="groupStackRadio" :options="groupStackOptions"
+            @change="groupstack"
+          />
+          <br><br>
+          <a-checkbox
+            v-model:checked="showBarNumbers" 
+            @click="groupstack"
+          >
+            Show numbers on bar chart
+          </a-checkbox>
+        </div> -->
+      </a-col>
 
-    <!-- TODO: Plot responsive layout -->
-    <a-col flex="auto">
-      <AnalyticsPlot
-        :trace="currentTrace"
-        :layout="currentLayout"
-      />
-    </a-col>
-  </a-row>
+      <!-- TODO: Plot responsive layout -->
+      <a-col :md="24" :lg="16">
+        <AnalyticsPlot
+          :trace="currentTrace"
+          :layout="currentLayout"
+        />
+      </a-col>
+    </a-row>
+  </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, h, onMounted, onUnmounted } from "vue";
 import { notification } from 'ant-design-vue';
-import { DeleteOutlined, SyncOutlined } from "@ant-design/icons-vue";
+import { DeleteOutlined, LoadingOutlined, SyncOutlined } from "@ant-design/icons-vue";
 import AnalyticsPlot from "../components/esdlanalytics/AnalyticsPlot.vue";
 
 // TODOs
 // Rename scenario to dataset?
 
+const loadingIcon = h(LoadingOutlined, {
+  style: { fontSize: '5rem' },
+  spin: true,
+});
 
 // TODO: hide/collapse config in a small view 
 const showConfig = ref(true);
 
-// TODO: use ready state to freeze panel and show a loading icon
-const ready = ref(false);
 const isSyncingMetaData = ref(false);
 const isDeletingMetaData = ref(false);
 
@@ -177,13 +183,11 @@ const onSelectFilters = () => {
 
 onMounted(() => {
   console.info("Initializing ESDL Analytics");
-  ready.value = true;
   updateDatasets();
 });
 
 onUnmounted(() => {
   console.info("Unmounting ESDL Analytics");
-  ready.value = false;
 });
 
 /**
@@ -522,7 +526,6 @@ const updateTrace = async() => {
   padding: 1rem 2rem;
   background-color: ghostwhite;
   border-radius: 1rem;
-  margin-right: 2rem;
   height: fit-content;
 }
 
@@ -535,6 +538,27 @@ const updateTrace = async() => {
   flex-direction: row;
   align-items: center;
   justify-content: space-evenly;
+}
+
+.dialog-content {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  padding: 12px;
+}
+
+.loading {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: calc(100% - 36px);
+  height: calc(100% - 8px);
+  margin-top: 8px;
+  z-index: 100;
+  background-color: rgba(0, 0, 0, 0.03);
+  border-radius: 5px;
 }
 
 </style>
