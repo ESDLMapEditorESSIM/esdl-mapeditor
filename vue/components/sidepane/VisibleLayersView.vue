@@ -80,7 +80,6 @@ import { useVisibleLayers, VisibleLayerType } from '@/composables/visibleLayers'
 const {esdlProject} = useESDLProjects();
 import LayerOpacityPopover from "@/components/popover/LayerOpacityPopover.vue";
 import {useESDLProjects} from "@/composables/esdlProjects";
-import {WMS_LAYERS_GROUP_NAME} from "@/composables/wmsLayers";
 
 const {
   getVisibleLayerGroups,

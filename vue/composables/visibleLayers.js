@@ -252,6 +252,13 @@ export function useVisibleLayers(map, socket) {
     }
 
     /**
+     * Get the list of visible layer groups. This includes grouped layers for ESDL.
+     */
+    const getVisibleLayerGroups = () => {
+        return visibleLayerGroups.value;
+    };
+
+    /**
      * Remove visible layer by ID.
      */
     const removeFromVisibleLayerList = (id) => {
@@ -319,9 +326,6 @@ export function useVisibleLayers(map, socket) {
                     return thisGroup.layers.some(layer => layer.visible);
                 }),
                 description,
-//                     description: computed(() => {
-//                         return layer.es.title
-//                     }),
                 layers: [],
             }
 
@@ -384,6 +388,11 @@ export function useVisibleLayers(map, socket) {
         updateVisibleLayersOrderOnMap();
     };
 
+    /**
+     * Update the order of the visible layers on the map. This function is debounced to prevent multiple calls in a
+     * short time frame. The layers are ordered in reverse order, so that the last layer in the list is on top.
+     * @type {(function(...[*]): void)|*}
+     */
     const updateVisibleLayersOrderOnMap = debounce(() => {
         getVisibleLayerList().slice().reverse().forEach(layer => {
             const layerType = getLayerType(layer);
@@ -439,6 +448,7 @@ export function useVisibleLayers(map, socket) {
         } else {
             console.error(`Unknown layer type: ${layerType}`);
         }
+
         layerToHide.visible = false;
         updateVisibleLayersOrderOnMap();
     };
@@ -522,13 +532,6 @@ export function useVisibleLayers(map, socket) {
                 console.error(`Error whiling saving WMS layer opacity setting to the settings_storage with id: ${id}, opacity: ${opacity}`);
             }
         }
-    };
-
-    /**
-     * Get the list of visible layer groups. This includes grouped layers for ESDL.
-     */
-    const getVisibleLayerGroups = () => {
-        return visibleLayerGroups.value;
     };
 
     /**
