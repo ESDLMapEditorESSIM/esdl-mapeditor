@@ -287,20 +287,21 @@ export function useVisibleLayers(map, socket) {
      * @param {string} groupId - The ID of the group to add the layer to.
      */
     const addToVisibleLayerList = (layer, groupId) => {
-        // Check if a layer with this ID already exists in the list. If so, give a warning and do not add it.
-        if (getVisibleLayerList().find(l => l.id === layer.id)) {
-            console.warn(`Layer with ID ${layer.id} is already in the visible layer list. Not adding it again.`);
-            return;
-        }
         layer.visible = true;
         // Add the layer to the group.
         const group = visibleLayerGroups.value.find(group => group.id === groupId);
         if (group) {
-            group.layers.push(layer);
+            // Check if the layer already exists in the group. If so, replace it. Otherwise add it.
+            const existingLayerIndex = group.layers.findIndex(l => l.id === layer.id);
+            if (existingLayerIndex !== -1) {
+                group.layers.splice(existingLayerIndex, 1, layer);
+            } else {
+                group.layers.push(layer);
+            }
         } else {
             console.warn(`Group with ID ${groupId} not found.`);
         }
-        debouncedUpdateVisibleLayersOrderOnMap()
+        updateVisibleLayersOrderOnMap()
     };
 
     /**
@@ -383,8 +384,7 @@ export function useVisibleLayers(map, socket) {
         updateVisibleLayersOrderOnMap();
     };
 
-    const updateVisibleLayersOrderOnMap = () => {
-        console.debug("Updating visible layers order on map");
+    const updateVisibleLayersOrderOnMap = debounce(() => {
         getVisibleLayerList().slice().reverse().forEach(layer => {
             const layerType = getLayerType(layer);
             if (layerType === VisibleLayerType.WMS) {
@@ -395,9 +395,7 @@ export function useVisibleLayers(map, socket) {
                 console.error(`Unknown layer type: ${layerType}`);
             }
         });
-    }
-
-    const debouncedUpdateVisibleLayersOrderOnMap = debounce(updateVisibleLayersOrderOnMap, 300);
+    }, 300);
 
     const layerIsVisible = (layerId) => {
         for (const visibleLayer of getVisibleLayerList()) {
@@ -429,6 +427,15 @@ export function useVisibleLayers(map, socket) {
             hideWmsLayer(layerId);
         } else if (layerType === VisibleLayerType.ESDL) {
             hideEsdlLayerFromMap(layerToHide.es_id, layerToHide.description, layerToHide.parent_esdl_layer);
+            // Find all other layers in the same group that has this description as parent_esdl_layer and hide them.
+            const group = visibleLayerGroups.value.find(group => group.id === layerToHide.es_id);
+            if (group) {
+                group.layers.forEach(layer => {
+                    if (layer.parent_esdl_layer === layerToHide.description) {
+                        hideVisibleLayer(layer.id);
+                    }
+                });
+            }
         } else {
             console.error(`Unknown layer type: ${layerType}`);
         }
@@ -442,6 +449,12 @@ export function useVisibleLayers(map, socket) {
         )
     };
 
+    const showAllVisibleLayers = () => {
+        getVisibleLayerList().slice().reverse().forEach(
+            layer => showVisibleLayer(layer.id)
+        )
+    };
+
     const showVisibleLayer = (layerId) => {
         const layerToShow = getVisibleLayerList().find(
             layer => layer.id === layerId
@@ -451,6 +464,15 @@ export function useVisibleLayers(map, socket) {
             showWmsLayer(layerId);
         } else if (layerType === VisibleLayerType.ESDL) {
             showEsdlLayerOnMap(layerToShow.es_id, layerToShow.description, layerToShow.parent_esdl_layer);
+            // Find all other layers in the same group that has this description as parent_esdl_layer and show them.
+            const group = visibleLayerGroups.value.find(group => group.id === layerToShow.es_id);
+            if (group) {
+                group.layers.forEach(layer => {
+                    if (layer.parent_esdl_layer === layerToShow.description) {
+                        showVisibleLayer(layer.id);
+                    }
+                });
+            }
         } else {
             console.error(`Unknown layer type: ${layerType}`);
         }
@@ -540,6 +562,7 @@ export function useVisibleLayers(map, socket) {
         layerIsVisible,
         hideVisibleLayer,
         hideAllVisibleLayers,
+        showAllVisibleLayers,
         showVisibleLayer,
         layerExists,
         getVisibleLayerById,

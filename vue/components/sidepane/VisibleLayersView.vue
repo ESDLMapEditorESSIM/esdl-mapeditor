@@ -18,8 +18,10 @@
   <div id="visible_layers_view" style="padding-left: 8px;">
     <a-row justify="space-between" align="middle">
       <h4>Visible layers</h4>
-      <button class="hide-all-btn" @click="hideAllLayers">
-        <i class="fas fa-eye-slash" /> Hide All
+      <button class="hide-all-btn" @click="toggleAllLayers">
+        <i :class="allLayersHidden ? 'fas fa-eye-slash' : 'fas fa-eye'" />
+        &nbsp;
+        {{ allLayersHidden ? 'Show All' : 'Hide All' }}
       </button>
     </a-row>
 
@@ -29,7 +31,6 @@
           <transition-group name="layer">
             <!-- Group Item -->
             <div v-for="group in layerGroups" :key="group.id">
-              <!-- Group Header with Collapse Toggle, Visibility, and Hamburger Menu -->
               <div :class="['group-header', { 'active-group': isActiveGroup(group) }]" @click="toggleExpanded(group)">
                 <div class="layer-info">
                   <span>{{ group.description }}</span>
@@ -79,6 +80,7 @@ import { useVisibleLayers, VisibleLayerType } from '@/composables/visibleLayers'
 const {esdlProject} = useESDLProjects();
 import LayerOpacityPopover from "@/components/popover/LayerOpacityPopover.vue";
 import {useESDLProjects} from "@/composables/esdlProjects";
+import {WMS_LAYERS_GROUP_NAME} from "@/composables/wmsLayers";
 
 const {
   getVisibleLayerGroups,
@@ -86,6 +88,7 @@ const {
   hideVisibleLayer,
   showVisibleLayer,
   hideAllVisibleLayers,
+  showAllVisibleLayers,
   getLayerType,
   updateGroupOrder,
   updateDisplayOrderVisibleLayers,
@@ -105,12 +108,10 @@ const esdlLayerNameMap = {
 };
 
 const selectedLayerId = ref('');
-const activeMenu = ref('');
-
 const layerGroups = ref([]);
+const allLayersHidden = ref(false);
 
 watch(getVisibleLayerGroups(), (newGroups) => {
-  console.log("Updating layer groups", newGroups);
   layerGroups.value = [...newGroups];
 }, { immediate: true });
 
@@ -149,18 +150,15 @@ const closeLayerOpacityPopover = () => {
 };
 
 /**
- * Hides all visible layers.
+ * Toggles the visibility of all layers.
  */
-const hideAllLayers = () => {
-  hideAllVisibleLayers();
-};
-
-/**
- * Toggles the visibility of the action menu (hamburger menu).
- * @param {string} id - The ID of the layer for which the action menu is toggled.
- */
-const toggleActionMenu = (id) => {
-  activeMenu.value = activeMenu.value === id ? '' : id;
+const toggleAllLayers = () => {
+  if (allLayersHidden.value) {
+    showAllVisibleLayers();
+  } else {
+    hideAllVisibleLayers();
+  }
+  allLayersHidden.value = !allLayersHidden.value;
 };
 
 /**
@@ -209,7 +207,7 @@ const isActiveGroup = (group) => {
 };
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .layer-groups {
   margin-top: 10px;
 }
@@ -224,22 +222,25 @@ const isActiveGroup = (group) => {
   font-weight: bold;
   cursor: pointer;
   transition: background-color 0.3s ease;
-}
 
-.group-header:hover {
-  background-color: #d8d8d8;
+  &:hover {
+    background-color: #d8d8d8;
+  }
 }
 
 .active-group {
   background-color: lightblue;
+
+  &:hover {
+    background-color: darken(lightblue, 10%);
+  }
 }
 
 .layer-item {
-  padding-left: 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 5px;
+  padding: 5px 5px 5px 20px;
   border-bottom: 1px solid #ddd;
   background-color: #fff;
 }
@@ -272,26 +273,6 @@ const isActiveGroup = (group) => {
   cursor: pointer;
 }
 
-.action-menu {
-  position: absolute;
-  right: 0;
-  top: 25px;
-  background-color: white;
-  border: 1px solid #ccc;
-  z-index: 10;
-}
-
-.action-menu ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.action-menu li {
-  padding: 5px;
-  cursor: pointer;
-}
-
 .hide-all-btn {
   background-color: #f4f4f4;
   border: 1px solid #ccc;
@@ -300,9 +281,9 @@ const isActiveGroup = (group) => {
   display: flex;
   align-items: center;
   margin-left: 10px;
-}
 
-.hide-all-btn:hover {
-  background-color: #ddd;
+  &:hover {
+    background-color: #ddd;
+  }
 }
 </style>

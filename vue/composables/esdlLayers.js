@@ -8,8 +8,10 @@
  * still experimental.
  */
 import {computed, ref} from "vue";
-import {useVisibleLayers, VisibleLayerType} from "@/composables/visibleLayers";
+import {useVisibleLayers} from "@/composables/visibleLayers";
 import {useSocketIO} from "@/composables/socketio";
+import {MessageNames, PubSubManager} from "@/bridge";
+import {debounce} from "@/utils/utils";
 
 const enabledEsdlIdList = ref([]);
 
@@ -38,11 +40,16 @@ export function useEsdlLayers() {
      * Enable an ESDL layer on the map. This makes it visible, however an enabled ESDL does not need to be visible;
      * visibility is managed hereafter in the visibleLayers composable.
      * @param es_id
+     * @param force_redo
      */
-    function enableEsdl(es_id) {
+    function enableEsdl(es_id, force_redo = false) {
         // Check if the ESDL layer is already enabled. If so, do nothing.
         if (enabledEsdlIdList.value.includes(es_id)) {
-            return;
+            if (force_redo) {
+                disableEsdl(es_id);
+            } else {
+                return;
+            }
         }
         const es = esdlList.value[es_id];
         if (es === undefined) {
@@ -52,8 +59,6 @@ export function useEsdlLayers() {
         enabledEsdlIdList.value.push(es_id);
         createVisibleLayerGroup(es_id, es.title);
         Object.entries(es.layers).reverse().forEach(([key, esdl_layer]) => {
-            console.log("esdl_layer", key, esdl_layer)
-            /** @type {VisibleLayer} */
             const visibleEsdlLayer = {
                 id: es_id + "_" + key,
                 visible: true,
@@ -64,12 +69,10 @@ export function useEsdlLayers() {
             };
             addToVisibleLayerList(visibleEsdlLayer, es_id);
 
-            // Iterate over the _layers to find any sublayers we need to show.
             esdl_layer.eachLayer(function (sublayer) {
                 if (sublayer.options.group_name) {
                     const sublayerId = es_id + "_" + key + "_" + sublayer.options.group_name;
                     const sublayerDescription = sublayer.options.group_name;
-                    /** @type {VisibleLayer} */
                     const sublayerVisibleLayer = {
                         id: sublayerId,
                         visible: true,
@@ -128,12 +131,12 @@ export function useEsdlLayers() {
  * with the given ID is enabled in the map.
  */
 function setupSubscription() {
-    const {subscribe} = useSocketIO();
     const {enableEsdl} = useEsdlLayers();
 
-    subscribe('create_new_esdl_layer', function(message) {
-        enableEsdl(message.es_id);
-    });
+    PubSubManager.subscribe(MessageNames.GEOJSON_PROCESSED, (name, message) => {
+        // Only at this point is the complete area layer available, so we refresh the data.
+        enableEsdl(message.es_id, true);
+    })
 }
 
 // Setup the subscription. Call this function outside the composable to start listening as soon as possible.

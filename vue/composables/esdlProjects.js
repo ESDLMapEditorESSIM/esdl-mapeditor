@@ -33,7 +33,7 @@ const {socket, subscribe} = useSocketIO();
  * @param {ESDLProject} responseProject
  */
 function setEsdlProject(responseProject) {
-    console.log("Setting ESDL Project:", responseProject);
+    console.debug("Setting ESDL Project:", responseProject);
     esdlProject.value = responseProject;
 
     // TODO: Fix syncing left and right layer actions

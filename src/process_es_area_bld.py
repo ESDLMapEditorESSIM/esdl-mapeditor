@@ -582,18 +582,18 @@ def create_area_info_geojson(area):
     return area_list, pot_list
 
 
-def find_boundaries_in_ESDL(top_area):
+def find_boundaries_in_ESDL(top_area, es_id: str = None):
     print("Finding area and potential boundaries in ESDL")
     area_list, pot_list = create_area_info_geojson(top_area)
 
     # Sending an empty list triggers removing the legend at client side
     print('- Sending area information to client, size={}'.format(getsizeof(area_list)))
-    emit('geojson', {"layer": "area_layer", "geojson": area_list})
+    emit('geojson', {"layer": "area_layer", "geojson": area_list, "es_id": es_id})
     # Buildings are now taken care of in process_building
     # print('- Sending building information to client, size={}'.format(getsizeof(building_list)))
     # emit('geojson', {"layer": "bld_layer", "geojson": building_list})
     print('- Sending potential information to client, size={}'.format(getsizeof(pot_list)))
-    emit('geojson', {"layer": "pot_layer", "geojson": pot_list})
+    emit('geojson', {"layer": "pot_layer", "geojson": pot_list, "es_id": es_id})
 
 
 def find_and_send_KPI_information_in_ESDL(top_area: esdl.Area):
@@ -1121,7 +1121,7 @@ def process_energy_system(force_update_es_id=None, zoom=True):
                     set_session('active_es_id', es.id)
 
                     area = es.instance[0].area
-                    find_boundaries_in_ESDL(area)       # also adds coordinates to assets if possible
+                    find_boundaries_in_ESDL(area, es.id)       # also adds coordinates to assets if possible
                     carrier_list = ESDLEnergySystem.get_carrier_list(es)
                     emit('carrier_list', {'es_id': es.id, 'carrier_list': carrier_list})
                     sector_list = ESDLEnergySystem.get_sector_list(es)

@@ -290,7 +290,6 @@ function hide_esdl_layer_from_map(es_id, layer_name, parent_esdl_layer) {
         if (parent_esdl_layer) {
             const parent_layer = esdl_list[es_id].layers[parent_esdl_layer];
             parent_layer.eachLayer(function (layer) {
-                console.log(layer, layer_name)
                 // ...check if it is the unchecked grouped area item
                 if (layer.options.group_name === layer_name) {
                     // if it is already on the map, remove it from the map
