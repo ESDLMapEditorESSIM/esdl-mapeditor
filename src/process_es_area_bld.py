@@ -1155,6 +1155,7 @@ def process_energy_system(force_update_es_id=None, zoom=True):
                     emit('area_bld_list', {'es_id': es.id,  'area_bld_list': area_bld_list})
                     emit('add_connections', {'es_id': es.id, 'add_to_building': False, 'conn_list': conn_list})
                     emit('add_notes', {'es_id': es.id,  'notes_list': notes_list})
+                    emit('bring_kpis_to_front', es.id)
 
                     set_session_for_esid(es.id, 'conn_list', conn_list)
                     set_session_for_esid(es.id, 'asset_list', asset_list)
