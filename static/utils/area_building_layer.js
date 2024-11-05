@@ -980,6 +980,12 @@ function add_area_layer(area_data) {
         null,
         get_layers(active_layer_id, 'area_layer')
     );
+
+    // Move all KPI pie charts to the front (in front of the area polygons)
+    kpi_layers = get_layers(active_layer_id, 'kpi_layer');
+    kpi_layers.eachLayer(function(layer) {
+        layer.bringToFront();
+    });
 }
 
 // ------------------------------------------------------------------------------------------------------------
