@@ -8,13 +8,13 @@
  * still experimental.
  */
 import {computed, ref} from "vue";
-import {useVisibleLayers} from "@/composables/visibleLayers";
+import {useVisibleLayers, VisibleLayerType} from "@/composables/visibleLayers";
 import {useSocketIO} from "@/composables/socketio";
 
 const enabledEsdlIdList = ref([]);
 
 export function useEsdlLayers() {
-    const {addToVisibleLayerList, removeFromVisibleLayerList} = useVisibleLayers();
+    const {createVisibleLayerGroup, addToVisibleLayerList, removeVisibleLayerGroup} = useVisibleLayers();
 
     /**
      * The list of ESDL layers currently present in the frontend. Not necessarily visible.
@@ -50,16 +50,38 @@ export function useEsdlLayers() {
             return;
         }
         enabledEsdlIdList.value.push(es_id);
+        createVisibleLayerGroup(es_id, es.title);
         Object.entries(es.layers).reverse().forEach(([key, esdl_layer]) => {
-            console.log("esdl_layer", esdl_layer)
-            const esdlLayer = {
+            console.log("esdl_layer", key, esdl_layer)
+            /** @type {VisibleLayer} */
+            const visibleEsdlLayer = {
                 id: es_id + "_" + key,
+                visible: true,
+                description: key,
                 es_id: es_id,
                 es: es,
-                layer_type: key,
                 layer_ref: esdl_layer
             };
-            addToVisibleLayerList(esdlLayer);
+            addToVisibleLayerList(visibleEsdlLayer, es_id);
+
+            // Iterate over the _layers to find any sublayers we need to show.
+            esdl_layer.eachLayer(function (sublayer) {
+                if (sublayer.options.group_name) {
+                    const sublayerId = es_id + "_" + key + "_" + sublayer.options.group_name;
+                    const sublayerDescription = sublayer.options.group_name;
+                    /** @type {VisibleLayer} */
+                    const sublayerVisibleLayer = {
+                        id: sublayerId,
+                        visible: true,
+                        description: sublayerDescription,
+                        es_id: es_id,
+                        parent_esdl_layer: key,
+                        es: es,
+                        layer_ref: sublayer
+                    };
+                    addToVisibleLayerList(sublayerVisibleLayer, es_id);
+                }
+            });
         });
         showEsdlLayerOnMap(es_id);
     }
@@ -73,22 +95,18 @@ export function useEsdlLayers() {
         if (!enabledEsdlIdList.value.includes(es_id)) {
             return;
         }
-        const es = esdlList.value[es_id];
         enabledEsdlIdList.value = enabledEsdlIdList.value.filter(id => id !== es_id);
-        Object.entries(es.layers).forEach(([key, esdl_layer]) => {
-            const esdlLayerId = es_id + "_" + key;
-            removeFromVisibleLayerList(esdlLayerId);
-        });
+        removeVisibleLayerGroup(es_id);
         hideEsdlLayerFromMap(es_id);
     }
 
-    function showEsdlLayerOnMap(es_id, layer_name) {
-        window.show_esdl_layer_on_map(es_id, layer_name);
+    function showEsdlLayerOnMap(es_id, layer_name, parent_esdl_layer) {
+        window.show_esdl_layer_on_map(es_id, layer_name, parent_esdl_layer);
         window.set_leaflet_sizes();
     }
 
-    function hideEsdlLayerFromMap(es_id, layer_name) {
-        window.hide_esdl_layer_from_map(es_id, layer_name);
+    function hideEsdlLayerFromMap(es_id, layer_name, parent_esdl_layer) {
+        window.hide_esdl_layer_from_map(es_id, layer_name, parent_esdl_layer);
     }
 
     return {

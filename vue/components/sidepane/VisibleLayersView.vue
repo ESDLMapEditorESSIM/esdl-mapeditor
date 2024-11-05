@@ -87,8 +87,8 @@ const {
   showVisibleLayer,
   hideAllVisibleLayers,
   getLayerType,
-    updateGroupOrder,
-    updateDisplayOrderVisibleLayers,
+  updateGroupOrder,
+  updateDisplayOrderVisibleLayers,
 } = useVisibleLayers();
 
 const expandedGroups = ref([]);
@@ -110,6 +110,7 @@ const activeMenu = ref('');
 const layerGroups = ref([]);
 
 watch(getVisibleLayerGroups(), (newGroups) => {
+  console.log("Updating layer groups", newGroups);
   layerGroups.value = [...newGroups];
 }, { immediate: true });
 
@@ -132,6 +133,12 @@ const toggleLayerVisibility = (layer) => {
 const onEndDrag = (evt) => {
   const newOrder = layerGroups.value.map(group => group.id);
   updateGroupOrder(newOrder);
+};
+
+const onEndDragLayer = (groupId) => {
+  const group = layerGroups.value.find(group => group.id === groupId);
+  const newOrder = group.layers.map(layer => layer.id);
+  updateDisplayOrderVisibleLayers(groupId, newOrder);
 };
 
 /**
@@ -177,14 +184,14 @@ const isGroupExpanded = (groupId) => {
 
 /**
  * Returns a description for the given visible layer based on its type.
- * @param {Object} visibleLayer - The layer object.
+ * @param {VisibleLayer} visibleLayer - The layer object.
  * @returns {string} The description of the layer.
  */
 const getLayerDescription = (visibleLayer) => {
   if (getLayerType(visibleLayer) === VisibleLayerType.WMS) {
     return visibleLayer.description;
   } else if (getLayerType(visibleLayer) === VisibleLayerType.ESDL) {
-    const esdlLayerName = esdlLayerNameMap[visibleLayer.layer_type] || 'Unknown Layer';
+    const esdlLayerName = esdlLayerNameMap[visibleLayer.description] || visibleLayer.description
     return esdlLayerName;
   } else {
     console.error("Unknown layer type", visibleLayer);
@@ -194,11 +201,11 @@ const getLayerDescription = (visibleLayer) => {
 
 /**
  * Checks if the group's ID matches the active ESDL project ID.
- * @param {VisibleLayer} group - The group to check.
+ * @param {VisibleLayerGroup} group - The group to check.
  * @returns {boolean} True if the group's ID matches the active ESDL project ID, false otherwise.
  */
 const isActiveGroup = (group) => {
-  return group.es?.id === esdlProject.value.active_variant_id;
+  return group.id === esdlProject.value.active_es_id;
 };
 </script>
 

@@ -162,6 +162,8 @@ function add_layer_control() {
             .on('check_node.jstree', function(e, data) {
                 let tree = $('#esdl_lct').jstree(true);
                 let node = data.node;
+                console.log(node)
+                console.log(node.type)
                 if (node.type === 'esdl-file') {    // check an entire ESDL file, show the ESDL layers that were visible
                     for (let c=0; c<node.children.length; c++) {
                         child = tree.get_node(node.children[c]);
@@ -367,7 +369,6 @@ function get_esdl_layer_control_tree_data() {
 
         // Dynamically create area list as ESDL can contain grouped area layers that must be turned on/off together
         let area_layer = { text: 'Area', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'area_layer'}};
-        let area_layer_children = []
         let area_layer_data = item['layers']['area_layer'];
         for (let l_idx in area_layer_data._layers) {
             let layer = area_layer_data._layers[l_idx];

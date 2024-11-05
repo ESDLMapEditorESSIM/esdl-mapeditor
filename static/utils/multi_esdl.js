@@ -256,10 +256,25 @@ function remove_bld_layer(bld_id) {
     delete esdl_list[bld_id];
 }
 
-function show_esdl_layer_on_map(es_id, layer_name) {
+function show_esdl_layer_on_map(es_id, layer_name, parent_esdl_layer) {
     if (layer_name) {
-        if (!map.hasLayer(esdl_list[es_id].layers[layer_name])) {
-            esdl_list[es_id].layers[layer_name].addTo(map);
+        if (parent_esdl_layer) {
+            const parent_layer = esdl_list[es_id].layers[parent_esdl_layer];
+            parent_layer.eachLayer(function (layer) {
+                console.log(layer, layer_name)
+                // ...check if it is the checked grouped area item
+                if (layer.options.group_name === layer_name) {
+                    // if it is not already on the map, add it to the map
+                    if (!map.hasLayer(layer)) {
+                        layer.addTo(map);
+                    }
+                }
+            });
+        } else {
+            const layer = esdl_list[es_id].layers[layer_name];
+            if (!map.hasLayer(layer)) {
+                layer.addTo(map);
+            }
         }
     } else {
         // Recursively go through all layers inside the energysystem and show them.
@@ -270,10 +285,25 @@ function show_esdl_layer_on_map(es_id, layer_name) {
     }
 }
 
-function hide_esdl_layer_from_map(es_id, layer_name) {
+function hide_esdl_layer_from_map(es_id, layer_name, parent_esdl_layer) {
     if (layer_name) {
-        if (map.hasLayer(esdl_list[es_id].layers[layer_name])) {
-            esdl_list[es_id].layers[layer_name].removeFrom(map);
+        if (parent_esdl_layer) {
+            const parent_layer = esdl_list[es_id].layers[parent_esdl_layer];
+            parent_layer.eachLayer(function (layer) {
+                console.log(layer, layer_name)
+                // ...check if it is the unchecked grouped area item
+                if (layer.options.group_name === layer_name) {
+                    // if it is already on the map, remove it from the map
+                    if (map.hasLayer(layer)) {
+                        layer.removeFrom(map);
+                    }
+                }
+            });
+        } else {
+            const layer = esdl_list[es_id].layers[layer_name];
+            if (map.hasLayer(layer)) {
+                layer.removeFrom(map);
+            }
         }
     } else {
         const es = esdl_list[es_id];

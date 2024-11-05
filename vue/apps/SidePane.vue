@@ -48,7 +48,7 @@
 import {ref} from "vue"
 import {useSidePane} from "../composables/sidePane";
 import ProjectView from "../components/sidepane/ProjectView.vue";
-import LayersView from "../components/sidepane/LayersView.vue";
+import LayersView from "../components/sidepane/WMSLayersView.vue";
 import LiveModelInterfaceView from "../components/sidepane/LiveModelInterfaceView.vue";
 import VisibleLayersView from "@/components/sidepane/VisibleLayersView.vue";
 

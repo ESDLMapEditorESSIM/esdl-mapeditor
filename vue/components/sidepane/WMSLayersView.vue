@@ -46,7 +46,7 @@ import {useSocketIO} from "@/composables/socketio";
 const {socket} = useSocketIO();
 
 const {showBaseLayer, baseLayerDefinitions, getBaseLayerByLabel, hideBaseLayer} = useBaseLayers();
-const {layerIsVisible} = useVisibleLayers(window.map, socket);
+const {layerExists} = useVisibleLayers(window.map, socket);
 const {
   getWmsLayerList,
   showWmsLayer,
@@ -139,7 +139,7 @@ const addTreeItem = (items, item, itemId, type, children) => {
     readonly: item.readonly,
     type: type,
     a_attr: a_attr,
-    state: {"checked": layerIsVisible(itemId), opened: openedFolders.includes(itemId)},
+    state: {"checked": layerExists(itemId), opened: openedFolders.includes(itemId)},
     children: children,
   });
 }

@@ -18,10 +18,12 @@
  * A composable for managing items currently visible.
  *
  */
-import {computed, ref, toValue} from "vue";
+import {ref, toValue} from "vue";
 import {useVisibleLayers} from "./visibleLayers";
 
-const {addToVisibleLayerList, removeFromVisibleLayerList, layerIsVisible} = useVisibleLayers();
+const {addToVisibleLayerList, createVisibleLayerGroup, removeFromVisibleLayerList, layerIsVisible} = useVisibleLayers();
+
+export const WMS_LAYERS_GROUP_NAME = 'wms_layers';
 
 const L = window.L;
 const map = window.map;
@@ -192,9 +194,7 @@ export function useWmsLayers() {
 
     const showWmsLayer = (layerId) => {
         const wms_layer = globalWmsLayerList.value['layers'][layerId];
-        console.log('showWmsLayer', wms_layer);
         if (!layerIsVisible(layerId)) {
-            console.log('showWmsLayer', wms_layer);
             if (!wms_layer.min_zoom_level || (wms_layer.min_zoom_level && map.getZoom() >= wms_layer.min_zoom_level)) {
                 wms_layer.layer_ref.addTo(map);
                 wms_layer.layer_ref.bringToFront();
@@ -206,7 +206,8 @@ export function useWmsLayers() {
             if (globalWmsLayerList.value['layers'][layerId].legend_url !== "") {
                 showWmsLegend(wms_layer.legend_url);
             }
-            addToVisibleLayerList(wms_layer, 0);
+            createVisibleLayerGroup(WMS_LAYERS_GROUP_NAME, "WMS Layers");
+            addToVisibleLayerList(wms_layer, "wms_layers");
         }
     };
 
