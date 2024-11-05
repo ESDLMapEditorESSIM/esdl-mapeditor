@@ -15,6 +15,18 @@
  */
 
 var layer_control = null;
+let show_layer_control = true;
+
+function toggle_layer_control_visibility() {
+    if (show_layer_control) {
+        $('#menu_option_layer_control').removeClass("ui-icon-check ui-icon");
+        show_layer_control = false;
+    } else {
+        $('#menu_option_layer_control').addClass("ui-icon-check ui-icon");
+        show_layer_control = true;
+    }
+    add_layer_control();
+}
 
 // https://stackoverflow.com/questions/24471708/prevent-jstree-node-select
 
@@ -49,6 +61,9 @@ function getESDLFileContextMenu(node, tree)
 function add_layer_control() {
     if (layer_control) {
         map.removeControl(layer_control);
+    }
+    if (!show_layer_control) {
+        return;
     }
 
     layer_control = L.control({position: 'topright'});
