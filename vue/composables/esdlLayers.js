@@ -9,9 +9,7 @@
  */
 import {computed, ref} from "vue";
 import {useVisibleLayers} from "@/composables/visibleLayers";
-import {useSocketIO} from "@/composables/socketio";
 import {MessageNames, PubSubManager} from "@/bridge";
-import {debounce} from "@/utils/utils";
 
 const enabledEsdlIdList = ref([]);
 
@@ -59,16 +57,6 @@ export function useEsdlLayers() {
         enabledEsdlIdList.value.push(es_id);
         createVisibleLayerGroup(es_id, es.title);
         Object.entries(es.layers).reverse().forEach(([key, esdl_layer]) => {
-            const visibleEsdlLayer = {
-                id: es_id + "_" + key,
-                visible: true,
-                description: key,
-                es_id: es_id,
-                es: es,
-                layer_ref: esdl_layer
-            };
-            addToVisibleLayerList(visibleEsdlLayer, es_id);
-
             esdl_layer.eachLayer(function (sublayer) {
                 if (sublayer.options.group_name) {
                     const sublayerId = es_id + "_" + key + "_" + sublayer.options.group_name;
@@ -85,6 +73,15 @@ export function useEsdlLayers() {
                     addToVisibleLayerList(sublayerVisibleLayer, es_id);
                 }
             });
+            const visibleEsdlLayer = {
+                id: es_id + "_" + key,
+                visible: true,
+                description: key,
+                es_id: es_id,
+                es: es,
+                layer_ref: esdl_layer
+            };
+            addToVisibleLayerList(visibleEsdlLayer, es_id);
         });
         showEsdlLayerOnMap(es_id);
     }

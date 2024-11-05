@@ -219,7 +219,7 @@ const isActiveGroup = (group) => {
   padding: 8px;
   border-bottom: 1px solid #ddd;
   font-weight: bold;
-  cursor: pointer;
+  cursor: move;
   transition: background-color 0.3s ease;
 
   &:hover {
@@ -283,6 +283,21 @@ const isActiveGroup = (group) => {
 
   &:hover {
     background-color: #ddd;
+  }
+}
+
+.layer-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 5px 5px 10px;
+  border-bottom: 1px solid #ddd;
+  background-color: #fff;
+  cursor: move;
+  transition: background-color 0.3s ease;
+
+  &:hover {
+    background-color: #f4f4f4;
   }
 }
 </style>

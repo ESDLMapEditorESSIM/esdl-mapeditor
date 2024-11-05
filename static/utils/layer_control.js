@@ -177,8 +177,6 @@ function add_layer_control() {
             .on('check_node.jstree', function(e, data) {
                 let tree = $('#esdl_lct').jstree(true);
                 let node = data.node;
-                console.log(node)
-                console.log(node.type)
                 if (node.type === 'esdl-file') {    // check an entire ESDL file, show the ESDL layers that were visible
                     for (let c=0; c<node.children.length; c++) {
                         child = tree.get_node(node.children[c]);
