@@ -19,11 +19,13 @@
   import { computed, defineProps } from "vue";
   import SimpleSlider from "../slider/SimpleSlider.vue";
   import { useVisibleLayers } from "@/composables/visibleLayers";
-  const { 
+  import {useSocketIO} from "@/composables/socketio";
+  const {socket} = useSocketIO();
+  const {
     getVisibleLayerById, 
     adjustVisibleLayerOpacity,
     saveVisibleLayerOpacitySetting,
-  } = useVisibleLayers(); 
+  } = useVisibleLayers(window.map, socket);
   
   const props = defineProps({
     layerId: {

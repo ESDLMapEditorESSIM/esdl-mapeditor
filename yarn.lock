@@ -8499,6 +8499,7 @@ __metadata:
     sweetalert2: ^11.4.8
     uuid: ^8.3.2
     vue: 3.4.14
+    vue-draggable-next: ^2.2.1
     vue-grid-layout: 3.0.0-beta1
     vue-toastification: 2.0.0-rc.5
   languageName: unknown
@@ -9557,6 +9558,16 @@ __metadata:
   version: 1.1.2
   resolution: "vary@npm:1.1.2"
   checksum: ae0123222c6df65b437669d63dfa8c36cee20a504101b2fcd97b8bf76f91259c17f9f2b4d70a1e3c6bbcee7f51b28392833adb6b2770b23b01abec84e369660b
+  languageName: node
+  linkType: hard
+
+"vue-draggable-next@npm:^2.2.1":
+  version: 2.2.1
+  resolution: "vue-draggable-next@npm:2.2.1"
+  peerDependencies:
+    sortablejs: ^1.14.0
+    vue: ^3.2.2
+  checksum: 77ae782813f3899f6345b15456c4d61b0b4c7b7dc96f439c463602d2a4b8586a5127be91457ddec9390c6b5e087086232f1a055bd9bfb7637b0f5d231173d61c
   languageName: node
   linkType: hard
 

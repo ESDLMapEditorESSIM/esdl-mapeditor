@@ -15,6 +15,18 @@
  */
 
 var layer_control = null;
+let show_layer_control = true;
+
+function toggle_layer_control_visibility() {
+    if (show_layer_control) {
+        $('#menu_option_layer_control').removeClass("ui-icon-check ui-icon");
+        show_layer_control = false;
+    } else {
+        $('#menu_option_layer_control').addClass("ui-icon-check ui-icon");
+        show_layer_control = true;
+    }
+    add_layer_control();
+}
 
 // https://stackoverflow.com/questions/24471708/prevent-jstree-node-select
 
@@ -49,6 +61,9 @@ function getESDLFileContextMenu(node, tree)
 function add_layer_control() {
     if (layer_control) {
         map.removeControl(layer_control);
+    }
+    if (!show_layer_control) {
+        return;
     }
 
     layer_control = L.control({position: 'topright'});
@@ -166,7 +181,6 @@ function add_layer_control() {
                     for (let c=0; c<node.children.length; c++) {
                         child = tree.get_node(node.children[c]);
                         if (tree.is_checked(child)) {
-                            console.log(child);
                             show_esdl_layer_on_map(child.data.es_id, child.data.layer_name);
                         }
                     }
@@ -368,7 +382,6 @@ function get_esdl_layer_control_tree_data() {
 
         // Dynamically create area list as ESDL can contain grouped area layers that must be turned on/off together
         let area_layer = { text: 'Area', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'area_layer'}};
-        let area_layer_children = []
         let area_layer_data = item['layers']['area_layer'];
         for (let l_idx in area_layer_data._layers) {
             let layer = area_layer_data._layers[l_idx];
@@ -397,8 +410,6 @@ function get_esdl_layer_control_tree_data() {
             { text: 'Simulation results', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'sim_layer'}},
             { text: 'Notes', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'notes_layer'}}
         ];
-
-        console.log('updating esdl_layer_control_tree_data() for es_id: '+ key);
 
         let esdl_layer = {
             id: key,

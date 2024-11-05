@@ -37,6 +37,7 @@
     </ul>
     <div id="tab-content" :class="{side_pane_hidden: !showSidePane}">
       <LayersView v-if="isActiveTab('WMS_Layers')" />
+      <VisibleLayersView v-if="isActiveTab('visible_layers')" />
       <ProjectView v-else-if="isActiveTab('Project')" />
       <LiveModelInterfaceView v-else-if="isActiveTab('live_model_interfaces')" />
     </div>
@@ -47,8 +48,9 @@
 import {ref} from "vue"
 import {useSidePane} from "../composables/sidePane";
 import ProjectView from "../components/sidepane/ProjectView.vue";
-import LayersView from "../components/sidepane/LayersView.vue";
+import LayersView from "../components/sidepane/WMSLayersView.vue";
 import LiveModelInterfaceView from "../components/sidepane/LiveModelInterfaceView.vue";
+import VisibleLayersView from "@/components/sidepane/VisibleLayersView.vue";
 
 // eslint-disable-next-line no-unused-vars
 const {showSidePane, initTabs, clickTab, isActiveTab} = useSidePane();
@@ -57,6 +59,11 @@ const sidePaneTabs = ref([{
   key: 'Project',
   title: 'Project',
   icon: 'fas fa-project-diagram',
+  active: false
+}, {
+  key: 'visible_layers',
+  title: 'Layers',
+  icon: 'far fa-map',
   active: false
 }, {
   key: 'WMS_Layers',

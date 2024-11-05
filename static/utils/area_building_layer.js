@@ -1489,6 +1489,7 @@ function add_geojson_listener(socket, map) {
             restoreSelectedKPI()
             selectAreaKPI(areaLegendChoice);
         }
+        window.PubSubManager.broadcast('GEOJSON_PROCESSED', { layer: message.layer, es_id: message.es_id });
     });
     socket.on('update_area_kpis', function(area_kpi_list) {
         saveSelectedKPI()  // make sure it does not reset the current selection

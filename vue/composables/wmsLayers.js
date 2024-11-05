@@ -21,7 +21,9 @@
 import {ref, toValue} from "vue";
 import {useVisibleLayers} from "./visibleLayers";
 
-const {addToVisibleLayerList, removeFromVisibleLayerList, layerIsVisible} = useVisibleLayers();
+const {addToVisibleLayerList, createVisibleLayerGroup, removeFromVisibleLayerList, layerIsVisible} = useVisibleLayers();
+
+export const WMS_LAYERS_GROUP_NAME = 'wms_layers';
 
 const L = window.L;
 const map = window.map;
@@ -30,7 +32,9 @@ const treeId = "layer_tree";
 const $ = window.$;
 const getTree = () => $('#' + treeId).jstree(true);
 
+// The list of all WMS layers available for the user.
 const globalWmsLayerList = ref(null);
+
 // retrieve wms layers info
 (async () => { // wait for socket to be defined
     while (window.socket === undefined) await new Promise(resolve => setTimeout(resolve, 10));
@@ -38,6 +42,11 @@ const globalWmsLayerList = ref(null);
     socket.on('wms_layer_list', updateGlobalWmsLayerList);
 })();
 
+/**
+ * Updates the global WMS layer list with the provided list of layers.
+ * @param wmsLayerList
+ * @param visibleId
+ */
 const updateGlobalWmsLayerList = (wmsLayerList, visibleId) => {
     if (globalWmsLayerList.value !== null) {
         for (const layerId in globalWmsLayerList.value['layers']) {
@@ -164,7 +173,7 @@ export function useWmsLayers() {
     };
 
     const updateLayer = (layerId, layerDescr, layerUrl, layerName, legendUrl, layerattr, minZoomLevel) => {
-        removeLayerFromMapAndVisibleLayers(layerId);
+        deactivateWmsLayer(layerId);
         globalWmsLayerList.value['layers'][layerId].layer_ref = null; // make sure map ref gets updated in updateGlobalWmsLayerList
         socket.emit('save_wms_layer', {
             id: layerId,
@@ -197,15 +206,20 @@ export function useWmsLayers() {
             if (globalWmsLayerList.value['layers'][layerId].legend_url !== "") {
                 showWmsLegend(wms_layer.legend_url);
             }
-            addToVisibleLayerList(wms_layer, 0);
+            createVisibleLayerGroup(WMS_LAYERS_GROUP_NAME, "WMS Layers");
+            addToVisibleLayerList(wms_layer, "wms_layers");
         }
     };
 
     const hideWmsLayer = (layerId) => {
+        removeLayerFromMap(layerId);
+    };
+
+    const deactivateWmsLayer = (layerId) => {
         removeLayerFromMapAndVisibleLayers(layerId);
     };
 
-    const removeWmsLayer = (layerId, parentId) => {
+    const deleteWmsLayer = (layerId, parentId) => {
         socket.emit('remove_wms_layer', {id: layerId, parent_id: parentId}, updateGlobalWmsLayerList);
         map.removeLayer(globalWmsLayerList.value['layers'][layerId].layer_ref);
         removeFromVisibleLayerList(layerId);
@@ -213,7 +227,7 @@ export function useWmsLayers() {
 
     const clearWmsLayers = () => {
         for (const [key, value] of Object.entries(globalWmsLayerList.value['layers'])) {
-            hideWmsLayer(key)
+            deactivateWmsLayer(key)
         }
     };
 
@@ -291,7 +305,7 @@ export function useWmsLayers() {
             if (isVisible) {
                 showWmsLayer(itemId);
             } else {
-                hideWmsLayer(itemId);
+                deactivateWmsLayer(itemId);
             }
         } else {
             for (const childId of globalWmsLayerList.value['layer_groups'][itemId]['child_ids']) {
@@ -312,6 +326,7 @@ export function useWmsLayers() {
         }, updateGlobalWmsLayerList);
     };
 
+
     return {
         clearWmsLayers,
         getWmsLayerList,
@@ -319,25 +334,30 @@ export function useWmsLayers() {
         updateLayer,
         showWmsLayer,
         hideWmsLayer,
-        removeWmsLayer,
+        deactivateWmsLayer,
+        deleteWmsLayer,
         renameWmsLayerGroup,
         addWmsLayerGroup,
         removeWmsLayerGroup,
         setWmsLayerGroupOpened,
         getDescendantLayerNodeIds,
-        setVisibilityWmsLayerGroup: setVisibilityWmsLayerGroup,
+        setVisibilityWmsLayerGroup,
         moveWmsItem,
         copyWmsItem,
         getWmsGetCapabilities,
     };
 }
 
-const removeLayerFromMapAndVisibleLayers = (layerId) => {
+const removeLayerFromMap = (layerId) => {
     map.removeLayer(globalWmsLayerList.value['layers'][layerId].layer_ref);
     if (globalWmsLayerList.value['layers'][layerId].legend_url !== "") {
         removeWmsLegend();
     }
     globalWmsLayerList.value['layers'][layerId].visible = false;
+};
+
+const removeLayerFromMapAndVisibleLayers = (layerId) => {
+    removeLayerFromMap(layerId);
     removeFromVisibleLayerList(layerId);
 };
 

@@ -706,8 +706,6 @@
                 add_layer_control();    // add jstree layer control
                 // title_div = document.getElementById('es_title');
                 // title_div.innerHTML = '<b>' + title + '<b>';
-                console.log("ESDL list")
-                console.log(esdl_list)
             });
 
             socket.on('set_active_layer_id', function(id) {
@@ -720,7 +718,6 @@
                 update_title(esdl_list[active_layer_id].title);
                 // set_selected_layer(active_layer_id);
                 window.hide_loader();
-                console.log('ESDL list', esdl_list);
             });
 
             // ------------------------------------------------------------------------------------------------------------
@@ -1627,6 +1624,12 @@
                                         <a class="dropdown-item" href="#" onclick="time_dimension.toggle_animation_toolbar_visibility();">
                                             <div id="menu_option_animation_bar" class="menu-icon ui-icon ui-icon-check">&nbsp;</div>
                                             Show animation bar
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="#" onclick="toggle_layer_control_visibility();">
+                                            <div id="menu_option_layer_control" class="menu-icon ui-icon ui-icon-check">&nbsp;</div>
+                                            Show layer control
                                         </a>
                                     </li>
                                     <li id="vue_toggle_show_asset_draw_toolbar"></li>

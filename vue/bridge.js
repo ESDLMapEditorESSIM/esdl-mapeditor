@@ -12,6 +12,7 @@ export const MessageNames = Object.freeze({
     PROJECT_LOADED: 'PROJECT_LOADED',
     SOCKET_CONNECTED: 'SOCKET_CONNECTED',
     SELECT_ACTIVE_LAYER: 'SELECT_ACTIVE_LAYER',
+    GEOJSON_PROCESSED: 'GEOJSON_PROCESSED',
     NEW_ESDL: 'NEW_ESDL',
     KEY_ESCAPE: 'KEY_ESCAPE',
 });
@@ -26,6 +27,7 @@ export const PubSubManager = {
         'PROJECT_LOADED': [],
         'SOCKET_CONNECTED': [],
         'SELECT_ACTIVE_LAYER': [],
+        'GEOJSON_PROCESSED': [],
         'NEW_ESDL': [],
         'KEY_ESCAPE': [],
     },

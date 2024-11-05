@@ -31,13 +31,13 @@
 </template>
 
 <script setup>
-import {computed} from 'vue'
+import {computed, onMounted} from 'vue'
 // eslint-disable-next-line no-unused-vars
 import VueJsTree from "../jstree/VueJsTree.vue";
-import {useESDLProjects} from "../../composables/esdlProjects";
-import {useSocketIO} from "../../composables/socketio";
-import {useMultiEsdl} from "../../composables/multiEsdl";
-import {useBaseLayers,} from "../../composables/baseLayers";
+import {useESDLProjects} from "@/composables/esdlProjects";
+import {useSocketIO} from "@/composables/socketio";
+import {useBaseLayers,} from "@/composables/baseLayers";
+import {useEsdlLayers} from "@/composables/esdlLayers";
 
 const {
   showBaseLayer,
@@ -48,16 +48,21 @@ const {
 // eslint-disable-next-line no-unused-vars
 const {esdlProject, getESDLProject} = useESDLProjects();
 const {socket} = useSocketIO();
-const {isEsdlShownOnMap, showEsdlLayerOnMap, hideEsdlLayerFromMap, esdlList} = useMultiEsdl();
+const {disableEsdl, enableEsdl, enabledEsdlIdList, hideEsdlLayerFromMap, esdlList} = useEsdlLayers();
 
 const treeId = "project_tree"
 const $ = window.$;
 
 const getTree = () => $('#' + treeId).jstree(true);
 
+onMounted(() => {
+  console.debug("Mounted ProjectView")
+  getESDLProject();
+});
+
 // eslint-disable-next-line no-unused-vars
 const treeData = computed(() => {
-  console.log("Compute tree data")
+  console.debug("Compute tree data")
   if (esdlProject.value) {
     const variants = esdlProject.value.variants;
     const variantJstreeDatas = [];
@@ -83,26 +88,6 @@ const treeData = computed(() => {
   }
 });
 
-// function baseVariantToJstreeData(baseVariant) {
-//   const variantsData = [];
-//   for (const variant of baseVariant.variants) {
-//     const variantTreeData = variantToJstreeData(variant);
-//     variantsData.push(variantTreeData);
-//   }
-//   return {
-//     baseVariantId: baseVariant.id,
-//     text: baseVariant.name,
-//     children: variantsData,
-//     type: "base_variant",
-//     state: {
-//       opened: true
-//     },
-//     a_attr: {
-//       "class": "no_checkbox"
-//     },
-//   }
-// }
-
 function variantToJstreeData(variant) {
   const children = [];
   for (const child of variant.children) {
@@ -122,7 +107,7 @@ function variantToJstreeData(variant) {
     a_attr: {
       "class": variant.active ? "bold" : "",
     },
-    state: {"checked": variant.active || isEsdlShownOnMap(variant.es_id), opened: children.length > 0},
+    state: {"checked": enabledEsdlIdList.value.includes(variant.es_id), opened: children.length > 0},
   }
 }
 
@@ -236,14 +221,6 @@ class VariantTreeSpec {
     }
   }
 
-  // eventHandlers() {
-  //   return {
-  //     'select_node.jstree': (e, data, treeElement) => {
-  //       const original = data.node.original;
-  //       socket.value.emit("set_active_variant", {id: original.id});
-  //     }
-  //   }
-  // }
 }
 
 class BaseLayerTreeSpec {
@@ -281,7 +258,7 @@ const eventHandlersByName = {
     const original = data.node.original;
     if (type === 'variant') {
       if (original.esId in esdlList.value) {
-        showEsdlLayerOnMap(original.esId); 
+        enableEsdl(original.esId);
         if (data.event) {
           if (!data.event.ctrlKey) {
             // if event and ctrlKey + click do not hide other variants
@@ -304,7 +281,7 @@ const eventHandlersByName = {
     const type = data.node.type;
     const original = data.node.original;
     if (type === 'variant') {
-      hideEsdlLayerFromMap(original.esId);
+      disableEsdl(original.esId);
     } else if (type === 'base_layer') {
       const baseLayer = getBaseLayerByLabel(original.text);
       hideBaseLayer(baseLayer);
@@ -351,7 +328,7 @@ function hideOtherVariantsInTree(node) {
   for(const checked_node of checked_nodes) {
     if (checked_node.type === 'variant' && checked_node.id !== node.id) {
       getTree().uncheck_node(checked_node.id);
-      hideEsdlLayerFromMap(checked_node.id);  
+      hideEsdlLayerFromMap(checked_node.id);
     }
   }
 }
