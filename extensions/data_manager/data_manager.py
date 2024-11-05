@@ -20,13 +20,12 @@ import json
 
 from flask import Flask
 from flask_socketio import SocketIO
-from pyecore.valuecontainer import EList
 from sqlalchemy import select, delete, column, literal_column, func
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import text
 import pandas as pd
 
 import esdl
-from esdl import QuantityAndUnitType, PipeDiameterEnum
 from esdl.processing.ESDLAsset import get_asset_capability_type
 from esdl.processing.ESDLQuantityAndUnits import unit_to_string, build_qau_from_unit_string, qau_to_string
 from extensions.data_manager import db
@@ -243,7 +242,7 @@ class DataManager:
 
         # init database
         with self.flask_app.app_context():
-            # drop_db(self.flask_app.config["SQLALCHEMY_DATABASE_URI"])
+            drop_db(self.flask_app.config["SQLALCHEMY_DATABASE_URI"])
             create_db(self.flask_app.config["SQLALCHEMY_DATABASE_URI"])
 
         @self.socketio.on("datamanager/metadata/add_update", namespace="/esdl")
@@ -415,10 +414,18 @@ class DataManager:
             unique_input = filter_none(session.scalars(select(Data.input).distinct().where(Data.variable_id == v.id).order_by(Data.input)).all())
             unique_technology = filter_none(session.scalars(select(Data.technology).distinct().where(Data.variable_id == v.id).order_by(Data.technology)).all())
             unique_year = filter_none(session.scalars(select(Data.year).distinct().where(Data.variable_id == v.id).order_by(Data.year)).all())
-            # get all label keys:
-                # select distinct json_object_keys(labels) as keys from data where dataset_id=17;
-                # per key get options: select distinct labels->>'Capability' as capability from data where dataset_id=17
-            keys_list = session.scalars(select(literal_column("json_object_keys(labels)").label("keys")).distinct().select_from(Data).where(Data.variable_id == v.id)).all()
+
+            # A workaround to extract Data.labels column (JSON) keys in SQLite as SQLite does not support json_object_keys 
+            if db.engine.url.drivername == 'sqlite':
+                keys_query = text("""
+                    SELECT DISTINCT json_each.key AS keys
+                    FROM Data, json_each(Data.labels)
+                    WHERE Data.variable_id = :variable_id
+                """)
+                keys_list = session.execute(keys_query, {'variable_id': v.id}).scalars().all()
+            else:
+                keys_list = session.scalars(select(literal_column("json_object_keys(labels)").label("keys")).distinct().select_from(Data).where(Data.variable_id == v.id)).all()
+        
             for key in keys_list:
                 print("-", key)
                 #options_per_label_key = session.scalars(select(literal_column("labels->>'"+key+"'").label("options")).distinct().select_from(Data).where(Data.variable_id == v.id)).all()
