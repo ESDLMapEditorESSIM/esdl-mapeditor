@@ -481,12 +481,12 @@ esdl_config = {
                                 },
                                 "next_step": 24,
                             },
-                            {
-                                "name": "Explore Flex Scan F1 results",
-                                "type": "default",
-                                "enable_if_state": "flexscanf1.loaded",
-                                "next_step": 26,
-                            },
+                            # {
+                            #     "name": "Explore Flex Scan F1 results",
+                            #     "type": "default",
+                            #     "enable_if_state": "flexscanf1.loaded",
+                            #     "next_step": 26,
+                            # },
                             # ASSETS
                             {
                                 "name": "Assets",
@@ -505,22 +505,11 @@ esdl_config = {
                                 "next_step": 32,
                             },
                             # Cost information
-                            {
-                                "name": "Cost information",
-                                "type": "header",
-                            },
-                            {
-                                "name": "Generate cost information template",
-                                "type": "default",
-                                "enable_if_state": "execution.success",
-                                "next_step": 35,
-                            },
-                            {
-                                "name": "Upload cost information template",
-                                "type": "primary",
-                                "enable_if_state": "execution.success",
-                                "next_step": 36,
-                            },
+                            # TODO: Move cost information when not in beta anymore
+                            # {
+                            #     "name": "Cost information",
+                            #     "type": "header",
+                            # },
                             # EHC
                             {
                                 "name": "EHC",
@@ -587,6 +576,18 @@ esdl_config = {
                                 "name": "Energy Hub",
                                 "type": "dashed",
                                 "next_step": 34,
+                            },
+                            {
+                                "name": "Generate cost information template",
+                                "type": "default",
+                                "enable_if_state": "execution.success",
+                                "next_step": 35,
+                            },
+                            {
+                                "name": "Upload cost information template",
+                                "type": "primary",
+                                "enable_if_state": "execution.success",
+                                "next_step": 36,
                             },
                         ],
                     },

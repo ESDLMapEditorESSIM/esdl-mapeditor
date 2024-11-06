@@ -46,7 +46,7 @@ class CostInformation:
             if status == "running":
                 return dict(
                     progress=progress,
-                    message="Generting cost information template. Please don't close this screen.",
+                    message="Generating cost information template. Please don't close this screen.",
                 )
             elif status == "finished":
                 content, filename = _download_result(process_id)
@@ -100,7 +100,7 @@ class CostInformation:
                 return jsonify(dict(
                     filename=filename,
                     progress=100,
-                    message="Cost information template uploaded successfully. It should be downloaded automatically.",
+                    message="Cost information template uploaded successfully. It should be become visible as new ESDL layer automatically.",
                 )), 200
             else:
                 return dict(
