@@ -255,10 +255,6 @@ const eventHandlersByName = {
         window.show_loader();
         socket.value.emit("set_active_variant", {id: original.id});
       }
-      // check to see if energy system is shown on map (should be done by tree.check_node, but only if it is not checked before)
-      if (!isEsdlShownOnMap(original.id)) {
-        showEsdlLayerOnMap(original.id);
-      }
     }
   },
   'check_node.jstree': function (e, data) {
