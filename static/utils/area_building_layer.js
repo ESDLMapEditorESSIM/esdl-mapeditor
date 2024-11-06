@@ -870,6 +870,14 @@ function calcDistKPIsSumRangeFromFeatures (layerFeatures) {
     return distKPIsSumRange;
 }
 
+/**
+ * Add area layers and KPIs to the map
+ *
+ * @param area_data - a list of areas (for a specific group)
+ * @param group_name - the group name (is null for layers outside of a layer group)
+ * @param map_esdl_layer - the esdl layer to which the areas must be added
+ * @returns {*}
+ */
 function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
     let dist_kpis_ranges = get_area_dist_kpis_ranges(active_layer_id);
     let distKPIsRange = dist_kpis_ranges[group_name];
@@ -959,27 +967,43 @@ function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
 }
 
 function add_area_layer(area_data) {
-    let other_layers = [];
+    // First build a list of the areas that are not part of a group
+    let non_group_layers = [];
+    for (const l_index in area_data) {
+        let layer = area_data[l_index];
+        if (!(layer.hasOwnProperty('type') && layer['type'] === 'group')) {
+            non_group_layers.push(layer)
+        }
+    }
+
+    // Add the area layers that are not part of a group
+    geojson_area_layer = add_geojson_area_layer(
+        non_group_layers,
+        null,
+        get_layers(active_layer_id, 'area_layer')
+    );
+
     for (const l_index in area_data) {
         let layer = area_data[l_index];
         if (layer.hasOwnProperty('type') && layer['type'] === 'group') {
-            // Add the layers in a layer group (CBS gebieden / verzorgingsgebieden) first
+            // Add the layers in a layer group (CBS gebieden / verzorgingsgebieden)
             let geojson = add_geojson_area_layer(
                 layer['area_list'],
                 layer['name'],
                 get_layers(active_layer_id, 'area_layer')
             );
-        } else {
-            other_layers.push(layer);
         }
     }
 
-    // Then add other layers
-    geojson_area_layer = add_geojson_area_layer(
-        other_layers,
-        null,
-        get_layers(active_layer_id, 'area_layer')
-    );
+    bring_KPI_layer_to_front(active_layer_id);
+}
+
+function bring_KPI_layer_to_front(es_id) {
+    // Move all KPI pie charts to the front (in front of the area polygons)
+    let kpi_layers = get_layers(es_id, 'kpi_layer');
+    kpi_layers.eachLayer(function(layer) {
+        layer.bringToFront();
+    });
 }
 
 // ------------------------------------------------------------------------------------------------------------
@@ -1465,6 +1489,7 @@ function add_geojson_listener(socket, map) {
             restoreSelectedKPI()
             selectAreaKPI(areaLegendChoice);
         }
+        window.PubSubManager.broadcast('GEOJSON_PROCESSED', { layer: message.layer, es_id: message.es_id });
     });
     socket.on('update_area_kpis', function(area_kpi_list) {
         saveSelectedKPI()  // make sure it does not reset the current selection
@@ -1487,6 +1512,9 @@ function add_geojson_listener(socket, map) {
         selectAreaKPI(areaLegendChoice);
         // ... and call resize_area_pie_charts to redraw pie chart KPIs
         resize_area_pie_charts(active_layer_id);
+    });
+    socket.on('bring_kpis_to_front', function(es_id) {
+        bring_KPI_layer_to_front(es_id);
     });
 }
 

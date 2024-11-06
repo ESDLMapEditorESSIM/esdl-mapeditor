@@ -27,7 +27,6 @@
         :check-call-back="checkCallBack" :dnd-is-draggable="dnbIsDraggable"
       />
       <a-divider style="margin: 8px;" />
-      <VisibleLayersView />
     </a-space>
     <div v-else>
       <p class="text-only">No WMS layers visible.</p>
@@ -39,20 +38,20 @@
 import {computed} from 'vue';
 // eslint-disable-next-line no-unused-vars
 import VueJsTree from "@/components/jstree/VueJsTree";
-import {useSocketIO} from "@/composables/socketio";
 import {useBaseLayers,} from "@/composables/baseLayers";
-import VisibleLayersView from "@/apps/VisibleLayersView.vue";
 import {useWmsLayers} from "@/composables/wmsLayers";
 import {useVisibleLayers} from "@/composables/visibleLayers";
 import { notification } from 'ant-design-vue';
+import {useSocketIO} from "@/composables/socketio";
+const {socket} = useSocketIO();
 
 const {showBaseLayer, baseLayerDefinitions, getBaseLayerByLabel, hideBaseLayer} = useBaseLayers();
-const {layerIsVisible} = useVisibleLayers();
+const {layerExists} = useVisibleLayers(window.map, socket);
 const {
   getWmsLayerList,
   showWmsLayer,
-  hideWmsLayer,
-  removeWmsLayer,
+  deactivateWmsLayer,
+  deleteWmsLayer,
   addWmsLayerGroup,
   renameWmsLayerGroup,
   removeWmsLayerGroup,
@@ -65,7 +64,6 @@ const {
 
 
 // eslint-disable-next-line no-unused-vars
-const {socket} = useSocketIO();
 const treeId = "layer_tree";
 const $ = window.$;
 const openedFolders = [];
@@ -141,7 +139,7 @@ const addTreeItem = (items, item, itemId, type, children) => {
     readonly: item.readonly,
     type: type,
     a_attr: a_attr,
-    state: {"checked": layerIsVisible(itemId), opened: openedFolders.includes(itemId)},
+    state: {"checked": layerExists(itemId), opened: openedFolders.includes(itemId)},
     children: children,
   });
 }
@@ -277,7 +275,7 @@ class WmsLayerTreeSpec {
         showWmsLayer(data.node.id);
       },
       'uncheck_node.jstree': function (e, data) {
-        hideWmsLayer(data.node.id)
+        deactivateWmsLayer(data.node.id)
       },
       'move_node.jstree':function (e, data) {
         moveWmsItem(data.node.id, data.old_parent, data.node.parents[0], data.position);
@@ -302,7 +300,7 @@ class WmsLayerTreeSpec {
         'label': 'Delete WMS layer',
         'icon': 'fa fa-trash-o',
         'action': function () {
-          removeWmsLayer(node.id, node.parents[0]);
+          deleteWmsLayer(node.id, node.parents[0]);
         },
         '_disabled': node.original.readonly,
       },

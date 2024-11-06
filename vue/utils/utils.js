@@ -27,6 +27,20 @@ export function getattrd(obj, name) {
 }
 
 /**
+ * Debounce a function call.
+ * @param func The function to debounce
+ * @param wait The time in ms to wait before calling the function
+ * @returns {(function(...[*]): void)|*}
+ */
+export function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+}
+
+/**
  * Set an attribute of an object by name. Supports dot-notation (so execution.id
  * will set obj[execution][id] to the desired value effectively).
  * @param {*} obj

@@ -1,8 +1,29 @@
+from typing import TypedDict
+
 from esdlproject import ESDLProject, AbstractChange, HighLevelChange, DetailedChange, VariantCollection
 from esdlproject.ProjectManager import ProjectManager
 
 
-def serialize_esdl_project(pm: ProjectManager, project: ESDLProject) -> dict:
+class SerializedVariant(TypedDict):
+    id: str
+    name: str
+    description: str
+    nr_of_changes: int
+    es_id: str
+    active: bool
+    children: list['SerializedVariant']
+    changes: list[dict]
+
+
+class SerializedESDLProject(TypedDict):
+    name: str
+    description: str
+    variants: list[SerializedVariant]
+    active_variant_id: str
+    active_es_id: str
+
+
+def serialize_esdl_project(pm: ProjectManager, project: ESDLProject) -> SerializedESDLProject:
     """
     Serialize a project for usage in the frontend.
     """
@@ -11,6 +32,7 @@ def serialize_esdl_project(pm: ProjectManager, project: ESDLProject) -> dict:
         description=project.description,
         variants=[serialize_variant(pm, collection.variant) for collection in project.variantCollection],
         active_variant_id=pm.active_variant.id,
+        active_es_id=pm.get_active_energy_system().id,
     )
 
 
