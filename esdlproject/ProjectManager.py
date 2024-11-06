@@ -137,6 +137,7 @@ class ProjectManager:
         self.change_listeners = dict()
         self.variant_activation_timestamps = dict()
         self.lock = threading.Lock()
+        self.active_variant_lock = threading.Lock()
         self.rset = ResourceSet()
         self.change_tracker = ChangeTracker(change_handler=self.change_handler)
         self.active_variant = None
@@ -359,54 +360,55 @@ class ProjectManager:
         :return: boolean indicating if the new_variant changed, during activation
          (and requires e.g. gui updates)
         """
-        new_active_variant_changed = False
-        if new_variant.snapshotRef is not None:
-            # TODO: We need to handle the situation where changes were done in the parent. The snapshot should then be
-            # regenerated, but the changes from the child should be maintained. This means that before switching, we
-            # need to make sure that any variant changes are persisted.
+        logger.debug("set_active_variant(): Acquiring lock")
+        with self.active_variant_lock:
+            logger.debug("set_active_variant(): Lock acquired")
+            new_active_variant_changed = False
+            if new_variant.snapshotRef is not None:
+                # Calculate the list of variants between the VariantCollection and this variant such that we can check
+                # if there are changes there, newer than ours and apply them to the new snapshot
+                variant_path_list = get_variant_path_list(new_variant)
+                variant_path_list.remove(new_variant)
+                variant_path_list.reverse()
+                logger.debug("set_active_variant(): Checking parent variants for changes", variants=[v.name for v in variant_path_list])
+                for parent_variant in variant_path_list:
+                    # Find the latest change in the parent with the highest changedAt.
+                    parent_variant_changes = [change for change in parent_variant.change if change.changedAt is not None]
+                    parent_latest_change: datetime | None = max([change.changedAt for change in parent_variant_changes]) if parent_variant_changes else None
+                    # check undo/redo stack, if there something changed
+                    stack_latest_change: datetime = datetime.min.replace(tzinfo=timezone.utc)  # F##! Python with aware/naive datetime objects
+                    if parent_variant.snapshotRef:
+                        tracker = self.change_tracker.get_tracker(parent_variant.snapshotRef)
+                        if tracker:
+                            stack_latest_change = tracker.stack.last_changed
+                    parent_latest_change = max(parent_latest_change, stack_latest_change) if parent_latest_change else None
+                    # Get the timestamp of the last activation of the variant.
+                    variant_last_activated_at = self.variant_activation_timestamps.get(new_variant.id, None)
+                    # Only recreate the snapshot if 1) the variant was never activated, or 2) the parent has changes that
+                    # are newer than the last time we activated this variant.
+                    if (variant_last_activated_at is None or
+                            (parent_latest_change is not None and parent_latest_change > variant_last_activated_at)):
+                        logger.debug(
+                            f"set_active_variant(): Parent variant contains changes not in the snapshot, recreating",
+                            parent_variant=parent_variant.name, variant=new_variant.name
+                        )
 
-            # Calculate the list of variants between the VariantCollection and this variant such that we can check
-            # if there are changes there, newer than ours and apply them to the new snapshot
-            variant_path_list = get_variant_path_list(new_variant)
-            variant_path_list.remove(new_variant)
-            variant_path_list.reverse()
-            logger.debug("set_active_variant(): Checking parent variants for changes", variants=[v.name for v in variant_path_list])
-            for parent_variant in variant_path_list:
-                # Find the latest change in the parent with the highest changedAt.
-                parent_variant_changes = [change for change in parent_variant.change if change.changedAt is not None]
-                parent_latest_change: datetime | None = max([change.changedAt for change in parent_variant_changes]) if parent_variant_changes else None
-                # check undo/redo stack, if there something changed
-                stack_latest_change: datetime = datetime.min.replace(tzinfo=timezone.utc)  # F##! Python with aware/naive datetime objects
-                if parent_variant.snapshotRef:
-                    tracker = self.change_tracker.get_tracker(parent_variant.snapshotRef)
-                    if tracker:
-                        stack_latest_change = tracker.stack.last_changed
-                parent_latest_change = max(parent_latest_change, stack_latest_change) if parent_latest_change else None
-                # Get the timestamp of the last activation of the variant.
-                variant_last_activated_at = self.variant_activation_timestamps.get(new_variant.id, None)
-                # Only recreate the snapshot if 1) the variant was never activated, or 2) the parent has changes that
-                # are newer than the last time we activated this variant.
-                if (variant_last_activated_at is None or
-                        (parent_latest_change is not None and parent_latest_change > variant_last_activated_at)):
-                    logger.debug(
-                        f"set_active_variant(): Parent variant contains changes not in the snapshot, recreating",
-                        parent_variant=parent_variant.name, variant=new_variant.name
-                    )
+                        self.remove_variant_snapshot(new_variant)  # delete previous variant snapshot
+                        self.replay_parent_variant_changes(new_variant)  # generate new snapshot based on parent changes
+                        self.active_variant = new_variant
+                        new_active_variant_changed = True
+                self.active_variant = new_variant
+            else:
+                # New variant is selected and activated for the first time.
+                logger.debug(f"set_active_variant(): Switching to new active energy system for variant {new_variant.name}")
+                self.replay_parent_variant_changes(new_variant)
+                new_active_variant_changed = True
+                self.active_variant = new_variant
 
-                    self.remove_variant_snapshot(new_variant)  # delete previous variant snapshot
-                    self.replay_parent_variant_changes(new_variant)  # generate new snapshot based on parent changes
-                    self.active_variant = new_variant
-                    new_active_variant_changed = True
-            self.active_variant = new_variant
-        else:
-            # New variant is selected and activated for the first time.
-            logger.debug(f"set_active_variant(): Switching to new active energy system for variant {new_variant.name}")
-            self.replay_parent_variant_changes(new_variant)
-            new_active_variant_changed = True
-            self.active_variant = new_variant
+            # Update the timestamp of the last activation of the variant.
+            self.variant_activation_timestamps[new_variant.id] = datetime.now(timezone.utc)
 
-        # Update the timestamp of the last activation of the variant.
-        self.variant_activation_timestamps[new_variant.id] = datetime.now(timezone.utc)
+        logger.debug("set_active_variant(): Releasing lock")
         return new_active_variant_changed
 
     def get_active_variant(self) -> Variant | None:
@@ -451,15 +453,6 @@ class ProjectManager:
         changes_list.sort(key=lambda k: k.changedAt)
         #print(changes_list)
         self.apply_changes_to_variant(changes_list, new_variant, False)
-
-
-
-        # for parent_variant in variant_path_list:
-        #     logger.info(f"replay_parent_variant_changes(): Replaying variant {parent_variant.name} @ {parent_variant.eURIFragment()}")
-        #     # TODO: order of changes is based on order in the tree, instead of time, so first get all changes and sort them
-        #     # according to time.
-        #     self.apply_variant_changes(parent_variant, variant_snapshot, False)
-
 
     def apply_changes_to_variant(self, change_list: List[AbstractChange], target_variant: Variant, record_changes: bool):
         es = self.get_variant_snapshot(target_variant)
@@ -564,19 +557,21 @@ class ProjectManager:
         if variant is None:
             return None
 
-        if variant.snapshotRef is not None:
-            return variant.snapshotRef
 
         with self.lock: # lock access to variant.snapshotRef to make sure no multiple snapshots are created by multiple threads from the gui
+            if variant.snapshotRef is not None:
+                return variant.snapshotRef
+
             snapshot_resource:XMLResource = self.rset.create_resource(StringURI(f"Snapshot_{variant.name}_{str(uuid4())[:4]}.esdl"))
             snapshot_resource.type = ProjectManagerResourceType.SNAPSHOT
             logger.info(f'Saving variant snapshot for "{variant.name}" (in {variant.eResource}) to {snapshot_resource.uri}')
             base_variant_resource = get_variant_collection_resource(variant)
             es = base_variant_resource.contents[0]
-            es.name = variant.name # overwrite name of ES to match the variant name
+
 
             snapshot_resource.set_content(es.deepcopy(uuid_dict=snapshot_resource.uuid_dict))
             variant.snapshotRef = snapshot_resource.contents[0]  # link to snapshot resource energy system
+            variant.snapshotRef.name = variant.name  # overwrite name of ES to match the variant name
             variant.snapshotRef.id = variant.id  # str(uuid4())  # generate a new energy system id for this variant
 
             #snapshot_resource.uuid_dict = dict(es.eResource.uuid_dict) # copy uuid_dict to speed up lookups by id

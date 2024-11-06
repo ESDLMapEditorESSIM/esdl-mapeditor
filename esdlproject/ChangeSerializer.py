@@ -79,6 +79,9 @@ def deepcopy_eobject_change(eobject: EObject,
                             change = Set(ownerFragment=k.eURIFragment(), objectFragment=fragment, feature=x.name)
                             changeList.append(change)
     changeList,_ = filterDoubleConnectedTo(changeList)
+    # copy over the eIsSet configuration, otherwise all attributes are set due to this deepcopy
+    #copy._isset = InternalSet(self._isset)
+    copy._isset = eobject._isset.copy()
     return copy, changeList
 
 

@@ -3160,6 +3160,10 @@ def process_command(message):
             diff += 1
         call_process_energy_system.submit(force_update_es_id=active_es.id, zoom=False)  # run in seperate thread
 
+    if message['cmd'] == 'debug':
+        pm = get_project_manager()
+        pm.debug(dump_project=True)
+
     undo_redo.stop_recording()
 
     # Normally this emit is done with the undo_record_changes decorator, but this function is a bit too messy for that.
@@ -3247,7 +3251,7 @@ def process_file_command(message):
         set_session('es_filename', filename)
         send_init_new_project_to_lmi()
 
-    # 02-2024: is not used anymore, siee esdl_file_io
+    # 02-2024: is not used anymore, see esdl_file_io
     # if message['cmd'] == 'load_esdl_from_file':
     #     # clears all loaded projects.
     #     file_content = message['file_content']
@@ -3380,11 +3384,7 @@ def process_file_command(message):
             store_id = get_session('active_es_id')
             create_new_store_item(store_id, title, descr, email, tags, pm)
 
-    if message['cmd'] == 'debug':
-        pm = get_project_manager()
-        pm.debug()
-
-    # Do not store file_content in logging database
+    #Do not store file_content in logging database
     if 'file_content' in message:
         del message['file_content']
     user_email = get_session('user-email')

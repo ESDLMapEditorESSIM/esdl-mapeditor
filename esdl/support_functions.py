@@ -125,7 +125,9 @@ def deepcopy(self, memo=None, uuid_dict: Dict[str, EObject]=None ) -> EObject:
                                 copy_value = orig_value
                             v.eSet(ref.name, copy_value)
 
-    # copy._isset = set(self._isset)  # copy over the eIsSet configuration, otherwise all attributes are set due to this deepcopy
+    # copy over the eIsSet configuration, otherwise all attributes are set due to this deepcopy
+    #copy._isset = InternalSet(self._isset)
+    copy._isset = self._isset.copy()
     return copy
 
 

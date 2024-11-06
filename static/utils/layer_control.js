@@ -166,7 +166,7 @@ function add_layer_control() {
                     for (let c=0; c<node.children.length; c++) {
                         child = tree.get_node(node.children[c]);
                         if (tree.is_checked(child)) {
-                            console.log(child);
+                            //console.log(child);
                             show_esdl_layer_on_map(child.data.es_id, child.data.layer_name);
                         }
                     }

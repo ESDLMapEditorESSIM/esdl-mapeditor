@@ -221,6 +221,7 @@ class VariantTreeSpec {
           tree.edit(node, undefined, (node, isSuccessful, isCancelled) => {
             if (isSuccessful && !isCancelled) {
               socket.value.emit("rename_variant", {id: node.original.id, name: node.text});
+              window.add_layer_control(); // hard update the old layer control
             }
           });
         }
@@ -231,6 +232,9 @@ class VariantTreeSpec {
         'action': function () {
           const msg = {id: node.original.id};
           socket.value.emit("delete_variant", msg);
+          // TODO: remove this when new layer control is ready
+          window.remove_esdl_layer_from_ui(node.original.id);  // remove from old layer control layer and esdl_list
+          window.add_layer_control(); // hard update the old layer control
         }
       },
     }
@@ -273,6 +277,10 @@ const eventHandlersByName = {
       if (!original.active) {
         window.show_loader();
         socket.value.emit("set_active_variant", {id: original.id});
+      }
+      // check to see if energy system is shown on map (should be done by tree.check_node, but only if it is not checked before)
+      if (!isEsdlShownOnMap(original.id)) {
+        showEsdlLayerOnMap(original.id);
       }
     }
   },

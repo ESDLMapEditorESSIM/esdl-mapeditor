@@ -11,6 +11,7 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+import threading
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -75,6 +76,7 @@ class UndoRedoCommandStack:
         # post_process_list keeps track of notifications that cannot be processed directly (e.g. missing references)
         self.post_process_list: List[Notification] = []
         self.change_context: ChangeContext = ChangeContext(source=ChangeSource.INTERNAL, resource=self.resource)
+        self.recording_lock = threading.Lock()
 
     @property
     def top(self) -> ep.AbstractChange | None:
@@ -130,6 +132,7 @@ class UndoRedoCommandStack:
         :param label: name of the label of the action that is recorded.
         :param change_context: the context of the change, default INTERNAL
         """
+        self.recording_lock.acquire()  # lock is released in stop_recording()
         self._update_context(change_context)
         logger.debug(f"=== start recording: {label} =====================================")
         self._recording = True
@@ -164,11 +167,13 @@ class UndoRedoCommandStack:
         """
         Temporarily pause recording of changes.
         """
+        self.recording_lock.release()
         self._recording = False
         try:
             yield
         finally:
             self._recording = True
+            self.recording_lock.acquire()
 
     def stop_recording(self, call_change_handler: bool = True):
         """
@@ -202,6 +207,7 @@ class UndoRedoCommandStack:
             self._hlc = None
         self._recording = False
         self.change_context.source = ChangeSource.INTERNAL  # reset to default
+        self.recording_lock.release()
 
     def add_undo_step(self, label=None):
         """
