@@ -9,6 +9,7 @@ from esdl.esdl_handler import StringURI
 from esdl.profiles.influxdbprofilemanager import InfluxDBProfileManager, ConnectionSettings
 from esdl.esdl import EnergySystemInformation, Port, OutPort, InPort, EnergySystem, InfluxDBProfile, \
     TimeSeriesProfile, ProfileReference, GenericProfile, Asset
+from esdl.esdl import Profiles as ESDLProfiles
 from extensions.profiles import Profiles
 from extensions.session_manager import get_session, get_handler
 import src.log as log
@@ -66,8 +67,11 @@ class ESDL2InlineProfile:
     ) -> EnergySystem:
         esi: EnergySystemInformation = es.energySystemInformation
 
+        # Make sure a global profiles list exists
+        if esi.profiles is None:
+            esi.profiles = ESDLProfiles()
+
         # Remove all InfluxDBProfiles from the global profiles list
-        # TODO: for some reason not all global (InfluxDBProfile) profiles are found and thus not removed
         logger.info("Removing InfluxDBProfiles from global profiles")
         global_profiles = esi.profiles.profile
         influxdb_profiles = [profile for profile in global_profiles if isinstance(profile, InfluxDBProfile)]
