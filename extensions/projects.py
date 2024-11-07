@@ -127,7 +127,6 @@ def set_active_variant(message: SetActiveVariantRequest):
             executor.submit(process_energy_system, force_update_es_id=es.id)
         else:
             executor.submit(process_energy_system)
-        emit_active_esdl_project()
         emit_update_undo_redo_stack(pm.active_tracker.stack)
     else:
         logger.warning("No variant with given ID found!", variant_id=message["id"])

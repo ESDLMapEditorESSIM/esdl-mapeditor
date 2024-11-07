@@ -7,27 +7,23 @@
  * part of the application. That could be done through the PubSubManager, but that's
  * still experimental.
  */
-import {computed, ref} from "vue";
+import {ref} from "vue";
 import {useVisibleLayers} from "@/composables/visibleLayers";
 import {MessageNames, PubSubManager} from "@/bridge";
+import {useSocketIO} from "@/composables/socketio";
 
 const enabledEsdlIdList = ref([]);
 
 export function useEsdlLayers() {
     const {createVisibleLayerGroup, addToVisibleLayerList, removeVisibleLayerGroup} = useVisibleLayers();
 
-    /**
-     * The list of ESDL layers currently present in the frontend. Not necessarily visible.
-     */
-    const esdlList = computed(() => window.esdl_list);
-
     const removeEsdlLayer = (id) => window.remove_esdl_layer(id);
 
     const getActiveEsdlLayerId = () => ref(window.active_layer_id);
 
     const clearEsdlLayers = (exceptId = null) => {
-        for (const id in esdlList.value) {
-            const esdlLayer = esdlList.value[id];
+        for (const id in window.esdl_list) {
+            const esdlLayer = window.esdl_list[id];
             if ((exceptId != null && exceptId !== id) || esdlLayer.title !== 'Untitled EnergySystem') {
                 window.remove_esdl_layer(id);
             }
@@ -41,6 +37,7 @@ export function useEsdlLayers() {
      * @param force_redo
      */
     function enableEsdl(es_id, force_redo = false) {
+        console.debug("Enabling ESDL layer with ID " + es_id);
         // Check if the ESDL layer is already enabled. If so, do nothing.
         if (enabledEsdlIdList.value.includes(es_id)) {
             if (force_redo) {
@@ -49,9 +46,9 @@ export function useEsdlLayers() {
                 return;
             }
         }
-        const es = esdlList.value[es_id];
+        const es = window.esdl_list[es_id];
         if (es === undefined) {
-            console.error("Could not find ESDL layer with ID " + es_id);
+            console.error("Could not find ESDL layer with ID " + es_id, window.esdl_list);
             return;
         }
         enabledEsdlIdList.value.push(es_id);
@@ -110,7 +107,6 @@ export function useEsdlLayers() {
     }
 
     return {
-        esdlList,
         removeEsdlLayer,
         clearEsdlLayers,
         getActiveEsdlLayerId,
@@ -128,11 +124,17 @@ export function useEsdlLayers() {
  * with the given ID is enabled in the map.
  */
 function setupSubscription() {
+    const {subscribe} = useSocketIO();
     const {enableEsdl} = useEsdlLayers();
 
+    subscribe("create_new_esdl_layer", (message) => {
+        enableEsdl(message.es_id);
+    });
     PubSubManager.subscribe(MessageNames.GEOJSON_PROCESSED, (name, message) => {
         // Only at this point is the complete area layer available, so we refresh the data.
-        enableEsdl(message.es_id, true);
+        if (message.layer === 'area_layer') {
+            enableEsdl(message.es_id, true);
+        }
     })
 }
 

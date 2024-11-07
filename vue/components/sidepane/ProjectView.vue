@@ -48,7 +48,7 @@ const {
 // eslint-disable-next-line no-unused-vars
 const {esdlProject, getESDLProject} = useESDLProjects();
 const {socket} = useSocketIO();
-const {disableEsdl, enableEsdl, enabledEsdlIdList, hideEsdlLayerFromMap, esdlList} = useEsdlLayers();
+const {disableEsdl, enableEsdl, enabledEsdlIdList, hideEsdlLayerFromMap} = useEsdlLayers();
 
 const treeId = "project_tree"
 const $ = window.$;
@@ -250,10 +250,12 @@ const eventHandlersByName = {
     if (type === 'variant') {
       const tree = treeElement.jstree(true);
       tree.check_node(data.node);
+      enableEsdl(original.esId);
       hideOtherVariantsInTree(data.node);
       if (!original.active) {
         window.show_loader();
         socket.value.emit("set_active_variant", {id: original.id});
+        window.select_active_layer(original.esId);
       }
     }
   },
@@ -261,7 +263,7 @@ const eventHandlersByName = {
     const type = data.node.type;
     const original = data.node.original;
     if (type === 'variant') {
-      if (original.esId in esdlList.value) {
+      if (original.esId in window.esdl_list) {
         enableEsdl(original.esId);
         if (data.event) {
           if (!data.event.ctrlKey) {
