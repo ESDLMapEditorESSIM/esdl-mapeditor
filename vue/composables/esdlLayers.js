@@ -97,6 +97,12 @@ export function useEsdlLayers() {
         hideEsdlLayerFromMap(es_id);
     }
 
+    function disableAllEsdls() {
+        enabledEsdlIdList.value.forEach((es_id) => {
+            disableEsdl(es_id);
+        });
+    }
+
     function showEsdlLayerOnMap(es_id, layer_name, parent_esdl_layer) {
         window.show_esdl_layer_on_map(es_id, layer_name, parent_esdl_layer);
         window.set_leaflet_sizes();
@@ -110,6 +116,7 @@ export function useEsdlLayers() {
         removeEsdlLayer,
         clearEsdlLayers,
         getActiveEsdlLayerId,
+        disableAllEsdls,
         enableEsdl,
         disableEsdl,
         enabledEsdlIdList,
@@ -125,7 +132,7 @@ export function useEsdlLayers() {
  */
 function setupSubscription() {
     const {subscribe} = useSocketIO();
-    const {enableEsdl} = useEsdlLayers();
+    const {enableEsdl, disableAllEsdls, disableEsdl} = useEsdlLayers();
 
     subscribe("create_new_esdl_layer", (message) => {
         enableEsdl(message.es_id);
@@ -135,7 +142,13 @@ function setupSubscription() {
         if (message.layer === 'area_layer') {
             enableEsdl(message.es_id, true);
         }
-    })
+    });
+    PubSubManager.subscribe(MessageNames.REMOVE_ESDL_LAYER, (name, message) => {
+        disableEsdl(message.es_id);
+    });
+    PubSubManager.subscribe(MessageNames.CLEAR_ESDL_LAYER_LIST, (name, message) => {
+        disableAllEsdls();
+    });
 }
 
 // Setup the subscription. Call this function outside the composable to start listening as soon as possible.

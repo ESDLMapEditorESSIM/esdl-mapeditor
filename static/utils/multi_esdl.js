@@ -206,6 +206,7 @@ function remove_esdl_layer_from_ui(es_id) {
                 map.removeLayer(esdl_list_item.layers[lyr])
         }
         delete esdl_list[es_id];
+        window.PubSubManager.broadcast('REMOVE_ESDL_LAYER', {es_id: es_id});
     } else {
         console.log("Cannot remove layers from ui for esdl_id ", es_id);
     }
@@ -319,6 +320,7 @@ function clear_esdl_layer_list() {
         }
     }
     esdl_list = {};
+    window.PubSubManager.broadcast('CLEAR_ESDL_LAYER_LIST', {});
 }
 
 function add_object_to_layer(es_id, layer_name, object) {
