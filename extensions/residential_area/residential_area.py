@@ -133,6 +133,7 @@ class ResidentialArea:
                 bld_composition = params["building_composition"]
                 aggr_bld = self.create_aggregated_building(bld_composition)
 
+                print(params)
                 if 'id' in params:
                     # Request was sent by right-clicking on an Area / map location
                     area_id = get_area_id_from_mapeditor_id(params['id'])
@@ -169,6 +170,7 @@ class ResidentialArea:
                     else:
                         logger.error("Area to which aggregated building should be added, could not be found")
                 else:
+                    logger.warning("Using ResidentialArea plugin without right-clicking on an area... (the 'unintended' way)")
                     # Request was sent from the menu, location still needs to be determined by the user
                     self.store_asset_for_drawing_on_map(aggr_bld)
 

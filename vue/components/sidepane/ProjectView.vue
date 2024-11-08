@@ -57,7 +57,6 @@ const getTree = () => $('#' + treeId).jstree(true);
 
 onMounted(() => {
   console.debug("Mounted ProjectView")
-  getESDLProject();
 });
 
 // eslint-disable-next-line no-unused-vars

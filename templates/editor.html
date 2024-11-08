@@ -711,12 +711,20 @@
             socket.on('set_active_layer_id', function(id) {
                 // console.log('add_draw_control');
                 active_layer_id = id;
+
+                // update global variables after layer change
+                areaLegendChoice = get_area_legend_choice(active_layer_id);
+                buildingLegendChoice = get_building_legend_choice(active_layer_id)
+                area_KPIs = get_area_kpi_list(active_layer_id);
+
                 update_area_bld_list_select();            // update the list of areas and buildings to add assets to
                 draw_control = add_draw_control(draw_control, map);                 // couple draw_control to active layer
                 // console.log(draw_control);
 
                 update_title(esdl_list[active_layer_id].title);
                 // set_selected_layer(active_layer_id);
+                update_area_legend();
+                update_building_legend();
                 console.log("set_active_layer_id, hide loader");
                 window.hide_loader();
             });

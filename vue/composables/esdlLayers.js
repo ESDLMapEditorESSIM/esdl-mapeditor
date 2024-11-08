@@ -37,7 +37,7 @@ export function useEsdlLayers() {
      * @param force_redo
      */
     function enableEsdl(es_id, force_redo = false) {
-        console.debug("Enabling ESDL layer with ID " + es_id);
+        console.debug("Enabling ESDL layer with ID " + es_id, window.esdl_list[es_id].title);
         // Check if the ESDL layer is already enabled. If so, do nothing.
         if (enabledEsdlIdList.value.includes(es_id)) {
             if (force_redo) {

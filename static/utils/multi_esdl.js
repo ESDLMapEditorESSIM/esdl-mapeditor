@@ -18,7 +18,7 @@ var esdl_list = {};         // Dictionary to keep energysystem information
 var active_layer_id = null;     // es_id of current layer that is being editted
 var draw_control = null;
 var draw_control_map = {};
-var select_esdl_control = null;
+// var select_esdl_control = null;
 
 // -----------------------------------------------------------------------------------------------------------
 //  Update the overlays in the Layer Control Tree
@@ -51,12 +51,12 @@ function update_layer_control_tree() {
     layer_ctrl_tree.setOverlayTree(overlaysTree);
 }
 
-function select_active_layer_old() {
-    let active_esdl_layer_index = document.getElementById('esdl_layer_select').selectedIndex;
-    let active_esdl_layer_options = document.getElementById('esdl_layer_select').options;
-    let active_esdl_layer = active_esdl_layer_options[active_esdl_layer_index].id;
-    select_active_layer(active_esdl_layer);
-}
+// function select_active_layer_old() {
+//     let active_esdl_layer_index = document.getElementById('esdl_layer_select').selectedIndex;
+//     let active_esdl_layer_options = document.getElementById('esdl_layer_select').options;
+//     let active_esdl_layer = active_esdl_layer_options[active_esdl_layer_index].id;
+//     select_active_layer(active_esdl_layer);
+// }
 
 function select_active_layer(active_esdl_layer) {
     if (!(active_esdl_layer in esdl_list)) {
@@ -79,31 +79,31 @@ function select_active_layer(active_esdl_layer) {
     window.PubSubManager.broadcast('SELECT_ACTIVE_LAYER', {active_layer_id: active_layer_id});
 }
 
-function add_select_esdl() {
-    if (select_esdl_control) {
-        map.removeControl(select_esdl_control);
-    }
-
-    select_esdl_control = L.control({position: 'topright'});
-    select_esdl_control.onAdd = function (map) {
-        var div = L.DomUtil.create('div', 'info legend');
-
-        var select = '<select id="esdl_layer_select" onchange="select_active_layer_old();">';
-        for (let id in esdl_list) {
-            es = esdl_list[id]
-            select += '<option id="' + es.id + '"';
-            if (es.id == active_layer_id) {
-                select += ' selected';
-            }
-            select += '>' + es.title + '</option>';
-        }
-        select += '</select>';
-        div.innerHTML += select;
-        div.firstChild.onmousedown = div.firstChild.ondblclick = L.DomEvent.stopPropagation;
-        return div;
-    };
-    select_esdl_control.addTo(map);
-}
+// function add_select_esdl() {
+//     if (select_esdl_control) {
+//         map.removeControl(select_esdl_control);
+//     }
+//
+//     select_esdl_control = L.control({position: 'topright'});
+//     select_esdl_control.onAdd = function (map) {
+//         var div = L.DomUtil.create('div', 'info legend');
+//
+//         var select = '<select id="esdl_layer_select" onchange="select_active_layer_old();">';
+//         for (let id in esdl_list) {
+//             es = esdl_list[id]
+//             select += '<option id="' + es.id + '"';
+//             if (es.id == active_layer_id) {
+//                 select += ' selected';
+//             }
+//             select += '>' + es.title + '</option>';
+//         }
+//         select += '</select>';
+//         div.innerHTML += select;
+//         div.firstChild.onmousedown = div.firstChild.ondblclick = L.DomEvent.stopPropagation;
+//         return div;
+//     };
+//     select_esdl_control.addTo(map);
+// }
 
 
 function add_draw_control(dc, mp) {
@@ -168,7 +168,7 @@ function create_new_esdl_layer(es_id, title) {
         remove_esdl_layer_from_ui(es_id);
     }
 
-    esdl_list_item = {
+    let esdl_list_item = {
         id: es_id,
         title: title,
         layers: {
@@ -200,7 +200,7 @@ function create_new_esdl_layer(es_id, title) {
 function remove_esdl_layer_from_ui(es_id) {
     if (es_id in esdl_list) {
 
-        esdl_list_item = esdl_list[es_id]
+        let esdl_list_item = esdl_list[es_id]
         for (let lyr in esdl_list_item.layers) {
             if (map.hasLayer(esdl_list_item.layers[lyr]))
                 map.removeLayer(esdl_list_item.layers[lyr])
@@ -215,11 +215,11 @@ function remove_esdl_layer_from_ui(es_id) {
 function remove_esdl_layer(es_id) {
     remove_esdl_layer_from_ui(es_id);
 
-    // set new active_es_id
-    let list = Object.keys(esdl_list);
-    if (list.length > 0) {
-        active_es_id = list[list.length - 1];  // select last esdl from the list
-        es_bld_id = active_es_id
+    // set new active_layer_id
+    let es_id_list = Object.keys(esdl_list);
+    if (es_id_list.length > 0) {
+        let active_es_id = es_id_list[es_id_list.length - 1];  // select last esdl from the list
+        es_bld_id = active_es_id;
         select_active_layer(active_es_id);
     }
 }
@@ -233,7 +233,7 @@ function rename_esdl_energy_system(es_id, name) {
 }
 
 function create_new_bld_layer(bld_id, title, bld_map) {
-    esdl_list_item = {
+    let esdl_list_item = {
         id: bld_id,
         title: title,
         layers: {
@@ -532,7 +532,7 @@ function get_kpi_info(es_id) {
 
 function get_all_kpi_info() {
     // returns a dictionary with the energy system ID as a key and the KPI information of that energy system as a value
-    kpi_info = {};
+    let kpi_info = {};
     for (let es_id in esdl_list) {
         kpi_es = esdl_list[es_id].kpi_info;
         if (kpi_es) {

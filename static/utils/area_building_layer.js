@@ -1177,6 +1177,13 @@ function restoreSelectedKPI() {
 function selectAreaKPI(kpi_name) {
     areaLegendChoice = kpi_name;
     set_area_legend_choice(active_layer_id, areaLegendChoice);
+
+    if (!(areaLegendChoice in area_KPIs)) {
+        console.log("*********************************************");
+        console.log("areaLegendChoice (", areaLegendChoice, ") not present in area_KPIs");
+        console.log("*********************************************");
+    }
+
     let kpi = area_KPIs[areaLegendChoice];
     document.getElementById("areaLegendSelect").value = kpi_name;
 
@@ -1366,20 +1373,22 @@ function add_area_geojson_layer_with_legend(geojson_area_data) {
 
 function update_area_legend() {
     area_KPIs = get_area_kpi_list(active_layer_id);
-    let area_legend_choice = get_area_legend_choice(active_layer_id);
-    // If no KPI was selected yet
-    if (area_legend_choice == null) {
-        area_legend_choice = Object.keys(area_KPIs)[0];  // make the 1st KPI the selected one
-        set_area_legend_choice(active_layer_id, area_legend_choice);
-    }
+    if (area_KPIs) {
+        let area_legend_choice = get_area_legend_choice(active_layer_id);
+        // If no KPI was selected yet
+        if (area_legend_choice == null) {
+            area_legend_choice = Object.keys(area_KPIs)[0];  // make the 1st KPI the selected one
+            set_area_legend_choice(active_layer_id, area_legend_choice);
+        }
 
-    removeAreaLegend();
-    if (!jQuery.isEmptyObject(area_KPIs)) {
-        areaLegend = L.control({position: 'bottomright'});
-        areaLegend.onAdd = function (map) {
-            return createAreaLegendDiv(area_legend_choice);
-        };
-        areaLegend.addTo(map);
+        removeAreaLegend();
+        if (!jQuery.isEmptyObject(area_KPIs)) {
+            areaLegend = L.control({position: 'bottomright'});
+            areaLegend.onAdd = function (map) {
+                return createAreaLegendDiv(area_legend_choice);
+            };
+            areaLegend.addTo(map);
+        }
     }
 }
 
@@ -1399,19 +1408,21 @@ function add_building_geojson_layer_with_legend(geojson_building_data) {
 
 function update_building_legend() {
     building_KPIs = get_building_kpi_list(active_layer_id);
-    let building_legend_choice = get_building_legend_choice(active_layer_id);
-    if (building_legend_choice == null) {
-        building_legend_choice = Object.keys(building_KPIs)[0];  // make the 1st KPI the selected one
-        set_building_legend_choice(active_layer_id, building_legend_choice);
-    }
+    if (building_KPIs) {
+        let building_legend_choice = get_building_legend_choice(active_layer_id);
+        if (building_legend_choice == null) {
+            building_legend_choice = Object.keys(building_KPIs)[0];  // make the 1st KPI the selected one
+            set_building_legend_choice(active_layer_id, building_legend_choice);
+        }
 
-    removeBuildingLegend();
-    if (!jQuery.isEmptyObject(building_KPIs)) {
-        buildingLegend = L.control({position: 'bottomright'});
-        buildingLegend.onAdd = function (map) {
-            return createBuildingLegendDiv(building_legend_choice);
-        };
-        buildingLegend.addTo(map);
+        removeBuildingLegend();
+        if (!jQuery.isEmptyObject(building_KPIs)) {
+            buildingLegend = L.control({position: 'bottomright'});
+            buildingLegend.onAdd = function (map) {
+                return createBuildingLegendDiv(building_legend_choice);
+            };
+            buildingLegend.addTo(map);
+        }
     }
 }
 
@@ -1489,21 +1500,26 @@ function add_geojson_listener(socket, map) {
             restoreSelectedKPI()
             selectAreaKPI(areaLegendChoice);
         }
+
+        // Test what happens if we restore selected KPI from esdl list here and call selectAreaKPI in all cases
+        // and change global variable
+        // console.log("geojson handler, changing areaLegendChoice from ", areaLegendChoice, " to ", get_area_legend_choice(active_layer_id));
+        // areaLegendChoice = get_area_legend_choice(active_layer_id);
+        // selectAreaKPI(areaLegendChoice);
+
         window.PubSubManager.broadcast('GEOJSON_PROCESSED', { layer: message.layer, es_id: message.es_id });
     });
     socket.on('update_area_kpis', function(area_kpi_list) {
         saveSelectedKPI()  // make sure it does not reset the current selection
         area_KPIs = {};
-        //geojson_area_data = area_kpi_list;
-        //preprocess_area_distr_KPI_ranges(geojson_area_data)
         preprocess_layer_data("area", area_kpi_list, area_KPIs);
         set_area_kpi_list(active_layer_id, area_KPIs);
-        update_area_legend();
 
         // restore the earlier selected KPI, if necesarry
         if (areaLegendChoiceBackup != null) {
             restoreSelectedKPI()
         }
+        update_area_legend();
 
         // update the information that is stored in area layer of the active energy system in the esdl_list
         update_area_layer(active_layer_id, area_kpi_list);
