@@ -204,8 +204,11 @@ const doGetData = async () => {
             });
           }
         }
-        userGroupsForUser.value.push({value: "Organizations", label: "Organizations", children: organizations});
-        userGroupsForUser.value.push({value: "Projects", label: "Projects", children: projects});
+        userGroupsForUser.value = [
+          {value: "my_runs", label: "my runs"},
+          {value: "Organizations", label: "Organizations", children: organizations},
+          {value: "Projects", label: "Projects", children: projects}
+        ];
       }
   );
 };
@@ -260,7 +263,7 @@ const hasProgressIndication = (record, column) => {
 
 const getProgressPercent = (record, column) => {
   let progress = record[column["progressAttribute"]];
-  return isNaN(progress) ? 0 : 100 * progress;
+  return isNaN(progress) ? 0 : Math.round(100 * progress);
 };
 
 const refresh = async () => {
@@ -307,10 +310,6 @@ const hide_jquery_ui_popup = () => {
 .ant-table table {
   font-size: 10px !important;
   line-height: 1.2 !important;
-}
-
-.ant-tag {
-  font-size: 9px !important;
 }
 
 .pointer {

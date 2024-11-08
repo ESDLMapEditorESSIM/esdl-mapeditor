@@ -5,7 +5,9 @@
       <a-select
         v-model:value="form[workflowStep.target_variable]"
         :options="options"
+        :placeholder="placeholder"
         :status="selectStatus"
+        :mode="mode"
         @change="onSelectValue"
       />
     </a-form-item>
@@ -32,8 +34,10 @@ const workflowStep = props.workflowStep;
 
 const isLoading = ref(true);
 const options = ref([]);
+const placeholder = ref("Select");
 const form = ref({});
 const autoNextStep = ref(false);
+const mode = ref("");
 
 const selectStatus = ref("error");
 
@@ -66,14 +70,19 @@ const onSelectValue = (value) => {
 };
 
 const updateInputState = () => {
-  const isValid = form[workflowStep.target_variable] !== "";
+  const isValid = mode.value === "multiple" || form[workflowStep.target_variable] !== "";
   selectStatus.value = isValid ? "" : "error";
   setWorkflowStepInputValid(workflowStep.reference, isValid);
 };
 
 const doGetData = async () => {
-  const request_params = getParamsFromState(workflowStep.source.request_params);
-  const data = await workflowGetData(workflowStep.source.url, request_params);
+  let data;
+  if ("url" in workflowStep.source) {
+    const request_params = getParamsFromState(workflowStep.source.request_params);
+    data = await workflowGetData(workflowStep.source.url, request_params);
+  } else if ("data" in workflowStep.source) {
+    data = workflowStep.source.data;
+  }
 
   if (data != null) {
     const source = workflowStep.source;
@@ -99,6 +108,15 @@ const doGetData = async () => {
         choices.map((choice) => [choice[source.value_field], choice])
     );
   }
+
+  if ("placeholder" in workflowStep) {
+    placeholder.value = workflowStep.placeholder;
+  }
+
+  if ("multiple" in workflowStep) {
+    mode.value = workflowStep.multiple ? "multiple" : "";
+  }
+  updateInputState();
   isLoading.value = false;
 };
 
@@ -110,6 +128,5 @@ const init = (reset) => {
     autoNextStep.value = workflowStep.auto_next_step;
   }
   doGetData();
-  updateInputState();
 };
 </script>

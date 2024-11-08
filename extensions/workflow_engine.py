@@ -248,7 +248,6 @@ class WorkflowEngine:
         @self.socketio.on("wfe_initialize_sequence", namespace="/esdl")
         def wfe_initialize_sequence(init_data) -> str | None:
             logger.info(f"Initializing external models sequence: {init_data}")
-
             # create sequence data
             user_email = get_session("user-email")
             role = get_session("user-role")
@@ -273,52 +272,62 @@ class WorkflowEngine:
                 run_name=run_name,
             )
 
-            # run initial workflow step inside request context to enable for instance selected ESDL loading
-            if init_data["type"] == "esdl_service":
-                esdl_service_ok, esdl_service_result, _ = self.esdl_services.call_esdl_service(init_data)
+            try:
+                # run initial workflow step inside request context to enable for instance selected ESDL loading
+                if init_data["type"] == "esdl_service":
+                    esdl_service_ok, esdl_service_result, _ = self.esdl_services.call_esdl_service(init_data)
 
-                esdl_service_result["model_run_doc"]["is_owner"] = (
-                    esdl_service_result["model_run_doc"]["user"] == user_email
-                )
-                if esdl_service_ok:
-                    emit(
-                        "wfe_update_model_run",
-                        esdl_service_result["model_run_doc"],
-                        namespace="/esdl",
+                    esdl_service_result["model_run_doc"]["is_owner"] = (
+                        esdl_service_result["model_run_doc"]["user"] == user_email
                     )
-
-                    sequence_data.run_id = esdl_service_result["model_run_doc"]["run_id"]
-                    sequence_data.model_job_id = esdl_service_result["model_run_doc"]["model_job_id"]
-                else:
-                    logger.error(f"Error running esdl service with data: '{init_data}")
-                    self.toast_notifications.send(
-                        ToastNotification(
-                            title=f"An error occurred during run '{run_name}'.",
-                            description="The external service could not be started",
-                            type=NotificationType.ERROR,
+                    if esdl_service_ok:
+                        emit(
+                            "wfe_update_model_run",
+                            esdl_service_result["model_run_doc"],
+                            namespace="/esdl",
                         )
-                    )
+
+                        sequence_data.run_id = esdl_service_result["model_run_doc"]["run_id"]
+                        sequence_data.model_job_id = esdl_service_result["model_run_doc"]["model_job_id"]
+                    else:
+                        logger.error(f"Error running esdl service with data: '{init_data}")
+                        self.toast_notifications.send(
+                            ToastNotification(
+                                title=f"An error occurred during run '{run_name}'.",
+                                description="The external service could not be started",
+                                type=NotificationType.ERROR,
+                            )
+                        )
+                        return None
+                else:
+                    logger.error(f"Type '{init_data['type']}' not implemented for the workflow engine.")
                     return None
-            else:
-                logger.error(f"Type '{init_data['type']}' not implemented for the workflow engine.")
-                return None
 
-            # run subsequent steps on new thread outside request context (will continue when user disconnects)
-            if "workflow_engine_next_step" in init_data:
-                t = threading.Thread(
-                    target=self.run_sequence, args=(sequence_data, init_data["workflow_engine_next_step"])
-                )
-                t.daemon = True
-                t.start()
+                # run subsequent steps on new thread outside request context (will continue when user disconnects)
+                if "workflow_engine_next_step" in init_data:
+                    t = threading.Thread(
+                        target=self.run_sequence, args=(sequence_data, init_data["workflow_engine_next_step"])
+                    )
+                    t.daemon = True
+                    t.start()
 
-            self.toast_notifications.send(
-                ToastNotification(
-                    title=f"Run '{run_name}' started.",
-                    description="",
-                    type=NotificationType.INFO,
+                self.toast_notifications.send(
+                    ToastNotification(
+                        title=f"Run '{run_name}' started.",
+                        description="",
+                        type=NotificationType.INFO,
+                    )
                 )
-            )
-            return sequence_id
+                return sequence_id
+            except Exception as e:
+                logger.error(f"Error while running workflow engine: {str(e)}")
+                self.toast_notifications.send(
+                    ToastNotification(
+                        title=f"Error running '{run_name}'.",
+                        description="Is the input ESDL ok?",
+                        type=NotificationType.ERROR,
+                    )
+                )
 
     def run_sequence(self, sequence_data: SequenceData, first_step) -> None:
         logger.info(f"Running workflow sequence for run '{sequence_data.run_name}")

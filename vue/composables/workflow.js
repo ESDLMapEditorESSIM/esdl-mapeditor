@@ -230,7 +230,7 @@ export function useWorkflow() {
         currentWorkflow.value = null;
     };
 
-    const setWorkflowStepInputValidity = (workflowStepReference, valid) => {
+    const setWorkflowStepInputValid = (workflowStepReference, valid) => {
         currentWorkflow.value.input_valid_dict[workflowStepReference] = valid;
     };
 
@@ -257,7 +257,7 @@ export function useWorkflow() {
         RESET_WORKFLOW,
         loadSavedWorkflows,
         activatePersistedWorkflow,
-        setWorkflowStepInputValid: setWorkflowStepInputValidity,
+        setWorkflowStepInputValid,
         isAllInputValid,
     };
 }

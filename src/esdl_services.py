@@ -728,6 +728,8 @@ class ESDLServices:
                         + str(url_response.status_code)
                         + " with reason: "
                         + str(url_response.reason)
+                        + " with text: "
+                        + str(url_response.text),
                     )
                 else:
                     logger.warning("Error running ESDL service ", input_data)

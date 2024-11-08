@@ -66,8 +66,11 @@ watch(workflowTrigger, (currentValue) => {
 const updateData = (jsonFormData) => {
   const jsonFormDataConfig = workflowStep.data;
 
-  if (jsonFormData && "schema" in jsonFormData || "schema" in jsonFormDataConfig) {
-    jsonFormDataReceived.value = true;
+  jsonFormDataReceived.value = true;
+  if ("schema" in jsonFormDataConfig) {
+    schema = jsonFormDataConfig.schema;
+  } else if (jsonFormData && "schema" in jsonFormData) {
+    schema = jsonFormData.schema;
   } else {
     schema = {};
     jsonFormDataReceived.value = false;
@@ -76,17 +79,12 @@ const updateData = (jsonFormData) => {
     return;
   }
 
-  // Optionally override schema/uischema received from url/state/socket by json config
-  if ("schema" in jsonFormDataConfig) {
-    schema = jsonFormDataConfig.schema;
-  } else {
-    schema = jsonFormData.schema;
+  // Ensure that 'end_time' is larger than 'start_time'.
+  // TODO for omotes: to come via omotes-rest when sdk and protocol updated.
+  // TODO for essim: to come via service json config, issue: mongodb does not allow keys starting with '$'.
+  if ("end_time" in schema["properties"] && "start_time" in schema["properties"]) {
+    schema["properties"]["end_time"]["formatMinimum"] = {$data: "1/start_time"};
   }
-
-  // TODO for testing currently, to come via omotes-rest when sdk and protocol updated.
-  // if ("end_time" in schema["properties"]) {
-  //   schema["properties"]["end_time"]["formatMinimum"] = {$data: "1/start_time"};
-  // }
 
   if ("uischema" in jsonFormDataConfig) {
     uischema = jsonFormDataConfig.uischema;
@@ -96,7 +94,9 @@ const updateData = (jsonFormData) => {
     uischema = null;
   }
 
-  if (jsonFormData && "formData" in jsonFormData) {
+  if ("formData" in jsonFormDataConfig) {
+    formData.value = jsonFormDataConfig.formData;
+  } else if (jsonFormData && "formData" in jsonFormData) {
     formData.value = jsonFormData.formData;
   }
   isLoading.value = false;
@@ -132,7 +132,7 @@ const validateEvent = (event) => {
       && schema["properties"][varName]["format"] === "date-time") {
     return;
   }
-  
+
   let varValue = event.target.value;
   if (schema["properties"][varName]["type"] === "number" && varValue !== "") {
     varValue = Number(varValue);

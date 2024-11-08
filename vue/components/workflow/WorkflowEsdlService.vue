@@ -20,7 +20,12 @@
       Please select the "Run ESDL service" button below to run the ESDL service
       and load the results.
     </p>
-    <a-button v-if="!workflowStep.service.auto" type="primary" :disabled="buttonDisabled" @click="clearLayersAndLoadEsdl">
+    <a-button
+      v-if="!workflowStep.service.auto"
+      type="primary"
+      :disabled="buttonDisabled"
+      @click="clearLayersAndLoadEsdl"
+    >
       <div v-if="workflowStep.service.button_label"> {{ workflowStep.service.button_label }}</div>
       <div v-else>
         Run ESDL service
@@ -88,6 +93,13 @@ const loadEsdl = () => {
   } else {
     params["state_params"] = {};
   }
+  if (workflowStep["datetimes_convert_Z"]) {  // for i.e. essim
+    for (const [key, value] of Object.entries(params["state_params"])) {
+      if (!isNaN(new Date(value).getTime())) { // string is in datetime format
+        params["state_params"][key] = value.replace(".000Z", "+0100");
+      }
+    }
+  }
 
   window.show_loader();
 
@@ -99,8 +111,8 @@ const loadEsdl = () => {
     params["workflow_engine_next_step"] = workflowStep.workflow_engine_next_step;
 
     window.socket.emit("wfe_initialize_sequence", params, (sequenceId) => {
+      // after workflow engine start, set id and go to next Vue step (table overview or monitor progress)
       Object.assign(getState(), {"wfeSequenceId": sequenceId});
-
       goToStep(workflowStep["next_step"]);
       window.hide_loader();
     });

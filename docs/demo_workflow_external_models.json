@@ -17,19 +17,223 @@
                 "type": "string",
                 "minLength": 3,
                 "title": "Name"
+              },
+              "time_step": {
+                "type": "string",
+                "oneOf": [
+                  {
+                    "const": "1h",
+                    "title": "1 hour"
+                  },
+                  {
+                    "const": "15m",
+                    "title": "15 minutes"
+                  }
+                ]
               }
             },
             "required": [
-              "run_name"
+              "run_name",
+              "time_step"
             ]
+          },
+          "uischema": {
+            "elements": [
+              {
+                "scope": "#/properties/run_name",
+                "type": "Control"
+              },
+              {
+                "scope": "#/properties/time_step",
+                "type": "Control"
+              }
+            ],
+            "type": "VerticalLayout"
+          },
+          "formData": {
+            "time_step": "1h"
           }
         },
         "next_step": "base_steps_with_table",
         "auto_next_step": true,
         "co_view_steps": [
+          "select_simulation_period",
+          "select_custom_period",
+          "select_kpis",
           "start_run",
           "runs_table"
         ]
+      },
+      {
+        "reference": "select_simulation_period",
+        "name": "",
+        "description": "Please select the simulation period:",
+        "type": "select-query",
+        "placeholder": "Select simulation period",
+        "multiple": false,
+        "source": {
+          "data": [
+            {
+              "id": "year2015",
+              "description": "Year 2015",
+              "formData": {
+                "start_time": "2015-01-01T00:00:00+0100",
+                "end_time": "2016-01-01T00:00:00+0100"
+              },
+              "schema": {
+                "properties": {
+                  "start_time": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "end_time": {
+                    "format": "date-time",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "start_time",
+                  "end_time"
+                ],
+                "type": "object"
+              },
+              "uischema": {
+                "elements": [
+                  {
+                    "scope": "#/properties/start_time",
+                    "type": "Control",
+                    "options": {
+                      "readonly": true
+                    }
+                  },
+                  {
+                    "scope": "#/properties/end_time",
+                    "type": "Control",
+                    "options": {
+                      "readonly": true
+                    }
+                  }
+                ],
+                "type": "VerticalLayout"
+              }
+            },
+            {
+              "id": "year2019",
+              "description": "Year 2019",
+              "formData": {
+                "start_time": "2019-01-01T00:00:00+0100",
+                "end_time": "2020-01-01T00:00:00+0100"
+              },
+              "schema": {
+                "properties": {
+                  "start_time": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "end_time": {
+                    "format": "date-time",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "start_time",
+                  "end_time"
+                ],
+                "type": "object"
+              },
+              "uischema": {
+                "elements": [
+                  {
+                    "scope": "#/properties/start_time",
+                    "type": "Control",
+                    "options": {
+                      "readonly": true
+                    }
+                  },
+                  {
+                    "scope": "#/properties/end_time",
+                    "type": "Control",
+                    "options": {
+                      "readonly": true
+                    }
+                  }
+                ],
+                "type": "VerticalLayout"
+              }
+            },
+            {
+              "id": "custom",
+              "description": "custom period",
+              "formData": {},
+              "schema": {
+                "properties": {
+                  "start_time": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "end_time": {
+                    "format": "date-time",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "start_time",
+                  "end_time"
+                ],
+                "type": "object"
+              },
+              "uischema": {
+                "elements": [
+                  {
+                    "scope": "#/properties/start_time",
+                    "type": "Control"
+                  },
+                  {
+                    "scope": "#/properties/end_time",
+                    "type": "Control"
+                  }
+                ],
+                "type": "VerticalLayout"
+              }
+            }
+          ],
+          "label_fields": [
+            "description"
+          ],
+          "value_field": "id"
+        },
+        "target_variable": "selected_simulation_period",
+        "next_step": "base_steps_with_table",
+        "auto_next_step": true
+      },
+      {
+        "reference": "select_custom_period",
+        "name": "",
+        "type": "json-form2",
+        "data": {
+          "from_state_variable": "selected_simulation_period"
+        },
+        "next_step": "base_steps_with_table",
+        "auto_next_step": true
+      },
+      {
+        "reference": "select_kpis",
+        "name": "",
+        "description": "Please select the KPIs that you want to be calculated after the simulation:",
+        "type": "select-query",
+        "placeholder": "Select KPI modules",
+        "multiple": true,
+        "source": {
+          "url": "http://localhost:8112/essim/simulation/kpiModules/",
+          "http_method": "get",
+          "label_fields": [
+            "title"
+          ],
+          "value_field": "calculator_id"
+        },
+        "target_variable": "selected_kpis",
+        "next_step": "base_steps_with_table",
+        "auto_next_step": true
       },
       {
         "reference": "start_run",
@@ -37,8 +241,11 @@
         "description": "",
         "type": "service",
         "state_params": {
-          "run_name": "run_name"
+          "run_name": "run_name",
+          "start_time": "start_time",
+          "end_time": "end_time"
         },
+        "datetimes_convert_Z": true,
         "service": {
           "id": "74c9d1a2-c92a-46ed-a7e4-9931971cdd28",
           "description": "",
@@ -61,21 +268,15 @@
               "location": "body"
             },
             {
-              "name": "user",
-              "description": "essim user",
-              "value": "essim",
-              "location": "body"
-            },
-            {
               "name": "startDate",
               "description": "start date",
-              "value": "2019-01-01T00:00:00+0100",
+              "parameter_name": "start_time",
               "location": "body"
             },
             {
               "name": "endDate",
               "description": "end date",
-              "value": "2020-01-01T00:00:00+0100",
+              "parameter_name": "end_time",
               "location": "body"
             },
             {
@@ -88,6 +289,12 @@
               "name": "influxURL",
               "description": "influx url",
               "value": "http://influxdb:8086",
+              "location": "body"
+            },
+            {
+              "name": "user",
+              "description": "Essim user",
+              "value": "mapeditor",
               "location": "body"
             }
           ],
@@ -372,7 +579,7 @@
       {
         "reference": "select_workflow_type",
         "name": "",
-        "description": "Please select the Omotes workflow type for the calculation.",
+        "description": "Please select the Omotes workflow type for the calculation:",
         "type": "select-query",
         "multiple": false,
         "source": {
@@ -383,7 +590,7 @@
           ],
           "value_field": "id"
         },
-        "target_variable": "chosen_workflow_type",
+        "target_variable": "selected_workflow_type",
         "next_step": "base_steps_with_table",
         "auto_next_step": true
       },
@@ -392,7 +599,7 @@
         "name": "",
         "type": "json-form2",
         "data": {
-          "from_state_variable": "chosen_workflow_type"
+          "from_state_variable": "selected_workflow_type"
         },
         "target_variable": "input_params_dict",
         "next_step": "base_steps_with_table",
@@ -404,7 +611,7 @@
         "description": "",
         "type": "service",
         "state_params": {
-          "workflow_type": "chosen_workflow_type.id",
+          "workflow_type": "selected_workflow_type.id",
           "input_params_dict": "input_params_dict",
           "run_name": "run_name"
         },
