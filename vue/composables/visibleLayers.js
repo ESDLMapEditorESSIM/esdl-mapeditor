@@ -135,12 +135,17 @@ const constructWmsLayerGetFeatureInfoUrl = (wmsServiceUrl, layerName, evLatLng) 
 const queryWmsLayersFeaturesOnClick = (event) => {
     const visibleLayers = useVisibleLayers().getVisibleLayerList();
     if (visibleLayers.length) {
-        const layersRequestInfo = visibleLayers.map((layer) => {
-            const serviceUrl = layer.url;
-            const layerName = layer.layer_name;
-            const getFeatureUrl = constructWmsLayerGetFeatureInfoUrl(serviceUrl, layerName, event.latlng);
-            return {name: layerName, url: getFeatureUrl};
-        });
+        const layersRequestInfo = visibleLayers
+            .filter((layer) => {
+                let type = getLayerType(layer);
+                return (type === VisibleLayerType.WMS)
+            })
+            .map((layer) => {
+                const serviceUrl = layer.url;
+                const layerName = layer.layer_name;
+                const getFeatureUrl = constructWmsLayerGetFeatureInfoUrl(serviceUrl, layerName, event.latlng);
+                return {name: layerName, url: getFeatureUrl};
+            });
         const requestBody = {
             ev_lat_lng: event.latlng,
             layers: layersRequestInfo
