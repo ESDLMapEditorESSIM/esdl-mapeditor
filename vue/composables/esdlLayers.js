@@ -11,6 +11,7 @@ import {ref} from "vue";
 import {useVisibleLayers} from "@/composables/visibleLayers";
 import {MessageNames, PubSubManager} from "@/bridge";
 
+/** @type {import('vue').Ref<string[]>} */
 const enabledEsdlIdList = ref([]);
 
 export function useEsdlLayers() {

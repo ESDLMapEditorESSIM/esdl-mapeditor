@@ -17,6 +17,23 @@
 import {ref} from "vue";
 import { useToast } from "vue-toastification";
 
+/**
+ * @typedef {Object} LiveModelInterface
+ * @property {string} lmi_id - The unique identifier for the live model interface.
+ * @property {string} name - The name of the live model interface.
+ * @property {string} description - The description of the live model interface.
+ * @property {boolean} enabled - If true, the live model interface is enabled.
+ * @property {boolean} can_be_disabled - If true, the live model interface can be disabled.
+ */
+
+/**
+ * @typedef {Object} ApplicationContext
+ * @property {string} application_id - The unique identifier for the application context.
+ * @property {string} name - The name of the application context.
+ * @property {LiveModelInterface[]} live_model_interfaces - The live model interfaces to activate.
+ * @property {boolean|null} is_global - If true, the context is shown to all users.
+ */
+
 const defaultApplicationContext = {
     application_id: "default",
     name: "Default",

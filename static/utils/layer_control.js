@@ -14,7 +14,7 @@
  *      TNO
  */
 
-var layer_control = null;
+window.layer_control = null;
 let show_layer_control = false;
 
 function toggle_layer_control_visibility() {

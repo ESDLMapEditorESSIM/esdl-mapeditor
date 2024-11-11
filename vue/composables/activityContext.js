@@ -19,12 +19,43 @@ import {useWmsLayers} from "@/composables/wmsLayers";
 import {useEsdlAreas} from "@/composables/esdlAreas";
 import {useEsdlBuildings} from "./esdlBuildings";
 import { useToast } from "vue-toastification";
+import {useEsdlLayers} from "@/composables/esdlLayers";
 
 const { clearWmsLayers, showWmsLayer } = useWmsLayers();
 const { addAreaContextMenuItem, totalEntriesAndAreas, esdlAreasDict, removeAreaContextMenuItem } = useEsdlAreas();
 const { addBuildingContextMenuItem, removeBuildingContextMenuItem } = useEsdlBuildings();
 
+/**
+ * @typedef {Object} ActivityContextMenuService
+ * @property {string} id - The service ID.
+ * @property {string} location - The location where to add the service. Can be map, area, or building.
+ * @property {string} icon - The icon for the service.
+ */
+
+/**
+ * @typedef {Object} ActivityContextMenuJsFunction
+ * @property {string} title - The label of the context menu.
+ * @property {string} location - The location where to add the service.
+ * @property {string} icon - The icon for the context menu.
+ * @property {string} js_function - The JS function to activate. Must be available on window\!
+ */
+
+/**
+ * @typedef {Object} ActivityContext
+ * @property {string} activity_id - The unique identifier for the activity context.
+ * @property {string} name - The name of the activity context.
+ * @property {string|null} workflow - The workflow to activate.
+ * @property {boolean|null} is_global - If true, the context is shown to all users.
+ * @property {string|null} js_function - The JS function to execute when the context is activated.
+ * @property {string[]|null} wms_layers - The WMS layers to activate.
+ * @property {string[]|null} disable_esdl_layers - The ESDL layers to disable when activating this context.
+ * @property {ActivityContextMenuService[]|null} context_menu_services - The services to add to context menus.
+ * @property {ActivityContextMenuJsFunction[]|null} context_menu_js_functions - The JS functions to add to the context menu.
+ * @property {string|null} toast_text - Text to show in an alert when activating this context.
+ */
+
 // The active activity context is the context that is currently active in the map.
+/** @type {import('vue').Ref<ActivityContext>} */
 const activeActivityContext = ref({});
 
 // Track the services that are enabled in the context menu's so we can remove them when the context is cleared.
@@ -118,11 +149,13 @@ function addContextMenuServices(activityContext) {
 }
 
 export function useActivityContext() {
+    const {enabledEsdlIdList} = useEsdlLayers();
+
     /**
      * Activate the given activity context. This will update the activeActivityContext and show the WMS layers
      * that are part of the activity context. It will also add the services that are part of the context to the
      * context menus.
-     * @param activityContext
+     * @param {ActivityContext} activityContext
      */
     function activateActivityContext(activityContext) {
         if (activeActivityContext.value) {
@@ -132,8 +165,8 @@ export function useActivityContext() {
 
         // Enable the workflow if it is part of the activity context.
         if (activityContext.workflow) {
-            for (let i=0; i < esdl_services_information.length; i++) {
-                if (esdl_services_information[i].name === activityContext.workflow) {
+            for (let i=0; i < window.esdl_services_information.length; i++) {
+                if (window.esdl_services_information[i].name === activityContext.workflow) {
                     window.show_service_settings(i)
                 }
             }
@@ -193,9 +226,11 @@ export function useActivityContext() {
             clearWmsLayers()
         }
 
+        // Enable the ESDL layers that were disabled when activating the context.
         const disableEsdlLayers = activityContext.disable_esdl_layers;
         if (disableEsdlLayers) {
-            for (const [es_id,] of Object.entries(window.esdl_list)) {
+            // Only show for enabled ESDLs.
+            for (const es_id of enabledEsdlIdList.value) {
                 for (const esdlLayer of disableEsdlLayers) {
                     window.show_esdl_layer_on_map(es_id, esdlLayer);
                 }
@@ -206,7 +241,7 @@ export function useActivityContext() {
             removeAreaContextMenuItem(name)
         }
         for (const id of enabledMapContextMenus.value) {
-            let [foundService, foundServiceIdx] = findServiceById(id);
+            let [foundService,] = findServiceById(id);
             foundService.location = "hidden";
         }
         window.update_map_service_contextmenus(window.esdl_services_information)
