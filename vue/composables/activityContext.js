@@ -149,7 +149,7 @@ function addContextMenuServices(activityContext) {
 }
 
 export function useActivityContext() {
-    const {enabledEsdlIdList} = useEsdlLayers();
+    const {enabledEsdlIdList, hideEsdlLayerAllEsdls, showEsdlLayerAllEsdls} = useEsdlLayers();
 
     /**
      * Activate the given activity context. This will update the activeActivityContext and show the WMS layers
@@ -196,11 +196,9 @@ export function useActivityContext() {
 
         const disableEsdlLayers = activityContext.disable_esdl_layers;
         if (disableEsdlLayers) {
-            for (const [es_id,] of Object.entries(window.esdl_list)) {
-                for (const esdlLayer of disableEsdlLayers) {
-                    console.debug("Disabling ESDL layer: " + esdlLayer);
-                    window.hide_esdl_layer_from_map(es_id, esdlLayer);
-                }
+            for (const esdlLayer of disableEsdlLayers) {
+                console.debug("Disabling ESDL layer: " + esdlLayer);
+                hideEsdlLayerAllEsdls(esdlLayer);
             }
         }
 
@@ -229,11 +227,8 @@ export function useActivityContext() {
         // Enable the ESDL layers that were disabled when activating the context.
         const disableEsdlLayers = activityContext.disable_esdl_layers;
         if (disableEsdlLayers) {
-            // Only show for enabled ESDLs.
-            for (const es_id of enabledEsdlIdList.value) {
-                for (const esdlLayer of disableEsdlLayers) {
-                    window.show_esdl_layer_on_map(es_id, esdlLayer);
-                }
+            for (const esdlLayer of disableEsdlLayers) {
+                showEsdlLayerAllEsdls(esdlLayer);
             }
         }
 

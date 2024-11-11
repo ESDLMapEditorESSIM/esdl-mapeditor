@@ -399,6 +399,7 @@ export function useVisibleLayers(map, socket) {
      * @type {(function(...[*]): void)|*}
      */
     const updateVisibleLayersOrderOnMap = debounce(() => {
+        console.debug("Updating visible layers order on map.");
         getVisibleLayerList().slice().reverse().forEach(layer => {
             const layerType = getLayerType(layer);
             if (layerType === VisibleLayerType.WMS) {

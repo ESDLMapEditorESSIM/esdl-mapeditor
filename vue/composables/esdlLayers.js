@@ -15,7 +15,7 @@ import {MessageNames, PubSubManager} from "@/bridge";
 const enabledEsdlIdList = ref([]);
 
 export function useEsdlLayers() {
-    const {createVisibleLayerGroup, addToVisibleLayerList, removeVisibleLayerGroup} = useVisibleLayers();
+    const {createVisibleLayerGroup, addToVisibleLayerList, removeVisibleLayerGroup, hideVisibleLayer, showVisibleLayer} = useVisibleLayers();
 
     const getActiveEsdlLayerId = () => ref(window.active_layer_id);
 
@@ -110,9 +110,26 @@ export function useEsdlLayers() {
         window.hide_esdl_layer_from_map(es_id, layer_name, parent_esdl_layer);
     }
 
-    function removeEsdlLayerFromUi(es_id) {
-        disableEsdl(es_id);
-        window.remove_esdl_layer_from_ui(es_id);
+    /**
+     * Iterate over all enabled ESDL IDs, and call hideVisibleLayer for each of them.
+     * @param layer_name
+     */
+    function hideEsdlLayerAllEsdls(layer_name) {
+        enabledEsdlIdList.value.forEach((es_id) => {
+            const layerId = es_id + "_" + layer_name;
+            hideVisibleLayer(layerId);
+        });
+    }
+
+    /**
+     * Iterate over all enabled ESDL IDs, and call showVisibleLayer for each of them.
+     * @param layer_name
+     */
+    function showEsdlLayerAllEsdls(layer_name) {
+        enabledEsdlIdList.value.forEach((es_id) => {
+            const layerId = es_id + "_" + layer_name;
+            showVisibleLayer(layerId);
+        });
     }
 
     return {
@@ -124,7 +141,8 @@ export function useEsdlLayers() {
         enabledEsdlIdList,
         showEsdlLayerOnMap,
         hideEsdlLayerFromMap,
-        removeEsdlLayerFromUi,
+        hideEsdlLayerAllEsdls,
+        showEsdlLayerAllEsdls,
     }
 }
 
