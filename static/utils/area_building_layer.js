@@ -210,6 +210,7 @@ function preprocess_layer_data(layer_type, layer_data, kpi_list) {
     if (layer_type === "area") {
         preprocess_area_distr_KPI_ranges(layer_data);
     }
+    return kpi_list;
 }
 
 function calc_order_of_magnitude(n) {
@@ -1364,8 +1365,8 @@ function removeAreaLegend() {
 }
 
 function add_area_geojson_layer_with_legend(geojson_area_data) {
-    area_KPIs = {};
-    preprocess_layer_data("area", geojson_area_data, area_KPIs);
+    const kpi_list = preprocess_layer_data("area", geojson_area_data, {});
+    area_KPIs = kpi_list;
     set_area_kpi_list(active_layer_id, area_KPIs);
     update_area_legend();
     add_area_layer(geojson_area_data);
@@ -1511,8 +1512,8 @@ function add_geojson_listener(socket, map) {
     });
     socket.on('update_area_kpis', function(area_kpi_list) {
         saveSelectedKPI()  // make sure it does not reset the current selection
-        area_KPIs = {};
-        preprocess_layer_data("area", area_kpi_list, area_KPIs);
+        const kpi_list = preprocess_layer_data("area", area_kpi_list, {});
+        area_KPIs = kpi_list;
         set_area_kpi_list(active_layer_id, area_KPIs);
 
         // restore the earlier selected KPI, if necesarry

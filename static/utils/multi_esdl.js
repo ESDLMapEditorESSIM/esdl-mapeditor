@@ -60,10 +60,10 @@ function update_layer_control_tree() {
 
 function select_active_layer(active_esdl_layer) {
     if (!(active_esdl_layer in esdl_list)) {
-        console.log("Ignoring select active layer, as layers are not loaded yet in the front-end");
+        console.debug("Ignoring select active layer, as layers are not loaded yet in the front-end");
         return;
     }
-    console.log("changing from esdl ("+active_layer_id+") to new active esdl ("+active_esdl_layer+")");
+    console.debug("changing from esdl ("+active_layer_id+") to new active esdl ("+active_esdl_layer+")");
     active_layer_id = active_esdl_layer;
     socket.emit('set_active_es_id', active_layer_id);
     draw_control = add_draw_control(draw_control, map);         // connect draw control to new active layer
@@ -287,9 +287,14 @@ function show_esdl_layer_on_map(es_id, layer_name, parent_esdl_layer) {
 }
 
 function hide_esdl_layer_from_map(es_id, layer_name, parent_esdl_layer) {
+    const es = esdl_list[es_id]
+    if (es === undefined) {
+        // No ESDL layer with this ID, so nothing to hide.
+        return;
+    }
     if (layer_name) {
         if (parent_esdl_layer) {
-            const parent_layer = esdl_list[es_id].layers[parent_esdl_layer];
+            const parent_layer = es.layers[parent_esdl_layer];
             parent_layer.eachLayer(function (layer) {
                 // ...check if it is the unchecked grouped area item
                 if (layer.options.group_name === layer_name) {
@@ -300,13 +305,12 @@ function hide_esdl_layer_from_map(es_id, layer_name, parent_esdl_layer) {
                 }
             });
         } else {
-            const layer = esdl_list[es_id].layers[layer_name];
+            const layer = es.layers[layer_name];
             if (map.hasLayer(layer)) {
                 layer.removeFrom(map);
             }
         }
     } else {
-        const es = esdl_list[es_id];
         for (const layerName of Object.keys(es.layers)) {
             hide_esdl_layer_from_map(es_id, layerName);
         }

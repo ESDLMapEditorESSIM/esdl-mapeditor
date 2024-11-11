@@ -10,14 +10,11 @@
 import {ref} from "vue";
 import {useVisibleLayers} from "@/composables/visibleLayers";
 import {MessageNames, PubSubManager} from "@/bridge";
-import {useSocketIO} from "@/composables/socketio";
 
 const enabledEsdlIdList = ref([]);
 
 export function useEsdlLayers() {
     const {createVisibleLayerGroup, addToVisibleLayerList, removeVisibleLayerGroup} = useVisibleLayers();
-
-    const removeEsdlLayer = (id) => window.remove_esdl_layer(id);
 
     const getActiveEsdlLayerId = () => ref(window.active_layer_id);
 
@@ -112,8 +109,12 @@ export function useEsdlLayers() {
         window.hide_esdl_layer_from_map(es_id, layer_name, parent_esdl_layer);
     }
 
+    function removeEsdlLayerFromUi(es_id) {
+        disableEsdl(es_id);
+        window.remove_esdl_layer_from_ui(es_id);
+    }
+
     return {
-        removeEsdlLayer,
         clearEsdlLayers,
         getActiveEsdlLayerId,
         disableAllEsdls,
@@ -122,6 +123,7 @@ export function useEsdlLayers() {
         enabledEsdlIdList,
         showEsdlLayerOnMap,
         hideEsdlLayerFromMap,
+        removeEsdlLayerFromUi,
     }
 }
 
@@ -131,14 +133,11 @@ export function useEsdlLayers() {
  * with the given ID is enabled in the map.
  */
 function setupSubscription() {
-    const {subscribe} = useSocketIO();
     const {enableEsdl, disableAllEsdls, disableEsdl} = useEsdlLayers();
 
-    subscribe("create_new_esdl_layer", (message) => {
-        enableEsdl(message.es_id);
-    });
     PubSubManager.subscribe(MessageNames.GEOJSON_PROCESSED, (name, message) => {
-        // Only at this point is the complete area layer available, so we refresh the data.
+        // Only at this point is the complete area layer available in the frontend. So we now enable the ESDL layer,
+        // so that it is checked in the UI and is visible on the map.
         if (message.layer === 'area_layer') {
             enableEsdl(message.es_id, true);
         }

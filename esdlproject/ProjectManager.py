@@ -546,7 +546,7 @@ class ProjectManager:
     def get_energy_system(self, variant: Variant) -> esdl.EnergySystem:
         return self.get_variant_snapshot(variant)
 
-    def get_variant_snapshot(self, variant: Variant) -> esdl.EnergySystem:
+    def get_variant_snapshot(self, variant: Variant) -> esdl.EnergySystem | None:
         """
         Saves the current active energy system as the variant snapshot for this variant by saving this
         in a temporary resource.
@@ -557,7 +557,6 @@ class ProjectManager:
         if variant is None:
             return None
 
-
         with self.lock: # lock access to variant.snapshotRef to make sure no multiple snapshots are created by multiple threads from the gui
             if variant.snapshotRef is not None:
                 return variant.snapshotRef
@@ -566,6 +565,10 @@ class ProjectManager:
             snapshot_resource.type = ProjectManagerResourceType.SNAPSHOT
             logger.info(f'Saving variant snapshot for "{variant.name}" (in {variant.eResource}) to {snapshot_resource.uri}')
             base_variant_resource = get_variant_collection_resource(variant)
+            if base_variant_resource is None:
+                logger.warning("Could not find base variant resource for variant", variant=variant.name)
+                return None
+
             es = base_variant_resource.contents[0]
 
 
@@ -1119,13 +1122,16 @@ def get_variant_collection_resource(variant: Union[VariantCollection, Variant]) 
     :param variant: the variant to get the base variant resource for
     :return: the resource of the base variant of the given variant
     """
-    variantCollection = get_variant_collection(variant)
+    variant_collection = get_variant_collection(variant)
+    if variant_collection is None:
+        logger.error("variantCollection is None")
+        return None
     # index = self.get_base_variant_index(base_variant)
-    if variantCollection.energysystemRef is None:
+    if variant_collection.energysystemRef is None:
         #breakpoint()
         logger.error("variantCollection.energysystemRef is None")
         return None
-    return variantCollection.energysystemRef.eResource
+    return variant_collection.energysystemRef.eResource
     # return self.base_variant_resources[index]
 
 

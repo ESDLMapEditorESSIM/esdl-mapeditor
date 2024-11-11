@@ -46,7 +46,7 @@ const {
   hideBaseLayer
 } = useBaseLayers();
 // eslint-disable-next-line no-unused-vars
-const {esdlProject, getESDLProject} = useESDLProjects();
+const {esdlProject, getESDLProject, setActiveVariant} = useESDLProjects();
 const {socket} = useSocketIO();
 const {disableEsdl, enableEsdl, enabledEsdlIdList, hideEsdlLayerFromMap} = useEsdlLayers();
 
@@ -56,6 +56,7 @@ const $ = window.$;
 const getTree = () => $('#' + treeId).jstree(true);
 
 onMounted(() => {
+  // When the component is mounted, get the ESDL project to make sure we show the most up to date info.
   console.debug("Mounted ProjectView")
 });
 
@@ -104,7 +105,7 @@ function variantToJstreeData(variant) {
     children: children,
     type: "variant",
     a_attr: {
-      "class": variant.active ? "bold" : "",
+      "class": variant.active ? "is-active" : "",
     },
     state: {"checked": enabledEsdlIdList.value.includes(variant.es_id), opened: children.length > 0},
   }
@@ -253,8 +254,8 @@ const eventHandlersByName = {
       hideOtherVariantsInTree(data.node);
       if (!original.active) {
         window.show_loader();
-        socket.value.emit("set_active_variant", {id: original.id});
-        window.select_active_layer(original.esId);
+        setActiveVariant(original.id, original.esId);
+        // window.add_layer_control(); // hard update the old layer control
       }
     }
   },
@@ -366,7 +367,7 @@ function selectOnlyOneBaseLayer(node) {
   }
 }
 
-.bold {
+.is-active {
   font-weight: bold;
   background-color: #beebff //#92a800; // esdl green
 }

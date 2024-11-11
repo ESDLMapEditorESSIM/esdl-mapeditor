@@ -65,8 +65,14 @@ export function useESDLProjects() {
 
     const toggleProjectView = () => showProjectView.value = !showProjectView.value;
 
+    function setActiveVariant(variantId, esId) {
+        socket.value.emit('set_active_variant', {id: variantId});
+        window.select_active_layer(esId);
+    }
+
     return {
         activeVariant,
+        setActiveVariant,
         active_es_id,
         toggleProjectView,
         showProjectView,
@@ -74,11 +80,3 @@ export function useESDLProjects() {
         esdlProject,
     }
 }
-
-PubSubManager.subscribe(MessageNames.GEOJSON_PROCESSED, (name, message) => {
-    // Trigger the selection of the active layer if the active layer is the same as the layer that was processed.
-    const {active_es_id} = useESDLProjects();
-    if (active_es_id.value === message.es_id) {
-        window.select_active_layer(active_es_id);
-    }
-});

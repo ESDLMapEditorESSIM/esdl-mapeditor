@@ -3434,8 +3434,7 @@ def initialize_app():
     set_session("es_info_list", es_info_list)
     emit('clear_ui')
     emit('clear_esdl_layer_list')
-    emit_active_esdl_project()
-    call_process_energy_system.submit()  # run in a seperate thread
+    call_process_energy_system.submit()  # run in a separate thread
 
 
 @socketio.on('connect', namespace='/esdl')
