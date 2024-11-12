@@ -10,6 +10,7 @@
 import {ref} from "vue";
 import {useVisibleLayers} from "@/composables/visibleLayers";
 import {MessageNames, PubSubManager} from "@/bridge";
+import {useSocketIO} from "@/composables/socketio";
 
 /** @type {import('vue').Ref<string[]>} */
 const enabledEsdlIdList = ref([]);
@@ -35,7 +36,6 @@ export function useEsdlLayers() {
      * @param force_redo
      */
     function enableEsdl(es_id, force_redo = false) {
-        console.debug("Enabling ESDL layer with ID " + es_id, window.esdl_list[es_id].title);
         // Check if the ESDL layer is already enabled. If so, do nothing.
         if (enabledEsdlIdList.value.includes(es_id)) {
             if (force_redo) {
@@ -49,6 +49,7 @@ export function useEsdlLayers() {
             console.error("Could not find ESDL layer with ID " + es_id, window.esdl_list);
             return;
         }
+        console.debug("Enabling ESDL layer with ID " + es_id, es.title);
         enabledEsdlIdList.value.push(es_id);
         createVisibleLayerGroup(es_id, es.title);
         Object.entries(es.layers).reverse().forEach(([key, esdl_layer]) => {
@@ -95,9 +96,11 @@ export function useEsdlLayers() {
         hideEsdlLayerFromMap(es_id);
     }
 
-    function disableAllEsdls() {
+    function disableAllEsdls(except_es_ids) {
         enabledEsdlIdList.value.forEach((es_id) => {
-            disableEsdl(es_id);
+            if (except_es_ids === undefined || !except_es_ids.includes(es_id)) {
+                disableEsdl(es_id);
+            }
         });
     }
 
@@ -152,7 +155,16 @@ export function useEsdlLayers() {
  * with the given ID is enabled in the map.
  */
 function setupSubscription() {
+    const {subscribe} = useSocketIO();
     const {enableEsdl, disableAllEsdls, disableEsdl} = useEsdlLayers();
+
+    subscribe('esdl_service_result', (data) => {
+        const es_id = data.es_id;
+        if (es_id) {
+            // Disable all ESDLs that are not es_id.
+            disableAllEsdls([es_id]);
+        }
+    });
 
     PubSubManager.subscribe(MessageNames.GEOJSON_PROCESSED, (name, message) => {
         // Only at this point is the complete area layer available in the frontend. So we now enable the ESDL layer,

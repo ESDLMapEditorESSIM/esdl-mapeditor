@@ -12,6 +12,7 @@
 #  Manager:
 #      TNO
 import base64
+import uuid
 from datetime import datetime, timezone
 from typing import List
 
@@ -60,6 +61,8 @@ class ESDLFileIO:
                         esdl_str = esdlstr_bytes.decode('utf-8')
 
                         variant = self.add_esdl_to_project(filename, esdl_str)
+                        if variant.id is None:
+                            variant.id = uuid.uuid4()
                         added_variants.append(variant)
                         #emit_active_esdl_project() # cant do emit here, because it is not socket io request
                 # Now clear current loaded variants. We do this at the end to not destroy the current project if something goes wrong.
