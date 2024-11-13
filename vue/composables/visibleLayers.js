@@ -66,6 +66,9 @@ function debounce(func, wait) {
 /** @type {import('vue').Ref<VisibleLayerGroup[]>} */
 const visibleLayerGroups = ref([]);
 
+// Cache for layer order within groups.
+const layerOrderCache = ref({});
+
 function getLayerType(layer) {
     const wmsLayers = getWmsLayerList().layers;
     if (layer.id in wmsLayers) {
@@ -321,7 +324,7 @@ export function useVisibleLayers(map, socket) {
      * @param {string} groupId - The ID of the group.
      * @param {string} description - The description of the group.
      */
-    const createVisibleLayerGroup = (groupId, description = "Untitled Group") => {
+    const createVisibleLayerGroup = (groupId, description = "Untitled Group", sublayers) => {
         if (!visibleLayerGroups.value.find(group => group.id === groupId)) {
             /** @type {VisibleLayerGroup} */
             const group = {
@@ -335,6 +338,16 @@ export function useVisibleLayers(map, socket) {
             }
 
             visibleLayerGroups.value.push(group);
+
+            if (sublayers) {
+                sublayers.forEach(sublayer => {
+                    addToVisibleLayerList(sublayer, groupId);
+                });
+            }
+            if (layerOrderCache.value[groupId]) {
+                console.debug(`Restoring layer order for group ${groupId}`);
+                updateDisplayOrderVisibleLayers(groupId, layerOrderCache.value[groupId]);
+            }
         } else {
             console.warn(`Group with ID ${groupId} already exists.`);
         }
@@ -390,6 +403,7 @@ export function useVisibleLayers(map, socket) {
             return group.layers.find(layer => layer.id === layerId);
         });
         group.layers = reorderedLayers;
+        layerOrderCache.value[groupId] = newOrder;
         updateVisibleLayersOrderOnMap();
     };
 

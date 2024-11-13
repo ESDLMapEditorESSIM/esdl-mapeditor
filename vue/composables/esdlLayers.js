@@ -16,7 +16,7 @@ import {useSocketIO} from "@/composables/socketio";
 const enabledEsdlIdList = ref([]);
 
 export function useEsdlLayers() {
-    const {createVisibleLayerGroup, addToVisibleLayerList, removeVisibleLayerGroup, hideVisibleLayer, showVisibleLayer} = useVisibleLayers();
+    const {createVisibleLayerGroup, removeVisibleLayerGroup, hideVisibleLayer, showVisibleLayer} = useVisibleLayers();
 
     const getActiveEsdlLayerId = () => ref(window.active_layer_id);
 
@@ -51,7 +51,7 @@ export function useEsdlLayers() {
         }
         console.debug("Enabling ESDL layer with ID " + es_id, es.title);
         enabledEsdlIdList.value.push(es_id);
-        createVisibleLayerGroup(es_id, es.title);
+        const sublayers = [];
         Object.entries(es.layers).reverse().forEach(([key, esdl_layer]) => {
             esdl_layer.eachLayer(function (sublayer) {
                 if (sublayer.options.group_name) {
@@ -66,7 +66,7 @@ export function useEsdlLayers() {
                         es: es,
                         layer_ref: sublayer
                     };
-                    addToVisibleLayerList(sublayerVisibleLayer, es_id);
+                    sublayers.push(sublayerVisibleLayer);
                 }
             });
             const visibleEsdlLayer = {
@@ -77,8 +77,9 @@ export function useEsdlLayers() {
                 es: es,
                 layer_ref: esdl_layer
             };
-            addToVisibleLayerList(visibleEsdlLayer, es_id);
+            sublayers.push(visibleEsdlLayer);
         });
+        createVisibleLayerGroup(es_id, es.title, sublayers);
         showEsdlLayerOnMap(es_id);
     }
 
