@@ -1,60 +1,118 @@
-<!-- TODO: component refinement needed -->
 <template>
-  <div v-show="trace.length > 0" class="plotly-plot">
-    <div id="plot" ref="plot" />
-  </div>
   <div v-show="trace.length === 0" class="no-data">Not configured</div>
+  <div v-show="trace.length" class="with-data">
+    <div id="plot" ref="plotDiv" class="plotly-plot" />
+  </div>
 </template>
 
-<script>
+<script setup>
+import {
+  ref,
+  defineProps,
+  onMounted,
+  onUpdated,
+  reactive
+} from "vue";
 import Plotly from "plotly.js-dist";
 
-export default {
-    props: {
-        trace: Array,
-        layout: Object
-    },
-    data() {
-        return {
-            config: { 
-                responsive: true, 
-                maintainAspectRatio: true,
-                automargin: true,
-                toImageButtonOptions: {
-                    format: 'svg', // one of png, svg, jpeg, webp
-                    height: 500,
-                    width: 900,
-                    scale: 1 // Multiply title/legend/axis/canvas sizes by this factor
-                }
-            }
-        };
-    },
+const props = defineProps({
+	trace: {
+		type: Array,
+		default: function () {
+			return [];
+		}
+	},
+	layout: {
+		type: Object,
+		default: function () {
+			return {};
+		}
+	}
+});
 
-    mounted() {
-        Plotly.newPlot(this.$refs.plot, this.trace, this.layout, this.config);
-    },
+const plotDiv = ref(null);
 
-    updated() {
-        Plotly.react(this.$refs.plot, this.trace, this.layout, this.config);
-        console.log('Updating plot');
-    }
+const config = { 
+	responsive: true,
+	maintainAspectRatio: true,
+	automargin: true,
+	toImageButtonOptions: {
+		format: 'png', // one of png, svg, jpeg, webp
+		height: 500,
+		width: 900,
+		scale: 1 // Multiply title/legend/axis/canvas sizes by this factor
+	}
 };
+
+let resizeObserver = null;
+const plotDimensions = reactive({ width: 0 });
+
+/**
+ * Resizes plot layout when the plotDiv dimensions are updated.
+ */
+const resizePlot = (entries) => {
+	if (plotDiv.value && entries.length) {
+		const entry = entries[0];
+		plotDimensions.width = entry.contentRect.width;
+
+		const layout = {
+			...props.layout,
+			width: plotDimensions.width
+		};
+
+		Plotly.react(plotDiv.value, props.trace, layout, config);
+	}
+};
+
+onMounted(() => {
+	if (resizeObserver === null) {
+		resizeObserver = new ResizeObserver(resizePlot);
+		resizeObserver.observe(plotDiv.value);
+	}
+
+	Plotly.newPlot(plotDiv.value, props.trace, props.layout, config);
+});
+
+onUpdated(() => {
+	Plotly.react(plotDiv.value, props.trace, props.layout, config);
+});
+
+const unmountPlot = () => {
+	console.debug("Clean up Plot and ResizeObserver");
+	if (resizeObserver !== null) {
+		resizeObserver.unobserve(plotDiv.value);
+		resizeObserver = null;
+	}
+
+	if (plotDiv.value) {
+		Plotly.purge(plotDiv.value);
+		plotDiv.value = null;
+	}
+};
+
+$(document).on('esdlAnalyticsIsClosed', (_, data) => {
+	if (data) {
+		unmountPlot();
+	}
+});
 </script>
 
 <style>
 .plotly-plot {
-/*    min-width: 40rem;
-    min-height: 30rem;*/
+  width: 100%;
+	height: 90%;
 }
 
-
-/* #plot {
-    width: 100%;
-    height: 100%; 
-} */
+.with-data {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  justify-content: space-between;
+  border: 1px solid rgba(100, 100, 100, 0.15);
+	border-radius: .5rem;
+}
 
 .no-data {
-     /* width: 40rem;  */
     height: 100%;
     display: flex;
     flex-grow: auto;
@@ -63,8 +121,7 @@ export default {
     align-items: center;
     font-size: 20pt;
     color: grey;
-    border: dashed 1px lightgrey;
+    border: 1px solid rgba(100, 100, 100, 0.15);
     border-radius: .5rem;
-    margin-left: 1rem;
 }
 </style>

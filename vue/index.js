@@ -20,8 +20,8 @@ import SearchAssets from '@/apps/SearchAssets.vue';
 import AssetFeedback from '@/apps/AssetFeedback.vue';
 import AssetTableEditor from '@/apps/AssetTableEditor.vue';
 import CustomIconsSettings from "@/apps/CustomIconsSettings.vue";
-import KPIDashboard from './apps/KPIDashboard.vue';
-import ESDLAnalytics from './apps/ESDLAnalytics.vue';
+import KPIDashboard from '@/apps/KPIDashboard.vue';
+import ESDLAnalytics from '@/apps/ESDLAnalytics.vue';
 import {
     createVueLControl,
     mountApp,

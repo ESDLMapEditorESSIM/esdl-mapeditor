@@ -1,174 +1,308 @@
 <template>
-  <div v-if="isSyncingMetaData || isDeletingMetaData" class="loading">
-    <a-spin :indicator="loadingIcon" />
-  </div>
-  <!-- TODO: responsive layout -->
-  <div class="dialog-content">
-    <a-row>
-      <a-col span="22">
-        <h2 style="font-weight: bold; font-size: 2rem">ESDL Analytics (Experimental)</h2>
-      </a-col>
-      <a-col span="2" class="header-buttons-layout">
-        <a-tooltip title="Synchronize ESDL Analytics metadata">
-          <a-button
-            size="large"
-            :disabled="isSyncingMetaData"
-            @click="onSyncBtnClick"
-          >
-            <template #icon>
-              <component 
-                :is="SyncOutlined"
-                style="vertical-align: 0.1rem"
+  <!-- Dialog header -->
+  <a-row style="height: 60px;">
+    <h2 style="font-weight: bold; font-size: 2rem">ESDL Analytics</h2>
+  </a-row>
+  <!-- Dialog content -->
+  <a-row style="height: calc(100% - 60px);">
+    <div v-if="isSyncingMetaData || isDeletingMetaData" class="loading">
+      <a-spin :indicator="loadingIcon" />
+    </div>
+    <a-layout style="height: 100%">
+      <a-layout-sider
+        v-model:collapsed="collapsed"
+        collapsible
+        :trigger="null"
+        :width="300"
+        :collapsed-width="0"
+        theme="light"
+      >
+        <a-col class="graph-options">
+          <a-col>
+            <a-typography-title :level="4">Graph configuration</a-typography-title>
+            <a-row>
+              <a-typography-title :level="5">Dataset</a-typography-title>
+              <a-select
+                v-model:value="datasetSelected"
+                :disabled="datasetOptions.length === 0"
+                :placeholder="datasetSelectPlaceholder"
+                mode="multiple"
+                style="width: 100%"
+                @change="onSelectDataset"
+              >
+                <a-select-option
+                  v-for="option in datasetOptions"
+                  :key="option.value"
+                  :value="option.value"
+                >
+                  {{ option.label }}
+                </a-select-option>
+              </a-select>
+            </a-row>
+            <a-row>
+              <a-typography-title :level="5">Variable</a-typography-title>
+              <a-select
+                v-model:value="variableSelected"
+                :disabled="datasetSelected.length === 0"
+                :placeholder="datasetSelected.length === 0 ? 'First select a dataset' : 'Select a variable'"
+                style="width: 100%"
+                @change="onSelectVariable"
+              >
+                <a-select-option
+                  v-for="option in Object.values(variableOptions)"
+                  :key="option.value"
+                  :value="option.value"
+                >
+                  {{ option.label }}
+                </a-select-option>
+              </a-select>
+            </a-row>
+            <a-row>
+              <a-typography-title :level="5">Group by</a-typography-title>
+              <a-select
+                v-model:value="groupbySelected"
+                :disabled="datasetSelected.length === 0 || variableSelected === null" 
+                :placeholder="
+                  datasetSelected.length === 0 ? 'First select a dataset'
+                  : variableSelected === null ? 'First select a variable'
+                    : 'Select a category'"
+                allow-clear
+                mode="multiple"
+                style="width: 100%"
+                @change="onSelectGroupBy"
+              >
+                <a-select-option
+                  v-for="option in groupbyOptions"
+                  :key="option.value"
+                  :value="option.value"
+                >
+                  {{ option.label }}
+                </a-select-option>
+              </a-select>
+            </a-row>
+            <a-row>
+              <a-typography-title :level="5">Filter</a-typography-title>
+              <a-cascader
+                v-model:value="filterSelected"
+                style="width: 100%"
+                :options="filterOptions"
+                :disabled="datasetSelected.length === 0 || variableSelected === null" 
+                :placeholder="
+                  datasetSelected.length === 0 ? 'First select a dataset'
+                  : variableSelected === null ? 'First select a variable'
+                    : 'Select a category'" 
+                allow-clear multiple
+                @change="onSelectFilters"
+              >
+                <template #tagRender="option">
+                  <a-tag>{{ option.label }}</a-tag>
+                </template>
+              </a-cascader>
+            </a-row>
+            <br>
+            <!-- Bar chart configuration -->
+            <a-row v-if="datasetSelected.length && variableSelected !== null && chartType==='bar'">
+              <a-typography-title :level="4">Display options</a-typography-title>
+              <a-radio-group
+                v-model:value="dataGrouping" 
+                name="groupStackRadio"
+                :options="groupStackOptions"
+                style="display: flex; flex-direction: column; padding-bottom: 12px;"
+                @change="onSelectDisplayOptions"
               />
-            </template>
-          </a-button>
-        </a-tooltip>
-        <!-- TODO & NOTE: A temporary implementation to clean up metadata -->
-        <a-tooltip title="Delete ESDL Analytics metadata">
+              <a-checkbox
+                v-model:checked="showBarNumbers" 
+                @click="onSelectDisplayOptions"
+              >
+                Show numbers on bar chart
+              </a-checkbox>
+            </a-row>
+            <a-col style="padding-top: 24px; padding-bottom: 16px;">
+              <a-row style="padding-bottom: 8px;">
+                <a-button
+                  :disabled="isSyncingMetaData"
+                  block
+                  @click="onSyncBtnClick"
+                >
+                  <a-tooltip title="Synchronize ESDL Analytics metadata">
+                    <component
+                      :is="SyncOutlined"
+                      style="vertical-align: 0.1rem"
+                    />
+                    Synchronize metadata
+                  </a-tooltip>
+                </a-button>
+              </a-row>
+              <a-row>
+                <!-- TODO & NOTE: A temporary implementation to clean up metadata -->
+                <a-button
+                  :disabled="isDeletingMetaData"
+                  block
+                  @click="onDeleteBtnClick"
+                >
+                  <a-tooltip title="Delete ESDL Analytics metadata">
+                    <component 
+                      :is="DeleteOutlined"
+                      style="vertical-align: 0.1rem"
+                    />
+                    Delete metadata
+                  </a-tooltip>
+                </a-button>
+              </a-row>
+            </a-col>
+          </a-col>
+        </a-col>
+      </a-layout-sider>
+      <a-layout>
+        <a-layout-header class="graph-header">
           <a-button
-            size="large"
-            :disabled="isDeletingMetaData"
-            @click="onDeleteBtnClick"
+            @click="() => (collapsed = !collapsed)"
           >
-            <template #icon>
-              <component 
-                :is="DeleteOutlined"
-                style="vertical-align: 0.1rem"
-              />
-            </template>
+            <component
+              :is="collapsed ? MenuUnfoldOutlined : MenuFoldOutlined"
+              style="vertical-align: 0.05rem"
+            />
           </a-button>
-        </a-tooltip>
-      </a-col>
-    </a-row>
-    <br>
-    <a-row style="display: flex; flex-direction: row; align-items: stretch">
-      <a-col v-if="showConfig" class="graph-options" :md="24" :lg="8">
-        <h2>Graph configuration</h2>
-        <a-row>
-          <h3>Scenario</h3>
-          <a-select
-            v-model:value="scenarioSelected"
-            :options="scenarioOptions"
-            :loading="scenarioOptions.length === 0"
-            :placeholder="scenarioSelectPlaceholder"
-            mode="multiple"
-            style="width: 100%"
-            @change="onSelectScenario"
+          <!-- Graph header control bar -->
+          <a-row class="graph-header-control">
+            <!-- Graph editable title -->
+            <a-row style="align-items: center;">
+              <a-input
+                v-model:value="title" 
+                :bordered="false" 
+                :placeholder="'Add a graph title'"
+                :disabled="!editingTitle"
+                :style="{ width: `${inputWidth}px` }"
+                :maxlength="50"
+                class="graph-title"
+                @input="updateTitleInputWidth"
+              />
+              <a-button
+                type="text"
+                style="color: rgba(100, 100, 100, 0.7)"
+                @click="() => (editingTitle = !editingTitle)"
+              >
+                <component 
+                  :is="editingTitle ? SaveOutlined : EditOutlined"
+                  style="vertical-align: 0.1rem"
+                />
+              </a-button>
+            </a-row>
+            <!-- Chart type buttons -->
+            <a-radio-group v-model:value="chartType">
+              <a-radio-button
+                v-for="type in chartTypes"
+                :key="type.value"
+                :value="type.value"
+                @click="onChartTypeBtnClick"
+              >
+                <component :is="type.icon" style="vertical-align: 0.05rem" />
+              </a-radio-button>
+            </a-radio-group>
+          </a-row>
+        </a-layout-header>
+        <a-layout-content class="graph-content">
+          <AnalyticsPlot
+            :trace="currentTrace"
+            :layout="currentLayout"
           />
-        </a-row>
-        <a-row>
-          <h3>Variable</h3>
-          <a-select
-            v-model:value="variableSelected"
-            :options="Object.values(variableOptions)"
-            :disabled="scenarioSelected.length === 0"
-            :placeholder="scenarioSelected.length === 0 ? 'First select a scenario' : 'Select a variable'"
-            style="width: 100%"
-            @change="onSelectVariable"
-          />
-        </a-row>
-        <a-row>
-          <h3>Group by</h3>
-          <a-select
-            v-model:value="groupbySelected"
-            :options="groupbyOptions"
-            :disabled="scenarioSelected.length === 0 || variableSelected === null" 
-            :placeholder="
-              scenarioSelected.length === 0 ? 'First select a scenario'
-              : variableSelected === null ? 'First select a variable'
-                : 'Select a category'"
-            allow-clear
-            mode="multiple"
-            style="width: 100%"
-            @change="onSelectGroupBy"
-          />
-        </a-row>
-        <a-row>
-          <h3>Filter</h3>
-          <a-cascader
-            v-model:value="filterSelected"
-            :options="filterOptions"
-            style="width: 100%"
-            :disabled="scenarioSelected.length === 0 || variableSelected === null" 
-            :placeholder="
-              scenarioSelected.length === 0 ? 'First select a scenario'
-              : variableSelected === null ? 'First select a variable'
-                : 'Select a category'" 
-            allow-clear multiple
-            @change="onSelectFilters"
-          />
-        </a-row>
-
-        <!-- TODO -->
-        <!-- <div>
-          <h3>Data visualisation:</h3>
-          <a-radio-group
-            v-model:value="dataGrouping" name="groupStackRadio" :options="groupStackOptions"
-            @change="groupstack"
-          />
-          <br><br>
-          <a-checkbox
-            v-model:checked="showBarNumbers" 
-            @click="groupstack"
-          >
-            Show numbers on bar chart
-          </a-checkbox>
-        </div> -->
-      </a-col>
-
-      <!-- TODO: Plot responsive layout -->
-      <a-col :md="24" :lg="16">
-        <AnalyticsPlot
-          :trace="currentTrace"
-          :layout="currentLayout"
-        />
-      </a-col>
-    </a-row>
-  </div>
+        </a-layout-content>
+      </a-layout>
+    </a-layout>
+  </a-row>
 </template>
 
 <script setup>
-import { ref, h, onMounted, onUnmounted } from "vue";
+import { ref, h, onMounted, onUnmounted } from 'vue';
 import { notification } from 'ant-design-vue';
-import { DeleteOutlined, LoadingOutlined, SyncOutlined } from "@ant-design/icons-vue";
-import AnalyticsPlot from "../components/esdlanalytics/AnalyticsPlot.vue";
+import {
+  BarChartOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  LoadingOutlined,
+	MenuFoldOutlined,
+	MenuUnfoldOutlined,
+	SaveOutlined,
+  SyncOutlined,
+	TableOutlined }
+from "@ant-design/icons-vue";
+import AnalyticsPlot from '../components/esdlanalytics/AnalyticsPlot.vue';
 
-// TODOs
-// Rename scenario to dataset?
+const collapsed = ref(false);
 
 const loadingIcon = h(LoadingOutlined, {
-  style: { fontSize: '5rem' },
-  spin: true,
+  style: { fontSize: '5rem' }, spin: true
 });
 
-// TODO: hide/collapse config in a small view 
-const showConfig = ref(true);
+// ------------------------------------- //
+// ------------ Graph Header ----------- //
+// ------------------------------------- //
+
+const title = ref('');
+const editingTitle = ref(false);
+
+const minWidth = 180;
+const inputWidth = ref(minWidth);
+
+const updateTitleInputWidth = (value) => {
+	const newWidth = value.target.value.length * 11;
+	inputWidth.value = newWidth >= minWidth ? newWidth : minWidth;
+};
+
+const chartTypes = [
+  {value: "bar", icon: BarChartOutlined},
+  {value: "table", icon: TableOutlined},
+];
+const chartType = ref(chartTypes[0].value);
+
+const onChartTypeBtnClick = (event) => {
+  chartType.value = event.target.value;
+  updateTrace();
+};
+
+// ------------------------------------- //
+// -------- Graph Configuration -------- //
+// ------------------------------------- //
 
 const isSyncingMetaData = ref(false);
 const isDeletingMetaData = ref(false);
 
 const currentTrace = ref([]);
-const currentLayout =  ref({ barmode: 'stack' });
-const scenarioOptions = ref([]);
-const scenarioSelected = ref([]);
-const scenarioSelectPlaceholder = ref('Select a scenario');
+const currentLayout =  ref({});
+const datasetOptions = ref([]);
+const datasetSelected = ref([]);
+const datasetSelectPlaceholder = ref('Select a dataset');
 const variableOptions = ref([]);
 const variableSelected = ref(null);
 const groupbyOptions = ref([]);
-
 // TODO: default group by with year if is not profile
 const groupbySelected = ref([]);
 const filterOptions = ref([]);
 const filterSelected = ref([]);
 
+const groupStackOptions = [
+	{ label: 'Group data', value: 0 },
+	{ label: 'Stack data (totals)', value: 1 },
+	{ label: 'Stack data (percentage)', value: 2 },
+];
+const dataGrouping = ref(1);
 const showBarNumbers = ref(false);
 
-const onSelectScenario = () => {
+const onSelectDataset = () => {
+  // Resets selected variable, groupby, and filter to the default state.
+  variableSelected.value = null;
+  groupbySelected.value = [];
+  filterSelected.value = [];
+
   updateVariables();
   updateTrace();
 };
 
 const onSelectVariable = () => {
+  // Resets selected groupby, and filter to the default state.
+  groupbySelected.value = [];
+  filterSelected.value = [];
+
   updateColumns();
   updateTrace();
 };
@@ -181,6 +315,10 @@ const onSelectFilters = () => {
   updateTrace();
 };
 
+const onSelectDisplayOptions = () => {
+	updateTrace();
+};
+
 onMounted(() => {
   console.info("Initializing ESDL Analytics");
   updateDatasets();
@@ -189,6 +327,10 @@ onMounted(() => {
 onUnmounted(() => {
   console.info("Unmounting ESDL Analytics");
 });
+
+// ------------------------------------- //
+// --------- Component methods --------- //
+// ------------------------------------- //
 
 /**
  * Fetches DataManager metadata from the specified resource using a WebSocket connection.
@@ -264,7 +406,7 @@ const onSyncBtnClick = async() => {
     const esTitle = esObjects[esId].title;
     try {
       displayNotification("info", `Adding ${esTitle} into the database.`);
-      const reqBody = { es_id: esId, scenario_name: null };
+      const reqBody = { es_id: esId, dataset_name: null };
       const resp = await modifyMetadata('add_update', reqBody);
       displayNotification(resp.status, resp.message);
     } catch (error) {
@@ -301,12 +443,20 @@ const onDeleteBtnClick = async() => {
     console.error(error);
     displayNotification("error", `An error occurred while deleting metadata: ${error}`);
   } finally {
+    // Reset selection
+    datasetSelected.value = [];
+    variableSelected.value = null;
+    groupbySelected.value = [];
+    filterSelected.value = [];
+    currentTrace.value = [];
+    currentLayout.value = {};
+
     isDeletingMetaData.value = false;
   }
 };
 
 /**
- * Asynchronously fetches DataManager datasets and updates the scenario options.
+ * Asynchronously fetches DataManager datasets and updates the dataset options.
  * 
  * @returns {Promise<void>} A promise that resolves when the datasets have been fetched and the options updated.
  */
@@ -315,14 +465,14 @@ const updateDatasets = async() => {
   try {
     const datasets = await fetchMetadata('datasets');
     if (datasets.length) {
-      scenarioOptions.value = datasets.map((d) => ({
-        value: d.id, 
-        label: `${d.name} (${d.scenario})`
+      datasetOptions.value = datasets.map((d) => ({
+        value: d.id,
+        label: `${d.name} (${d.dataset})`
       }));
-      scenarioSelectPlaceholder.value = "Select a scenario";
+      datasetSelectPlaceholder.value = "Select a dataset";
     } else {
-      scenarioOptions.value = [];
-      scenarioSelectPlaceholder.value = "No datasets available";
+      datasetOptions.value = [];
+      datasetSelectPlaceholder.value = "No datasets available";
     }
   } catch (error) {
     console.error(error);
@@ -336,9 +486,9 @@ const updateDatasets = async() => {
  */
 const updateVariables = async() => {
   console.debug("Fetching DataManager variables");
-  if (scenarioSelected.value.length) {
+  if (datasetSelected.value.length) {
     try {
-      const reqBody = { dataset_ids: scenarioSelected.value };
+      const reqBody = { dataset_ids: datasetSelected.value };
       const variables = await fetchMetadata('variables', reqBody);
 
       variableOptions.value = Object.fromEntries(
@@ -352,17 +502,9 @@ const updateVariables = async() => {
           }
         ])
       );
-      // TODO: reset groupbySelected and filterSelected is needed?
-      // groupbySelected.value = [];
-      // filterSelected.value = [];
     } catch (error) {
       console.error(error);
     }
-  } else {
-    variableOptions.value = [];
-    variableSelected.value = null;
-    groupbySelected.value = [];
-    filterSelected.value = [];
   }
 };
 
@@ -374,10 +516,10 @@ const updateVariables = async() => {
  */
 const updateColumns = async() => {
   console.debug("Fetching DataManager columns");
-  if (scenarioSelected.value.length && variableSelected.value !== null) {
+  if (datasetSelected.value.length && variableSelected.value !== null) {
     try {
       const reqBody = {
-        dataset_ids: scenarioSelected.value, 
+        dataset_ids: datasetSelected.value, 
         variable_name: variableSelected.value
       };
       const varFilterOptions = await fetchMetadata('columns', reqBody);
@@ -408,12 +550,13 @@ const updateColumns = async() => {
 };
 
 /**
- * TODO
+ * Fetches metadata and updates the trace and layout configuration based on the user selections
+ * such as selected datasets, variable, group by options, filter options, and chart type.
  */
 const updateTrace = async() => {
   console.debug("Updating trace");
 
-  if (scenarioSelected.value.length === 0 || variableSelected.value === null) {
+  if (datasetSelected.value.length === 0 || variableSelected.value === null) {
     currentTrace.value = [];
     return;
   }
@@ -444,108 +587,186 @@ const updateTrace = async() => {
   });
 
   const options = {
-    dataset_ids: scenarioSelected.value,
+    dataset_ids: datasetSelected.value,
     variable_name: variableSelected.value,
     group_by: groupBySelection,
-    filters: filterSelection
+    filters: filterSelection,
+    chart_type: chartType.value
   };
 
   try {
     const traces = await fetchMetadata('query', options);
-    // TODO const scenarios = [...new Set(traces.filter(trace => trace.scenario !== undefined).map(trace => trace.scenario))];
-    traces.forEach((trace) => {
-      if (isProfile) {
-        // TODO: implementing profile trace
-        // trace.mode = 'lines';
-        // trace.type = "scatter";
-
-        // if (this.dataGrouping == 1) {
-        //     trace.stackgroup = 0;
-        //     // TODO: maybe also add legend group to group the legend of the different graphs
-        //     trace.groupnorm = '';
-        // } else if (this.dataGrouping == 2) {
-        //     trace.stackgroup = 0;
-        //     trace.groupnorm = 'percent';
-        // } else {
-        //     delete trace.stackgroup;
-        //     delete trace.groupnorm;
-        // }
-
-        // // For subplots, each plot needs its own unique axis
-        // if (traces.length > 1 && trace.scenario !== undefined) {
-        //     trace.xaxis = 'x' + scenarios.indexOf(trace.scenario);
-        //     trace.yaxis = 'y' + scenarios.indexOf(trace.scenario);
-        // }
-
-        // this.currentLayout.xaxis.type = 'date';
-      } 
-      else {
-        trace.type = 'bar';
-        currentLayout.value.xaxis.type = 'multicategory';
-        if (showBarNumbers.value) {
-          trace.text = trace.y.map(y => y.toFixed(1));
-        } else {
-          delete trace.text;
-        }
-      }
-    });
-
-    // TODO
-    // if (is_profile) {
-    //     if (scenarios.length > 1) {
-    //         this.currentLayout.grid = { rows: scenarios.length, columns: 1, pattern: 'independent' };
-    //         this.currentLayout.height = scenarios.length * 450;  // for subplots, make graph bigger
-    //         this.currentLayout.legend = { traceorder: "normal" };
-    //     } else {
-    //         delete this.currentLayout.grid;
-    //         this.currentLayout.height = null;
-    //         this.currentLayout.legend = { traceorder: "reversed" };
-    //     }
-    // } else {
-    //     delete this.currentLayout.grid;
-    //     this.currentLayout.height = null;
-    //     this.currentLayout.legend = { traceorder: "reversed" };
-    // }
-
-    currentTrace.value = traces;
-    currentLayout.value = {
-      ...currentLayout.value,
-      title: options.variable_name,
-      yaxis: {title: variableOptions.value[options.variable_name].unit},
-      showlegend: true,
-      autosize: true
-    };
+    // TODO: add profile data handling with profileTraceHandler(taces)
+    if (chartType.value === 'table') {
+      const formattedTable = tableTraceHandler(traces);
+      currentTrace.value = formattedTable.traces;
+      currentLayout.value = formattedTable.layout;
+    }
+    else {
+      const formattedBarChart = barChartTraceHandler(traces);
+      currentTrace.value = formattedBarChart.traces;
+      currentLayout.value = formattedBarChart.layout;
+    }
   } catch (error) {
     console.error(error);
+    displayNotification("error", `${error}`);
   }
 };
+
+/**
+ * Configures bar chart traces and layout for visualization.
+ * 
+ * @param {Array} traces An array of trace objects to be configured for bar chart visualization.
+ * @returns {Object} An object containing the configured traces and layout for the bar chart.
+ */
+const barChartTraceHandler = (traces) => {
+  traces.forEach((t) => {
+    t.type = 'bar';
+    t.text = showBarNumbers.value ? t.y.map(y => y.toFixed(1)) : "";
+  });
+
+  const barChartLayout = {
+    title: variableSelected.value,
+    xaxis: {type: 'multicategory'},
+    yaxis: {title: variableOptions.value[variableSelected.value].unit},
+    barmode: [1, 2].includes(dataGrouping.value) ? 'stack' : 'group',
+    barnorm: dataGrouping.value === 2 ? 'percent' : '',
+    showlegend: true,
+    autosize: true
+  };
+
+  return {
+    traces: traces,
+    layout: barChartLayout
+  };
+};
+
+/**
+ * Configures table traces and layout for visualization.
+ * 
+ * @param {Array} traces An array containing a single object of table header and cell values.
+ * @returns {Object} An object containing the formatted table trace and layout configuration.
+ */
+const tableTraceHandler = (traces) => {
+  const formattedTableHeader = traces[0].header.values.map((col) => ([`<b>${col[0]}</b>`]));
+  const tableCellValues = traces[0].cells.values;
+  
+  const tableTrace = [{
+    type: 'table',
+    header: {
+      values: formattedTableHeader,
+      align: 'left',
+      fill: {color: "#fafafa"},
+      line: {width: 0.5, color: "#c4c4c4"},
+      font: {size: 15, color: "black", textcase: "word caps"}
+    },
+    cells: {
+      values: tableCellValues,
+      align: "left",
+      height: 25,
+      line: {width: 0.5, color: "#c4c4c4"},
+      font: {size: 14, color: "black"},
+    },
+  }];
+  const tableLayout = {
+    title: variableSelected.value,
+    autosize: true,
+    margin: {l: 20, t: 65, r: 20, b: 5},
+  };
+
+  return {
+    traces: tableTrace,
+    layout: tableLayout
+  };
+};
+
+/**
+ * TODO: WIP and needs refinement.
+ * TODO: rename scenario to dataset
+ * Configures profile traces and layout for visualization.
+ */
+// const profileTraceHandler = (traces) => {
+//   const scenarios = [...new Set(traces.filter(trace => trace.scenario !== undefined).map(trace => trace.scenario))];
+//   traces.forEach((t) => {
+//     t.mode = 'lines';
+//     t.type = 'scatter';
+//     t.stackgroup = [1, 2].includes(dataGrouping.value) ? 0 : null,
+//     t.groupnorm = dataGrouping.value === 2 ? 'percent' : '';
+
+//     if (traces.length > 1 && t.scenario !== undefined) {
+//       t.xaxis = 'x' + scenarios.indexOf(t.scenario);
+//       t.yaxis = 'y' + scenarios.indexOf(t.scenario);
+//     }
+//   });
+
+//   const profileLayout = {
+//     xaxis: {
+//       type: 'date'
+//     }
+//   };
+
+//   if (scenarios.length > 1) {
+//     profileLayout.grid = { rows: scenarios.length, columns: 1, pattern: 'independent' };
+//     profileLayout.height =  scenarios.length * 450;  // for subplots, make graph bigger
+//     profileLayout.legend = { traceorder: "normal" };
+//   }
+
+//   return {
+//     traces: traces,
+//     layout: profileLayout
+//   };
+// };
+
 </script>
 
 <style>
+
+.ant-layout-header.graph-header {
+	display: flex;
+	align-items: center;
+	padding: 12px;
+	background-color: white; 
+}
+
+.graph-header-control {
+	width: 100%;
+	justify-content: space-between;
+	padding-left: 8px;
+}
+
+.graph-title {
+	font-size: 1.3rem;
+	font-family: Arial,sans-serif;
+	font-style: italic;
+	color: gray;
+	margin-left: 8px;
+	margin-right: 8px;
+	min-width: 180px;
+	max-width: 400px;
+	border-bottom: 1px solid;
+	border-radius: 0px;
+}
+
+.graph-title:disabled {
+	color: black;
+	font-style: normal;
+}
+
 .graph-options {
-  padding: 1rem 2rem;
-  background-color: ghostwhite;
-  border-radius: 1rem;
-  height: fit-content;
-}
-
-.graph-options>*:not(:first-child) {
-  margin-top: 1rem;
-}
-
-.header-buttons-layout {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-evenly;
-}
-
-.dialog-content {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+	overflow-y: auto;
+  padding: 16px;
   height: 100%;
-  padding: 12px;
+	border: 1px solid rgba(100, 100, 100, 0.15);
+	border-radius: .5rem;
+}
+
+.graph-content {
+	background-color: white;
+	padding-left: 12px;
+	padding-right: 12px;
 }
 
 .loading {
@@ -553,9 +774,8 @@ const updateTrace = async() => {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  width: calc(100% - 36px);
-  height: calc(100% - 8px);
-  margin-top: 8px;
+  width: calc(100% - 52px);
+  height: calc(100% - 60px);
   z-index: 100;
   background-color: rgba(0, 0, 0, 0.03);
   border-radius: 5px;

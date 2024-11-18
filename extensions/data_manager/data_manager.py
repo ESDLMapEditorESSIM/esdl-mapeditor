@@ -11,7 +11,6 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-import copy
 import logging
 from datetime import datetime
 from enum import Enum
@@ -24,12 +23,14 @@ from sqlalchemy import select, delete, column, literal_column, func
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
 import pandas as pd
+from pandas import DataFrame
 
 import esdl
 from esdl.processing.ESDLAsset import get_asset_capability_type
 from esdl.processing.ESDLQuantityAndUnits import unit_to_string, build_qau_from_unit_string, qau_to_string
 from extensions.data_manager import db
-from extensions.data_manager.data_manager_message import (MetadataUpdateRequestBody,
+from extensions.data_manager.data_manager_message import (ChartType,
+                                                          MetadataUpdateRequestBody,
                                                           MetadataDeleteRequestBody,
                                                           MetadataOperationResp,
                                                           GetVariablesRequestBody,
@@ -249,7 +250,7 @@ class DataManager:
         def _add_or_update_metadata(params: Dict) -> str:
             req_body = MetadataUpdateRequestBody(**params)
             session_owner = get_session("user-email")
-            resp = self.add_or_update_metadata(db.session, es_id=req_body.es_id, scenario_name=req_body.scenario_name, owner=session_owner)
+            resp = self.add_or_update_metadata(db.session, es_id=req_body.es_id, scenario_name=req_body.dataset_name, owner=session_owner)
             return json.dumps(resp.__dict__)
         
         @self.socketio.on("datamanager/metadata/delete", namespace="/esdl")
@@ -275,12 +276,14 @@ class DataManager:
         
         @self.socketio.on("datamanager/query", namespace="/esdl")
         def _query(params: Dict) -> list:
+            params['chart_type'] = ChartType(params['chart_type'])
             req_body = QueryRequestBody(**params)
             return self.query(db.session,
                               dataset_ids=req_body.dataset_ids,
                               variable_name=req_body.variable_name,
                               group_by=req_body.group_by,
-                              filters=req_body.filters)
+                              filters=req_body.filters,
+                              chart_type=req_body.chart_type)
 
     def process_esdl(self, es: esdl.EnergySystem, owner: str, scenario_name=None) -> List[BaseModel]:
         """
@@ -584,7 +587,7 @@ class DataManager:
             response.append({
                 'name': dataset.name,
                 'id': dataset.id,
-                'scenario': dataset.scenario,
+                'dataset': dataset.scenario,
                 'description': dataset.description,
                 'run_timestamp': timestamp.strftime('%Y-%m-%d %H:%M:%S')
             })
@@ -644,14 +647,16 @@ class DataManager:
               dataset_ids: List[int],
               variable_name: str,
               group_by: List[str],
-              filters: Dict[str, List[str]]) -> list:
+              filters: Dict[str, List[str]],
+              chart_type: ChartType) -> list:
         """
         Queries and returns traces of data based on the specified dataset IDs, variable name, grouping, and filters.
 
         TODO: profile data handling might need refinement
         Note that group_by is ordered: the first element goes on the X axis, the rest goes in the grouping.
         """
-        logger.info(f"Querying traces with dataset_ids: {dataset_ids}, variable: {variable_name}, group_by: {group_by}, and filters: {filters}")
+        logger.info(f"Querying {chart_type.value} chart traces with dataset_ids: \
+                    {dataset_ids}, variable: {variable_name}, group_by: {group_by}, and filters: {filters}")
                 
         if len(group_by) == 0:
             group_by = ['year']
@@ -679,6 +684,57 @@ class DataManager:
 
         df = pd.read_sql_query(query.statement, session.get_bind())
 
+        if chart_type == ChartType.TABLE:
+            return self.process_table_trace(df)
+        else:
+            return self.process_bar_chart_trace(df, dataset_ids, variable_name, group_by)
+    
+    @staticmethod
+    def process_table_trace(df: DataFrame) -> list:
+        """
+        Processes a DataFrame to create a table trace for visualization.
+        """
+        if 'scenario' in df.columns and 'name' in df.columns:
+            # Concatenates name and scenario into a single column
+            df['dataset'] = df['name'] + ' (' + df['scenario'] + ')'
+            df.drop(columns=['name', 'scenario'], inplace=True)
+            # Ensure 'dataset' is the first column
+            dataset_col = df.pop('dataset')
+            df.insert(0, 'dataset', dataset_col)
+
+        # Ensure 'value' is the last column
+        if 'value' in df.columns:
+            val_col = df.pop('value')
+            df.insert(len(df.columns), 'value', val_col)
+
+        headerValues = []
+        cellValues = []
+        for col_name in df.columns.tolist():
+            # Header values are formatted as [["column 1"], ["column 2"], ...]
+            headerValues.append([f"{col_name}"])
+            cellValues.append(df[col_name].tolist())
+        
+        # Returns table content and keeps minimal table formatting in the backend.  
+        trace = [{
+            'header': {
+                'values': headerValues
+            },
+            'cells': {
+                'values': cellValues
+            }
+        }]
+
+        return trace
+    
+    # TODO: separate into profile and bar chart trace functions
+    @staticmethod
+    def process_bar_chart_trace(df: DataFrame,
+                                dataset_ids: List[int],
+                                variable_name: str,
+                                group_by: List[str]) -> list:
+        """
+        Processes a DataFrame to create traces for a bar chart visualization.
+        """
         traces = []
         if 'datetime' in group_by:  # profile data, so x-axis should have datetime as value
             # TODO: refinement needed
@@ -701,8 +757,8 @@ class DataManager:
                     })
         else:
             for name, group in df.groupby(by=group_by[-1], as_index=False):
-                print(f'group by: {name}, {group}')
-                print(f'group by x: ', [str(x) for x in list(group[ group_by[0] ])])
+                # print(f'group by: {name}, {group}')
+                # print(f'group by x: ', [str(x) for x in list(group[ group_by[0] ])])
                 traces.append({
                     'name': name[-1] if isinstance(name, tuple) else name,
                     #'x': [[f'{y} {x}' for x,y in zip( list(group['scenario']), list(group['name']) )], [str(x) for x in list(group['year'])] ],

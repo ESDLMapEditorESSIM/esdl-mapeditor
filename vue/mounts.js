@@ -22,6 +22,7 @@ import {
     Form,
     Input,
     InputNumber,
+    Layout,
     Menu,
     Modal,
     Radio,
@@ -32,8 +33,10 @@ import {
     Switch,
     Table,
     Tag,
+    Tooltip,
     Transfer,
     Tree,
+    Typography,
     Upload
 } from 'ant-design-vue';
 
@@ -76,6 +79,7 @@ export function mountApp(component, elementSelector) {
     app.use(Form);
     app.use(Input);
     app.use(InputNumber);
+    app.use(Layout);
     app.use(Menu);
     app.use(Modal);
     app.use(Radio);
@@ -86,8 +90,10 @@ export function mountApp(component, elementSelector) {
     app.use(Switch);
     app.use(Table);
     app.use(Tag);
+    app.use(Tooltip);
     app.use(Transfer);
     app.use(Tree);
+    app.use(Typography);
     app.use(Upload);
     app.use(VueGridLayout);
 
