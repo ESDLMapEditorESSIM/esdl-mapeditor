@@ -6,18 +6,16 @@
           type="link"
           @click="goToPreviousStep()"
         >
-          <i class="fas fa-long-arrow-alt-left small-icon" />
+          <i class="fas fa-long-arrow-alt-left icon" />
         </a-button>
       </template>
 
       <a-dropdown>
-        <a class="ant-dropdown-link" @click.prevent>
-          <a-button type="text" @click.prevent>
-            <template #icon>
-              <MenuOutlined />
-            </template>
-          </a-button>
-        </a>
+        <a-button type="text" @click.prevent>
+          <template #icon>
+            <i class="fas fa-bars icon" />
+          </template>
+        </a-button>
         <template #overlay>
           <a-menu>
             <a-menu-item v-if="currentWorkflow.name" disabled><strong>Name: {{ currentWorkflow.name }}</strong></a-menu-item>
@@ -45,7 +43,7 @@
           </a-menu>
         </template>
       </a-dropdown>
-      <span style="color: var(--gray); vertical-align: sub; margin-left: 20px;">{{ activeEnergySystemTitle }}</span>
+      <span style="color: var(--gray); margin-left: 20px;">{{ activeEnergySystemTitle }}</span>
     </div>
 
     <template v-if="currentWorkflow.hasPreviousStep()">
