@@ -70,10 +70,26 @@ const doGetData = async () => {
 
     // Convert the choices to a list of options.
     options.value = choices.map((choice) => {
-      const label_list = source.label_fields
-          .map((label_field) => choice[label_field])
-          .filter((value) => value);
-      const label = label_list.join(" - ");
+      const label_list = [];
+      for (const label_field of source.label_fields) {
+        // Check if label is string. If so, use it directly.
+        if (typeof label_field === "string") {
+          label_list.push(choice[label_field]);
+        } else {
+          const label = label_field.label;
+          const default_value = label_field.default;
+          const value = choice[label];
+          const value_map = label_field.map;
+          if (value_map && value in value_map) {
+            label_list.push(value_map[value]);
+          } else if (default_value) {
+            label_list.push(default_value);
+          } else {
+            label_list.push(value);
+          }
+        }
+      }
+      const label = label_list.filter((value) => value).join(" - ");
       return {
         label: label,
         value: choice[source.value_field],

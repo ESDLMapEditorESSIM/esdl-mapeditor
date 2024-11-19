@@ -701,7 +701,7 @@ esdl_config = {
                             "url": f"{EPS_WEB_HOST}/api/eps/",
                             "http_method": "get",
                             "choices_attr": "executions",
-                            "label_fields": ["project", "id", "success"],
+                            "label_fields": ["project", "id", {"label": "complete", "map": {True: "Complete", False: "Failed"}, "default": "Processing"}],
                             "value_field": "id",
                         },
                         "target_variable": "execution",
