@@ -505,7 +505,7 @@ esdl_config = {
                                 "next_step": 26,
                             },
                             {
-                                "name": "Optimise flexibility",
+                                "name": "Optimise flexibility (in development)",
                                 "type": "subheader",
                             },
                             {
@@ -521,7 +521,7 @@ esdl_config = {
                                 "next_step": 28,
                             },
                             {
-                                "name": "Calculate business case",
+                                "name": "Calculate business case (in development)",
                                 "type": "subheader",
                             },
                             {
@@ -542,7 +542,7 @@ esdl_config = {
                                 "type": "header",
                             },
                             {
-                                "name": "Run ESSIM",
+                                "name": "Run Energy System Simulator",
                                 "type": "primary",
                                 "next_step": 31,
                             },
