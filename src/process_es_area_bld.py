@@ -833,13 +833,19 @@ def find_area_location_based(esh, active_es_id, geometry):
     obj_geometry_shape = Shape.create(geometry)
     areas_that_contain_obj = list()
 
+    es = esh.get_energy_system(es_id=active_es_id)
     for key in shape_dictionary.keys():
         area_shp = shape_dictionary[key]
+        # Check if this area_shp is part of the currently active ESDL.
+        top_area = es.instance[0].area
+        found_area = ESDLEnergySystem.find_area(top_area, key)
+        if not found_area:
+            continue
+
         if area_shp.shape.contains(obj_geometry_shape.shape):
             areas_that_contain_obj.append(key)
 
     if len(areas_that_contain_obj) == 0:
-        es = esh.get_energy_system(es_id=active_es_id)
         return es.instance[0].area.id   # If no area is found, return the id of the top level area
     elif len(areas_that_contain_obj) == 1:
         return areas_that_contain_obj[0]
