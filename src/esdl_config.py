@@ -511,11 +511,13 @@ esdl_config = {
                             {
                                 "name": "Start Flex Scan phase 2",
                                 "type": "primary",
+                                "disabled": True,
                                 "next_step": 27,
                             },
                             {
                                 "name": "Load FS phase 2 results",
                                 "type": "primary",
+                                "disabled": True,
                                 "next_step": 28,
                             },
                             {
@@ -525,11 +527,13 @@ esdl_config = {
                             {
                                 "name": "Run EHC Business Case module",
                                 "type": "primary",
+                                "disabled": True,
                                 "next_step": 29,
                             },
                             {
                                 "name": "Load EHC Business Case results",
                                 "type": "primary",
+                                "disabled": True,
                                 "next_step": 30,
                             },
                             # SIMULATE TOTAL ENERGY SYSTEM

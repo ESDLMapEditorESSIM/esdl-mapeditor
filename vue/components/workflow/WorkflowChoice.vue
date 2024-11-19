@@ -21,6 +21,7 @@
         v-else
         :type="option.type || 'primary'"
         block
+        ghost
         :disabled="isOptionDisabled(option)"
         class="choice-button"
         @click="optionClick(option)"
@@ -113,9 +114,11 @@ const optionClick = (option) => {
 .choice-list .choice-entry .choice-header {
   text-align: center;
   font-weight: bolder;
+  font-size: 1.5em;
 }
 .choice-list .choice-entry .choice-subheader {
   text-align: center;
-  color: #777;
+  font-size: 1.2em;
+  color: #333;
 }
 </style>
