@@ -2,7 +2,10 @@
   <p v-if="isLoading">Loading...</p>
   <a-form v-else layout="vertical" :model="form" :label-col="{ span: 0 }">
     <a-form-item :label="workflowStep.label">
-      <a-select v-model:value="form[workflowStep.target_variable]" :options="options" @change="selectValue" />
+      <a-select
+        v-model:value="form[workflowStep.target_variable]" :options="options" @change="selectValue"
+        @popup-scroll="hide_jquery_ui_popup()"
+      />
     </a-form-item>
     <a-form-item>
       <a-button type="primary" @click="onSubmit"> Select </a-button>
@@ -84,4 +87,8 @@ const doGetData = async () => {
   isLoading.value = false;
 }
 doGetData();
+
+function hide_jquery_ui_popup() {
+  window.jquery(".ui-tooltip-content").parents('div').remove();
+}
 </script>

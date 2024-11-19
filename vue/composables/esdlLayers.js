@@ -26,24 +26,9 @@ export function useEsdlLayers() {
      */
     const getActiveEsdlLayerId = () => ref(window.active_layer_id);
 
-    /**
-     * Remove all ESDL layers, except for the provided ID. If not provided, it will keep the Untitled EnergySystem.
-     */
-    const clearEsdlLayers = (exceptId = null) => {
-        const esdlLayers = getEsdlLayers().value;
-
-        for (const id in esdlLayers) {
-            const esdlLayer = esdlLayers[id];
-            if ((exceptId != null && exceptId != id) || esdlLayer.title != 'Untitled EnergySystem') {
-                window.remove_esdl_layer(id);
-            }
-        }
-    }
-
     return {
         getEsdlLayers,
         removeEsdlLayer,
-        clearEsdlLayers,
         getActiveEsdlLayerId,
     }
 }

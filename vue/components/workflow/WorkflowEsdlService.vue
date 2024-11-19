@@ -20,7 +20,7 @@
       Please select the "Run ESDL service" button below to run the ESDL service
       and load the results.
     </p>
-    <a-button v-if="!workflowStep.service.auto" type="primary" @click="clearLayersAndLoadEsdl">
+    <a-button v-if="!workflowStep.service.auto" type="primary" @click="loadEsdl">
       <div v-if="workflowStep.service.button_label"> {{ workflowStep.service.button_label }} </div>
       <div v-else>
         Run ESDL service
@@ -49,7 +49,6 @@ const props = defineProps({
 // eslint-disable-next-line no-unused-vars
 const { getParamsFromState, goToPreviousStep, goToFirstStep, getState } = useWorkflow();
 const state = getState();
-const { clearEsdlLayers } = useEsdlLayers()
 
 const workflowStep = props.workflowStep;
 
@@ -62,17 +61,8 @@ const esdlWasLoaded = () => {
   goToFirstStep();
 }
 
-const clearLayersAndLoadEsdl = () => {
-  if (workflowStep.service.clearLayers) {
-    clearEsdlLayers();
-    // Allow a second for the layers to be cleared.
-    setTimeout(loadEsdl, 1000);
-  } else {
-    loadEsdl();
-  }
-}
-
 const loadEsdl = () => {
+  console.log("Loading ESDL service");
   let params = {};
   params["service_id"] = workflowStep.service.id;
 
@@ -88,7 +78,7 @@ const loadEsdl = () => {
 
 if (workflowStep.service.auto) {
   // Load the ESDL upon loading of this step.
-  clearLayersAndLoadEsdl();
+  loadEsdl();
 }
 
 </script>
