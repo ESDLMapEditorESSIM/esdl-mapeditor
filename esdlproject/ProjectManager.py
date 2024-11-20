@@ -699,38 +699,37 @@ class ProjectManager:
         variant_snapshot_refs = dict()
         all_variants = []
 
-        try:
-            # Go through all variant collections and variants and empty the snapshotRef. Store this in the
-            # variant_snapshot_refs dict to restore it after we are done saving.
-            for variant_collection in self.project.variantCollection:
-                collection_resource = get_variant_collection_resource(variant_collection)
-                resources_dict[variant_collection.id] = collection_resource
-                variant_collection.energysystem = collection_resource.contents[0]#.deepcopy()
-                variant_collection.energysystemRef = None
-                # Find all variants in the variant collection
-                all_variants.append(variant_collection.variant)
-                for variant in all_variants:
-                    if variant.snapshotRef:
-                        variant_snapshot_refs[variant.id] = variant.snapshotRef
-                        variant.snapshotRef = None
-                    all_variants.extend(variant.variant)
-
-            uri = StringURI(uri=f"to_string_{str(uuid4())}.project")
-            self.project_resource.save(output=uri)
-            project_as_string = uri.getvalue()
-        finally:
-            # Reset everything (use reference instead of energysystem containment relations)
-            for variant_collection in self.project.variantCollection:
-                if variant_collection.energysystem:
-                    collection_resource = resources_dict[variant_collection.id]
-                    # use set_content() here instead of append, somehow eResource does not get updated otherwise
-                    collection_resource.set_content(variant_collection.energysystem)
-                    variant_collection.energysystemRef = collection_resource.contents[0]
-                    variant_collection.energysystem = None
+        # Go through all variant collections and variants and empty the snapshotRef. Store this in the
+        # variant_snapshot_refs dict to restore it after we are done saving.
+        for variantCollection in self.project.variantCollection:
+            collection_resource = get_variant_collection_resource(variantCollection)
+            resources_dict[variantCollection.id] = collection_resource
+            variantCollection.energysystem = collection_resource.contents[0]#.deepcopy()
+            variantCollection.energysystemRef = None
+            # Find all variants in the variant collection
+            all_variants.append(variantCollection.variant)
             for variant in all_variants:
-                if variant.id in variant_snapshot_refs:
-                    variant.snapshotRef = variant_snapshot_refs[variant.id]
+                if variant.snapshotRef:
+                    variant_snapshot_refs[variant.id] = variant.snapshotRef
+                    variant.snapshotRef = None
+                all_variants.extend(variant.variant)
 
+        uri = StringURI(uri=f"to_string_{str(uuid4())}.project")
+        self.project_resource.save(output=uri)
+        project_as_string = uri.getvalue()
+
+        # Reset everything (use reference instead of energysystem containment relations)
+        for variantCollection in self.project.variantCollection:
+            collection_resource = resources_dict[variantCollection.id]
+            # use set_content() here instead of append, somehow eResource does not get updated otherwise
+            collection_resource.set_content(variantCollection.energysystem)
+            variantCollection.energysystemRef = collection_resource.contents[0]
+            variantCollection.energysystem = None
+        for variant in all_variants:
+            if variant.id in variant_snapshot_refs:
+                variant.snapshotRef = variant_snapshot_refs[variant.id]
+
+        resources_dict = None
         return project_as_string
 
     def load_from_string(self, project_string: str) -> ESDLProject:

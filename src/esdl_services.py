@@ -198,8 +198,8 @@ class ESDLServices:
         """Actually call an ESDL service."""
 
         pm = get_project_manager()
+        active_es_id = get_session("active_es_id")
         es = pm.get_active_energy_system()
-        active_es_id = es.id
 
         # {'service_id': '18d106cf-2af1-407d-8697-0dae23a0ac3e', 'area_scope': 'provincies', 'area_id': '12',
         #  'query_parameters': {'bebouwingsafstand': '32432', 'restrictie': 'vliegveld', 'preferentie': 'infrastructuur', 'geometrie': 'true'}}
@@ -411,7 +411,6 @@ class ESDLServices:
 
                     variant, parse_info = pm.add_energy_system(StringURI(service["name"], esdl_response))
                     # TODO deal with parse_info?
-                    pm.set_active_variant(variant)
 
                     if "mode" in service["result"][0] and service["result"][0]["mode"] == "animation_possible":
                         influxdb_client = Profiles.connect_to_animation_profiles_database(es.id, es.id)
