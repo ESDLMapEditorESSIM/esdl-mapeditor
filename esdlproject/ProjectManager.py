@@ -13,6 +13,7 @@ from esdl import EnergySystem, esdl
 from esdl.patch import patch_esdl
 from esdl.processing.string_uri import StringURI
 from esdl.resources.json import JsonResource
+from esdl.resources.project_resource import ProjectResource
 from esdl.resources.xmlresource import XMLResource, ProjectManagerResourceType
 from esdl.undo import ChangeTracker, Tracker, UndoRedoCommandStack, ChangeContext
 from esdlproject import ESDLProject, HighLevelChange, Variant, VariantCollection, AbstractChange
@@ -110,7 +111,7 @@ class ProjectManager:
     """
 
     # The resource set that contains all resources.
-    rset: Final[ResourceSet]
+    rset: ResourceSet
     project_resource: XMLResource
     project: ESDLProject
     # The change tracker that keeps track of changes.
@@ -138,19 +139,22 @@ class ProjectManager:
         self.variant_activation_timestamps = dict()
         self.lock = threading.Lock()
         self.active_variant_lock = threading.Lock()
-        self.rset = ResourceSet()
+        self.rset = self.__create_resource_set()
         self.change_tracker = ChangeTracker(change_handler=self.change_handler)
         self.active_variant = None
-        # self.base_variant_resources = []
-        self.rset.resource_factory["esdl"] = XMLResource
-        self.rset.resource_factory["project"] = XMLResource
-        self.rset.resource_factory['json'] = lambda uri: JsonResource(uri, indent=2)
 
         if uri:
             self.load(uri)
             # TODO handle active esdl, is based on selected VariantCollection
         else:
             self.init_empty_project()
+
+    def __create_resource_set(self) -> ResourceSet:
+        resource_set = ResourceSet()
+        resource_set.resource_factory["esdl"] = XMLResource
+        resource_set.resource_factory["project"] = ProjectResource
+        resource_set.resource_factory['json'] = lambda uri: JsonResource(uri, indent=2)
+        return resource_set
 
     @property
     def active_tracker(self) -> Tracker:
@@ -278,9 +282,10 @@ class ProjectManager:
         if not uri.plain.endswith('.esdl'):
             uri.__init__(uri.plain + '.esdl')
 
-        if uri.normalize() in self.rset.resources:
+        if uri.normalize() in self.rset.resources and isinstance(uri, StringURI):
             orig_uri = uri.plain
-            uri.__init__(f"{uri.plain}_{str(uuid4())[:4]}")  # update uri
+            new_path = f"{orig_uri.rsplit('.esdl', 1)[0]}_{str(uuid4())[:4]}.esdl"
+            uri.__init__(new_path)  # update uri
             logger.debug(f"This energy system is already loaded: {orig_uri}, using a new URI: {uri.plain}")
         try:
             es_resource: XMLResource = self.rset.create_resource(uri)
@@ -606,8 +611,7 @@ class ProjectManager:
             variant.snapshotRef = None
             logger.debug(f"Removing snapshot of {variant.name} at {resource.uri}")
             self.rset.remove_resource(resource)
-        parent = get_parent_variant(variant)
-        parent.variant.remove(variant)
+        variant.delete()  # also deletes it from the parent list or containment relation
 
     def select_new_active_variant(self) -> Variant:
         for vc in self.project.variantCollection:
@@ -647,18 +651,20 @@ class ProjectManager:
             self.set_active_variant(self.select_new_active_variant())
 
         if isinstance(variant, VariantCollection):
-            variantCollection: VariantCollection = variant
-            if variantCollection.energysystemRef:
+            variant_collection: VariantCollection = variant
+            if variant_collection.variant:
+                self._delete_variant_recursive(variant_collection.variant)
+            if variant_collection.energysystemRef:
                 # base_resource = self.base_variant_resources[ get_base_variant_index(variant)]
 
-                logger.info(f"Removing VariantCollection energy system {variantCollection.name} from "
-                            f"{variantCollection.energysystemRef.eResource.uri}")
+                logger.info(f"Removing VariantCollection energy system {variant_collection.name} from "
+                            f"{variant_collection.energysystemRef.eResource.uri}")
                 # self.base_variant_resources.remove(base_resource)
-                es = variantCollection.energysystemRef
-                variantCollection.energysystemRef = None
+                es = variant_collection.energysystemRef
+                variant_collection.energysystemRef = None
                 self.rset.remove_resource(es.eResource)
-            logger.debug(f"Removing variantCollection {variantCollection.name} from resource")
-            self.project.variantCollection.remove(variantCollection, update_opposite=False)
+            logger.debug(f"Removing variantCollection {variant_collection.name} from resource")
+            self.project.variantCollection.remove(variant_collection, update_opposite=False)
             logger.debug(f"Done removing variant collection")
         else:
             if variant.snapshotRef:
@@ -746,17 +752,20 @@ class ProjectManager:
         """
 
         # First check if the project is valid, so that we don't corrupt the project manager.
-        potential_project_resource: XMLResource = self.rset.create_resource(uri)
+        potential_resource_set = self.__create_resource_set()
+        potential_project_resource: ProjectResource = potential_resource_set.create_resource(uri)
         potential_project_resource.type = ProjectManagerResourceType.PROJECT
         potential_project_resource.load()
         potential_project = potential_project_resource.contents[0]
         if not isinstance(potential_project, ESDLProject):
             raise Exception("The project is not a valid ESDL project.")
 
-        # clear current ResourceSet and trackers
+        # clear current ResourceSet
         for r_uri, resource in dict(self.rset.resources).items():
             self.rset.remove_resource(resource)
-            # self.base_variant_resources.clear()
+
+        self.rset = potential_resource_set
+        # clear trackers & timestamps
         self.change_tracker.trackers.clear()
         self.variant_activation_timestamps = {}
 
@@ -776,6 +785,9 @@ class ProjectManager:
         # load the base variant energy systems into resources and set the references
         for variant_collection in self.project.variantCollection:
             if variant_collection.energysystem:
+                # with the new ProjectResource, this is nog needed anymore and is skipped, because
+                # variant_collection.energysystem is None and vairan_collection.energysystemRef is set to the
+                # content of the Resource that has loaded the energy system at variant_collection.energysystem
                 variant_collection: VariantCollection = variant_collection
                 index = get_variant_collection_index(variant_collection)
                 bv_uri = StringURI(uri=f"VariantCollection.{index}_{str(uuid4())[:4]}.esdl")
@@ -996,27 +1008,27 @@ class ProjectManager:
         #    snapshot = tracemalloc.take_snapshot()
         #    print("Memory snapshot ready")
         #    display_mem_usage(snapshot)
-        logger.debug('ProjectManager debug:')
-        logger.debug('All resources: ', resources=self.rset.resources)
+        logger.info('ProjectManager debug:')
+        logger.info('All resources: ', resources=self.rset.resources)
         for uri, resource in self.rset.resources.items():
             rs_type = resource.type.name if resource.type else None
             if resource.contents:
                 if isinstance(resource.contents[0], esdl.EnergySystem):
-                    logger.debug(f"resource: {uri} ({rs_type}): es_name={resource.contents[0].name}, id={resource.contents[0].id}")
+                    logger.info(f"resource: {uri} ({rs_type}): es_name={resource.contents[0].name}, id={resource.contents[0].id}")
                 else:
-                    logger.debug(f"resource: {uri} ({rs_type}): resource_root={resource.contents[0]}")
+                    logger.info(f"resource: {uri} ({rs_type}): resource_root={resource.contents[0]}")
             else:
-                logger.debug("No contents in resource")
+                logger.warning(f"No contents in resource {uri}")
 
         for vc in self.project.variantCollection:
             vc: VariantCollection
             if vc.energysystemRef:
-                logger.debug(f"- {vc.name}: ref RS={vc.energysystemRef.eResource.uri} ({vc.energysystemRef.eResource.type.name}), ES={vc.energysystemRef}")
+                logger.info(f"- {vc.name}: ref RS={vc.energysystemRef.eResource.uri} ({vc.energysystemRef.eResource.type.name}), ES={vc.energysystemRef}")
             elif vc.energysystem:
-                logger.debug(f"- {vc.name}: RS={vc.energysystem.eResource.uri} ({vc.energysystem.eResource.type.name}), ES={vc.energysystem}")
+                logger.info(f"- {vc.name}: RS={vc.energysystem.eResource.uri} ({vc.energysystem.eResource.type.name}), ES={vc.energysystem}")
             rs_uri = vc.variant.snapshotRef.eResource.uri if vc.variant.snapshotRef else None
             rs_type = vc.variant.snapshotRef.eResource.type.name if vc.variant.snapshotRef else None
-            logger.debug(f"\t- {vc.variant.name}: RS={rs_uri} ({rs_type}), ES={vc.variant.snapshotRef}")
+            logger.info(f"\t- {vc.variant.name}(id={vc.variant.id}): RS={rs_uri} ({rs_type}), ES={vc.variant.snapshotRef}")
             x = vc.variant.variant
             depth = 2
             todo_list: List[Tuple[int, Variant]] = []
@@ -1026,12 +1038,12 @@ class ProjectManager:
                     indent = "\t" * d
                     rs_uri = v.snapshotRef.eResource.uri if v.snapshotRef else None
                     rs_type = v.snapshotRef.eResource.type.name if v.snapshotRef else None
-                    logger.debug(f"{indent}- {v.name}: RS={rs_uri} ({rs_type}), ES={v.snapshotRef}")
+                    logger.info(f"{indent}- {v.name}(id={v.id}): RS={rs_uri} ({rs_type}), ES={v.snapshotRef}")
                     todo_list.remove((d,v))
                     if len(v.variant) > 0:
                         todo_list.extend([(d+1, p) for p in v.variant])
         if dump_project:
-            logger.debug(self.to_debug_string())
+            logger.info(self.to_debug_string())
         #logger.debug("Current ESDL:")
         #logger.debug(self.active_energy_system_to_string())
         #for v in vc.variant.variant:

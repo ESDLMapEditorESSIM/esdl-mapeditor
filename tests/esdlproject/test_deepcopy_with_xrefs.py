@@ -14,13 +14,20 @@
 
 import unittest
 
+from pyecore.resources import ResourceSet, URI
+
 from esdl import esdl, EnergySystem
+from esdl.patch import patch_esdl
 from esdl.processing.string_uri import StringURI
-from esdl.resources.json import JsonResource, JsonOptions
+from esdl.resources.json import JsonOptions
+from esdl.resources.project_resource import ProjectResource
+from esdl.resources.xmlresource import XMLResource
+from esdlproject import ESDLProject
 from esdlproject.ProjectManager import ProjectManager, eobject_to_string, ESDLFormat
+from src.log import get_logger
 
 
-class MyTestCase(unittest.TestCase):
+class DeepCopyTest(unittest.TestCase):
     def test_deepcopy1(self):
         pm = ProjectManager()
         es: EnergySystem = pm.get_active_energy_system()
@@ -66,6 +73,46 @@ class MyTestCase(unittest.TestCase):
         print(f"InPort of transformer1: {inport1.connectedTo}")
         print(f"InPort of transformer2: {inport2.connectedTo}")
         print(f"OutPort of windturbine : {outport.connectedTo}")
+
+
+    # def test_deepcopy_with_project(self):
+    #     log = get_logger(__name__)
+    #     patch_esdl()
+    #     file = r"C:\Users\werkmane\OneDrive - TNO\Documents\ESDL\EnergySystems\RvE\Drenthe huidig met IIS.project"
+    #     rset = ResourceSet()
+    #     rset.resource_factory["esdl"] = XMLResource
+    #     rset.resource_factory["project"] = ProjectResource
+    #
+    #     resource: XMLResource = rset.create_resource(URI(file))
+    #     resource.load()
+    #     project: ESDLProject = resource.contents[0]
+    #     #es = project.variantCollection[0].energysystem
+    #     variant_collection_resource: XMLResource = rset.create_resource(StringURI("variant_collection.esdl"))
+    #     #variant_collection_resource.set_content(es)
+    #     #project.variantCollection[0].energysystemRef = es
+    #     es = project.variantCollection[0].energysystemRef
+    #     variant_collection_resource.save(output=URI('../esdl/test_output.esdl'))
+    #     new_resource = rset.create_resource(StringURI("test.esdl"))
+    #     copy = es.deepcopy(uuid_dict = new_resource.uuid_dict)
+
+
+    def test_deepcopy_with_project_issue(self):
+        pm = ProjectManager()
+        pm.add_energy_system(URI('../esdl/SimpleES.esdl'))
+        pm.delete_variant(pm.active_variant.variantCollection)
+        pm.add_energy_system(URI('../esdl/SimpleES.esdl'))
+        pm.debug()
+        s = pm.save()
+        with open('../esdl/deepcopy_test.project', "w") as f:
+            f.write(s)
+
+        pm = ProjectManager()
+        pm.delete_variant(pm.active_variant.variantCollection)
+        pm.load(URI('../esdl/deepcopy_test.project'))
+        pm.debug()
+        es = pm.project.variantCollection[0].energysystemRef
+        resource = es.eResource
+        resource.save(URI('../esdl/vc_test.esdl'))
 
 
 

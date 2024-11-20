@@ -15,8 +15,8 @@
 import logging
 
 from lxml.etree import QName, Element, ElementTree
-from pyecore.ecore import EObject
-from pyecore.resources.xmi import XMIResource, XMIOptions, XMI_URL, XSI_URL, XSI
+from pyecore.ecore import EObject, EProxy
+from pyecore.resources.xmi import XMIResource, XMIOptions, XMI_URL, XSI_URL, XSI, XMI
 
 from esdl.resources.resource_type import ProjectManagerResourceType
 from utils.utils import timed
@@ -81,6 +81,51 @@ class XMLResource(XMIResource):
 
     def get_parse_information(self):
         return self.parse_information
+
+    def load_subtree(self, original_root, sub_tree, options=None):
+        """
+        Loads a subtree of an XML as a resource, e.g. the energysystems in a Project's variant collection
+        See Also ProjectResource that uses this function
+        """
+        self.type = ProjectManagerResourceType.VARIANT_COLLECTION
+        self.options = options or {}
+        self.cache_enabled = True
+        self.prefixes.update(original_root.nsmap)
+        self.reverse_nsmap = {v: k for k, v in self.prefixes.items()}
+
+        self.xsitype = f'{{{self.prefixes.get(XSI)}}}type'
+        self.xmiid = f'{{{self.prefixes.get(XMI)}}}id'
+        self.schema_tag = f'{{{self.prefixes.get(XSI)}}}schemaLocation'
+
+        # Decode the XMI
+        # if f'{{{self.prefixes.get(XMI)}}}XMI' == xmlroot.tag:
+        #     real_roots = xmlroot
+        # else:
+        #     real_roots = [xmlroot]
+        real_roots = [sub_tree]
+
+        def grouper(iterable):
+            args = [iter(iterable)] * 2
+            return zip(*args)
+
+        self.schema_locations = {}
+        schema_tag_list = original_root.attrib.get(self.schema_tag, '')
+        for prefix, path in grouper(schema_tag_list.split()):
+            if '#' not in path:
+                path = path + '#'
+            self.schema_locations[prefix] = EProxy(path, self)
+
+        for root in real_roots:
+            modelroot = self._init_modelroot(root)
+            for child in root:
+                self._decode_eobject(child, modelroot)
+
+        if self.contents:
+            self._decode_ereferences()
+
+        self._clean_registers()
+        self.uri.close_stream()
+
 
     @timed
     def save(self, output=None, options=None):

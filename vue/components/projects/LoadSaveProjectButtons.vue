@@ -14,7 +14,7 @@
     <div class="menu-icon fas fa-project-diagram fa-smaller" />
     <input id="download-project-file" name="download-file" hidden @click="onSaveProject">
     <label for="download-project-file">
-      Save project..
+      Save project...
     </label>
   </a>
 </template>

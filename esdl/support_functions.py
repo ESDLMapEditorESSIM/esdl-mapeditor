@@ -64,9 +64,13 @@ def deepcopy(self, memo=None, uuid_dict: Dict[str, EObject]=None ) -> EObject:
     if self in memo:
         return memo[self]
 
+    # update uuid_dict and memo, before visiting containment relations
     copy: EObject = self.clone()
     if uuid_dict is not None and hasattr(copy, 'id'):
         uuid_dict[copy.id] = copy
+    memo[self] = copy
+
+
     eclass: EClass = self.eClass
     for x in eclass.eAllStructuralFeatures():
         if isinstance(x, EReference):
@@ -88,9 +92,6 @@ def deepcopy(self, memo=None, uuid_dict: Dict[str, EObject]=None ) -> EObject:
             #    # this can only be done after a full copy
             #    pass
     # now copy should a full copy, but without cross-references
-
-    memo[self] = copy
-
     if first_call:
         for k, v in memo.items():
             eclass: EClass = k.eClass

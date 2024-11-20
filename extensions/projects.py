@@ -57,9 +57,10 @@ def load_esdl_project():
     if not filename.endswith(".project"):
         filename = filename + ".project"
     uri = StringURI(filename, file_content)
-    set_session("es_info_list", {})
-    pm.load(uri)
-
+    project = pm.load(uri)
+    if project:
+        set_session("es_info_list", {})
+    send_project_manager_to_lmi(only_send_for_client_id=session['client_id'])
     return jsonify(serialize_esdl_project(pm, pm.project))
 
 
