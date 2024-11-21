@@ -85,7 +85,6 @@ class ESDLBrowser {
         $button.click(function (e) {
                 let selected_ref = [$('#ref_select').val()];
                 esdl_browser.changed = true;
-                debugger;
                 socket.emit('esdl_browse_set_reference', {'parent': parent_object_identifier, 'name': data.ref.name, 'xref': data.xreferences[selected_ref]});
             });
         $back_button.click(function (e) {

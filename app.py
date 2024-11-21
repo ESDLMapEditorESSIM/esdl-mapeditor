@@ -2043,23 +2043,29 @@ def process_command(message):
             # asset = ESDLAsset.find_asset(es_edit.instance[0].area, obj_id)
             # asset can also be any other object in ESDL
             asset = pm.get_by_id(active_es_id, obj_id)
+            conn_list = get_session_for_esid(active_es_id, 'conn_list')
             if isinstance(asset, esdl.AbstractBuilding):
                 # Update drop down list with areas and buildings
                 remove_ab_from_area_bld_list(asset.id, area_bld_list)
                 emit('area_bld_list', {'es_id': active_es_id, 'area_bld_list': area_bld_list})
+                if asset.asset:
+                    # building contains assets with possibly connections
+                    for containing_asset in asset.asset:
+                        # remove connections for assets in a building or compound asset
+                        conn_list[:] = [c for c in conn_list
+                                        if not ((c['from-asset-id'] == containing_asset.id) or
+                                                (c['to-asset-id'] == containing_asset.id))]
             if asset:
                 # Try to remove control strategy for EnergyAssets (and not for buildings)
                 if isinstance(asset, esdl.EnergyAsset):
                     remove_control_strategy_for_asset(asset.id)
-            ESDLAsset.remove_object_from_energysystem(active_es, obj_id)
-            pm.remove_object_from_dict(active_es.id, asset, True)
             # remove from asset dict
             asset_list = get_session_for_esid(active_es_id, 'asset_list')
             asset_list[:] = [a for a in asset_list if a[3] != obj_id] # filter list in place
             undo_redo.update_label("Remove {}".format(asset.name or asset.eClass.name))
-            conn_list = get_session_for_esid(active_es_id, 'conn_list')
             conn_list[:] = [c for c in conn_list
                             if not ((c['from-asset-id'] == obj_id) or (c['to-asset-id'] == obj_id))]  # xor: filter list in place
+            ESDLAsset.remove_object_from_energysystem(active_es, obj_id)
         else:
             send_alert('Asset or potential without an id cannot be removed')
 
@@ -2840,6 +2846,7 @@ def process_command(message):
 
         carrier_list = ESDLEnergySystem.get_carrier_list(active_es)
         emit('carrier_list', {'es_id': active_es.id, 'carrier_list': carrier_list})
+        undo_redo.stop_recording() # because it returns a value, we need to release the lock!
         return True
 
     if message['cmd'] == 'remove_carrier':
@@ -3084,6 +3091,7 @@ def process_command(message):
         emit('add_connections', {'es_id': active_es_id, 'add_to_building': True, 'conn_list': bld_info["conn_list"]})
 
     if message['cmd'] == 'get_building_connections':
+        undo_redo.stop_recording() # this does not need recording and does a return statement
         bld_id = message['id']
         building = pm.get_by_id(active_es_id, bld_id)
         return get_building_connections(building)

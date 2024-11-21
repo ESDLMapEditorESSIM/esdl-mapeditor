@@ -167,13 +167,19 @@ class UndoRedoCommandStack:
         """
         Temporarily pause recording of changes.
         """
-        self.recording_lock.release()
-        self._recording = False
+        reset = False
+        # make sure pause_recording also works if you are not recording
+        if self.recording_lock.locked() and self._recording:
+            self.recording_lock.release()
+            reset = True
+            self._recording = False
         try:
             yield
         finally:
-            self._recording = True
-            self.recording_lock.acquire()
+            if not self.recording_lock.locked() and reset:
+                self.recording_lock.acquire()
+                self._recording = True
+
 
     def stop_recording(self, call_change_handler: bool = True):
         """
