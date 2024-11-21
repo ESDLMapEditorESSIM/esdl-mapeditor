@@ -525,13 +525,13 @@ esdl_config = {
                                 "type": "subheader",
                             },
                             {
-                                "name": "Run EHC Business Case module",
+                                "name": "Run Energy Hub Configurator",
                                 "type": "primary",
                                 "disabled": True,
                                 "next_step": 29,
                             },
                             {
-                                "name": "Load EHC Business Case results",
+                                "name": "Load EHC results",
                                 "type": "primary",
                                 "disabled": True,
                                 "next_step": 30,
