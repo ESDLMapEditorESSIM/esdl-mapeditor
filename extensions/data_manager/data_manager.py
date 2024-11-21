@@ -21,7 +21,7 @@ from flask import Flask
 from flask_socketio import SocketIO
 from sqlalchemy import select, delete, column, literal_column, func
 from sqlalchemy.orm import Session
-from sqlalchemy.sql import text
+from sqlalchemy.sql import text, func
 import pandas as pd
 from pandas import DataFrame
 
@@ -220,10 +220,13 @@ def handle_profile(profile: esdl.GenericProfile, ds: DataSet, variable_name: str
     #     continue
     return d, qau, variable_name
 
-def preprocess_column(column_name: str) -> Any:
+def preprocess_column(column_name: str, db_engine_driver: str = "sqlite") -> Any:
     if '/' in column_name:
         key_name = column_name.split('/')[1]
-        return Data.labels[key_name].astext.label(column_name)
+        if db_engine_driver == "sqlite":
+            return func.json_extract(Data.labels, f"$.{key_name}").label(column_name)
+        else:
+            return Data.labels[key_name].astext.label(column_name)
     else:
         return column(column_name)
 
