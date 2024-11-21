@@ -5,7 +5,7 @@ from enum import Enum
 @dataclass
 class MetadataUpdateRequestBody:
     es_id: str
-    dataset_name: Optional[str]
+    scenario_name: Optional[str]
 
 @dataclass
 class MetadataDeleteRequestBody:

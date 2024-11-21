@@ -7,16 +7,6 @@ import sqlalchemy as sa
 
 from extensions.data_manager import db
 
-"""
-Scenario UI Database schema
-
-Note: for JSON columns we use postgresql dialect JSONB, instead of JSON, as the perfomance is better, you can add
-(GIN) indexes and can do aggregates quite simple (not possible with JSON type) 
-
-"""
-# Use JSONB in postgres
-# JSONVariant = sa.JSON().with_variant(sa.dialects.postgresql.JSONB(), "postgresql")
-
 
 class DataType(Enum):
     SINGLE_VALUE = 0

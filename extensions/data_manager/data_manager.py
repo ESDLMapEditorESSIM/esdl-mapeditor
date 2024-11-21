@@ -253,7 +253,7 @@ class DataManager:
         def _add_or_update_metadata(params: Dict) -> str:
             req_body = MetadataUpdateRequestBody(**params)
             session_owner = get_session("user-email")
-            resp = self.add_or_update_metadata(db.session, es_id=req_body.es_id, scenario_name=req_body.dataset_name, owner=session_owner)
+            resp = self.add_or_update_metadata(db.session, es_id=req_body.es_id, scenario_name=req_body.scenario_name, owner=session_owner)
             return json.dumps(resp.__dict__)
         
         @self.socketio.on("datamanager/metadata/delete", namespace="/esdl")
@@ -590,7 +590,7 @@ class DataManager:
             response.append({
                 'name': dataset.name,
                 'id': dataset.id,
-                'dataset': dataset.scenario,
+                'scenario': dataset.scenario,
                 'description': dataset.description,
                 'run_timestamp': timestamp.strftime('%Y-%m-%d %H:%M:%S')
             })
@@ -655,7 +655,6 @@ class DataManager:
         """
         Queries and returns traces of data based on the specified dataset IDs, variable name, grouping, and filters.
 
-        TODO: profile data handling might need refinement
         Note that group_by is ordered: the first element goes on the X axis, the rest goes in the grouping.
         """
         logger.info(f"Querying {chart_type.value} chart traces with dataset_ids: \
@@ -760,12 +759,9 @@ class DataManager:
                     })
         else:
             for name, group in df.groupby(by=group_by[-1], as_index=False):
-                # print(f'group by: {name}, {group}')
-                # print(f'group by x: ', [str(x) for x in list(group[ group_by[0] ])])
                 traces.append({
                     'name': name[-1] if isinstance(name, tuple) else name,
-                    #'x': [[f'{y} {x}' for x,y in zip( list(group['scenario']), list(group['name']) )], [str(x) for x in list(group['year'])] ],
-                    'x': [[f'{y} {x}' for x,y in zip( list(group['scenario']), list(group['name']) )], [str(x) for x in list(group[ group_by[0] ]) ]],
+                    'x': [[f'{y} {x}' for x,y in zip(list(group['scenario']), list(group['name']) )], [str(x) for x in list(group[ group_by[0] ]) ]],
                     'y': list(group['value'])
                 })
 

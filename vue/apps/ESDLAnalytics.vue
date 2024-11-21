@@ -302,6 +302,8 @@ const isDeletingMetaData = ref(false);
 
 const currentTrace = ref([]);
 const currentLayout =  ref({});
+// NOTE: In the JS frontend part, we describe a single ESDL or an ESDL with multiple variants (scenarios) with "dataset".
+// This is equivalent to the combination of DataSet.name and DataSet.scenario in the backend part (db_model.py, data_manager.py)
 const datasetOptions = ref([]);
 const datasetSelected = ref([]);
 const datasetSelectPlaceholder = ref('Select a dataset');
@@ -458,7 +460,7 @@ const onSyncBtnClick = async() => {
     const esTitle = esObjects[esId].title;
     try {
       displayNotification("info", `Adding ${esTitle} into the database.`);
-      const reqBody = { es_id: esId, dataset_name: null };
+      const reqBody = { es_id: esId, scenario_name: null };
       const resp = await modifyMetadata('add_update', reqBody);
       displayNotification(resp.status, resp.message);
     } catch (error) {
@@ -519,7 +521,7 @@ const updateDatasets = async() => {
     if (datasets.length) {
       datasetOptions.value = datasets.map((d) => ({
         value: d.id,
-        label: `${d.name} (${d.dataset})`
+        label: `${d.name} (${d.scenario})`
       }));
       datasetSelectPlaceholder.value = "Select a dataset";
     } else {
