@@ -66,6 +66,8 @@
                   datasetSelected.length === 0 ? 'First select a dataset'
                   : variableSelected === null ? 'First select a variable'
                     : 'Select a category'"
+                :max-tag-count="maxGroupbySelectedCount"
+                :status="chartType === 'bar' && groupbySelected.length > maxGroupbySelectedCount ? 'warning' : ''"
                 allow-clear
                 mode="multiple"
                 style="width: 100%"
@@ -79,6 +81,12 @@
                   {{ option.label }}
                 </a-select-option>
               </a-select>
+              <span
+                v-if="chartType === 'bar' && groupbySelected.length > maxGroupbySelectedCount"
+                style="color: #ffc21a; padding: 2px;"
+              >
+                Grouping in a bar chart supports up to two selections only.
+              </span>
             </a-row>
             <a-row>
               <a-typography-title :level="5">Filter</a-typography-title>
@@ -136,7 +144,7 @@
               <a-row>
                 <!-- TODO & NOTE: A temporary implementation to clean up metadata -->
                 <a-button
-                  :disabled="isDeletingMetaData"
+                  :disabled="isDeletingMetaData || datasetOptions.length === 0"
                   block
                   @click="onDeleteBtnClick"
                 >
@@ -275,8 +283,8 @@ const datasetSelectPlaceholder = ref('Select a dataset');
 const variableOptions = ref([]);
 const variableSelected = ref(null);
 const groupbyOptions = ref([]);
-// TODO: default group by with year if is not profile
 const groupbySelected = ref([]);
+const maxGroupbySelectedCount = 2;
 const filterOptions = ref([]);
 const filterSelected = ref([]);
 
@@ -565,17 +573,9 @@ const updateTrace = async() => {
     return;
   }
 
-  const isProfile = variableOptions.value[variableSelected.value].datatype === 'PROFILE';
-
-  // If the datatype of variableSelected is not PROFILE, default group by with 'year'
-  let groupBySelection = isProfile ? ['datetime'] : ['year'];
-  if (groupbySelected.value.length && !isProfile ) {
-    groupbySelected.value.forEach((option) => {
-      if (!groupBySelection.includes(option)) {
-        groupBySelection.push(option);
-      }
-    });
-  }
+  // Only take the first two elements as group_by selections for a bar chart.
+  const groupBySelection = chartType.value === 'bar' ? 
+    groupbySelected.value.slice(0, maxGroupbySelectedCount) : groupbySelected.value;
 
   let filterSelection = {};
   filterSelected.value.forEach((filter) => {
