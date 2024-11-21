@@ -111,15 +111,40 @@
             <!-- Bar chart configuration -->
             <a-row v-if="datasetSelected.length && variableSelected !== null && chartType==='bar'">
               <a-typography-title :level="4">Display options</a-typography-title>
+              <a-row style="width: 100%">
+                <a-typography-title :level="5">Color palette</a-typography-title>
+                <a-select
+                  v-model:value="paletteSelected"
+                  style="width: 100%"
+                  @change="onSelectPalette"
+                >
+                  <a-select-option
+                    v-for="option in colorPalettes"
+                    :key="option.value"
+                    :value="option.value"
+                  >
+                    {{ option.label }}
+                    <a-row>
+                      <a-col
+                        v-for="color in option.sample"
+                        :key="color"
+                        :span="2"
+                        :style="{ backgroundColor: color.startsWith('#') ? color : `#${color}`, height: '10px' }"
+                      />
+                    </a-row>
+                  </a-select-option>
+                </a-select>
+              </a-row>
               <a-radio-group
                 v-model:value="dataGrouping" 
                 name="groupStackRadio"
                 :options="groupStackOptions"
-                style="display: flex; flex-direction: column; padding-bottom: 12px;"
+                style="display: flex; flex-direction: column; padding-top: 12px;"
                 @change="onSelectDisplayOptions"
               />
               <a-checkbox
-                v-model:checked="showBarNumbers" 
+                v-model:checked="showBarNumbers"
+                style="padding-top: 12px;"
                 @click="onSelectDisplayOptions"
               >
                 Show numbers on bar chart
@@ -282,6 +307,8 @@ const datasetSelected = ref([]);
 const datasetSelectPlaceholder = ref('Select a dataset');
 const variableOptions = ref([]);
 const variableSelected = ref(null);
+// TODO & WIP: Profile data visualization is not supported yet.
+const isProfileVariable = ref(false);
 const groupbyOptions = ref([]);
 const groupbySelected = ref([]);
 const maxGroupbySelectedCount = 2;
@@ -296,6 +323,21 @@ const groupStackOptions = [
 const dataGrouping = ref(1);
 const showBarNumbers = ref(false);
 
+const sampleColorCount = 12;
+const colorPalettes = [
+  // pie_chart_color_list is defined in area_building_layer.js
+  { label: 'Default', value: 'Default', sample: pie_chart_color_list.slice(0, sampleColorCount) },
+  { label: 'Qualitative', value: 'Qualitative', sample: window.palette('mpn65', sampleColorCount) },
+  { label: 'Diverging', value: 'Diverging', sample: window.palette('tol-dv', sampleColorCount) },
+  { label: 'Sequential', value: 'Sequential', sample: window.palette('tol-sq', sampleColorCount) },
+  { label: 'Rainbow', value: 'Rainbow', sample: window.palette('tol-rainbow', sampleColorCount) }
+];
+const paletteSelected = ref(colorPalettes[0]);
+
+const onSelectPalette = () => {
+  updateTrace();
+};
+
 const onSelectDataset = () => {
   // Resets selected variable, groupby, and filter to the default state.
   variableSelected.value = null;
@@ -306,10 +348,12 @@ const onSelectDataset = () => {
   updateTrace();
 };
 
-const onSelectVariable = () => {
+const onSelectVariable = (variable) => {
   // Resets selected groupby, and filter to the default state.
   groupbySelected.value = [];
   filterSelected.value = [];
+
+  isProfileVariable.value = variableOptions.value[variable].datatype === 'PROFILE';
 
   updateColumns();
   updateTrace();
@@ -596,7 +640,7 @@ const updateTrace = async() => {
 
   try {
     const traces = await fetchMetadata('query', options);
-    // TODO: add profile data handling with profileTraceHandler(taces)
+    // TODO: add profile data handling with profileTraceHandler(taces) and when isProfileVariable is true
     if (chartType.value === 'table') {
       const formattedTable = tableTraceHandler(traces);
       currentTrace.value = formattedTable.traces;
@@ -620,9 +664,11 @@ const updateTrace = async() => {
  * @returns {Object} An object containing the configured traces and layout for the bar chart.
  */
 const barChartTraceHandler = (traces) => {
-  traces.forEach((t) => {
+  const colorscale = generateColorscale(paletteSelected.value, traces.length);
+  traces.forEach((t, idx) => {
     t.type = 'bar';
     t.text = showBarNumbers.value ? t.y.map(y => y.toFixed(1)) : "";
+    t.marker = {color: colorscale[idx % colorscale.length]};
   });
 
   const barChartLayout = {
@@ -639,6 +685,37 @@ const barChartTraceHandler = (traces) => {
     traces: traces,
     layout: barChartLayout
   };
+};
+
+/**
+ * Generates a colorscale based on the specified palette and number of colors.
+ * 
+ * @param {string} palette The type of color palette to use. Options include:
+ *                         'Qualitative', 'Diverging', 'Sequential', 'Rainbow', and 'Default'.
+ * @param {number} numColors The number of colors to generate in the colorscale.
+ * @returns {Array} An array of colorscale values.
+ */
+ const generateColorscale = (palette, numColors) => {
+  // Default colorscale to pie_chart_color_list
+  let colorscale = pie_chart_color_list;
+  switch (palette) {
+    case 'Qualitative':
+      // The maximum number of colors: 65
+      colorscale = window.palette('mpn65', numColors > 65 ? 65 : numColors);
+      break;
+    case 'Diverging': 
+      colorscale = window.palette('tol-dv', numColors);
+      break;
+    case 'Sequential':
+      colorscale = window.palette('tol-sq', numColors);
+      break;
+    case 'Rainbow':
+      colorscale = window.palette('tol-rainbow', numColors);
+      break;
+    case 'Default':
+    default:
+  }
+  return colorscale;
 };
 
 /**
