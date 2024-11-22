@@ -59,6 +59,7 @@ class UndoRedoCommandStack:
     Use -1 to create an unlimited stack.
     change_handler is a callback function that receives a HighLevelChange when a new change is generated
     """
+    stack: list[HighLevelChange]
 
     def __init__(self, variant: ep.Variant, resource: XMLResource, max_stack_length: int = -1, change_handler=None):
         # The actual changes. Right now it is a list of pyEcore commands.
@@ -373,6 +374,15 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
 
     :return: None
     """
+    # Filter out any detailed changes from the stack.
+    if any(not isinstance(change, HighLevelChange) for change in stack.stack):
+        new_stack = []
+        for change in stack.stack:
+            if isinstance(change, HighLevelChange):
+                new_stack.append(change)
+            else:
+                logger.warning("Detailed change found in stack, removing it", change=change)
+                stack.stack.remove(change)
 
     if notification.notifier.eResource is None:  # if the object has not been added to a resource, ignore it.
         logger.debug("=== convertNotificationToChange ====== !!! No eResource for", notification=notification)

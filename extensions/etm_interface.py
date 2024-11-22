@@ -1122,6 +1122,15 @@ class ETMSankeyToESDL:
         # TODO: Deal with QaU, deal with "space heater" and "space heater combined", deal with tapwater
         gas_demand_households_heating = None
         energy_natural_gas_profile_PJ = None
+
+        # Check that the percentages in technology info do not go over 100%
+        total_percentage = 0
+        for tech in technology_info:
+            total_percentage += tech["percentage"]
+        if total_percentage > 100:
+            logger.error("Total percentage of technology_info is over 100%")
+            return
+
         for asset in area.asset:
             if asset.name == "Final demand_Natural gas_Households space heating and hot water":
                 gas_demand_households_heating = asset
@@ -1148,7 +1157,8 @@ class ETMSankeyToESDL:
                 if asset.name == "Primary demand_Steam hot water_Import":
                     asset.port[0].profile[0].value += steam_hotwater_demand_PJ
 
-            gas_demand_households_heating.port[0].profile[0].value = 0.0
+            gas_demand_households_heating.port[0].profile[0].value = 0.9 * final_heating_demand_PJ * 1 - (
+                    technology_info[0]["percentage"] + technology_info[1]["percentage"]) / 100
 
             self.recalculate_kpis(area)
 

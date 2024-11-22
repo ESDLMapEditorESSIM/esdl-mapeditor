@@ -15,6 +15,10 @@
 from typing import Optional, TypedDict, List
 
 from esdl.undo import UndoRedoCommandStack
+from esdlproject import HighLevelChange
+from src.log import get_logger
+
+logger = get_logger(__name__)
 
 
 class UndoRedoCommandDict(TypedDict):
@@ -49,6 +53,9 @@ def serialize_command_stack(command_stack: UndoRedoCommandStack) -> UndoRedoSeri
     """
     stack = []
     for entry in command_stack.stack:
+        if not isinstance(entry, HighLevelChange):
+            logger.warning(f"Unknown entry in undo stack: {entry}")
+            continue
         changes: List[UndoRedoCommandDict] = [{
             'id': change.objectValue.id if hasattr(change.objectValue, "id") else None,
             'name': change.objectValue.name if hasattr(change.objectValue, "name") else None,

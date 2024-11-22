@@ -582,7 +582,8 @@ function set_area_handlers(area) {
             var area = e.target;
             var id = area.id;
 
-            socket.emit('command', {cmd: 'get_area_info', id: id});
+            // This command does not exist. Should something else be called?
+            // socket.emit('command', {cmd: 'get_area_info', id: id});
         }
     });
 
