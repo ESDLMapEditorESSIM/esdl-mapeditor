@@ -45,6 +45,7 @@ from extensions.activity_context import ActivityContextExtension
 from extensions.bag import BAG
 from extensions.boundary_service import BoundaryService
 from extensions.data_manager.data_manager import DataManager
+from extensions.data_manager import db
 from extensions.es_statistics import ESStatisticsService
 from extensions.esdl_api import ESDL_API
 from extensions.esdl_browser import ESDLBrowser
@@ -216,7 +217,7 @@ KPIDashboard(app, socketio, settings_storage)
 TooltipInfo(app, socketio)
 ActivityContextExtension(app, socketio, settings_storage)
 ResidentialArea(app, socketio, settings_storage)
-DataManager(app, socketio)
+data_manager = DataManager(app, socketio)
 
 app.config.update({
     'TESTING': True,
@@ -413,6 +414,9 @@ def logout():
     user_email = get_session('user-email')
     user_actions_logging.store_logging(user_email, "logout", "", "", "", {})
 
+    # Cleans up all user-associated data manager metadata before logging out.
+    data_manager.delete_dataset(db.session, None, user_email)
+    
     oidc_auth_token = openid.get_full_oauth_token()
     # print("Flask-OIDC User:", user)
     # print("Flask-OIDC auth_profile:", session.get("oidc_auth_profile"))
