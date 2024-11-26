@@ -74,6 +74,7 @@ onMounted(() => {
 });
 
 onUpdated(() => {
+	config.toImageButtonOptions['filename'] = props.layout?.title || "Untitled chart";
 	Plotly.react(plotDiv.value, props.trace, props.layout, config);
 });
 

@@ -18,6 +18,6 @@ class ESDLAnalytics extends MapEditorDialog {
     console.debug("Closing ESDL Analytics");
     $(document).trigger('esdlAnalyticsIsClosed', true);
 
-    return super.close();
+    this.close();
   }
 }

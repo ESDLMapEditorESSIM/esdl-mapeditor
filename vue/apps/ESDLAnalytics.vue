@@ -157,17 +157,21 @@
                   block
                   @click="onSyncBtnClick"
                 >
-                  <a-tooltip title="Synchronize ESDL Analytics metadata">
+                  <a-tooltip 
+                    :title="datasetOptions.length ? 
+                      'Update ESDL Analytics metadata with the current ESDL(s)' : 
+                      'Add the current ESDL(s) to ESDL Analytics metadata'"
+                  >
                     <component
-                      :is="SyncOutlined"
+                      :is="datasetOptions.length ? SyncOutlined : UploadOutlined"
                       style="vertical-align: 0.1rem"
                     />
-                    Synchronize metadata
+                    {{ datasetOptions.length ? 'Update dataset' : 'Add dataset' }}
                   </a-tooltip>
                 </a-button>
               </a-row>
               <a-row>
-                <!-- TODO & NOTE: A temporary implementation to clean up metadata -->
+                <!-- TODO & NOTE: A temporary implementation to clean up dataset -->
                 <a-button
                   :disabled="isDeletingMetaData || datasetOptions.length === 0"
                   block
@@ -178,7 +182,7 @@
                       :is="DeleteOutlined"
                       style="vertical-align: 0.1rem"
                     />
-                    Delete metadata
+                    Delete dataset
                   </a-tooltip>
                 </a-button>
               </a-row>
@@ -227,6 +231,7 @@
                 v-for="type in chartTypes"
                 :key="type.value"
                 :value="type.value"
+                :disabled="datasetSelected.length === 0 || variableSelected === null"
                 @click="onChartTypeBtnClick"
               >
                 <component :is="type.icon" style="vertical-align: 0.05rem" />
@@ -255,6 +260,7 @@ import {
   LoadingOutlined,
 	MenuFoldOutlined,
 	MenuUnfoldOutlined,
+  UploadOutlined,
 	SaveOutlined,
   SyncOutlined,
 	TableOutlined }
