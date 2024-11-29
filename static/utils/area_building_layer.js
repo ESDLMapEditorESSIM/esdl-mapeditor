@@ -639,9 +639,9 @@ function calcPieChartRadius(kpiItemsSum, kpiSumMin, kpiSumMax, resizeFactor=1.0)
 /**
  *
  * @param {Object} ar area feature object
- * @param {Object|null} refAreaDistKPIs reference area KPIs with structure as { KPI key: { type: string, names: string[] }, ... }
- *                                    and used as a pie chart data template to ensure data structure consistency.
- *                                    If not given, the pie chart is created based on the area feature dist_KPIs property.
+ * @param {Object} refAreaDistKPIs reference area KPIs with structure as { KPI key: { type: string, names: string[] }, ... }
+ *                                 and used as a pie chart data template to ensure data structure consistency.
+ *                                 If not given, the pie chart is created based on the area feature dist_KPIs property.
  * @param {Object} refDistKPIsRange KPIs range used as a reference to compute relative pie chart radius.
  * @param {number} [resizeFactor=1.0] Resize the pie chart radius when given. Default to 1.
  */
@@ -686,12 +686,15 @@ function create_area_dist_KPIs_pie_chart(ar, refAreaDistKPIs, refDistKPIsRange, 
             let chartDataItemNames = distKPI.value.map((ele) => ele.name);
             // If refAreaDistKPIs is given, use it for pie chart data item names
             // to avoid possible pie chart data inconsistency among different area features.
-            if (refAreaDistKPIs && refAreaDistKPIs[KPI] &&
+            if (Object.keys(refAreaDistKPIs).length && refAreaDistKPIs[KPI] &&
                 refAreaDistKPIs[KPI].type === "distributionKPI" && 
                 refAreaDistKPIs[KPI].names.length) 
             {
                 chartDataItemNames = refAreaDistKPIs[KPI].names;
             }
+
+            // Sort data item names in alphabetical order
+            chartDataItemNames.sort((a, b) => String(a).localeCompare(String(b)));
 
             chartDataItemNames.forEach((itemName, idx) => {
                 const distKPIItem = distKPI.value.find((item) => item.name === itemName);
@@ -709,6 +712,7 @@ function create_area_dist_KPIs_pie_chart(ar, refAreaDistKPIs, refDistKPIsRange, 
                         return `${value.toFixed(2)} ${unit}`;
                     }
                 };
+                pieChartOptions.rotation = -90;
             });
 
             distKPI.pieChartMarker = new L.PieChartMarker(
@@ -1246,6 +1250,7 @@ function removeAreaLegend() {
 function add_area_geojson_layer_with_legend(geojson_area_data) {
     area_KPIs = {};
     preprocess_layer_data("area", geojson_area_data, area_KPIs);
+    set_area_kpi_list(active_layer_id, area_KPIs);
 
     removeAreaLegend();
     if (!jQuery.isEmptyObject(area_KPIs)) {
