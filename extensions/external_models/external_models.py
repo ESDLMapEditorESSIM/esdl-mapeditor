@@ -116,9 +116,6 @@ class ExternalModels:
                 if key not in top_keys + omit_keys + [LOGS]:
                     text += f"<br>{key}: <b>{pretty_print_html(value, '&emsp;')}</b>"
 
-            if ESDL_FEEDBACK in model_run_data:
-                esdl_feedback = model_run_data[ESDL_FEEDBACK].replace("\n", "<br>")
-                text += f"<br><br>logs:<br>{esdl_feedback}<br>"
             if LOGS in model_run_data:
                 logs = model_run_data[LOGS].replace("\n", "<br>")
                 text += f"<br><br>logs:<br>{logs}<br>"
