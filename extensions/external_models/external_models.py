@@ -16,6 +16,7 @@ from extensions.external_models.external_models_storage import (
     OUTPUT_ESDL,
     LOGS,
     SUBMITTED_TO_EXTERNAL_MODEL_AT,
+    ESDL_FEEDBACK,
 )
 from src.tno.shared.util import pretty_print_html, parse_string_with_parameters
 
@@ -114,6 +115,10 @@ class ExternalModels:
             for key, value in model_run_data.items():
                 if key not in top_keys + omit_keys + [LOGS]:
                     text += f"<br>{key}: <b>{pretty_print_html(value, '&emsp;')}</b>"
+
+            if ESDL_FEEDBACK in model_run_data:
+                esdl_feedback = model_run_data[ESDL_FEEDBACK].replace("\n", "<br>")
+                text += f"<br><br>logs:<br>{esdl_feedback}<br>"
             if LOGS in model_run_data:
                 logs = model_run_data[LOGS].replace("\n", "<br>")
                 text += f"<br><br>logs:<br>{logs}<br>"
@@ -168,7 +173,7 @@ class ExternalModels:
             )
 
         @self.socketio.on("get_user_group_paths", namespace="/esdl")
-        def external_models_delete_run() -> list:
+        def get_user_group_paths() -> list:
             """
             Get user group paths.
 

@@ -1394,9 +1394,25 @@ def get_first_last_of_line(line):
 
 
 @executor.job
-def call_process_energy_system(esh, filename=None, es_title=None, app_context=None, force_update_es_id=None, zoom=True):
-    process_energy_system(esh, filename=filename, es_title=es_title, app_context=app_context, force_update_es_id=force_update_es_id, zoom=zoom)
-
+def call_process_energy_system(
+        esh,
+        filename=None,
+        es_title=None,
+        app_context=None,
+        force_update_es_id=None,
+        zoom=True,
+        result_post_esdl_load=None,
+):
+    process_energy_system(
+        esh,
+        filename=filename,
+        es_title=es_title,
+        app_context=app_context,
+        force_update_es_id=force_update_es_id,
+        zoom=zoom,
+    )
+    if result_post_esdl_load:
+        emit('esdl_service_result', result_post_esdl_load)
 
 # ---------------------------------------------------------------------------------------------------------------------
 #  React on commands from the browser (add, remove, ...)
@@ -2951,9 +2967,13 @@ def query_esdl_services(params):
         esdl_service_result = str(exc)
 
     logger.debug('emitting result to browser')
+    esdl_service_result_post_esdl_load = None
     if esdl_service_ok:
         if esdl_service_result is not None:
-            emit('esdl_service_result', esdl_service_result)
+            if backend_action and "run_after_esdl_loaded" in backend_action and backend_action["run_after_esdl_loaded"]:
+                esdl_service_result_post_esdl_load = esdl_service_result
+            else:
+                emit('esdl_service_result', esdl_service_result)
     else:
         message = 'Error calling service'
         if isinstance(esdl_service_result, str):
@@ -2967,7 +2987,9 @@ def query_esdl_services(params):
             force_update_es_id = backend_action["force_update_es_id"]
 
     # logger.debug('processing energy system')
-    call_process_energy_system.submit(esh, force_update_es_id=force_update_es_id)
+    call_process_energy_system.submit(
+        esh, force_update_es_id=force_update_es_id, result_post_esdl_load=esdl_service_result_post_esdl_load
+    )
 
 
 @socketio.on('set_active_es_id', namespace='/esdl')

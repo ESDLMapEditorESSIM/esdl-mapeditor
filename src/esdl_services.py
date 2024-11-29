@@ -29,7 +29,7 @@ import src.log as log
 from esdl import esdl
 from esdl.esdl_handler import StringURI
 from esdl.processing import ESDLAsset, ESDLGeometry
-from extensions.external_models.external_models_storage import ExternalModelsStorage
+from extensions.external_models.external_models_storage import ExternalModelsStorage, ESDL_FEEDBACK
 from extensions.profiles import Profiles
 from extensions.session_manager import get_handler, get_session, set_session
 from extensions.settings_storage import SettingsStorage
@@ -412,7 +412,14 @@ class ESDLServices:
                             esdl_response = esdlstr_base64_bytes.decode("utf-8")
 
                     es, parse_info = esh.add_from_string(service["name"], esdl_response)
-                    # TODO deal with parse_info?
+
+                    if "show_asset_feedback" in service["result"][0] and service["result"][0]["show_asset_feedback"]:
+                        if ESDL_FEEDBACK in input_data:
+                            feedback = input_data[ESDL_FEEDBACK]
+                        else:
+                            feedback = {}
+
+                        return True, {"asset_feedback": feedback},  {"run_after_esdl_loaded": True}
 
                     if "animation" in service["result"][0]:
                         influxdb_host_override = None

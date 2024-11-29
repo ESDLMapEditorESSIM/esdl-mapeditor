@@ -28,7 +28,7 @@ import "@jsonforms/vue-vanilla/vanilla.css";
 
 const renderers = Object.freeze([...vanillaRenderers]);
 
-const ajv = new Ajv({allErrors: true, $data: true});
+const ajv = new Ajv({allErrors: true, useDefaults: true, $data: true});
 addFormats(ajv);
 
 const props = defineProps({

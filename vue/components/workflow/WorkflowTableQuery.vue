@@ -168,10 +168,15 @@ const doAction = (record, action) => {
 
 const actionEnabled = (action, row) => {
   if (action.enabled) {
-    //console.log("Action enabled: ", action, row);
+    // console.log("Action enabled: ", action, row);
     if (action.enabled.dataIndex) {
-      let value = row[action.enabled.dataIndex];
-      return !!action.enabled.values.includes(value);
+      if ("values" in action.enabled) {
+        let value = row[action.enabled.dataIndex];
+        return !!action.enabled.values.includes(value);
+      } else if ("exists" in action.enabled) {
+        const dataExists = action.enabled.dataIndex in row;
+        return action.enabled.exists ? dataExists : !dataExists;
+      }
     }
   }
   return true;  // default enabled
