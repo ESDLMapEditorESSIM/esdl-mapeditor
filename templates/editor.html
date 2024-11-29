@@ -1883,11 +1883,13 @@
     map.addControl(kpi_dashboard);
 
     const esdl_analytics_dialog_options = {
-        size: [ 1000, 600 ],
+        size: [ 1100, 700 ],
         minSize: [ 100, 100 ],
-        maxSize: [ 2200, 1400 ],
+        maxSize: [ 4000, 2000 ],
         anchor: [ 10, 50 ],
         initOpen: false,
+        state: 'maximized',
+        allowable_states: ['custom', 'maximized', 'minimized']
     }
     const esdl_analytics = new ESDLAnalytics(esdl_analytics_dialog_options);
     map.addControl(esdl_analytics);
