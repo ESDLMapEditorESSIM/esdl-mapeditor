@@ -130,17 +130,3 @@ class Data(BaseModel):
     year = db.Column(db.Integer)  # year as integer, e.g. 2030, 2040
     datetime = db.Column(db.DateTime)  # for timeseries data
     labels = db.Column(sqlite.JSON)  # extra labels for this datapoint using JSON
-
-
-@dataclass
-class Dashboard(TimedBaseModel):
-    owner = db.Column(db.String)
-    title = db.Column(db.String)
-    config = db.Column(sqlite.JSON)  # actual Dashboard configuration in JSON
-    parent_id = db.Column(db.Integer, db.ForeignKey("dashboard.id"), nullable=True)
-    parent = db.relationship("Dashboard")
-
-    # child_id = db.Column(db.Integer, db.ForeignKey('dashboard.id'))
-    # children = db.relationship('Dashboard', back_populates="parent", remote_side=['id'])
-    def as_dict(self):  # should use marshmellow
-        return {c.name: getattr(self, c.name) for c in self.__table__.columns}

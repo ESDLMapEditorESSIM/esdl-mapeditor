@@ -110,8 +110,10 @@ def update_kpi_metadata(kpi: esdl.KPI, data: Data):
 def aggreate_based_on_unit(qau: esdl.QuantityAndUnitType, values: Iterable[float]) -> float:
     """
     Aggregates a list of values based on the physical quantity of a unit. E.g. sum energy, but average power values.
+    
     :param qau: esdl.QuantityAndUnitType for the physical quantity
     :param values: List of values to aggregate
+    
     :return: the aggregated value (sum or mean)
     """
     if qau.physicalQuantity == esdl.PhysicalQuantityEnum.ENERGY or \
@@ -131,17 +133,17 @@ def check_qau(qau: esdl.AbstractQuantityAndUnit) -> esdl.QuantityAndUnitType:
     while isinstance(qau, esdl.QuantityAndUnitReference):
         qau = qau.reference
     if not qau:
-        #qau = build_qau_from_unit_string("GJ")
-        #qau.physicalQuantity = esdl.PhysicalQuantityEnum.ENERGY
         qau = esdl.QuantityAndUnitType()  # empty/unknown unit
     return qau
 
 def handle_profile(profile: esdl.GenericProfile, ds: DataSet, variable_name: str = None) -> [Data, esdl.QuantityAndUnitType, str]:
     """
     Process an esdl GenericProfile
+
     :param profile: Profile to process
     :param ds: Data set this data belongs to
     :param variable_name: variable name of this data point if already known, otherwise it will be created
+    
     :return: Data point, its unit and variable_name of this data point
     """
     container = profile.eContainer() # save profile container (e.g. asset, also in case it is a reference)
@@ -288,11 +290,14 @@ class DataManager:
                               filters=req_body.filters,
                               chart_type=req_body.chart_type)
 
-    def process_esdl(self, es: esdl.EnergySystem, owner: str, scenario_name=None) -> List[BaseModel]:
+    def process_esdl(self, es: esdl.EnergySystem, owner: str, scenario_name: str=None) -> List[BaseModel]:
         """
-        processes the ESDL with
+        Processes the ESDL and returns a list of DataSet, Variable, and Data as database entries.
+
         :param es: ecore EObject  (e.g. EnergySystem)
-        :param owner: the owner/email of the dataset that is created
+        :param owner: The owner/email of the dataset that is created
+        :param scenario_name: Optional string to describe the ESDL
+
         :return: List of database entries to add to the database (BaseModel subclasses)
         """
 
@@ -506,6 +511,7 @@ class DataManager:
             tables = self.process_esdl(es=es, owner=owner, scenario_name=scenario_name)
             session.add_all(tables)
             session.commit()
+            # Extracts the DataSet instance from the tables list for postprocessing. 
             ds = [d for d in tables if isinstance(d, DataSet)][0]
             self.update_filter_options(session, ds)
             
