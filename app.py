@@ -99,6 +99,7 @@ from src.model_contexts import ModelContexts
 from src.wms_layers import WMSLayers
 from src.table_editor import TableEditor
 from src.esdl_file_io import ESDLFileIO
+from src.esdl_file_import import ESDLFileImport
 from src.release_notes import ReleaseNotes
 from src.custom_icons import CustomIcons
 from src.kpi_dashboard import KPIDashboard
@@ -161,7 +162,15 @@ app.config['EXECUTOR_PROPAGATE_EXCEPTIONS'] = True # make sure errors are logged
 logger.info("Socket.IO Async mode: {}".format(settings.ASYNC_MODE))
 logger.info('Running inside uWSGI: {}'.format(is_running_in_uwsgi()))
 
-socketio = SocketIO(app, async_mode=settings.ASYNC_MODE, manage_session=False, path='/socket.io', logger=settings.FLASK_DEBUG)
+socketio = SocketIO(
+    app,
+    async_mode=settings.ASYNC_MODE,
+    manage_session=False,
+    path='/socket.io',
+    logger=settings.FLASK_DEBUG,
+    # engineio_logger=True,  # To debug socket-io stuff
+    # max_http_buffer_size=2**30,  # To allow bigger files through the socket
+)
 # logging.getLogger('engineio').setLevel(logging.WARNING)  # don't print all the messages
 
 # remove existing sessions when restarting, existing sessions will give errors
@@ -215,6 +224,7 @@ AssetsToBeAdded(app, socketio)
 AssetDrawToolbar(app, socketio, settings_storage)
 TableEditor(app, socketio, esdl_doc, settings_storage)
 ESDLFileIO(app, socketio, executor)
+ESDLFileImport(app, socketio, executor)
 ReleaseNotes(app, socketio, settings_storage)
 ESDL2Shapefile(app)
 ESDL2InlineProfile(app)
@@ -3001,30 +3011,33 @@ def process_file_command(message):
         set_session('active_es_id', es.id)
         set_session('es_filename', filename)
 
-    if message['cmd'] == 'import_esdl_from_file':
-        file_content = message['file_content']
-        filename = message['filename']
-        esh = get_handler()
+    # TODO: remove when import through post is stable
+    # if message['cmd'] == 'import_esdl_from_file':
+    #     file_content = message['file_content']
+    #     filename = message['filename']
+    #     esh = get_handler()
+    #
+    #     try:
+    #         try:
+    #             imported_es, parse_info = esh.add_from_string(name=filename, esdl_string=file_content,
+    #                                                           overwrite_existing=False)
+    #
+    #             if len(parse_info) > 0:
+    #                 info = ''
+    #                 for line in parse_info:
+    #                     info += line + "\n"
+    #                 send_alert("Warnings while opening {}:\n\n{}".format(filename, info))
+    #             call_process_energy_system.submit(esh, filename)  # run in seperate thread
+    #             set_session('active_es_id', imported_es.id)
+    #             set_session('es_filename', filename)
+    #         except EnergySystemWithSameIdExists:
+    #             send_alert('An EnergySystem with the same EnergySystem ID was already loaded. Remove this existing ' +
+    #                        'EnergySystem first and then try to import again')
+    #     except Exception as e:
+    #         logger.error("Error loading {}: {}".format(filename, e))
+    #         send_alert('Error interpreting ESDL from file - Exception: ' + str(e))
 
-        try:
-            try:
-                imported_es, parse_info = esh.add_from_string(name=filename, esdl_string=file_content,
-                                                              overwrite_existing=False)
 
-                if len(parse_info) > 0:
-                    info = ''
-                    for line in parse_info:
-                        info += line + "\n"
-                    send_alert("Warnings while opening {}:\n\n{}".format(filename, info))
-                call_process_energy_system.submit(esh, filename)  # run in seperate thread
-                set_session('active_es_id', imported_es.id)
-                set_session('es_filename', filename)
-            except EnergySystemWithSameIdExists:
-                send_alert('An EnergySystem with the same EnergySystem ID was already loaded. Remove this existing ' +
-                           'EnergySystem first and then try to import again')
-        except Exception as e:
-            logger.error("Error loading {}: {}".format(filename, e))
-            send_alert('Error interpreting ESDL from file - Exception: ' + str(e))
 
     # Do not store file_content in logging database
     if 'file_content' in message:

@@ -94,7 +94,6 @@ class ESDL2InlineProfile:
         if hasattr(asset, 'port'):
             ilog.debug("Converting profiles for ports")
             in_ports = [port for port in asset.port if isinstance(port, InPort)]
-
             for in_port in in_ports:
                 ESDL2InlineProfile.convert_profile_for_port(esi, in_port, handled_profiles, profiles_settings)
 
@@ -104,8 +103,8 @@ class ESDL2InlineProfile:
 
         if hasattr(asset, 'asset'):
             ilog.debug("Recursively converting profiles for sub-assets", asset_id=asset.id, asset_name=asset.name)
-            for asset in asset.asset:
-                ESDL2InlineProfile.convert_asset_profiles(asset, esi, handled_profiles, profiles_settings)
+            for sub_asset in asset.asset:
+                ESDL2InlineProfile.convert_asset_profiles(sub_asset, esi, handled_profiles, profiles_settings)
 
     @staticmethod
     def convert_profile_for_port(
