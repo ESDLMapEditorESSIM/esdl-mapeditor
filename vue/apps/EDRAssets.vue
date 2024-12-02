@@ -70,7 +70,7 @@
         :filter-option="filter_select"
         placeholder="Filter EDR assets on..."
         style="width: 100%"
-        @popupScroll="hide_jquery_ui_popup()"
+        @popup-scroll="hide_jquery_ui_popup()"
       />
     </div>
     <div>
@@ -83,7 +83,7 @@
         :filter-option="filter_select"
         placeholder="Filter EDR assets on..."
         style="width: 100%"
-        @popupScroll="hide_jquery_ui_popup()"
+        @popup-scroll="hide_jquery_ui_popup()"
       />
     </div>
 
@@ -97,7 +97,7 @@
         :filter-option="filter_select"
         placeholder="Select an asset from the EDR"
         style="width: 100%"
-        @popupScroll="hide_jquery_ui_popup()"
+        @popup-scroll="hide_jquery_ui_popup()"
       />
     </div>
 
@@ -116,13 +116,16 @@
       </a-button>
     </a-space>
   </a-space>
+  <spinner v-else />
 </template>
 
 <script>
 import axios from 'axios'
+import spinner from "@/components/Spinner.vue";
 
 export default {
   components: {
+    spinner
   },
   data() {
     return {

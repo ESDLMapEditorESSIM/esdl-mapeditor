@@ -158,12 +158,20 @@ class ETMInterface:
                         for sub_area in logical_group.area:
                             if sub_area.scope is esdl.AreaScopeEnum.MUNICIPALITY:
                                 emit("update-etm-query-log", f"Recalculating KPIs for area {sub_area.name} ({sub_area.id})")
-                                self.update_kpis_for_area(sub_area)
+                                try:
+                                    self.update_kpis_for_area(sub_area)
+                                except Exception:
+                                    logger.exception("Could not recalculate KPIs for area", sub_area_name=sub_area.name, sub_area_id=sub_area.id)
+                                    emit("update-etm-query-log", f"Could not recalculate KPIs for area {sub_area.name} ({sub_area.id})")
                             else:
                                 continue
             else:
                 emit("update-etm-query-log", f"Recalculating KPIs for area {area.name} ({area.id})")
-                self.update_kpis_for_area(area)
+                try:
+                    self.update_kpis_for_area(area)
+                except Exception:
+                    logger.exception("Could not recalculate KPIs for area", sub_area_name=sub_area.name, sub_area_id=sub_area.id)
+                    emit("update-etm-query-log", f"Could not recalculate KPIs for area {sub_area.name} ({sub_area.id})")
 
             return True
 

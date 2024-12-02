@@ -1229,56 +1229,53 @@ def update_coordinates(message):
     # object can be an EnergyAsset, Building, Potential or Note
     if object:
         undo_redo = pm.get_undo_redo_stack(object)
-        undo_redo.start_recording(combine_commands=True,
-                                  label="Change location of {}".format(object.name or object.eClass.name))
-        if isinstance(object, esdl.Note):
-            geom = object.mapLocation
-        else:
-            geom = object.geometry
-
-        if isinstance(geom, esdl.Point):
-            point = esdl.Point(lon=float(coords['lng']), lat=float(coords['lat']))
+        with undo_redo.track_changes(label="Change location of {}".format(object.name or object.eClass.name)):
             if isinstance(object, esdl.Note):
-                object.mapLocation = point
+                geom = object.mapLocation
             else:
-                object.geometry = point
-        # elif isinstance(geom, esdl.Polygon):
-        # Do nothing in case of a polygon
-        # only update the connection locations and mappings based on the center of the polygon
-        # that is given as a parameter.
+                geom = object.geometry
 
-        # update coordinates in asset_list
-        found_asset = False
+            if isinstance(geom, esdl.Point):
+                point = esdl.Point(lon=float(coords['lng']), lat=float(coords['lat']))
+                if isinstance(object, esdl.Note):
+                    object.mapLocation = point
+                else:
+                    object.geometry = point
+            # elif isinstance(geom, esdl.Polygon):
+            # Do nothing in case of a polygon
+            # only update the connection locations and mappings based on the center of the polygon
+            # that is given as a parameter.
 
-        # First try to find the asset in the asset_list (asset could be a building)
-        asset_list = get_session_for_esid(active_es_id, 'asset_list')
-        for a in asset_list:
-            if a[3] == obj_id:
-                a[5] = [coords['lat'], coords['lng']]
-                found_asset = True
-                break  # ready searching
+            # update coordinates in asset_list
+            found_asset = False
 
-        if not found_asset:
-            # Then try to find the asset in the building_list and update if so
-            building_list = get_session_for_esid(active_es_id, 'building_list')
-            for b in building_list:
-                if b[2] == obj_id:
-                    b[4] = [coords['lat'], coords['lng']]
+            # First try to find the asset in the asset_list (asset could be a building)
+            asset_list = get_session_for_esid(active_es_id, 'asset_list')
+            for a in asset_list:
+                if a[3] == obj_id:
+                    a[5] = [coords['lat'], coords['lng']]
+                    found_asset = True
                     break  # ready searching
 
-        if isinstance(object, (esdl.EnergyAsset, esdl.AbstractBuilding)):
-            # Update locations of connections on moving assets
-            update_asset_connection_locations(object, coords['lat'], coords['lng'])
+            if not found_asset:
+                # Then try to find the asset in the building_list and update if so
+                building_list = get_session_for_esid(active_es_id, 'building_list')
+                for b in building_list:
+                    if b[2] == obj_id:
+                        b[4] = [coords['lat'], coords['lng']]
+                        break  # ready searching
 
-        # Only potentially move an asset to a different Area if it was originally contained in an Area
-        # (to prevent assets moving from inside a Building or CompoundAsset to an Area)
-        if isinstance(object_container, esdl.Area):
-            area_id = find_area_location_based(pm, active_es_id, object)
-            area = pm.get_by_id(active_es_id, area_id)
-            if area and area != object_container:
-               area.asset.append(object)  # is a move operation: moves this object to another area
+            if isinstance(object, (esdl.EnergyAsset, esdl.AbstractBuilding)):
+                # Update locations of connections on moving assets
+                update_asset_connection_locations(object, coords['lat'], coords['lng'])
 
-        undo_redo.stop_recording()
+            # Only potentially move an asset to a different Area if it was originally contained in an Area
+            # (to prevent assets moving from inside a Building or CompoundAsset to an Area)
+            if isinstance(object_container, esdl.Area):
+                area_id = find_area_location_based(pm, active_es_id, object)
+                area = pm.get_by_id(active_es_id, area_id)
+                if area and area != object_container:
+                   area.asset.append(object)  # is a move operation: moves this object to another area
 
 
 @socketio.on('update-line-coord', namespace='/esdl')
@@ -1292,30 +1289,28 @@ def update_line_coordinates(message):
 
     if asset:
         undo_redo = pm.get_undo_redo_stack(asset)
-        undo_redo.start_recording(combine_commands=True,
-                                  label="Change geometry of {}".format(asset.name or asset.eClass.name))
-        polyline_data = message['polyline']
-        # logger.debug(polyline_data)
-        # logger.debug(type(polyline_data))
-        polyline_length = float(message['length'])
-        asset.length = polyline_length
+        with undo_redo.track_changes(combine_commands=True, label="Change geometry of {}".format(asset.name or asset.eClass.name)):
+            polyline_data = message['polyline']
+            # logger.debug(polyline_data)
+            # logger.debug(type(polyline_data))
+            polyline_length = float(message['length'])
+            asset.length = polyline_length
 
-        line = esdl.Line()
-        for i in range(0, len(polyline_data)):
-            coord = polyline_data[i]
-            point = esdl.Point(lon=coord['lng'], lat=coord['lat'])
-            line.point.append(point)
-        asset.geometry = line
+            line = esdl.Line()
+            for i in range(0, len(polyline_data)):
+                coord = polyline_data[i]
+                point = esdl.Point(lon=coord['lng'], lat=coord['lat'])
+                line.point.append(point)
+            asset.geometry = line
 
-        # update coordinates in asset_list
-        asset_list = get_session_for_esid(active_es_id, 'asset_list')
-        for a in asset_list:
-            if a[3] == ass_id:
-                a[5] = [(coord['lat'], coord['lng']) for coord in polyline_data]
-                break  # ready searching
+            # update coordinates in asset_list
+            asset_list = get_session_for_esid(active_es_id, 'asset_list')
+            for a in asset_list:
+                if a[3] == ass_id:
+                    a[5] = [(coord['lat'], coord['lng']) for coord in polyline_data]
+                    break  # ready searching
 
-        update_transport_connection_locations(ass_id, asset, polyline_data)
-        undo_redo.stop_recording()
+            update_transport_connection_locations(ass_id, asset, polyline_data)
         emit('update_undo_redo_stack', serialize_command_stack(undo_redo))
 
 @socketio.on('update-polygon-coord', namespace='/esdl')
@@ -1329,23 +1324,21 @@ def update_polygon_coordinates(message):
 
     if asset:
         undo_redo = pm.get_undo_redo_stack(asset)
-        undo_redo.start_recording(combine_commands=True,
-                                  label="Change geometry of {}".format(asset.name or asset.eClass.name))
-        polygon_data = message['polygon']
-        # logger.debug(polygon_data)
-        # logger.debug(type(polygon_data))
-        polygon_area = int(message['polygon_area'])
-        asset.surfaceArea = polygon_area
+        with undo_redo.track_changes(label="Change geometry of {}".format(asset.name or asset.eClass.name)):
+            polygon_data = message['polygon']
+            # logger.debug(polygon_data)
+            # logger.debug(type(polygon_data))
+            polygon_area = int(message['polygon_area'])
+            asset.surfaceArea = polygon_area
 
-        polygon_data = ESDLGeometry.remove_duplicates_in_polygon(polygon_data)
-        polygon_data = ESDLGeometry.remove_latlng_annotation_in_array_of_arrays(polygon_data)
-        polygon_data = ESDLGeometry.exchange_polygon_coordinates(polygon_data)  # --> [lon, lat]
-        polygon = ESDLGeometry.convert_pcoordinates_into_polygon(polygon_data)  # expects [lon, lat]
-        asset.geometry = polygon
+            polygon_data = ESDLGeometry.remove_duplicates_in_polygon(polygon_data)
+            polygon_data = ESDLGeometry.remove_latlng_annotation_in_array_of_arrays(polygon_data)
+            polygon_data = ESDLGeometry.exchange_polygon_coordinates(polygon_data)  # --> [lon, lat]
+            polygon = ESDLGeometry.convert_pcoordinates_into_polygon(polygon_data)  # expects [lon, lat]
+            asset.geometry = polygon
 
-        polygon_center = ESDLGeometry.calculate_polygon_center(polygon)
-        update_polygon_asset_connection_locations(ass_id, polygon_center)
-        undo_redo.stop_recording()
+            polygon_center = ESDLGeometry.calculate_polygon_center(polygon)
+            update_polygon_asset_connection_locations(ass_id, polygon_center)
         emit('update_undo_redo_stack', serialize_command_stack(undo_redo))
 
 
@@ -1777,6 +1770,7 @@ def process_command(message):
                                     else esdl.OutPort.eClass.name
                                 send_alert(
                                     "Please connect the {} to an {}".format(object_type, other_type))
+                                undo_redo.stop_recording()
                                 return
 
                             require_reversed = False  # to indicate the coordinates of the line need reversal

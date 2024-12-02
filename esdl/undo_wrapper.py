@@ -45,31 +45,9 @@ def undo_record_changes(label: str, change_context: ChangeContext = None):
             # active_es_id = get_session('active_es_id')
             # stack = pm.get_undo_redo_stack(es_id=active_es_id)
             stack = pm.get_undo_redo_stack()
-            stack.start_recording(label=label, change_context=change_context)
-            result = fn(*args, **kwargs)
-            stack.stop_recording()
+            with stack.track_changes(label=label, change_context=change_context):
+                result = fn(*args, **kwargs)
             emit('update_undo_redo_stack', serialize_command_stack(stack))
             return result
         return wrapped_record_changes
     return internal_recording
-
-
-@contextmanager
-def undo_record_changes_context(label: str, change_context: ChangeContext = None, combine_commands=True):
-    """
-    Context manager for recording changes. Example usage:
-
-    with undo_record_changes_context("My label"):
-        # do stuff
-
-    :param label:
-    :param combine_commands:
-    :return:
-    """
-    pm = get_project_manager()
-    stack = pm.get_undo_redo_stack()
-    stack.start_recording(label=label, combine_commands=combine_commands, change_context=change_context)
-    try:
-        yield
-    finally:
-        stack.stop_recording()

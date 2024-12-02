@@ -62,28 +62,27 @@ class ESDLBrowser:
             pm = get_project_manager()
             active_es_id = get_session('active_es_id')
             stack = pm.change_tracker.get_tracker_stack(pm.get_active_energy_system())
-            stack.start_recording(combine_commands=True, label='Create {}'.format(message['type']))
-            parent_object = self.get_object_from_identifier(message['parent'])
-            reference_name = message['name']
-            attribute = parent_object.eClass.findEStructuralFeature(reference_name)
-            if attribute is not None:
-                object_type = message['type']
-                new_object = ESDLEcore.instantiate_type(object_type)
-                if attribute.many:
-                    eOrderedSet = parent_object.eGet(reference_name)
-                    eOrderedSet.append(new_object)
+            with stack.track_changes(combine_commands=True, label='Create {}'.format(message['type'])):
+                parent_object = self.get_object_from_identifier(message['parent'])
+                reference_name = message['name']
+                attribute = parent_object.eClass.findEStructuralFeature(reference_name)
+                if attribute is not None:
+                    object_type = message['type']
+                    new_object = ESDLEcore.instantiate_type(object_type)
+                    if attribute.many:
+                        eOrderedSet = parent_object.eGet(reference_name)
+                        eOrderedSet.append(new_object)
+                    else:
+                        parent_object.eSet(reference_name, new_object)
                 else:
-                    parent_object.eSet(reference_name, new_object)
-            else:
-                print("Error: Can't find reference {} of {}", reference_name, parent_object.name)
-                return
-            if hasattr(new_object, 'id'):
-                new_object.id = str(uuid4())
-                pm.add_object_to_dict(active_es_id, new_object)
-            if hasattr(new_object, 'name'):
-                new_object.name = 'New' + new_object.eClass.name
-            browse_data = self.get_browse_to_data(new_object)
-            stack.stop_recording()
+                    print("Error: Can't find reference {} of {}", reference_name, parent_object.name)
+                    return
+                if hasattr(new_object, 'id'):
+                    new_object.id = str(uuid4())
+                    pm.add_object_to_dict(active_es_id, new_object)
+                if hasattr(new_object, 'name'):
+                    new_object.name = 'New' + new_object.eClass.name
+                browse_data = self.get_browse_to_data(new_object)
             emit('esdl_browse_to', browse_data, namespace='/esdl')
 
         @self.socketio.on('esdl_browse_delete_ref', namespace='/esdl')

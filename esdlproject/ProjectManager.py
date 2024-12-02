@@ -469,11 +469,13 @@ class ProjectManager:
             if isinstance(high_level_change, HighLevelChange):
                 if record_changes:
                     tracker.stack.start_recording(label=high_level_change.label)
-                logger.debug(f"Apply variant change: High level change {high_level_change.label}")
-                for change in high_level_change.change:
-                    applyChange(change, resource)
-                if record_changes:
-                    tracker.stack.stop_recording()
+                try:
+                    logger.debug(f"Apply variant change: High level change {high_level_change.label}")
+                    for change in high_level_change.change:
+                        applyChange(change, resource)
+                finally:
+                    if record_changes:
+                        tracker.stack.stop_recording()
             else:
                 logger.warn(f"Fixme: ignoring DetailedChanges at this level")
 

@@ -142,20 +142,19 @@ class ResidentialArea:
                     area = pm.get_by_id(active_es_id, area_id)
                     if area:
                         stack = pm.get_undo_redo_stack(es_id=active_es_id)
-                        stack.start_recording(label="Add residential area")
+                        with stack.track_changes(label="Add residential area"):
+                            aggr_bld.geometry = esdl.Point(lat=float(params["lat"]), lon=float(params["lon"]))
+                            area.asset.append(aggr_bld)
+                            pm.add_object_to_dict(active_es_id, aggr_bld, recursive=True)
 
-                        aggr_bld.geometry = esdl.Point(lat=float(params["lat"]), lon=float(params["lon"]))
-                        area.asset.append(aggr_bld)
-                        pm.add_object_to_dict(active_es_id, aggr_bld, recursive=True)
-
-                        buildings_to_be_added_list = list()
-                        extra_attributes = dict()
-                        extra_attributes['assetType'] = aggr_bld.assetType
-                        buildings_to_be_added_list.append(['point', aggr_bld.name, aggr_bld.id, type(aggr_bld).__name__,
-                                                           [aggr_bld.geometry.lat, aggr_bld.geometry.lon],
-                                                           False, {}, extra_attributes])
-                        building_list = get_session_for_esid(active_es_id, 'building_list')
-                        building_list.extend(buildings_to_be_added_list)
+                            buildings_to_be_added_list = list()
+                            extra_attributes = dict()
+                            extra_attributes['assetType'] = aggr_bld.assetType
+                            buildings_to_be_added_list.append(['point', aggr_bld.name, aggr_bld.id, type(aggr_bld).__name__,
+                                                               [aggr_bld.geometry.lat, aggr_bld.geometry.lon],
+                                                               False, {}, extra_attributes])
+                            building_list = get_session_for_esid(active_es_id, 'building_list')
+                            building_list.extend(buildings_to_be_added_list)
 
                         emit(
                             'add_building_objects',
@@ -166,7 +165,6 @@ class ResidentialArea:
                             },
                             namespace='/esdl'
                         )
-                        stack.stop_recording()
                     else:
                         logger.error("Area to which aggregated building should be added, could not be found")
                 else:

@@ -78,19 +78,18 @@ class UndoRedoCommandStack:
         self.post_process_list: List[Notification] = []
         self.change_context: ChangeContext = ChangeContext(source=ChangeSource.INTERNAL, resource=self.resource)
         self.recording_lock = threading.Lock()
+        self._failed_lock_acquire_count = 0
 
     @property
     def top(self) -> ep.AbstractChange | None:
         """
-        Returns the element at the top of the stack. Returns None if the stack is empty or the stack index is out of
-        bounds.
+        Returns the element at the top of the stack. Returns None if the stack is empty.
         """
         if self.stack_index < 0:
             return None
-        try:
-            return self.stack[self.stack_index]
-        except IndexError:
-            return None
+        # make sure the stack index is not out of bounds.
+        self.stack_index = min(len(self.stack) - 1, self.stack_index)
+        return self.stack[self.stack_index]
 
     @property
     def next_top(self) -> ep.AbstractChange | None:
@@ -133,7 +132,21 @@ class UndoRedoCommandStack:
         :param label: name of the label of the action that is recorded.
         :param change_context: the context of the change, default INTERNAL
         """
-        self.recording_lock.acquire()  # lock is released in stop_recording()
+        logger.debug("Acquiring recording lock", label=label)
+        acquired = self.recording_lock.acquire(timeout=10)  # lock is released in stop_recording()
+        if acquired:
+            self._failed_lock_acquire_count = 0
+        else:
+            self._failed_lock_acquire_count += 1
+            logger.warning("Could not acquire recording lock", attempt=self._failed_lock_acquire_count, label=label)
+            if self._failed_lock_acquire_count > 5:
+                # Probably this is a deadlock. Some process is not releasing the lock.
+                self.recording_lock.release()
+                acquired = self.recording_lock.acquire(timeout=10)
+                if not acquired:
+                    raise TimeoutError("Could not acquire recording lock (even by forcing)")
+            else:
+                raise TimeoutError("Could not acquire recording lock")
         self._update_context(change_context)
         logger.debug(f"=== start recording: {label} =====================================")
         self._recording = True
@@ -145,7 +158,7 @@ class UndoRedoCommandStack:
         return self._recording
 
     @contextmanager
-    def track_changes(self, label: str, change_context: ChangeContext = None,
+    def track_changes(self, label: str, combine_commands: bool = True, change_context: ChangeContext = None,
                       call_change_handler: bool = True):
         """
         Convenience method with context manager to track changes using this stack.
@@ -157,7 +170,7 @@ class UndoRedoCommandStack:
         call_change_handler - whether the change_handler should be called afterwards (default=True)
         """
         self._update_context(change_context)
-        self.start_recording(label=label, change_context=self.change_context)
+        self.start_recording(label=label, combine_commands=combine_commands, change_context=self.change_context)
         try:
             yield
         finally:
@@ -178,7 +191,7 @@ class UndoRedoCommandStack:
             yield
         finally:
             if not self.recording_lock.locked() and reset:
-                self.recording_lock.acquire()
+                self.recording_lock.acquire(timeout=10)
                 self._recording = True
 
 
@@ -265,7 +278,7 @@ class UndoRedoCommandStack:
         index = self.stack_index + 1
         self.stack.insert(index, abstract_change)
         # self.stack[index] = abstract_change
-        self.stack_index = index
+        self.stack_index = min(index, len(self.stack) - 1)
         self.last_changed = datetime.now(timezone.utc)
         if isinstance(abstract_change, ep.HighLevelChange):
             logger.debug(f"Pushed {abstract_change.label} to the stack")
@@ -374,16 +387,6 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
 
     :return: None
     """
-    # Filter out any detailed changes from the stack.
-    if any(not isinstance(change, HighLevelChange) for change in stack.stack):
-        new_stack = []
-        for change in stack.stack:
-            if isinstance(change, HighLevelChange):
-                new_stack.append(change)
-            else:
-                logger.warning("Detailed change found in stack, removing it", change=change)
-                stack.stack.remove(change)
-
     if notification.notifier.eResource is None:  # if the object has not been added to a resource, ignore it.
         logger.debug("=== convertNotificationToChange ====== !!! No eResource for", notification=notification)
         return
