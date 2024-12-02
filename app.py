@@ -414,7 +414,7 @@ def logout():
     user_email = get_session('user-email')
     user_actions_logging.store_logging(user_email, "logout", "", "", "", {})
 
-    # Cleans up all user-associated data manager metadata before logging out.
+    # Cleanup all user-associated data manager metadata before logging out.
     data_manager.delete_dataset(db.session, None, user_email)
     
     oidc_auth_token = openid.get_full_oauth_token()

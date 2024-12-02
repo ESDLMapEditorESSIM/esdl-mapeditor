@@ -130,6 +130,9 @@ def aggreate_based_on_unit(qau: esdl.QuantityAndUnitType, values: Iterable[float
     return value
 
 def check_qau(qau: esdl.AbstractQuantityAndUnit) -> esdl.QuantityAndUnitType:
+    # TODO: Handle cases when multiple profile references are 
+    # presented or the profile is a 'relative profile'
+    # See discussion: https://ci.tno.nl/gitlab/GEIS/esdl-mapeditor/-/merge_requests/39#note_754191
     while isinstance(qau, esdl.QuantityAndUnitReference):
         qau = qau.reference
     if not qau:
@@ -152,7 +155,7 @@ def handle_profile(profile: esdl.GenericProfile, ds: DataSet, variable_name: str
         multiplier = multiplier * profile.multiplier
         profile = profile.reference
     qau = check_qau(profile.profileQuantityAndUnit)
-    d = Data(dataset=ds, value=0) # default no value
+    d = Data(dataset=ds, value=None) # Default value to None
     if isinstance(profile, esdl.TimeSeriesProfile):
         ts_profile: esdl.TimeSeriesProfile = profile
         aggregate = aggreate_based_on_unit(qau, ts_profile.values) * multiplier
@@ -220,6 +223,11 @@ def handle_profile(profile: esdl.GenericProfile, ds: DataSet, variable_name: str
     # else:
     #     # e.g. container is Profiles section, we can ignore these as they are not directy attached to an asset port
     #     continue
+
+    if d.value is None:
+        logger.warning(f"Data value of {d.variable} [{d.dataset}] is None")
+        # To handle None value if required...
+
     return d, qau, variable_name
 
 def preprocess_column(column_name: str, db_engine_driver: str = "sqlite") -> Any:

@@ -119,7 +119,7 @@ class Data(BaseModel):
     dataset = db.relationship(DataSet, cascade="all, delete")
     variable_id = db.Column(db.Integer, db.ForeignKey(Variable.id), nullable=False)
     variable = db.relationship(Variable, cascade="all, delete")
-    value = db.Column(db.Float, nullable=False)
+    value = db.Column(db.Float, nullable=True)
     sector = db.Column(db.String)  # TODO: add hierarchy, for now using | as separator
     region = db.Column(db.String)  # TODO: add hierarchy, for now using | as separator, JSON would also be an option?
     node = db.Column(db.String)  # fromNode for FLOW data
