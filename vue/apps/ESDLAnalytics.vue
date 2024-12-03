@@ -352,19 +352,41 @@ const onSelectDataset = () => {
   groupbySelected.value = [];
   filterSelected.value = [];
 
-  updateVariables();
-  updateTrace();
+  updateVariables().then(() => {
+    updateTrace();
+  });
 };
 
 const onSelectVariable = (variable) => {
-  // Resets selected groupby, and filter to the default state.
-  groupbySelected.value = [];
-  filterSelected.value = [];
 
   isProfileVariable.value = variableOptions.value[variable].datatype === 'PROFILE';
 
-  updateColumns();
-  updateTrace();
+  updateColumns().then(() => {
+    // Retains user-applied groupbys and filters if they match the new variable options; discard otherwise.
+    const appliedGroupbys = groupbySelected.value;
+    const varGroupbyOptions = groupbyOptions.value.map(opt => opt.value);
+    groupbySelected.value = appliedGroupbys.filter((g) => varGroupbyOptions.includes(g));
+
+    const appliedFilters = filterSelected.value;
+    const varFilterOptions = [];
+    filterOptions.value.forEach((opt) => {
+      opt.children.forEach((c) => {
+        varFilterOptions.push([opt.value, c.value]);
+      });
+    });
+    filterSelected.value = appliedFilters.filter((f) => {
+      // filter is applied at the parent level (e.g. ['region'])
+      if (f.length === 1 && varFilterOptions.some(opt => opt[0] === f[0])) {
+        return f;
+      } 
+      // filter is applied at the parent-child combined level (e.g. ['region', 'Utrecht'])
+      else if (varFilterOptions.some(opt => opt[0] === f[0] && opt[1] === f[1])) {
+        return f;
+      }
+    });
+
+    updateTrace();
+  });
 };
 
 const onSelectGroupBy = () => {
