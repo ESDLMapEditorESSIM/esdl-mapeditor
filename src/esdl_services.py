@@ -419,7 +419,11 @@ class ESDLServices:
                         else:
                             feedback = {}
 
-                        return True, {"asset_feedback": feedback},  {"run_after_esdl_loaded": True}
+                        return (
+                            True,
+                            {"asset_feedback": feedback},
+                            {"force_update_es_id": es.id, "run_after_esdl_loaded": True},
+                        )
 
                     if "animation" in service["result"][0]:
                         influxdb_host_override = None
@@ -465,10 +469,14 @@ class ESDLServices:
                             )
                         except Exception as e:
                             logger.error(e)
-                            return False, (
-                                f"\nCould not retrieve animation data, "
-                                f"problem querying InfluxDB on host: '{influxdb_client._host}'"
-                            ), None
+                            return (
+                                False,
+                                (
+                                    f"\nCould not retrieve animation data, "
+                                    f"problem querying InfluxDB on host: '{influxdb_client._host}'"
+                                ),
+                                None,
+                            )
                     if "external_link" in service["result"][0]:
                         model_run_data = self.models_storage.get_model_run(state_params["run_id"])
                         external_link_url = get_nested_dict_value(
@@ -504,11 +512,7 @@ class ESDLServices:
                                 add_assets_to_area[area.id] = [add_assets]
                             else:
                                 logger.error("add_assets service config not handled properly yet!")
-                                return (
-                                    False,
-                                    "add_assets service config not handled properly yet!",
-                                    None
-                                )
+                                return (False, "add_assets service config not handled properly yet!", None)
 
                     # If service returns an ESDL string that represents one asset, add it to the main area
                     if isinstance(add_assets_service_result, str):
@@ -722,12 +726,16 @@ class ESDLServices:
                         run_input_data=parameters,
                         user_name=user,
                     )
-                    return True, {
-                        "message": f"Run submitted: '{state_params['run_name']}'",
-                        "model_run_doc": model_run_doc,
-                        "model_job_id": model_job_id,
-                        "hide_button": True,
-                    }, None
+                    return (
+                        True,
+                        {
+                            "message": f"Run submitted: '{state_params['run_name']}'",
+                            "model_run_doc": model_run_doc,
+                            "model_job_id": model_job_id,
+                            "hide_button": True,
+                        },
+                        None,
+                    )
             else:
                 if url_response is not None:
                     logger.warning(

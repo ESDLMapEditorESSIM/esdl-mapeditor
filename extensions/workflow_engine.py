@@ -153,7 +153,7 @@ class WorkflowStep:
                 elif updated_values[STATUS] in completed_statuses["error"]:
                     logger.info(
                         f"Workflow engine sequence for user '{self.sequence_data.user_email}' terminated"
-                        f" with status'{updated_values[STATUS]}': sequence '{self.sequence_data.run_id}'."
+                        f" with status '{updated_values[STATUS]}': sequence '{self.sequence_data.run_id}'."
                     )
                     return False
                 elif nr_of_retries * retry_interval_seconds > maximum_wait_seconds:
