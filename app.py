@@ -3139,6 +3139,7 @@ def process_command(message):
             call_process_energy_system.submit(force_update_es_id=active_es.id, zoom=False)  # run in seperate thread
         else:
             send_alert("Nothing to undo at this time")
+        undo_redo.start_recording(label="undo")  # TODO fixme: do start recording, because below is stop_recording otherwise issue with the lock...
 
     if message['cmd'] == 'redo':
         logger.debug(f'Redo stack: {undo_redo.stack}')
@@ -3149,6 +3150,7 @@ def process_command(message):
             call_process_energy_system.submit(force_update_es_id=active_es.id, zoom=False)  # run in seperate thread
         else:
             send_alert("Nothing to redo at this time")
+        undo_redo.start_recording(label="rndo")  # TODO fixme: do start recording, because below is stop_recording otherwise issue with the lock...
 
     if message['cmd'] == 'undo_redo_until':
         target_idx = message['target_idx']
@@ -3160,6 +3162,7 @@ def process_command(message):
         while diff < 0 and undo_redo.can_redo():
             undo_redo.redo()
             diff += 1
+        undo_redo.start_recording(label="undo")  # TODO fixme: do start recording, because below is stop_recording otherwise issue with the lock...
         call_process_energy_system.submit(force_update_es_id=active_es.id, zoom=False)  # run in seperate thread
 
     if message['cmd'] == 'debug':

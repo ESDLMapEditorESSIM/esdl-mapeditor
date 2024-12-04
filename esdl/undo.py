@@ -59,7 +59,7 @@ class UndoRedoCommandStack:
     Use -1 to create an unlimited stack.
     change_handler is a callback function that receives a HighLevelChange when a new change is generated
     """
-    stack: list[HighLevelChange]
+    #stack: list[HighLevelChange]
 
     def __init__(self, variant: ep.Variant, resource: XMLResource, max_stack_length: int = -1, change_handler=None):
         # The actual changes. Right now it is a list of pyEcore commands.
@@ -207,7 +207,7 @@ class UndoRedoCommandStack:
                             on changes, e.g. when replaying changes to a resource.
         """
         logger.debug("=== stop recording =====================================")
-        self._combine_multiple_changes = False
+        self._combine_multiple_changes = False  # this triggers that the HighLevelChange is added to the stack
         if self._hlc is not None and len(self._hlc.change) > 0:
             # filter out eOpposite relations that are double (e.g. connectedTo)
             filtered, _ = filterDoubleConnectedTo(self._hlc.change)
