@@ -275,7 +275,8 @@ class DataManager:
 
         @self.socketio.on("datamanager/datasets", namespace="/esdl")
         def _get_datasets() -> list:
-            return self.get_datasets(db.session)
+            session_owner = get_session("user-email")
+            return self.get_datasets(db.session, owner=session_owner)
         
         @self.socketio.on("datamanager/variables", namespace="/esdl")
         def _get_variables(params: Dict) -> list:
@@ -592,13 +593,16 @@ class DataManager:
             logger.error(msg)
             return MetadataOperationResp(MetadataCRUDStatus.ERROR.value, msg)
 
-    def get_datasets(self, session: Session) -> list:
+    def get_datasets(self, session: Session, owner: str) -> list:
         """
-        Fetches and returns a list of dataset dictionaries ordered by their run_timestamp.
+        Fetches and returns a list of dataset dictionaries created by the owner and ordered by their run_timestamp.
         """
-        logger.info('Fetching DataManager datasets')
+        logger.info(f"Fetching DataManager datasets from owner: {owner}")
         response = []
-        datasets: List[DataSet] = session.query(DataSet).order_by(DataSet.run_timestamp).all()
+        datasets: List[DataSet] = session.query(DataSet)\
+                                    .where(DataSet.created_by == owner)\
+                                    .order_by(DataSet.run_timestamp)\
+                                    .all()
         for dataset in datasets:
             timestamp: datetime = dataset.run_timestamp
             response.append({
