@@ -113,18 +113,25 @@ def on_pm_refresh_request(message: LmiMessage):
     :return:
     """
     global LAST_PM_REFRESH_SENT
-    timestamp = message['timestamp']
-    if isinstance(timestamp, str):
-        # Parse the timestamp from string to datetime.
-        timestamp = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%f%z")
-    if LAST_PM_REFRESH_SENT is not None and LAST_PM_REFRESH_SENT >= timestamp:
-        logger.info("Ignoring PM refresh request, because the last refresh was already sent.")
-        return
-    send_project_manager_to_lmi()
-    LAST_PM_REFRESH_SENT = datetime.now(timezone.utc)
+
+    only_send_for_client_id = message.get("client_id")
+    if only_send_for_client_id:
+        send_project_manager_to_lmi(only_send_for_client_id=only_send_for_client_id)
+    else:
+        timestamp = message['timestamp']
+        if isinstance(timestamp, str):
+            # Parse the timestamp from string to datetime.
+            timestamp = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%f%z")
+        if LAST_PM_REFRESH_SENT is not None and LAST_PM_REFRESH_SENT >= timestamp:
+            logger.info("Ignoring PM refresh request, because the last refresh was already sent.")
+            return
+        send_project_manager_to_lmi()
+        LAST_PM_REFRESH_SENT = datetime.now(timezone.utc)
 
     # Also send the currently active LMI's, if any.
     for client_id, session_data in managed_sessions.items():
+        if only_send_for_client_id is not None and client_id != only_send_for_client_id:
+            continue
         active_application_context: ApplicationContext | None = session_data.get("application_context")
         if active_application_context is not None:
             for lmi in active_application_context.get("live_model_interfaces", []):
