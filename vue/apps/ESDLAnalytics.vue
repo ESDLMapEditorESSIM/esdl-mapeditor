@@ -24,43 +24,32 @@
               <a-typography-title :level="5">Dataset</a-typography-title>
               <a-select
                 v-model:value="datasetSelected"
+                :options="datasetOptions"
                 :disabled="datasetOptions.length === 0"
                 :placeholder="datasetSelectPlaceholder"
                 mode="multiple"
                 style="width: 100%"
                 @change="onSelectDataset"
-              >
-                <a-select-option
-                  v-for="option in datasetOptions"
-                  :key="option.value"
-                  :value="option.value"
-                >
-                  {{ option.label }}
-                </a-select-option>
-              </a-select>
+                @mouseleave="removeTooltipPopup"
+              />
             </a-row>
             <a-row>
               <a-typography-title :level="5">Variable</a-typography-title>
               <a-select
                 v-model:value="variableSelected"
+                :options="Object.values(variableOptions)"
                 :disabled="datasetSelected.length === 0"
                 :placeholder="datasetSelected.length === 0 ? 'First select a dataset' : 'Select a variable'"
                 style="width: 100%"
                 @change="onSelectVariable"
-              >
-                <a-select-option
-                  v-for="option in Object.values(variableOptions)"
-                  :key="option.value"
-                  :value="option.value"
-                >
-                  {{ option.label }}
-                </a-select-option>
-              </a-select>
+                @mouseleave="removeTooltipPopup"
+              />
             </a-row>
             <a-row>
               <a-typography-title :level="5">Group by</a-typography-title>
               <a-select
                 v-model:value="groupbySelected"
+                :options="groupbyOptions"
                 :disabled="datasetSelected.length === 0 || variableSelected === null" 
                 :placeholder="
                   datasetSelected.length === 0 ? 'First select a dataset'
@@ -72,15 +61,8 @@
                 mode="multiple"
                 style="width: 100%"
                 @change="onSelectGroupBy"
-              >
-                <a-select-option
-                  v-for="option in groupbyOptions"
-                  :key="option.value"
-                  :value="option.value"
-                >
-                  {{ option.label }}
-                </a-select-option>
-              </a-select>
+                @mouseleave="removeTooltipPopup"
+              />
               <span
                 v-if="chartType === 'bar' && groupbySelected.length > maxGroupbySelectedCount"
                 style="color: #ffc21a; padding: 2px;"
@@ -101,11 +83,8 @@
                     : 'Select a category'" 
                 allow-clear multiple
                 @change="onSelectFilters"
-              >
-                <template #tagRender="option">
-                  <a-tag>{{ option.label }}</a-tag>
-                </template>
-              </a-cascader>
+                @mouseleave="removeTooltipPopup"
+              />
             </a-row>
             <br>
             <!-- Bar chart configuration -->
@@ -272,6 +251,9 @@ const collapsed = ref(false);
 const loadingIcon = h(LoadingOutlined, {
   style: { fontSize: '5rem' }, spin: true
 });
+
+// to prevent stuck popup on UI
+const removeTooltipPopup = () => { window.jquery(".ui-tooltip-content").parents('div').remove();};
 
 // ------------------------------------- //
 // ------------ Graph Header ----------- //
