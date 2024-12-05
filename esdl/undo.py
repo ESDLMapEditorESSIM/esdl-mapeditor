@@ -227,7 +227,10 @@ class UndoRedoCommandStack:
             self._hlc = None
         self._recording = False
         self.change_context.source = ChangeSource.INTERNAL  # reset to default
-        self.recording_lock.release()
+        if self.recording_lock.locked():
+            self.recording_lock.release()
+        else:
+            logger.warning("Recording lock was already released when stopping recording")
 
     def add_undo_step(self, label=None):
         """
