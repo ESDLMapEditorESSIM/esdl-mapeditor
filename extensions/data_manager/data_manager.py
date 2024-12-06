@@ -22,6 +22,7 @@ from flask_socketio import SocketIO
 from sqlalchemy import select, delete, column, literal_column, func
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text, func
+from sqlalchemy.exc import IntegrityError
 import pandas as pd
 from pandas import DataFrame
 
@@ -263,7 +264,7 @@ class DataManager:
         def _add_or_update_metadata(params: Dict) -> str:
             req_body = MetadataUpdateRequestBody(**params)
             session_owner = get_session("user-email")
-            resp = self.add_or_update_metadata(db.session, es_id=req_body.es_id, scenario_name=req_body.scenario_name, owner=session_owner)
+            resp = self.add_or_update_metadata(db.session, es_id=req_body.es_id, owner=session_owner)
             return json.dumps(resp.__dict__)
         
         @self.socketio.on("datamanager/metadata/delete", namespace="/esdl")
@@ -299,13 +300,12 @@ class DataManager:
                               filters=req_body.filters,
                               chart_type=req_body.chart_type)
 
-    def process_esdl(self, es: esdl.EnergySystem, owner: str, scenario_name: str=None) -> List[BaseModel]:
+    def process_esdl(self, es: esdl.EnergySystem, owner: str) -> List[BaseModel]:
         """
         Processes the ESDL and returns a list of DataSet, Variable, and Data as database entries.
 
         :param es: ecore EObject  (e.g. EnergySystem)
         :param owner: The owner/email of the dataset that is created
-        :param scenario_name: Optional string to describe the ESDL
 
         :return: List of database entries to add to the database (BaseModel subclasses)
         """
@@ -320,11 +320,8 @@ class DataManager:
                 instance_datetime: datetime = first_instance.date.date
                 year = instance_datetime.year
 
-        if not scenario_name:
-            scenario_name = f"Data from {es.name}"
+        ds = DataSet(name=es.name, energy_system_id=es.id, created_by=owner, description=es.description, model="Unknown")
 
-        ds = DataSet(name=es.name, energy_system_id=es.id, created_by=owner, description=es.description, model="Unknown",
-                     scenario=scenario_name)
         for eobj in es.eAllContents():
             #variable_name = eobj.name if hasattr(eobj, 'name') else None
             variable_name = None
@@ -481,18 +478,17 @@ class DataManager:
             session.add(v)
             session.commit()
 
-    def add_or_update_metadata(self, session: Session, es_id: str, scenario_name: Optional[str], owner: str) -> MetadataOperationResp:
+    def add_or_update_metadata(self, session: Session, es_id: str, owner: str) -> MetadataOperationResp:
         """
         Adds or updates DataManager metadata for a given energy system.
         
         :param session: SQLAlchemy session object for database operations.
         :param es_id: The ID of the energy system to be added or updated.
-        :param scenario_name: Optional name of the scenario associated with the energy system.
         :param owner: Session owner (email)
 
         :return: MetadataOperationResp contains status and message strings
         """
-        logger.info(f"Adding or updating an energy system to metadata.")
+        logger.info(f"Adding or updating an energy system {es_id} to metadata.")
         
         esh = get_handler()
         es = esh.get_energy_system(es_id=es_id)
@@ -501,13 +497,15 @@ class DataManager:
             msg = f"Energy system with ID {es_id} not found."
             logger.error(msg)
             return MetadataOperationResp(MetadataCRUDStatus.ERROR.value, msg)
-        
-        # Check if the dataset already exists in DB.
-        existing_ds = self.get_datasets_by_name_and_owner(session, dataset_name=es.name, owner=owner)
-        to_overwrite = False
+                
+        ds_exists = self.same_ds_exists(session, es_id=es_id, dataset_name=es.name, owner=owner)
+
         warning_msg = ""
-        if len(existing_ds) > 0:
-            warning_msg = f"Dataset {es.name} created by {owner} already exist. "
+        to_overwrite = False
+        to_append = False # True if the new dataset has the same es_id but with a different name
+        if ds_exists:
+            # The same dataset is found, overwrites the existing one.
+            warning_msg = f"Dataset {es.name} [{es_id}] created by {owner} already exists. "
             resp = self.delete_dataset(session, dataset_name=es.name, owner=owner)
             if resp.status == MetadataCRUDStatus.SUCCESS.value:
                 to_overwrite = True
@@ -515,9 +513,18 @@ class DataManager:
                 error_msg = f"{warning_msg} Failed to delete existing dataset: {resp.message}"
                 logger.error(error_msg)
                 return MetadataOperationResp(MetadataCRUDStatus.ERROR.value, error_msg)
+        else:
+            # Checks if the new record is unique in 'name' + 'owner' (to fulfill data model unique constraint)
+            # If not, aborts the operation and returns an error message.
+            if self.ds_name_and_owner_is_not_unique(session, dataset_name=es.name, owner=owner):
+                error_msg = f"Failed to add dataset {es.name} [{es_id}]. The name must be unique. Please rename ESDL and try again."
+                logger.error(error_msg)
+                return MetadataOperationResp(MetadataCRUDStatus.ERROR.value, error_msg)
+            elif self.ds_with_same_id_but_different_name_exists(session, es_id=es_id, dataset_name=es.name, owner=owner):
+                to_append = True
 
         try:
-            tables = self.process_esdl(es=es, owner=owner, scenario_name=scenario_name)
+            tables = self.process_esdl(es=es, owner=owner)
             session.add_all(tables)
             session.commit()
             # Extracts the DataSet instance from the tables list for postprocessing. 
@@ -528,31 +535,48 @@ class DataManager:
                 warning_msg += "The dataset is now overwritten with the latest changes."
                 logger.warning(warning_msg)
                 return MetadataOperationResp(MetadataCRUDStatus.WARNING.value, warning_msg)
+            elif to_append:
+                append_msg = f"Dataset with the same id [{es_id}] already exists. Successfully appended as a new dataset {es.name}."
+                logger.warning(append_msg)
+                return MetadataOperationResp(MetadataCRUDStatus.WARNING.value, append_msg)
             else:
-                success_msg = f"Dataset {es.name} is successfully added."
+                success_msg = f"Dataset {es.name} [{es_id}] has been successfully added."
                 logger.info(success_msg)
                 return MetadataOperationResp(MetadataCRUDStatus.SUCCESS.value, success_msg)
         except Exception as e:
             session.rollback()
-            msg = f"An error occurred while adding or updating metadata: {e}"
+            if isinstance(e, IntegrityError):
+                msg = f"Failed to add dataset {es.name} [{es_id}]. The name must be unique. Please rename ESDL and try again."
+            else:
+                msg = f"An error occurred while adding or updating metadata: {e}"
             logger.error(msg)
             return MetadataOperationResp(MetadataCRUDStatus.ERROR.value, msg)
 
-    def get_datasets_by_name_and_owner(self, session: Session, dataset_name: str, owner: str) -> List[DataSet]:
-        """
-        Retrieves datasets filtered by name and owner.
-
-        :param session: SQLAlchemy session object for database operations.
-        :param dataset_name: The name of the dataset to retrieve.
-        :param owner: The owner (creator) of the dataset.
-
-        :return: A list of datasets that match the name and owner.
-        """
-        datasets: List[DataSet] = session.query(DataSet)\
-                                .where(DataSet.name == dataset_name)\
-                                .where(DataSet.created_by == owner)\
-                                .all()
-        return datasets
+    @staticmethod
+    def same_ds_exists(session: Session, es_id: str, dataset_name: str, owner: str) -> bool:
+        exists = session.query(DataSet)\
+            .where(DataSet.energy_system_id == es_id)\
+            .where(DataSet.name == dataset_name)\
+            .where(DataSet.created_by == owner)\
+            .first() is not None
+        return exists
+    
+    @staticmethod
+    def ds_name_and_owner_is_not_unique(session: Session, dataset_name: str, owner: str) -> bool:
+        exists = session.query(DataSet)\
+            .where(DataSet.name == dataset_name)\
+            .where(DataSet.created_by == owner)\
+            .first() is not None
+        return exists
+    
+    @staticmethod
+    def ds_with_same_id_but_different_name_exists(session: Session, es_id: str, dataset_name: str, owner: str) -> bool:
+        exists = session.query(DataSet)\
+            .where(DataSet.energy_system_id == es_id)\
+            .where(DataSet.name != dataset_name)\
+            .where(DataSet.created_by == owner)\
+            .first() is not None
+        return exists
     
     def delete_dataset(self, session: Session, dataset_name: Optional[str], owner: str) -> MetadataOperationResp:
         """
@@ -582,7 +606,7 @@ class DataManager:
                 session.execute(delete(Data).where(Data.dataset_id == ds.id))
                 session.execute(delete(Variable).where(Variable.dataset_id == ds.id))
                 session.execute(delete(DataSet).where(DataSet.id == ds.id))
-                deleted_ds.append(f"{ds.name} [{ds.id}]")
+                deleted_ds.append(f"{ds.name} [{ds.energy_system_id}]")
             session.commit()
             msg = f"Dataset(s) {', '.join(deleted_ds)} created by {owner} successfully deleted."
             logger.info(msg)
@@ -608,7 +632,6 @@ class DataManager:
             response.append({
                 'name': dataset.name,
                 'id': dataset.id,
-                'scenario': dataset.scenario,
                 'description': dataset.description,
                 'run_timestamp': timestamp.strftime('%Y-%m-%d %H:%M:%S')
             })
@@ -683,7 +706,7 @@ class DataManager:
         if len(group_by) == 1 and group_by[0] != 'year':
             group_by.insert(0, 'year')
         
-        group_by_param = [DataSet.scenario, DataSet.name] + [preprocess_column(group) for group in group_by]
+        group_by_param = [DataSet.name] + [preprocess_column(group) for group in group_by]
 
         if 'datetime' in group_by:
             # TODO: refinement needed
@@ -714,15 +737,13 @@ class DataManager:
         """
         Processes a DataFrame to create a table trace for visualization.
         """
-        if 'scenario' in df.columns and 'name' in df.columns:
-            # Concatenates name and scenario into a single column
-            df['dataset'] = df['name'] + ' (' + df['scenario'] + ')'
-            df.drop(columns=['name', 'scenario'], inplace=True)
-            # Ensure 'dataset' is the first column
+        # Renames 'name' to 'dataset' and ensures it is the first column
+        if 'name' in df.columns:
+            df.rename(columns={ 'name' : 'dataset'}, inplace=True)
             dataset_col = df.pop('dataset')
             df.insert(0, 'dataset', dataset_col)
 
-        # Ensure 'value' is the last column
+        # Ensures 'value' is the last column
         if 'value' in df.columns:
             val_col = df.pop('value')
             df.insert(len(df.columns), 'value', val_col)
@@ -767,19 +788,17 @@ class DataManager:
                 })
             else:
                 group_by.remove('datetime')  # make sure we never group by datetime
-                group_by.insert(0, 'scenario')  # if multiple scenarios are selected
                 for name, group in df.groupby(by=group_by, as_index=False):
                     traces.append({
                         'name': f'{name[-2]} - {name[-1]}' if isinstance(name, tuple) else name,
                         'x': list(group['datetime']),
                         'y': list(group['value']),
-                        'scenario': name[0] if isinstance(name, tuple) else name # scenario name to create subplots in frontend
                     })
         else:
             for name, group in df.groupby(by=group_by[-1], as_index=False):
                 traces.append({
                     'name': name[-1] if isinstance(name, tuple) else name,
-                    'x': [[f'{y} {x}' for x,y in zip(list(group['scenario']), list(group['name']) )], [str(x) for x in list(group[ group_by[0] ]) ]],
+                    'x': [[str(x) for x in list(group['name'])], [str(x) for x in list(group[group_by[0]])]],
                     'y': list(group['value'])
                 })
 
