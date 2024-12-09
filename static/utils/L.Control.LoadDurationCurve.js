@@ -124,7 +124,7 @@ L.Control.LoadDurationCurve = L.Control.extend({
 
         let datasets = [{
             data: data["ldc_series"],
-            label: "ldc",
+            label: asset_name,
             borderColor: "#3e95cd"
         }]
         if (power_pos) {

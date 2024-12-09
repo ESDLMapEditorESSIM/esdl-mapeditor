@@ -61,7 +61,7 @@ def get_panel_service_datasource(database, host=None, username=None, password=No
                     ps_influxdb_name = idb["name"]
                     break
     except Exception as e:
-        print('Exception: ' + str(e))
+        logger.exception("Error accessing Panelservice API")
         send_alert('Error accessing Panelservice API: ' + str(e))
 
     # Create a datasource if it's not available
@@ -92,7 +92,7 @@ def get_panel_service_datasource(database, host=None, username=None, password=No
                 ps_influxdb_name = None
         except Exception as e:
             ps_influxdb_name = None
-            print('Exception: ' + str(e))
+            logger.exception("Error accessing Panelservice API")
             send_alert('Error accessing Panelservice API: ' + str(e))
 
     return ps_influxdb_name
@@ -210,7 +210,7 @@ def create_panel(graph_title, axis_title, measurement, field, filters, qau, prof
 
     except Exception as e:
         embedUrl = None
-        print('Exception: ' + str(e))
+        logger.exception("Error accessing Panelservice API")
         send_alert('Error accessing Panelservice API: ' + str(e))
 
     logger.debug('Panel created with embedUrl: '+str(embedUrl))
@@ -272,7 +272,7 @@ def create_panel_multiple(graph_title, axis_title, dataset_info, qau, start_date
 
     except Exception as e:
         embedUrl = None
-        print('Exception: ' + str(e))
+        logger.exception("Error accessing Panelservice API")
         send_alert('Error accessing Panelservice API: ' + str(e))
 
     logger.debug('Panel created with embedUrl: '+str(embedUrl))

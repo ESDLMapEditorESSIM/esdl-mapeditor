@@ -419,6 +419,11 @@ h6 {
     opacity: 0.7;
 }
 
+.area-marker-resize-container {
+    display: flex;
+    padding-top: 6px;
+}
+
 /*
     Loader
 */
@@ -868,9 +873,9 @@ z-index for jstree context menu, sidebar has 2000
 }
 
 /*
-    TimeDimension / IELGAS
+    TimeDimension / LControlTDAssetsMonitorChart
 */
-.leaflet-ielgas {
+.leaflet-td-assets-monitor {
     padding: 0px;
     z-index: 2000;
     width: 800px;
@@ -881,7 +886,7 @@ z-index for jstree context menu, sidebar has 2000
     border-radius: 5px;
 }
 
-.leaflet-ielgas .close {
+.leaflet-td-assets-monitor .close {
     position: absolute;
     right: 0px;
     top: 0px;
@@ -899,20 +904,30 @@ z-index for jstree context menu, sidebar has 2000
     z-index: 2800;
 }
 
-.leaflet-ielgas .title {
+.leaflet-ldc .title,
+.leaflet-td-assets-monitor .title {
     width: 100%;
     background-color: green;
     color: white;
     padding-left: 10px;
     padding-top: 1px;
     padding-bottom: 1px;
+    font-size: 16pt;
+    font-weight: normal;
 }
 
-.leaflet-ielgas .content {
+.leaflet-ldc .content,
+.leaflet-td-assets-monitor .content {
     padding: 10px;
 }
 
 .textarea_srvs_mngmnt {
     width: 100%;
     height: 550px;
+}
+
+.input-error-message {
+    color: #ff4d4f;
+    font-size: 0.8em;
+    margin: 1px;
 }

@@ -94,12 +94,6 @@ edr_config = {
     "host": os.environ.get('EDR_URL', None),  # "https://edr.hesi.energy",
 }
 
-esdl_store_config = {
-    "hostname": os.environ.get('ESDL_STORE_URL', None)  # None
-}
-mondaine_hub_config = {
-    "hostname": os.environ.get('MONDAINE_HUB_URL', None)  # None
-}
 esdl_drive_config = {
     "hostname": os.environ.get('ESDL_DRIVE_URL', None)  # "http://esdl-drive:9080"
 }
@@ -121,10 +115,6 @@ statistics_settings_config = {
     "host": os.environ.get('STATISTICS_SERVICE_HOST', None),
     "port": "6003",
     "path": "/api/statistics/calculate"
-}
-
-ielgas_config = {
-    "host": os.environ.get('IELGAS_DATABASE_HOST', None)
 }
 
 heatnetwork_dispatcher_config = {

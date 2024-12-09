@@ -1,0 +1,21 @@
+networks:
+  mapeditor-net:
+    external: true
+
+volumes:
+  geoserver_storage:
+
+services:
+  geoserver:
+    image: kartoza/geoserver:2.25.2
+    ports:
+      - "${GEOSERVER_PORT:-9432}:8080"
+    volumes:
+      - geoserver_storage:/opt/geoserver/data_dir
+    environment:
+      - INSTALL_EXTENSIONS=trueF
+      - STABLE_EXTENSIONS=vectortiles,css-plugin
+      - GEOSERVER_ADMIN_USER=admin
+      - GEOSERVER_ADMIN_PASSWORD=admin
+    networks:
+      - mapeditor-net

@@ -17,8 +17,10 @@ from uuid import uuid4
 from flask import Flask
 from flask_socketio import SocketIO, emit
 import requests
-from typing import Dict, Optional
+from typing import Any, Dict, Optional, List, Union
 from dataclasses import asdict
+
+from xml.etree import ElementTree as ET
 
 from extensions.settings_storage import SettingType, SettingsStorage
 from extensions.session_manager import get_session
@@ -28,7 +30,11 @@ from src.roles import is_mapeditor_admin
 from extensions.vue_backend.messages.map_layers_message import (WmsLayerFeatureRequestBody, 
                                                                 WmsLayerRequestInfo, 
                                                                 WmsLayerFeatureResp, 
-                                                                LayerFeaturePropsResp)
+                                                                LayerFeaturePropsResp,
+                                                                WmsGetCapabilitiesRequestBody,
+                                                                WmsServiceLayerInfo,
+                                                                WmsGetCapabilitiesResp,
+                                                                WmsSaveOpacitySettingRequestBody)
 
 logger = log.get_logger(__name__)
 
@@ -139,7 +145,11 @@ class WMSLayers:
             return self.get_layers()
         
         @self.socketio.on('query_wms_layer_feature', namespace='/esdl')
-        def _query_wms_layer_feature(params: dict) -> None:
+        def _query_wms_layer_feature(params: Dict[str, Union[Dict, List]]) -> None:
+            """
+            Args:
+                params (Dict): A dict with structure as {ev_lat_lng: MouseEventLatLng, layers: List[WmsLayerRequestInfo]}
+            """
             req = WmsLayerFeatureRequestBody(**params)
             layers_features_props: list[LayerFeaturePropsResp] = []
             for l in req.layers:
@@ -148,6 +158,27 @@ class WMSLayers:
                 layers_features_props.append(LayerFeaturePropsResp(layer.name, props))
             resp = WmsLayerFeatureResp(req.ev_lat_lng, layers_features_props)
             emit('on_wms_layer_feature_resp', asdict(resp))
+
+        @self.socketio.on('get_wms_getcapabilities', namespace='/esdl')
+        def _get_wms_getcapabilities(params: Dict[str, str]) -> Dict[str, Any]:
+            """
+            Args:
+                params (Dict): A dict with structure as {url: str}
+            """
+            req = WmsGetCapabilitiesRequestBody(**params)
+            result = self.get_wms_getcapabilities(req.url)
+            return asdict(result)
+        
+        @self.socketio.on('save_wms_layer_opacity_setting', namespace='/esdl')
+        def _save_wms_layer_opacity_setting(params: Dict[str, Union[str, float]]) -> Dict[str, Dict]:
+            """
+            Args:
+                params (Dict): A dict with structure as {layer_id: str, opacity: float}
+            """
+            req = WmsSaveOpacitySettingRequestBody(**params)
+            self.save_wms_layer_opacity_setting(req.layer_id, req.opacity)
+            return self.get_layers()
+
 
     def query_wms_layer_feature_properties(self, url: str) -> Optional[Dict]:
         feature_props: Optional[Dict] = None
@@ -162,6 +193,70 @@ class WMSLayers:
         except Exception as e:
             logger.warning(f"An unexpected error occurred while querying layer feature: {str(e)}")
         return feature_props
+    
+    def get_wms_getcapabilities(self, url: str) -> WmsGetCapabilitiesResp:
+        try:
+            resp = requests.get(url, params={"service": "WMS", 
+                                             "request": "GetCapabilities"})
+            resp.raise_for_status()
+
+            content_type = resp.headers.get('Content-Type')
+            if 'xml' not in content_type:
+                raise Exception(f"Expected XML response, but received {content_type}")
+            
+            getcapabilities_xml = resp.text
+            layer_options = self.parse_getcapabilities_xml(getcapabilities_xml)
+            if len(layer_options):
+                return WmsGetCapabilitiesResp(True, layer_options)
+            else:
+                return WmsGetCapabilitiesResp(False, "No layer available.")
+        except Exception as e:
+            logger.warning(e)
+            return WmsGetCapabilitiesResp(False, f"{str(e)}.")
+        
+    def parse_getcapabilities_xml(self, xml_string: str) -> List[WmsServiceLayerInfo]:
+        """
+        Parses a WMS GetCapabilities XML string and extracts layer attributes.
+
+        It returns a list of WmsServiceLayerInfo data class. Each WmsServiceLayerInfo contains
+        'name', 'title', and 'legend_url' attributes. If a layer does not have a
+        legend URL, the 'legend_url' will be an empty string.
+
+        Args:
+            xml_string (str): The XML string of the WMS GetCapabilities document.
+
+        Returns:
+            list: A list of WmsServiceLayerInfo data class, each with 'name', 'title', and 'legend_url' attributes.
+        """
+        namespaces = {'wms': 'http://www.opengis.net/wms', 'xlink': 'http://www.w3.org/1999/xlink'}
+        root = ET.fromstring(xml_string)
+        layers = root.findall(".//wms:Layer", namespaces)
+        layer_options: List[WmsServiceLayerInfo] = []
+
+        for layer in layers:
+            layer_name_elem = layer.find("wms:Name", namespaces)
+            layer_title_elem = layer.find("wms:Title", namespaces)
+
+            if layer_name_elem is not None and layer_title_elem is not None:
+                layer_name = layer_name_elem.text
+                layer_title = layer_title_elem.text
+
+                # Extract legend URL
+                legend_url = ""
+                styles = layer.findall("wms:Style", namespaces)
+                if styles:
+                    # NOTE: the current implementation default to use the first style
+                    legend_url_elem = styles[0].find("wms:LegendURL", namespaces)
+                    if legend_url_elem is not None:
+                        online_resource = legend_url_elem.find("wms:OnlineResource", namespaces)
+                        if online_resource is not None:
+                            legend_url = online_resource.get(f"{{{namespaces['xlink']}}}href")
+
+                if layer_name is not None and not any(l.name == layer_name for l in layer_options):
+                    layer_info = WmsServiceLayerInfo(layer_name, layer_title, legend_url)
+                    layer_options.append(layer_info)
+                
+        return layer_options
     
     def add_wms_layer_group(self, layer_group_id: str, layer_group: dict, parent_group_id: str = None,
                             position: str = None):
@@ -283,6 +378,18 @@ class WMSLayers:
         self.settings_storage.set(setting_type, identifier, LAYERS_SETTING, layers)
 
         self.add_child_to_layer_group(parent_group_id, layer_id, position)
+
+    def save_wms_layer_opacity_setting(self, layer_id: str, opacity: float) -> None:
+        layer = self.get_wms_layer(layer_id)
+        setting_type = SettingType(layer['setting_type'])
+        project_name = layer.get('project_name')
+        identifier = self._get_identifier(setting_type, project_name)
+        if identifier is not None and self.settings_storage.has(setting_type, identifier, LAYERS_SETTING):
+            layers = self.settings_storage.get(setting_type, identifier, LAYERS_SETTING)
+            layers[layer_id]['opacity'] = opacity
+            self.settings_storage.set(setting_type, identifier, LAYERS_SETTING, layers)
+        else:
+            logger.error("Error whiling saving WMS layer opacity setting to the settings_storage.")
 
     def get_wms_layer(self, layer_id: str):
         # as we only have an ID, we don't know if it is a user, project or system layer

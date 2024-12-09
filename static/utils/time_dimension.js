@@ -16,7 +16,7 @@
 
 L.TimeDimension.Layer.WindowedGeoJson = L.TimeDimension.Layer.GeoJson.extend({
 
-    initialize: function(layer, options) {
+    initialize: function (layer, options) {
         L.TimeDimension.Layer.GeoJson.prototype.initialize.call(this, layer, options);
         this.startDate = new Date(options.startDate);
         this.window_size = 24;
@@ -26,9 +26,9 @@ L.TimeDimension.Layer.WindowedGeoJson = L.TimeDimension.Layer.GeoJson.extend({
         this._loaded = true;
     },
 
-    _update: function() {
+    _update: function () {
         currentTime = new Date(this._timeDimension.getCurrentTime());
-        if(currentTime < this.startDate || currentTime > this.endDate) {
+        if (currentTime < this.startDate || currentTime > this.endDate) {
             this._loaded = false;
             this.startDate = currentTime;
             this.getTimeWindowFromServer();
@@ -57,7 +57,7 @@ L.TimeDimension.Layer.WindowedGeoJson = L.TimeDimension.Layer.GeoJson.extend({
             var feature = this._getFeatureBetweenDates(layers[i].feature, minTime, maxTime);
             if (feature) {
                 layer.addData(feature);
-                if (this._addlastPoint && feature.geometry.type == "LineString") {
+                if (this._addlastPoint && feature.geometry.type === "LineString") {
                     if (feature.geometry.coordinates.length > 0) {
                         var properties = feature.properties;
                         properties.last = true;
@@ -83,38 +83,40 @@ L.TimeDimension.Layer.WindowedGeoJson = L.TimeDimension.Layer.GeoJson.extend({
         }
     },
 
-    eachLine: function(feature, layer) {
+    eachLine: function (feature, layer) {
         if (feature.properties.pos) {
             direction = '   >   ';
         } else {
             direction = '   <   ';
         }
         layer.setText(null);
-        let text_size = Math.max(20, 4*feature.properties.strokeWidth);
-        layer.setText(direction, {repeat: true, offset: text_size/3, attributes: {fill: feature.properties.stroke, 'font-size': text_size}});
+        let text_size = Math.max(20, 4 * feature.properties.strokeWidth);
+        layer.setText(direction, {
+            repeat: true,
+            offset: text_size / 3,
+            attributes: {fill: feature.properties.stroke, 'font-size': text_size}
+        });
 
         load_str = Math.round((feature.properties.load + Number.EPSILON) * 100) / 100
-        layer.bindPopup('<h2>'+feature.properties.id+'</h2><p>Load: '+load_str+' MWh');
-        layer.bindTooltip('<h2>'+feature.properties.id+'</h2><p>Load: '+load_str+' MWh');
+        layer.bindPopup('<h2>' + feature.properties.id + '</h2><p>Load: ' + load_str + ' ' + feature.properties.unit);
+        layer.bindTooltip('<h2>' + feature.properties.id + '</h2><p>Load: ' + load_str + ' ' + feature.properties.unit);
 
         layer.bindContextMenu({
             contextmenu: true,
             contextmenuWidth: 140,
             contextmenuItems: [{
                 icon: '/icons/Graph.png',
-                text: 'Show load duraction curve',
-                callback: function(e) {
-                    let target = e.relatedTarget;
-                    let id = target.feature.properties.id;
-                    socket.emit('request_ielgas_ldc', {'id':id});
+                text: 'Show load duration curve',
+                callback: function (e) {
+                    let id = feature.properties.id;
+                    socket.emit('request_load_duration_curve', {'id': id});
                 }
-            },{
+            }, {
                 icon: '/icons/Graph.png',
                 text: 'Monitor asset',
-                callback: function(e) {
-                    let target = e.relatedTarget;
-                    let id = target.feature.properties.id;
-                    socket.emit('ielgas_monitor_asset', {'id':id});
+                callback: function (e) {
+                    let id = feature.properties.id;
+                    socket.emit('td_monitor_asset', {'id': id});
                 }
             }],
             contextmenuInheritItems: false
@@ -139,28 +141,25 @@ L.TimeDimension.Layer.WindowedGeoJson = L.TimeDimension.Layer.GeoJson.extend({
 //        });
 //    },
 
-    determineWindowEndTime: function() {
+    determineWindowEndTime: function () {
         var times = map.timeDimension.getAvailableTimes();
         var idx = times.indexOf(this.startDate.getTime());
 
         this.endDate = new Date(times[Math.min(times.length - 1, idx + 24)]);
     },
 
-    getTimeWindowFromServer: function() {
+    getTimeWindowFromServer: function () {
         this.determineWindowEndTime();
         // Obtain new date range.
-        socket.emit('get_windowed_simulation_data', this.startDate.toISOString(), this.endDate.toISOString(), (geojson_result) =>
-        {
-            if(geojson_result == "{}")
-            {
+        socket.emit('get_windowed_simulation_data', this.startDate.toISOString(), this.endDate.toISOString(), (geojson_result) => {
+            if (geojson_result == "{}") {
                 console.log("No data was available for the current time window.");
                 return;
             }
-            // console.log(geojson_result);
             var data = JSON.parse(geojson_result);
 
             var geoJSONLayer = L.geoJSON(data, {
-                style: function(feature) {
+                style: function (feature) {
                     return {color: feature.properties.stroke, weight: feature.properties.strokeWidth};
                 },
                 onEachFeature: this.eachLine
@@ -175,7 +174,7 @@ L.TimeDimension.Layer.WindowedGeoJson = L.TimeDimension.Layer.GeoJson.extend({
 });
 
 
-L.timeDimension.layer.windowedGeoJson = function(layer, options) {
+L.timeDimension.layer.windowedGeoJson = function (layer, options) {
     return new L.TimeDimension.Layer.WindowedGeoJson(layer, options);
 };
 
@@ -191,29 +190,31 @@ class TimeDimension {
     }
 
     initialize_animation_toolbar_setting() {
-        socket.emit('time_dimension_get_settings', function(res) {
+        socket.emit('time_dimension_get_settings', function (res) {
             let ab_visible = res['ab_visible'];
             time_dimension.show_hide_animation_toolbar(ab_visible);
         });
     }
 
-    initialize(database, simulation_id, networks=[]) {
+    initialize(database, simulation_id, networks = [], animation_column_name) {
         time_dimension.removeGeoJSONLayers();
         show_loader();
-        socket.emit('timedimension_initialize', {database: database, simulation_id: simulation_id, networks: networks}, function(result) {
+        socket.emit('timedimension_initialize', {
+            database: database,
+            simulation_id: simulation_id,
+            networks: networks,
+            animation_column_name: animation_column_name
+        }, function (result) {
             if (result) {
-                hide_loader();
-
                 var time_list = result;
                 var startDate = time_list[0];
                 // Time dimension expects time list to be a single string with times separated by a comma.
-
                 time_list = time_list.join();
                 map.timeDimension.setAvailableTimes(time_list, 'replace');
-                // console.log(time_list);
 
                 time_dimension.addGeoJSONLayer(startDate);
             }
+            hide_loader();
         });
     }
 
@@ -228,10 +229,13 @@ class TimeDimension {
         });
 
         geoJSONTDLayer.addTo(get_layers(active_layer_id, 'sim_layer'));
+
+        time_dimension.show_hide_animation_toolbar(true);
     }
 
     removeGeoJSONLayers() {
         clear_layers(active_layer_id, 'sim_layer');
+        time_dimension.show_hide_animation_toolbar(false);
     }
 
     toggle_animation_toolbar_visibility() {
@@ -264,13 +268,13 @@ class TimeDimension {
         let $abvis_label = $('<label>').attr('for', 'ab_visible').text('Animation toolbar visible on startup');
         $div.append($('<p>').append($visible_on_startup).append($abvis_label));
 
-        $visible_on_startup.change(function() {
+        $visible_on_startup.change(function () {
             let ab_visible = $('#ab_visible').is(':checked');
             time_dimension.show_hide_animation_toolbar(ab_visible);
             socket.emit('time_dimension_set_settings', {ab_visible: ab_visible});
         });
 
-        socket.emit('time_dimension_get_settings', function(res) {
+        socket.emit('time_dimension_get_settings', function (res) {
             let ab_visible = res['ab_visible'];
             $('#ab_visible').prop('checked', ab_visible);
         });
@@ -292,6 +296,8 @@ class TimeDimension {
 
 var time_dimension;
 
-$(document).ready(function() {
-    extensions.push(function(event) { return TimeDimension.create(event) });
+$(document).ready(function () {
+    extensions.push(function (event) {
+        return TimeDimension.create(event)
+    });
 });

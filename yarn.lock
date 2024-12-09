@@ -1963,22 +1963,22 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@revolist/revogrid@npm:^3.6.16":
-  version: 3.7.0
-  resolution: "@revolist/revogrid@npm:3.7.0"
+"@revolist/revogrid@npm:^3.2.16":
+  version: 3.7.11
+  resolution: "@revolist/revogrid@npm:3.7.11"
   dependencies:
     lodash: ^4.17.20
-  checksum: aa578fd6d89b2d66ddc708586f6917d333fbdc71a25870615519a9a4e78862e2df8235fd2d557fb8d7346f67b40fd21cb62a6a5c5f70bc390e22cba54469050c
+  checksum: c80de08d69c21050a6029e80f41d71479d390f04fc7840f751e561352ec991a87f5c063a2665ac61e8cae2a41d1c8eef7ac9dab7a610946fcc7fbcd4b3bb996b
   languageName: node
   linkType: hard
 
-"@revolist/vue3-datagrid@npm:^3.1.0":
-  version: 3.6.17
-  resolution: "@revolist/vue3-datagrid@npm:3.6.17"
+"@revolist/vue3-datagrid@npm:3.2.17":
+  version: 3.2.17
+  resolution: "@revolist/vue3-datagrid@npm:3.2.17"
   dependencies:
-    "@revolist/revogrid": ^3.6.16
+    "@revolist/revogrid": ^3.2.16
     "@stencil/core": ^2.17.3
-  checksum: 80667a90754cdac6d218fdafb2f7e2c4ce632658e639813e43be7bfb8dbf9ebad517285809ccc51749cb08bd9aaf07115e5535487b155b8ad2794d9c703f66c4
+  checksum: 16768c2751d82571c268bf941cb4086e322ff4c96afe5bd51d80325fbacee504108fff2496504e761e143679ef41d0d9d099d4e9aae2e6b503a7e01d79b9e733
   languageName: node
   linkType: hard
 
@@ -8485,7 +8485,7 @@ __metadata:
     "@jsonforms/core": ^3.1.0
     "@jsonforms/vue": ^3.1.0
     "@jsonforms/vue-vanilla": ^3.1.0
-    "@revolist/vue3-datagrid": ^3.1.0
+    "@revolist/vue3-datagrid": 3.2.17
     "@vue/cli-plugin-babel": 5.0.8
     "@vue/cli-plugin-eslint": 5.0.8
     "@vue/cli-service": 5.0.8

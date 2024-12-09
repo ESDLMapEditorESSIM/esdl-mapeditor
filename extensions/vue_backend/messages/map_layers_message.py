@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 @dataclass
 class MouseEventLatLng:
@@ -46,3 +46,43 @@ class WmsLayerFeatureResp:
     """Geographical LatLng property of the Leaflet MouseClick event"""
     layers_features_props: List[LayerFeaturePropsResp]
     """List of WMS layers features properties query response dictionary"""
+
+@dataclass
+class WmsGetCapabilitiesRequestBody:
+    """
+    The request body passed from the frontend to the backend for fetching WMS GetCapabilities.
+    """
+    url: str
+    """WMS service URL"""
+
+@dataclass
+class WmsServiceLayerInfo:
+    """
+    The extracted layer information required by the frontend from the requested WMS service.
+    """
+    name: str
+    """Layer name"""
+    title: str
+    """Layer title"""
+    legend_url: str
+    """Layer legend URL"""
+
+@dataclass
+class WmsGetCapabilitiesResp:
+    """
+    The response of the WMS GetCapabilities request passed from the backend to the frontend.
+    """
+    success: bool
+    """WMS GetCapabilities request is successful or not"""
+    result: Union[List[WmsServiceLayerInfo], str]
+    """If successful, a list of WmsServiceLayerInfo is returned; Otherwise, an error message is returned"""
+
+@dataclass
+class WmsSaveOpacitySettingRequestBody:
+    """
+    The request body passed from the frontend to the backend for keeping the layer opacity setting in the settings_storage.
+    """
+    layer_id: str
+    """Layer id"""
+    opacity: float
+    """Layer opacity"""
