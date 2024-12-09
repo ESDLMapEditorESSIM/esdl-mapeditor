@@ -44,6 +44,12 @@
                 @change="onSelectVariable"
                 @mouseleave="removeTooltipPopup"
               />
+              <span
+                v-if="variableSelected !== null && variableWarningMsg !== ''"
+                style="color: #ffbb00; padding: 2px;"
+              >
+                {{ variableWarningMsg }}
+              </span>
             </a-row>
             <a-row>
               <a-typography-title :level="5">Group by</a-typography-title>
@@ -65,13 +71,20 @@
               />
               <span
                 v-if="chartType === 'bar' && groupbySelected.length > maxGroupbySelectedCount"
-                style="color: #ffc21a; padding: 2px;"
+                style="color: #ffbb00; padding: 2px;"
               >
                 Grouping in a bar chart supports up to two selections only.
               </span>
             </a-row>
             <a-row>
-              <a-typography-title :level="5">Filter</a-typography-title>
+              <a-row style="align-items: center;">
+                <a-typography-title :level="5">Filter</a-typography-title>
+                <a-tooltip title="Type to search filter options">
+                  <a-button size="small" type="text">
+                    <component :is="InfoCircleOutlined" style="vertical-align: 0.1rem" />
+                  </a-button>
+                </a-tooltip>
+              </a-row>
               <a-cascader
                 v-model:value="filterSelected"
                 style="width: 100%"
@@ -81,6 +94,7 @@
                   datasetSelected.length === 0 ? 'First select a dataset'
                   : variableSelected === null ? 'First select a variable'
                     : 'Select a category'" 
+                :show-search="true"
                 allow-clear multiple
                 @change="onSelectFilters"
                 @mouseleave="removeTooltipPopup"
@@ -236,6 +250,7 @@ import {
   BarChartOutlined,
   DeleteOutlined,
   EditOutlined,
+  InfoCircleOutlined,
   LoadingOutlined,
 	MenuFoldOutlined,
 	MenuUnfoldOutlined,
@@ -295,6 +310,7 @@ const datasetSelected = ref([]);
 const datasetSelectPlaceholder = ref('Select a dataset');
 const variableOptions = ref([]);
 const variableSelected = ref(null);
+const variableWarningMsg = ref("");
 // TODO & WIP: Profile data visualization is not supported yet.
 const isProfileVariable = ref(false);
 const groupbyOptions = ref([]);
@@ -337,9 +353,17 @@ const onSelectDataset = () => {
   });
 };
 
-const onSelectVariable = (variable) => {
+const onSelectVariable = (_, value) => {
 
-  isProfileVariable.value = variableOptions.value[variable].datatype === 'PROFILE';
+  // Reminds users when the selected variable is not present in all chosen dataset.
+  if (value.ds.length !== datasetSelected.value.length) {
+    variableWarningMsg.value = "The selected variable only exists in dataset: " + 
+                                `${value.ds.map(d => `'${d}'`).join(', ')}`;
+  } else {
+    variableWarningMsg.value = "";
+  }
+
+  isProfileVariable.value = value.datatype === 'PROFILE';
 
   updateColumns().then(() => {
     // Retains user-applied groupbys and filters if they match the new variable options; discard otherwise.
@@ -553,17 +577,23 @@ const updateVariables = async() => {
       const reqBody = { dataset_ids: datasetSelected.value };
       const variables = await fetchMetadata('variables', reqBody);
 
-      variableOptions.value = Object.fromEntries(
-        variables.map(v => [
-          v.name,
-          { value: v.name, 
-            label: v.name, 
+      const options = {};
+      variables.forEach((v) => {
+        if (!Object.keys(options).includes(v.name)) {
+          options[v.name] = {
+            value: v.name,
+            label: v.label,
+            ds: [v.dataset],
             unit: v.unit, 
             description: v.description, 
             datatype: v.datatype 
-          }
-        ])
-      );
+          };
+        } else {
+          options[v.name].ds.push(v.dataset);
+        }
+      });
+
+      variableOptions.value = options;
     } catch (error) {
       console.error(error);
     }
@@ -683,8 +713,14 @@ const barChartTraceHandler = (traces) => {
 
   const barChartLayout = {
     title: variableSelected.value,
-    xaxis: {type: 'multicategory'},
-    yaxis: {title: variableOptions.value[variableSelected.value].unit},
+    xaxis: {
+      type: 'multicategory',
+      automargin: true,
+    },
+    yaxis: {
+      title: variableOptions.value[variableSelected.value].unit,
+      automargin: true,
+    },
     barmode: [1, 2].includes(dataGrouping.value) ? 'stack' : 'group',
     barnorm: dataGrouping.value === 2 ? 'percent' : '',
     showlegend: true,

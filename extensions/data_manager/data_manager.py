@@ -645,13 +645,15 @@ class DataManager:
         response = []
         query = session.query(Variable)\
             .where(Variable.dataset_id.in_(dataset_ids))\
-            .group_by(Variable.name, Variable.id, Variable.description, Variable.unit, Variable.datatype)
+            .group_by(Variable.name, Variable.id, Variable.description, Variable.unit, Variable.datatype)\
+            .order_by(Variable.name)
 
         variables: List[Variable] = query.all()
         for variable in variables:
             response.append({
                 'name': variable.name,
                 'id': variable.id,
+                'dataset': variable.dataset.name,
                 'description': variable.description,
                 'unit': variable.unit,
                 'datatype': variable.datatype.name
@@ -669,11 +671,11 @@ class DataManager:
             .where(Variable.name == variable_name)\
             .all()
         
+        response = {}
         if len(filter_options) == 0:
             logger.warning(f"Filter options with variable {variable_name} and dataset_ids {dataset_ids} not found.")
-            return {}
         elif len(filter_options) == 1:
-            return filter_options[0].filter_options
+            response = filter_options[0].filter_options
         else:
             # Merge filter options
             merged = filter_options[0].filter_options
@@ -684,7 +686,17 @@ class DataManager:
                         merged[key]['options'] = list(set(merged[key]['options'] + filter[key]['options']))
                     else:
                         del merged[key]
-            return merged
+            response = merged
+
+        # Sorts the elements in the 'options' lists alphabetically.
+        sorted_resp = {}
+        for key, value in response.items():
+            sorted_value = value.copy()
+            if "options" in value and isinstance(value["options"], list):
+                sorted_value['options'] = sorted(value['options'], key=lambda x: str(x))
+            sorted_resp[key] = sorted_value
+
+        return sorted_resp
     
     def query(self,
               session: Session,

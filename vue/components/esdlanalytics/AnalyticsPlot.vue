@@ -38,7 +38,7 @@ const config = {
 	automargin: true,
 	toImageButtonOptions: {
 		format: 'png', // one of png, svg, jpeg, webp
-		height: 500,
+		// height: 500,
 		width: 900,
 		scale: 1 // Multiply title/legend/axis/canvas sizes by this factor
 	}
@@ -81,13 +81,12 @@ onUpdated(() => {
 const unmountPlot = () => {
 	console.debug("Clean up Plot and ResizeObserver");
 	if (resizeObserver !== null) {
-		resizeObserver.unobserve(plotDiv.value);
+		if (plotDiv.value) {
+			resizeObserver.unobserve(plotDiv.value);
+			Plotly.purge(plotDiv.value);
+			plotDiv.value = null;
+		}
 		resizeObserver = null;
-	}
-
-	if (plotDiv.value) {
-		Plotly.purge(plotDiv.value);
-		plotDiv.value = null;
 	}
 };
 
