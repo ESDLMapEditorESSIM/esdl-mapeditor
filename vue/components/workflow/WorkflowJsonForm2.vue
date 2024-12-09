@@ -83,7 +83,7 @@ const updateData = (jsonFormData) => {
   // TODO for omotes: to come via omotes-rest when sdk and protocol updated.
   // TODO for essim: to come via service json config, issue: mongodb does not allow keys starting with '$'.
   if ("end_time" in schema["properties"] && "start_time" in schema["properties"]) {
-    schema["properties"]["end_time"]["formatMinimum"] = {$data: "1/start_time"};
+    schema["properties"]["end_time"]["formatExclusiveMinimum"] = {$data: "1/start_time"};
   }
 
   if ("uischema" in jsonFormDataConfig) {
