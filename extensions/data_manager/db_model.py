@@ -7,16 +7,6 @@ import sqlalchemy as sa
 
 from extensions.data_manager import db
 
-"""
-Scenario UI Database schema
-
-Note: for JSON columns we use postgresql dialect JSONB, instead of JSON, as the perfomance is better, you can add
-(GIN) indexes and can do aggregates quite simple (not possible with JSON type) 
-
-"""
-# Use JSONB in postgres
-# JSONVariant = sa.JSON().with_variant(sa.dialects.postgresql.JSONB(), "postgresql")
-
 
 class DataType(Enum):
     SINGLE_VALUE = 0
@@ -51,19 +41,22 @@ class TimedBaseModel(BaseModel):
 class DataSet(TimedBaseModel):
     __tablename__ = "dataset"
     """ Describes data sets that exists of variables and data"""
-    name = db.Column(db.String, nullable=False)  # unique? name for this dataset
+    name = db.Column(db.String, nullable=False)  # name should be unique per owner (created_by)
     description = db.Column(db.String)  # short description of this dataset
     model = db.Column(db.String)  # which model generated this dataset
     run_timestamp = db.Column(
         db.DateTime(timezone=True), nullable=False, server_default=func.now()
     )  # when was this dataset created
-    scenario = db.Column(db.String)  # what scenario is described by this dataset
-    created_by = db.Column(db.String)  # who created this dataset
+    created_by = db.Column(db.String, nullable=False)  # who created this dataset
     public = db.Column(db.Boolean, nullable=False, default=False)  # defines if a model is publicly accessible
     security = db.Column(
         sqlite.JSON
     )  # arbitrary access control e.g. { 'owner': 'joost', shared_with': ['ewoud', 'edwin', 'wester']}
-    energy_system_id = db.Column(db.String)  # reference to the energy system id if using an ESDL file
+    energy_system_id = db.Column(db.String, nullable=False)  # reference to the energy system id if using an ESDL file
+
+    __table_args__ = (
+        sa.UniqueConstraint('name', 'created_by', name='owner_unique_ds'),
+    )
 
     def __init__(
         self,
@@ -71,13 +64,11 @@ class DataSet(TimedBaseModel):
         created_by: str,
         description: str = None,
         model: str = None,
-        scenario: str = None,
         energy_system_id: str = None,
     ):
         self.name = name
         self.description = description
         self.model = model
-        self.scenario = scenario
         self.created_by = created_by
         self.energy_system_id = energy_system_id
 
@@ -129,7 +120,7 @@ class Data(BaseModel):
     dataset = db.relationship(DataSet, cascade="all, delete")
     variable_id = db.Column(db.Integer, db.ForeignKey(Variable.id), nullable=False)
     variable = db.relationship(Variable, cascade="all, delete")
-    value = db.Column(db.Float, nullable=False)
+    value = db.Column(db.Float, nullable=True)
     sector = db.Column(db.String)  # TODO: add hierarchy, for now using | as separator
     region = db.Column(db.String)  # TODO: add hierarchy, for now using | as separator, JSON would also be an option?
     node = db.Column(db.String)  # fromNode for FLOW data
@@ -140,17 +131,3 @@ class Data(BaseModel):
     year = db.Column(db.Integer)  # year as integer, e.g. 2030, 2040
     datetime = db.Column(db.DateTime)  # for timeseries data
     labels = db.Column(sqlite.JSON)  # extra labels for this datapoint using JSON
-
-
-@dataclass
-class Dashboard(TimedBaseModel):
-    owner = db.Column(db.String)
-    title = db.Column(db.String)
-    config = db.Column(sqlite.JSON)  # actual Dashboard configuration in JSON
-    parent_id = db.Column(db.Integer, db.ForeignKey("dashboard.id"), nullable=True)
-    parent = db.relationship("Dashboard")
-
-    # child_id = db.Column(db.Integer, db.ForeignKey('dashboard.id'))
-    # children = db.relationship('Dashboard', back_populates="parent", remote_side=['id'])
-    def as_dict(self):  # should use marshmellow
-        return {c.name: getattr(self, c.name) for c in self.__table__.columns}

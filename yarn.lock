@@ -7596,6 +7596,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"plotly.js-dist@npm:2.35.1":
+  version: 2.35.1
+  resolution: "plotly.js-dist@npm:2.35.1"
+  checksum: 06345af8bcaac482eb5563bab597d6bfa46c406d6457fcd387e8d88c588c0f102f2ae28e7f09552f2e9865a21a13b6bb6b5b07f09702347a6138e48a33aec171
+  languageName: node
+  linkType: hard
+
 "portfinder@npm:^1.0.26":
   version: 1.0.32
   resolution: "portfinder@npm:1.0.32"
@@ -8493,6 +8500,7 @@ __metadata:
     dayjs: ^1.11.10
     eslint: 8.56.0
     eslint-plugin-vue: 9.20.1
+    plotly.js-dist: 2.35.1
     reqwest: ^2.0.5
     sass: 1.69.7
     sass-loader: ^10.2.1
