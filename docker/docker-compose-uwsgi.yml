@@ -9,10 +9,12 @@ services:
     networks:
       - mapeditor-net
       - nwn
+    volumes:
+      - "../credentials/client_secrets_local-docker.json:/usr/src/app/credentials/client_secrets_local-docker.json"
     ports:
       - "${MAPEDITOR_PORT:-8111}:8111"
     env_file:
-      - .env
+      - ../.env.local-docker
 
 
 networks:
