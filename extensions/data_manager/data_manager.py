@@ -257,7 +257,8 @@ class DataManager:
 
         # init database
         with self.flask_app.app_context():
-            drop_db(self.flask_app.config["SQLALCHEMY_DATABASE_URI"])
+            drop_db(db_url=self.flask_app.config["SQLALCHEMY_DATABASE_URI"],
+                    app_instance_path=self.flask_app.instance_path)
             create_db(self.flask_app.config["SQLALCHEMY_DATABASE_URI"])
 
         @self.socketio.on("datamanager/metadata/add_update", namespace="/esdl")

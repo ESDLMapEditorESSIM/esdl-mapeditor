@@ -67,6 +67,9 @@ ENV/
 # Directory for cvustom env files.
 envs/
 
+# Data Manager SQLite db
+data_manager.db
+
 # Editors
 .idea/
 
