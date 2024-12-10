@@ -993,11 +993,45 @@ esdl_config = {
                     },
                     {
                         # 25
-                        # TODO: choose correct type and implement
                         "name": "Run Energy Hub Configurator",
-                        "description": "",
-                        "type": "text",
-                        "text": "Currently the EHC accepts ESDL files with in-line placed energy profiles. Please, first make sure the correct ESDL layer is selected. Then the required file can be obtained from the 'File' menu in the top-left corner of the screen. Within this menu, select the 'Export with in-line profiles' option. The resulting file can be used by the EHC.",
+                        "description": "Currently the EHC accepts ESDL files with in-line placed energy profiles. Please, first make sure the correct ESDL layer is selected. Then the required file can be obtained from the 'File' menu in the top-left corner of the screen. Within this menu, select the 'Export with in-line profiles' option. The resulting file can be used by the EHC.",
+                        "type": "service",
+                        "service": {
+                            "id": "9bd2f969-f240-4b26-ace5-2e03fbc04b13",
+                            "name": "Run Energy Hub Configurator",
+                            "headers": {
+                                "Accept": "application/esdl+xml",
+                                "User-Agent": "ESDL Mapeditor/0.1",
+                            },
+                            "url": "http://localhost:8111/dice_workflow/mock",
+                            "http_method": "post",
+                            "type": "",
+                            "body_config": {
+                                "type": "json",
+                                "profiles": "inline",
+                                "parameters": [
+                                    {
+                                        "type": "esdl",
+                                        "parameter": "esdl",
+                                        "encoding": "base64_encoded",
+                                    },
+                                ],
+                            },
+                            "result": [
+                                {
+                                    "action": "esdl",
+                                    "encoding": "base64_encoded",
+                                    "json_field": "esdl",
+                                },
+                                {
+                                    "action": "download_file",
+                                    "encoding": "base64_encoded",
+                                    "json_field": "business_case_excel",
+                                    "filename": "ehc_business_case.xlsx",
+                                    "content_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                },
+                            ],
+                        }
                     },
                     {
                         # 26
