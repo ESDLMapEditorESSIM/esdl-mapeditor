@@ -997,7 +997,7 @@ esdl_config = {
                         "name": "Run Energy Hub Configurator",
                         "description": "",
                         "type": "text",
-                        "text": "PLACEHOLDER",
+                        "text": "Currently the EHC accepts ESDL files with in-line placed energy profiles. Please, first make sure the correct ESDL layer is selected. Then the required file can be obtained from the 'File' menu in the top-left corner of the screen. Within this menu, select the 'Export with in-line profiles' option. The resulting file can be used by the EHC.",
                     },
                     {
                         # 26
@@ -1005,7 +1005,7 @@ esdl_config = {
                         "name": "Load Energy Hub Configurator results",
                         "description": "",
                         "type": "text",
-                        "text": "PLACEHOLDER",
+                        "text": "The ESDL from the EHC results can be imported into the Map Editor by selecting the 'Import ESDL with in-line profiles' option from the 'File' menu in the top-left corner of the screen. The ESDL file can be selected from the file dialog that appears and will be automatically added to your ESDL layers.",
                     },
                     {
                         # 27
