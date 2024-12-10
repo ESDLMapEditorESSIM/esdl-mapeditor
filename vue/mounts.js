@@ -12,6 +12,7 @@ import {
     Breadcrumb,
     Button,
     Card,
+    Cascader,
     Checkbox,
     Col,
     Collapse,
@@ -21,6 +22,7 @@ import {
     Form,
     Input,
     InputNumber,
+    Layout,
     List,
     Menu,
     Modal,
@@ -34,8 +36,10 @@ import {
     Switch,
     Table,
     Tag,
+    Tooltip,
     Transfer,
     Tree,
+    Typography,
     Upload
 } from 'ant-design-vue';
 
@@ -68,6 +72,7 @@ export function mountApp(component, elementSelector) {
     app.use(Breadcrumb);
     app.use(Button);
     app.use(Card);
+    app.use(Cascader);
     app.use(Checkbox);
     app.use(Col);
     app.use(Collapse);
@@ -77,6 +82,7 @@ export function mountApp(component, elementSelector) {
     app.use(Form);
     app.use(Input);
     app.use(InputNumber);
+    app.use(Layout);
     app.use(List);
     app.use(Menu);
     app.use(Modal);
@@ -90,8 +96,10 @@ export function mountApp(component, elementSelector) {
     app.use(Switch);
     app.use(Table);
     app.use(Tag);
+    app.use(Tooltip);
     app.use(Transfer);
     app.use(Tree);
+    app.use(Typography);
     app.use(Upload);
     app.use(VueGridLayout);
 
