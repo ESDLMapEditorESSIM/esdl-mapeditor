@@ -374,20 +374,54 @@ class DataManager:
                 d.value = eobj.value
             # TODO other distributions
             #elif isinstance(distribution, esdl.FromToDistribution):
-            elif isinstance(eobj, esdl.Pipe):
-                length = eobj.length
-                diameter = eobj.diameter.name  # e.g. DN250
-                d = Data(dataset=ds, value=length)
+            elif isinstance(eobj, esdl.Producer) or isinstance(eobj, esdl.Consumer) or isinstance(eobj, esdl.Conversion):
+                power = eobj.power
+                d = Data(dataset=ds, value=power)
                 d.region = eobj.area.name
-                d.labels = {'Diameter': diameter, 'State': eobj.state.name}
+                d.labels = {'Power': power, 'State': eobj.state.name}
                 d.node = eobj.name or eobj.id
                 d.technology = eobj.eClass.name
                 d.sector = eobj.sector.name if eobj.sector else None
                 if len(eobj.port) > 0:
                     d.input = eobj.port[0].carrier.name if eobj.port[0].carrier else None
-                variable_name = "Pipe Length (m)"
-                qau = esdl.QuantityAndUnitType(physicalQuantity=esdl.PhysicalQuantityEnum.LENGTH,
-                                               unit=esdl.UnitEnum.METRE, description="Length in m")
+                variable_name = "Power (W)"
+                qau = esdl.QuantityAndUnitType(physicalQuantity=esdl.PhysicalQuantityEnum.POWER,
+                                               unit=esdl.UnitEnum.WATT, description="Power in W")
+
+            elif isinstance(eobj, esdl.Storage) or isinstance(eobj, esdl.Transport):
+                capacity = eobj.capacity
+                d = Data(dataset=ds, value=capacity)
+                d.region = eobj.area.name
+                d.labels = {'Capacity': capacity, 'State': eobj.state.name}
+                d.node = eobj.name or eobj.id
+                d.technology = eobj.eClass.name
+                d.sector = eobj.sector.name if eobj.sector else None
+                if len(eobj.port) > 0:
+                    d.input = eobj.port[0].carrier.name if eobj.port[0].carrier else None
+                if isinstance(eobj, esdl.Storage):
+                    variable_name = "Capacity (J)"
+                    qau = esdl.QuantityAndUnitType(physicalQuantity=esdl.PhysicalQuantityEnum.ENERGY,
+                                                   unit=esdl.UnitEnum.JOULE, description="Capacity in J")
+                else:
+                    variable_name = "Capacity (W)"
+                    qau = esdl.QuantityAndUnitType(physicalQuantity=esdl.PhysicalQuantityEnum.POWER,
+                                                   unit=esdl.UnitEnum.WATT, description="Capacity in W")
+
+                if isinstance(eobj, esdl.Pipe):
+                    length = eobj.length
+                    diameter = eobj.diameter.name  # e.g. DN250
+                    d = Data(dataset=ds, value=length)
+                    d.region = eobj.area.name
+                    d.labels = {'Diameter': diameter, 'State': eobj.state.name}
+                    d.node = eobj.name or eobj.id
+                    d.technology = eobj.eClass.name
+                    d.sector = eobj.sector.name if eobj.sector else None
+                    if len(eobj.port) > 0:
+                        d.input = eobj.port[0].carrier.name if eobj.port[0].carrier else None
+                    variable_name = "Pipe Length (m)"
+                    qau = esdl.QuantityAndUnitType(physicalQuantity=esdl.PhysicalQuantityEnum.LENGTH,
+                                                   unit=esdl.UnitEnum.METRE, description="Length in m")
+
             # variable_name and qau and d should be defined here
             if not variable_name:
                 #variable_name = eobj.name if hasattr(eobj, 'name') else None
