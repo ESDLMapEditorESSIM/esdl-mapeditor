@@ -20,7 +20,8 @@ import SearchAssets from '@/apps/SearchAssets.vue';
 import AssetFeedback from '@/apps/AssetFeedback.vue';
 import AssetTableEditor from '@/apps/AssetTableEditor.vue';
 import CustomIconsSettings from "@/apps/CustomIconsSettings.vue";
-import KPIDashboard from './apps/KPIDashboard.vue';
+import KPIDashboard from '@/apps/KPIDashboard.vue';
+import ESDLAnalytics from '@/apps/ESDLAnalytics.vue';
 import {
     createVueLControl,
     mountApp,
@@ -184,7 +185,11 @@ window.activate_kpi_dashboard_window = () => {
     mountApp(KPIDashboard, '#kpi_dashboard_window');
 }
 
-createVueLControl(ResultVisualizationsToolbar, {
+window.activate_esdl_analytics_window = () => {
+    mountApp(ESDLAnalytics, '#esdl_analytics_window');
+}
+
+createVueLControl(AnnouceKPIsToolbar, {
         position: 'bottomright',
     });
 

@@ -53,6 +53,9 @@
     <link rel="stylesheet" href="./vendor/jjimenezshaw/L.Control.Layers.Tree.css" type="text/css"/>
     <script type="text/javascript" src="./vendor/jjimenezshaw/L.Control.Layers.Tree.js"></script>
 
+    <!-- Downloaded from https://github.com/google/palette.js -->
+    <script type="text/javascript" src="./plugins/palette.js"></script>
+
     <!-- downloaded from https://github.com/kartena/Proj4Leaflet -->
     <script type="text/javascript" src="./plugins/proj4.js"></script>
     <!--script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.5.0/proj4.js"></script-->
@@ -218,6 +221,7 @@
     <script type="text/javascript" src="./utils/admin_dialog.js"></script>
 
     <script type="text/javascript" src="./utils/KPIDashboard.js"></script>
+    <script type="text/javascript" src="./utils/esdl_analytics.js"></script>
 
     <script type="text/javascript" src="./utils/esdl_file_io.js"></script>
     <script type="text/javascript" src="./utils/custom_icons.js"></script>
@@ -1629,6 +1633,12 @@
 
 <!--                                    <li><a class="dropdown-item" href="#" onclick="show_kpis();"><div class="menu-icon">&nbsp;</div>KPIs</a></li>-->
                                     <li><a class="dropdown-item" href="#" onclick="kpi_dashboard.open();"><div class="menu-icon" id="menu_kpi_dashboard">&nbsp;</div>KPI Dashboard</a></li>
+                                    <li>
+                                        <a class="dropdown-item" href="#" onclick="esdl_analytics.open();">
+                                            <div class="menu-icon" id="menu_esdl_analytics">&nbsp;</div>
+                                            ESDL Analytics
+                                        </a>
+                                    </li>
                                     <li><a class="dropdown-item" href="#" onclick="app_settings.open_window();"><div id="menu_settings" class="menu-icon" style="margin-top:0px"><i class="fa fa-cog" aria-hidden="true"></i></div>Settings</a></li>
                                 </ul>
                             </li>
@@ -1861,6 +1871,18 @@
     };
     var kpi_dashboard = new KPIDashboard(kpi_dashboard_dialog_options);
     map.addControl(kpi_dashboard);
+
+    const esdl_analytics_dialog_options = {
+        size: [ 1100, 700 ],
+        minSize: [ 100, 100 ],
+        maxSize: [ 4000, 2000 ],
+        anchor: [ 10, 50 ],
+        initOpen: false,
+        state: 'maximized',
+        allowable_states: ['custom', 'maximized', 'minimized']
+    }
+    const esdl_analytics = new ESDLAnalytics(esdl_analytics_dialog_options);
+    map.addControl(esdl_analytics);
 
 {% if essim_enabled and 'essim' in role %}
     L.control.essim_control().addTo(map);

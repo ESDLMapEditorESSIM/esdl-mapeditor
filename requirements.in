@@ -34,5 +34,6 @@ pip-tools
 
 
 # DataManager
-#Flask-SQLAlchemy==2.5.1
-#sqlalchemy==2.0.16
+Flask-SQLAlchemy
+sqlalchemy
+sqlalchemy_utils

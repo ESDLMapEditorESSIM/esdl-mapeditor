@@ -32,6 +32,9 @@ OIDC_CLIENT_SECRETS = os.environ.get('OIDC_CLIENT_SECRETS', None) # 'credentials
 _use_gevent = os.environ.get('MAPEDITOR_USE_GEVENT', '')
 USE_GEVENT = (_use_gevent.upper() == 'TRUE' or _use_gevent == '1')
 
+db_name = 'data_manager.db'
+SQLALCHEMY_DATABASE_URI = os.environ.get('SQLALCHEMY_DATABASE_URI', f"sqlite:///{db_name}")
+
 settings_storage_config = {
     "host": os.environ.get('SETTINGS_STORAGE_HOST', None),  # "mongo",
     "port": os.environ.get('SETTINGS_STORAGE_PORT', "27017"),
