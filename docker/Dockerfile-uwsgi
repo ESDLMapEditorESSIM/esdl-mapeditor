@@ -31,6 +31,9 @@ WORKDIR /usr/src/app
 COPY requirements.txt requirements-uwsgi.txt /usr/src/app/
 RUN pip install -r requirements.txt -r requirements-uwsgi.txt
 
+# Ensure the instance directory exists with proper permissions
+RUN mkdir -p /usr/src/app/instance && chmod -R 777 /usr/src/app/instance
+
 # Add everything in the image.
 COPY . /usr/src/app
 
