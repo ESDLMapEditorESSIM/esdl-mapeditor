@@ -2949,30 +2949,34 @@ def query_esdl_services(params):
     esh = get_handler()
     logger.debug('calling service')
     try:
-        esdl_service_ok, esdl_service_result, backend_action = esdl_services.call_esdl_service(params)
+        results = esdl_services.call_esdl_service(params)
+        logger.debug('results: {}'.format(results))
     except Exception as exc:
         logger.exception("Exception when querying ESDL service")
         esdl_service_ok = False
         esdl_service_result = str(exc)
+        results = [esdl_service_ok, esdl_service_result, None]
 
-    logger.debug('emitting result to browser')
-    if esdl_service_ok:
-        if esdl_service_result is not None:
-            emit('esdl_service_result', esdl_service_result)
-    else:
-        message = 'Error calling service'
-        if isinstance(esdl_service_result, str):
-            message += ': ' + esdl_service_result
-        send_alert(message)
+    for result in results:
+        esdl_service_ok, esdl_service_result, backend_action = result
+        logger.debug('emitting result to browser')
+        if esdl_service_ok:
+            if esdl_service_result is not None:
+                emit('esdl_service_result', esdl_service_result)
+        else:
+            message = 'Error calling service'
+            if isinstance(esdl_service_result, str):
+                message += ': ' + esdl_service_result
+            send_alert(message)
 
-    # If call_esdl_service results indicate a certain EnergySystem MUST be (re-)processed, force it here
-    force_update_es_id = None
-    if backend_action:
-        if "force_update_es_id" in backend_action:
-            force_update_es_id = backend_action["force_update_es_id"]
+        # If call_esdl_service results indicate a certain EnergySystem MUST be (re-)processed, force it here
+        force_update_es_id = None
+        if backend_action:
+            if "force_update_es_id" in backend_action:
+                force_update_es_id = backend_action["force_update_es_id"]
 
-    # logger.debug('processing energy system')
-    call_process_energy_system.submit(esh, force_update_es_id=force_update_es_id)
+        # logger.debug('processing energy system')
+        call_process_energy_system.submit(esh, force_update_es_id=force_update_es_id)
 
 
 @socketio.on('set_active_es_id', namespace='/esdl')
