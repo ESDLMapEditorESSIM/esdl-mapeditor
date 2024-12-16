@@ -128,19 +128,20 @@ const sortDataAlphabetically = (data) => {
  * @returns {Object} Plot properties object required by the Plot component.
  */
 const createPlotProps = (plotType, title, data) => {
-  const sortedData = sortDataAlphabetically(data);
+  // TODO: use the config setting to enable/disable sorting on data labels.
+  // const sortedData = sortDataAlphabetically(data);
 
   let trace = [];
   switch (plotType) {
     default:
     case "bar":
-      trace = createBarChartTrace(sortedData);
+      trace = createBarChartTrace(data);
       break;
     case "pie":
-      trace = createPieChartTrace(sortedData);
+      trace = createPieChartTrace(data);
       break;
     case "table":
-      trace = createTableTrace(sortedData);
+      trace = createTableTrace(data);
       break;
   }
 
