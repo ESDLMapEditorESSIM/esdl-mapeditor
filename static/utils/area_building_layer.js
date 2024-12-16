@@ -694,7 +694,8 @@ function create_area_dist_KPIs_pie_chart(ar, refAreaDistKPIs, refDistKPIsRange, 
             }
 
             // Sort data item names in alphabetical order
-            chartDataItemNames.sort((a, b) => String(a).localeCompare(String(b)));
+            // TODO: use the config setting to enable/disable sorting on data labels.
+            // chartDataItemNames.sort((a, b) => String(a).localeCompare(String(b)));
 
             chartDataItemNames.forEach((itemName, idx) => {
                 const distKPIItem = distKPI.value.find((item) => item.name === itemName);
