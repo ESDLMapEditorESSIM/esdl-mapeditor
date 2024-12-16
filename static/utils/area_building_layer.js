@@ -611,7 +611,7 @@ function calcPieChartRadius(kpiItemsSum, kpiSumMin, kpiSumMax, resizeFactor=1.0)
 
     // Calculate the zoom scaling factor
     const zoomLevelDiff = (map.getZoom() - initMapZoomLevel);
-    const zoomScalingFactor = Math.pow(2, zoomLevelDiff);
+    const zoomScalingFactor = Math.pow(1.8, zoomLevelDiff);
 
     // Define zoom level and resize factor responsive pie chart min and max radius.
     const baseRadius = 1 * resizeFactor;
