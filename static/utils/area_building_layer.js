@@ -611,7 +611,7 @@ function calcPieChartRadius(kpiItemsSum, kpiSumMin, kpiSumMax, resizeFactor=1.0)
 
     // Calculate the zoom scaling factor
     const zoomLevelDiff = (map.getZoom() - initMapZoomLevel);
-    const zoomScalingFactor = Math.pow(2, zoomLevelDiff);
+    const zoomScalingFactor = Math.pow(1.8, zoomLevelDiff);
 
     // Define zoom level and resize factor responsive pie chart min and max radius.
     const baseRadius = 1 * resizeFactor;
@@ -694,7 +694,8 @@ function create_area_dist_KPIs_pie_chart(ar, refAreaDistKPIs, refDistKPIsRange, 
             }
 
             // Sort data item names in alphabetical order
-            chartDataItemNames.sort((a, b) => String(a).localeCompare(String(b)));
+            // TODO: use the config setting to enable/disable sorting on data labels.
+            // chartDataItemNames.sort((a, b) => String(a).localeCompare(String(b)));
 
             chartDataItemNames.forEach((itemName, idx) => {
                 const distKPIItem = distKPI.value.find((item) => item.name === itemName);
