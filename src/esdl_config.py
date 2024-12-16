@@ -991,14 +991,15 @@ esdl_config = {
                         "type": "custom",
                         "component": "cost-information-upload-template",
                     },
-{
+                    {
                         # 25 (TEMP)
                         # TODO: swap with commented step below when EHC is hosted
                         "name": "Run Energy Hub Configurator",
                         "description": "",
                         "type": "text",
-                        "text": """For the energy hub configured in an ESDL layer, the economical optimal collective battery specifications can be calculated with the EHC, together with the corresponding business case.
-                        Currently the EHC only accepts ESDL files with in-line placed energy profiles. Please, first make sure the correct ESDL layer is selected. Then the required ESDL file can be obtained from the 'File' menu in the top-left corner of the screen. Within this menu, select the 'Export with in-line profiles' option. The resulting ESDL file can be used by the EHC.
+                        "text": """
+                            For the energy hub configured in an ESDL layer, the economical optimal collective battery specifications can be calculated with the EHC, together with the corresponding business case.
+                            Currently the EHC only accepts ESDL files with in-line placed energy profiles. Please, first make sure the correct ESDL layer is selected. Then the required ESDL file can be obtained from the 'File' menu in the top-left corner of the screen. Within this menu, select the 'Export with in-line profiles' option. The resulting ESDL file can be used by the EHC.
                         """,
                     },
                     # {
