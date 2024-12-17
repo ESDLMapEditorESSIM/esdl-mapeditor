@@ -189,7 +189,7 @@ window.activate_esdl_analytics_window = () => {
     mountApp(ESDLAnalytics, '#esdl_analytics_window');
 }
 
-createVueLControl(AnnouceKPIsToolbar, {
+createVueLControl(ResultVisualizationsToolbar, {
         position: 'bottomright',
     });
 
