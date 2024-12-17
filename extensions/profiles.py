@@ -788,19 +788,29 @@ class Profiles:
         used_port = None
         used_database = None
 
+        general_error_message = "profiles should be in the same host, port and database."
         for p in profile_list:
-            if used_host and p.host != used_host:
-                return False
+            edited_host = p.host.lower().replace("http://", "").replace("https://", "")
+            if used_host and edited_host != used_host:
+                raise IOError(
+                    f"{general_error_message}"
+                    f"\nDifferent host:port found: '{used_host}:{used_port}' and '{edited_host}:{p.port}'."
+                )
             else:
-                used_host = p.host
+                used_host = edited_host
 
-            if used_port and p.port != used_port:
-                return False
+            if used_port and p.port != used_port and p.port != 0:
+                raise IOError(
+                    f"{general_error_message}"
+                    f"\nDifferent host:port found: '{used_host}:{used_port}' and '{edited_host}:{p.port}'."
+                )
             else:
                 used_port = p.port
 
             if used_database and p.database != used_database:
-                return False
+                raise IOError(
+                    f"{general_error_message}\nDifferent databases found: '{used_database}' and '{p.database}'."
+                )
             else:
                 used_database = p.database
 

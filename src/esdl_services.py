@@ -429,11 +429,12 @@ class ESDLServices:
                         influxdb_host_override = None
                         if "influxdb_host_override" in service["result"][0]["animation"]:
                             influxdb_host_override = service["result"][0]["animation"]["influxdb_host_override"]
-                        influxdb_client = Profiles.connect_to_animation_profiles_database(
-                            es.id, es.id, influxdb_host_override
-                        )
 
                         try:
+                            influxdb_client = Profiles.connect_to_animation_profiles_database(
+                                es.id, es.id, influxdb_host_override
+                            )
+
                             query_collections_with_asset_id = 'SHOW TAG VALUES WITH KEY="assetId"'
                             collections_with_asset_id = influxdb_client.query(query_collections_with_asset_id)
                             first_carrier_id = collections_with_asset_id.keys()[0][0]
@@ -469,14 +470,8 @@ class ESDLServices:
                             )
                         except Exception as e:
                             logger.error(e)
-                            return (
-                                False,
-                                (
-                                    f"\nCould not retrieve animation data, "
-                                    f"problem querying InfluxDB on host: '{influxdb_client._host}'"
-                                ),
-                                None,
-                            )
+                            return False, f"\nCould not retrieve animation data: {str(e)} ",  None
+
                     if "external_link" in service["result"][0]:
                         model_run_data = self.models_storage.get_model_run(state_params["run_id"])
                         external_link_url = get_nested_dict_value(

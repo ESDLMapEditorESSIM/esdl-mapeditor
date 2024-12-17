@@ -62,56 +62,58 @@ class PortProfileViewer:
 
             if profiles_list:
                 # Check if all profiles use same host / port / database
-                if Profiles.check_if_profiles_have_same_host_port_database(profiles_list):
-                    # Determine some parameters based on first profile
-                    profile_type, aggr_method = PortProfileViewer.determine_profile_type_and_aggr_method(
-                        profiles_list[0]
-                    )
-                    datasource = self.find_datasource(profiles_list[0])
-
-                    # Create a list with appropriate info for all datasets to be visualized
-                    dataset_info_list = list()
-                    for p in profiles_list:
-                        alias = PortProfileViewer.determine_profile_alias(p)
-
-                        dataset_info_list.append(
-                            {
-                                "measurement": p.measurement,
-                                "field": p.field,
-                                "prof_aggr_type": aggr_method,
-                                "alias": alias,
-                                "filters": p.filters,
-                            }
-                        )
-
-                    if len(profiles_list) == 1:
-                        graph_name = PortProfileViewer.determine_profile_name(profiles_list[0], profile_type)
-                    else:
-                        graph_name = "Multiple profiles (" + profile_type + ")"
-
-                    # Grafana datasources don't work anymore with host:443 as a configured host
-                    # needs to be https://host now
-                    if profile.port == 443 and not profile.host.startswith("https"):
-                        host = "https://" + profile.host
-                    else:
-                        host = profile.host + ":" + str(profile.port) if profile.port else profile.host
-
-                    embed_url = create_panel_multiple(
-                        graph_title=graph_name,
-                        axis_title="",
-                        host=host,
-                        database=profile.database,
-                        dataset_info=dataset_info_list,
-                        qau=profile.profileQuantityAndUnit,
-                        start_datetime=profile.startDate,
-                        end_datetime=profile.endDate,
-                        datasource=datasource,
-                    )
-                    return embed_url
-
-                else:
-                    logger.info("Not all profiles use same host, port, database")
+                try:
+                    Profiles.check_if_profiles_have_same_host_port_database(profiles_list)
+                except Exception as e:
+                    send_alert(f"Could not retrieve data: {str(e)}")
                     return None
+
+                # Determine some parameters based on first profile
+                profile_type, aggr_method = PortProfileViewer.determine_profile_type_and_aggr_method(
+                    profiles_list[0]
+                )
+                datasource = PortProfileViewer.find_datasource(profiles_list[0])
+
+                # Create a list with appropriate info for all datasets to be visualized
+                dataset_info_list = list()
+                for p in profiles_list:
+                    alias = PortProfileViewer.determine_profile_alias(p)
+
+                    dataset_info_list.append(
+                        {
+                            "measurement": p.measurement,
+                            "field": p.field,
+                            "prof_aggr_type": aggr_method,
+                            "alias": alias,
+                            "filters": p.filters,
+                        }
+                    )
+
+                if len(profiles_list) == 1:
+                    graph_name = PortProfileViewer.determine_profile_name(profiles_list[0], profile_type)
+                else:
+                    graph_name = "Multiple profiles (" + profile_type + ")"
+
+                # Grafana datasources don't work anymore with host:443 as a configured host
+                # needs to be https://host now
+                if profile.port == 443 and not profile.host.startswith("https"):
+                    host = "https://" + profile.host
+                else:
+                    host = profile.host + ":" + str(profile.port) if profile.port else profile.host
+
+                embed_url = create_panel_multiple(
+                    graph_title=graph_name,
+                    axis_title="",
+                    host=host,
+                    database=profile.database,
+                    dataset_info=dataset_info_list,
+                    qau=profile.profileQuantityAndUnit,
+                    start_datetime=profile.startDate,
+                    end_datetime=profile.endDate,
+                    datasource=datasource,
+                )
+                return embed_url
+
 
             else:
                 send_alert("ProfileType other than InfluxDBProfile not supported yet")
@@ -143,49 +145,50 @@ class PortProfileViewer:
 
                 if similar_profiles_list:
                     # Check if all profiles use same host / port / database
-                    if Profiles.check_if_profiles_have_same_host_port_database(similar_profiles_list):
-                        # Determine some parameters based on first profile
-                        profile_type, aggr_method = PortProfileViewer.determine_profile_type_and_aggr_method(profile)
-                        datasource = Profiles.get_instance().find_datasource(profile)
-
-                        # Create a list with appropriate info for all datasets to be visualized
-                        dataset_info_list = list()
-                        for p in similar_profiles_list:
-                            alias = PortProfileViewer.determine_profile_alias(p)
-
-                            dataset_info_list.append(
-                                {
-                                    "measurement": p.measurement,
-                                    "field": p.field,
-                                    "prof_aggr_type": aggr_method,
-                                    "alias": alias,
-                                    "filters": p.filters,
-                                }
-                            )
-
-                        # Grafana datasources don't work anymore with host:443 as a configured host
-                        # needs to be https://host now
-                        if profile.port == 443 and not profile.host.startswith("https"):
-                            host = "https://" + profile.host
-                        else:
-                            host = profile.host + ":" + str(profile.port) if profile.port else profile.host
-
-                        embed_url = create_panel_multiple(
-                            graph_title="Multiple profiles (asset type: " + type(asset).__name__ + ")",
-                            axis_title="",
-                            host=host,
-                            database=profile.database,
-                            dataset_info=dataset_info_list,
-                            qau=profile.profileQuantityAndUnit,
-                            start_datetime=profile.startDate,
-                            end_datetime=profile.endDate,
-                            datasource=datasource,
-                        )
-                        return embed_url
-
-                    else:
-                        logger.info("Not all profiles use same host, port, database")
+                    try:
+                        Profiles.check_if_profiles_have_same_host_port_database(similar_profiles_list)
+                    except Exception as e:
+                        send_alert(f"Could not retrieve data: {str(e)}")
                         return None
+
+                    # Determine some parameters based on first profile
+                    profile_type, aggr_method = PortProfileViewer.determine_profile_type_and_aggr_method(profile)
+                    datasource = PortProfileViewer.find_datasource(profile)
+
+                    # Create a list with appropriate info for all datasets to be visualized
+                    dataset_info_list = list()
+                    for p in similar_profiles_list:
+                        alias = PortProfileViewer.determine_profile_alias(p)
+
+                        dataset_info_list.append(
+                            {
+                                "measurement": p.measurement,
+                                "field": p.field,
+                                "prof_aggr_type": aggr_method,
+                                "alias": alias,
+                                "filters": p.filters,
+                            }
+                        )
+
+                    # Grafana datasources don't work anymore with host:443 as a configured host
+                    # needs to be https://host now
+                    if profile.port == 443 and not profile.host.startswith("https"):
+                        host = "https://" + profile.host
+                    else:
+                        host = profile.host + ":" + str(profile.port) if profile.port else profile.host
+
+                    embed_url = create_panel_multiple(
+                        graph_title="Multiple profiles (asset type: " + type(asset).__name__ + ")",
+                        axis_title="",
+                        host=host,
+                        database=profile.database,
+                        dataset_info=dataset_info_list,
+                        qau=profile.profileQuantityAndUnit,
+                        start_datetime=profile.startDate,
+                        end_datetime=profile.endDate,
+                        datasource=datasource,
+                    )
+                    return embed_url
 
             else:
                 send_alert("ProfileType other than InfluxDBProfile not supported yet")
