@@ -14,7 +14,7 @@ greenlet==3.0.2
     # via gevent
 gunicorn==21.2.0
     # via -r requirements-gunicorn.in
-packaging==23.1
+packaging==24.0
     # via gunicorn
 pycparser==2.21
     # via cffi
