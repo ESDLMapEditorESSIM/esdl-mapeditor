@@ -33,7 +33,8 @@ from esdl.units.conversion import convert_to_unit, ENERGY_IN_PJ
 from extensions.session_manager import get_project_manager, get_session
 from extensions.settings_storage import SettingsStorage
 from src.edr_client import EDRClient
-from src.process_es_area_bld import get_area_id_from_mapeditor_id, find_boundaries_in_ESDL
+from src.process_es_area_bld import get_area_id_from_mapeditor_id, find_boundaries_in_ESDL, \
+    find_and_send_KPI_information_in_ESDL
 from utils.utils import timed
 
 logger = log.get_logger(__name__)
@@ -1146,12 +1147,16 @@ class ETMSankeyToESDL:
                 break
 
         if gas_demand_households_heating and energy_natural_gas_profile_PJ:
-            final_heating_demand_PJ = energy_natural_gas_profile_PJ / 0.9
+            final_heating_demand_PJ = energy_natural_gas_profile_PJ * 0.9
             final_heating_demand_heatpump_PJ =  final_heating_demand_PJ * technology_info[0]["percentage"] / 100
             final_heating_demand_district_heating_PJ =  final_heating_demand_PJ * technology_info[1]["percentage"] / 100
+            final_heating_demand_hybrid_heatpump_PJ =  final_heating_demand_PJ * technology_info[2]["percentage"] / 100
 
-            electricity_demand_PJ = final_heating_demand_heatpump_PJ / 3.5           # COP = 3.5
-            steam_hotwater_demand_PJ = final_heating_demand_district_heating_PJ      # efficiency = 1
+            electricity_demand_PJ = (
+                final_heating_demand_heatpump_PJ / 3.5 +                            # COP heatpump = 3.5
+                final_heating_demand_hybrid_heatpump_PJ * 0.6 / 3.5                 # Hybrid HP: 60% via E, COP = 3.5
+            )
+            steam_hotwater_demand_PJ = final_heating_demand_district_heating_PJ     # efficiency = 1
 
             for asset in area.asset:
                 if asset.name == "Final demand_Electricity_Households space heating and hot water":
@@ -1164,9 +1169,17 @@ class ETMSankeyToESDL:
                     asset.port[0].profile[0].value += electricity_demand_PJ
                 if asset.name == "Primary demand_Steam hot water_Import":
                     asset.port[0].profile[0].value += steam_hotwater_demand_PJ
+                if asset.name == "Primary demand_Biomass_Biogas":
+                    # Hybrid heatpump: 40% via biogas, efficiency 90%
+                    asset.port[0].profile[0].value += final_heating_demand_hybrid_heatpump_PJ * 0.4 / 0.9
 
-            gas_demand_households_heating.port[0].profile[0].value = 0.9 * final_heating_demand_PJ * 1 - (
-                    technology_info[0]["percentage"] + technology_info[1]["percentage"]) / 100
+            # Remaining gas usage
+            gas_demand_households_heating.port[0].profile[0].value = (
+                    final_heating_demand_PJ / 0.9 * (1 - (
+                        technology_info[0]["percentage"] +
+                        technology_info[1]["percentage"]
+                    ) / 100)
+            )
 
             self.recalculate_kpis(area)
 
@@ -1176,6 +1189,7 @@ class ETMSankeyToESDL:
                 container = container.eContainer()
 
             # redraw all areas and KPIs, as KPIs have changed
-            find_boundaries_in_ESDL(container)
+            # find_boundaries_in_ESDL(container)
+            find_and_send_KPI_information_in_ESDL(container)
         else:
             logger.error("Cannot apply heat transition measures. Maybe ETM data is not loaded")

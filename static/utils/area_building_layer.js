@@ -1476,7 +1476,6 @@ function add_potential_geojson_layer(geojson_pontential_data) {
 function add_geojson_listener(socket, map) {
     socket.on('geojson', function(message) {
         let layer = message['layer'];
-        hide_loader();
 
         if (layer == 'area_layer') {
             geojson_area_data = message['geojson'];     // store for redraw based on other KPI
@@ -1509,8 +1508,10 @@ function add_geojson_listener(socket, map) {
         // areaLegendChoice = get_area_legend_choice(active_layer_id);
         // selectAreaKPI(areaLegendChoice);
 
+        hide_loader();
         window.PubSubManager.broadcast('GEOJSON_PROCESSED', { layer: message.layer, es_id: message.es_id });
     });
+
     socket.on('update_area_kpis', function(area_kpi_list) {
         saveSelectedKPI()  // make sure it does not reset the current selection
         const kpi_list = preprocess_layer_data("area", area_kpi_list, {});

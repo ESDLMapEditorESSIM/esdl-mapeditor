@@ -98,6 +98,11 @@ const technologies = ref([
     key: '2',
     name: 'District heat network',
     percentage: 0,
+  },
+  {
+    key: '3',
+    name: 'Hybrid heatpump (biogas)',
+    percentage: 0,
   }
 ]);
 
@@ -132,8 +137,8 @@ function updateTechnologyPercentage(tech_key, val) {
 
 function apply_measures() {
   // Clear both the area and the kpi layer, as both will be redrawn after calculations finish
-  window.clear_layers(active_layer_id, 'area_layer');
-  window.clear_layers(active_layer_id, 'kpi_layer');
+  // window.clear_layers(active_layer_id, 'area_layer');
+  // window.clear_layers(active_layer_id, 'kpi_layer');
   window.saveSelectedKPI();   // save the currently selected KPI
 
   socket.emit(
