@@ -123,10 +123,3 @@ button {
   margin-top: 7px;
 }
 </style>
-
-<style>
-#eps-measures-checkbox-group .ant-checkbox-group-item {
-  display: block;
-}
-</style>
-
