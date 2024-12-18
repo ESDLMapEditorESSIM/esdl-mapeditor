@@ -15,10 +15,12 @@
   -->
 
 <template>
-  <p>Upload profiles template for the selected Energy System. Please make sure to use a generated profile template.</p>
+  <p>
+    Upload profiles template for the selected ESDL layer. Please make sure to use a generated profile template.
+  </p>
 
   <p>
-    <strong class="text-warning">Note:</strong> Please only upload profiles with the template downloaded for this ESDL.
+    NB. The profile template is coupled to the ESDL layer it has been generated for in the previous step. It can therefore only be uploaded for this ESDL layer.
   </p>
 
   <a-form-item label="File to upload">

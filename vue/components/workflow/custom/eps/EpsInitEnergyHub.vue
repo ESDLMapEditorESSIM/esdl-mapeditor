@@ -18,6 +18,16 @@
   <p v-if="isLoading">Loading...</p>
   <p v-else-if="buildings.length === 0">No buildings found in ESDL. Please load a valid EPS ESDL and try again.</p>
   <div v-else>
+    <p>
+      Select which buildings will be part of the energy hub.
+    </p>
+    <p>
+      For these buildings, an energy hub will be configured in the ESDL layer, represented by 2 GenericConversion assets, 2 ElectricityCable assets and 1 ElectricityNetwork asset. The capacity constraints for the energy hub can be added to the ElectricityCable assets. Collective assets (in front of the meter) can be manually connected to the ElectricityNetwork asset via the Map Editor functionalities.
+    </p>
+    <p>
+      See the user manual for more information on configuring an energy hub in an ESDL layer.
+    </p>
+
     <a-form-item>
       <a-select
         v-model:value="selectedBuildingIds"

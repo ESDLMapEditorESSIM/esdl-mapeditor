@@ -15,7 +15,12 @@
   -->
 
 <template>
-  <p>Download a profiles template for the selected Energy System.</p>
+  <p>
+    Download a profiles template for the selected ESDL layer. In this template, for every asset in the ESDL layer, a custom profile can be set. This profile will replace the current profile once uploaded in the next step: Upload profiles template.
+  </p>
+  <p>
+    NB. Only profiles that you want to adjust need to be filled in the template, empty profiles will not overwrite the current profiles in the next step.
+  </p>
 
   <a-button type="primary" @click="generateTemplate">Generate profiles template</a-button>
 </template>

@@ -16,13 +16,13 @@
 
 <template>
   <p>
-    In this step, custom energy saving and electrification measures can be applied for building-related and industrial process energy use, through modifying a number of parameters.
+    In this step, energy saving and electrification measures can be applied for the ESDL energy system, both for building-related and industrial process energy use.
   </p>
   <p>
-    <strong class="text-warning">Note:</strong> Please make sure to select the ESDL on which to apply these measures. Apply custom measures only on ESDLs loaded from the EPS.
+    NB. Please make sure to select the ESDL on which to apply these measures. Apply custom measures only on ESDL layers loaded from the EPS.
   </p>
   <p>
-    The values for custom measures applied are stored for this ESDL, for later adjustments.
+    The values for custom measures applied are stored in the workflow for this ESDL, for later adjustments.
   </p>
   <p v-if="isLoading">Loading...</p>
   <p v-else-if="buildings.length === 0">No buildings found in ESDL. Please load a valid EPS ESDL and try again.</p>

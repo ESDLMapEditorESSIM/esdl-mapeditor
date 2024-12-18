@@ -1,8 +1,8 @@
 <template>
-  <p>Please select EPS measures to apply to the ESDL.</p>
+  <p>Please select which EPS measures to apply to the EPS ESDL.</p>
   <p>
-    Please note that the "Warmtepomp" measure also implies all insulation measures, as well as "Warmteterugwinning uit
-    ventilatie" and PV. Those cannot be deselected if "Warmtepomp" is selected.
+    Please note that the "Warmtepomp" measure also implies all insulation measures should be taken, as well as "Warmteterugwinning uit
+    ventilatie". Those cannot be deselected if "Warmtepomp" is selected.
   </p>
   <div>
     <a-checkbox
