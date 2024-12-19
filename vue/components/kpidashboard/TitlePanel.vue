@@ -4,7 +4,7 @@
   </span>
   <span class="settings" @click="showTitleSettings"><i class="fas fa-edit" /></span>
 
-  <a-modal v-model:visible="title_settings_visible" title="Edit title" width="750px" @ok="handleOk">
+  <a-modal v-model:open="title_settings_visible" title="Edit title" width="750px" @ok="handleOk">
     <a-row>
       <a-col :span="4">
         <span>Title:</span>

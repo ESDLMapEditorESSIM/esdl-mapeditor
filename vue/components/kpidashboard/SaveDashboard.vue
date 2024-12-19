@@ -3,7 +3,7 @@
     <a-button type="primary" @click="showModal">
       <i class="fas fa-save" />
     </a-button>
-    <a-modal v-model:visible="visible" title="Save dashboard" width="750px" @ok="handleOk">
+    <a-modal v-model:open="visible" title="Save dashboard" width="750px" @ok="handleOk">
       <a-card style="width: 100%">
         <a-radio-group v-model:value="save_as_new_or_existing">
           <a-radio key="new" value="new" class="radiostyle">
