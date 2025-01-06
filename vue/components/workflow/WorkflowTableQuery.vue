@@ -36,22 +36,30 @@
         <template #action="{ record }">
           <span>
             <a-row :gutter="4">
-              <a-col v-for="a in actions" :key="a.title">
-                <div v-if="'icon' in a">
+              <a-col v-for="action in actions" :key="action.title">
+                <div v-if="'icon' in action">
                   <i
-                    v-if="actionEnabled(a, record)"
-                    :class="a.icon"
-                    class="pointer"
-                    :title="a.title"
+                    v-if="actionWaiting(action, record)"
+                    :class="action.wait_icon"
+                    :title="action.wait_title"
                     @mouseleave="hide_jquery_ui_popup"
-                    @click="doAction(record, a)"
                   />
-                  <i v-else :class="a.icon" class="disabled" />
+                  <i
+                    v-else-if="actionEnabled(action, record)"
+                    :class="action.icon"
+                    class="pointer"
+                    :title="action.title"
+                    @mouseleave="hide_jquery_ui_popup"
+                    @click="doAction(record, action)"
+                  />
+                  <i v-else :class="action.icon" class="disabled" />
                 </div>
                 <div v-else>
                   <li>
-                    <a v-if="actionEnabled(a, record)" href="#" @click="doAction(record, a)">{{ a.title }}</a>
-                    <div v-else class="disabled">{{ a.title }}</div>
+                    <a v-if="actionEnabled(action, record)" href="#" @click="doAction(record, action)">{{
+                      action.title
+                    }}</a>
+                    <div v-else class="disabled">{{ action.title }}</div>
                   </li>
                 </div>
               </a-col>
@@ -78,6 +86,12 @@ import {onMounted, ref, watch} from "vue";
 import {useWorkflow} from "@/composables/workflow";
 import {workflowGetData} from "./utils/api.js";
 
+import {useWorkflowTableState} from "@/composables/workflowTableState";
+
+const {getSelectedUserGroupsRef, getWaitingRunIdsPerActionRef} = useWorkflowTableState();
+const selectedUserGroups = getSelectedUserGroupsRef();
+const waitingRunIdsPerAction = getWaitingRunIdsPerActionRef();
+
 const props = defineProps({
   workflowStep: {
     type: Object,
@@ -90,6 +104,11 @@ let workflowStep = props.workflowStep;
 let workflowTrigger = props.workflowStep.workflowTrigger;
 
 onMounted(() => {
+  window.socket.on('workflow_table_set_action_complete', (data) => {
+    if (data.process_identifier in waitingRunIdsPerAction.value) {
+      waitingRunIdsPerAction.value[data.process_identifier].splice(data.run_id);
+    }
+  });
   doGetData();
   refresh();
 });
@@ -110,7 +129,6 @@ const additional_fields = ref(null);
 const actions = ref([]);
 const tableRows = ref([]);
 const filteredRows = ref([]);
-const selectedUserGroups = ref(["my_runs"]);
 const userGroupsForUser = ref([{value: "my_runs", label: "my runs"}]);
 
 const pagination = ref({"position": 'bottom', "hideOnSinglePage": true, "defaultPageSize": 9});
@@ -147,14 +165,25 @@ const doAction = (record, action) => {
     state[workflowStep.target_variable][field] = record[field];
   }
 
+  if ("wait_icon" in action) {
+    console.log(action.wait_icon, record);
+    if (action.title in waitingRunIdsPerAction.value) {
+      waitingRunIdsPerAction.value[action.title].push(record.run_id);
+    } else {
+      waitingRunIdsPerAction.value[action.title] = [record.run_id];
+    }
+  }
+
   isLoading.value = true;
   if ("to_socket" in action) {
     let params = "params" in action.to_socket ? action.to_socket.params : {};
-    if ("record_params" in action.to_socket) {
-      for (const [key, record_key] of Object.entries(action.to_socket.record_params)) {
+    if ("table_record_params" in action.to_socket) {
+      for (const [key, record_key] of Object.entries(action.to_socket.table_record_params)) {
         params[key] = record[record_key];
       }
     }
+    params["process_finished_event"] = "workflow_table_set_action_complete";
+    params["process_identifier"] = action.title;
     window.socket.emit(action.to_socket.event, params, () => {
       doGetData();
     });
@@ -164,6 +193,11 @@ const doAction = (record, action) => {
   if ("next_step" in action) {
     goToStep(action.next_step);
   }
+};
+
+const actionWaiting = (action, row) => {
+  return !!(action.title in waitingRunIdsPerAction.value
+      && waitingRunIdsPerAction.value[action.title].includes(row.run_id));
 };
 
 const actionEnabled = (action, row) => {

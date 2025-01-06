@@ -224,7 +224,7 @@ TooltipInfo(app, socketio)
 ActivityContextExtension(app, socketio, settings_storage)
 ResidentialArea(app, socketio, settings_storage)
 data_manager = DataManager(app, socketio)
-ExternalModels(app, socketio, models_storage)
+ExternalModels(app, socketio, models_storage, toast_notifications)
 WorkflowEngine(app, socketio, models_storage, esdl_services, toast_notifications)
 
 

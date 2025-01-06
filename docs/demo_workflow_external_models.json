@@ -442,6 +442,54 @@
               }
             },
             {
+              "title": "Download xlsx",
+              "icon": "fas fa-download",
+              "wait_title": "Extracting data..",
+              "wait_icon": "fas fa-spinner fa-spin",
+              "enabled": {
+                "dataIndex": "status",
+                "values": [
+                  "SUCCEEDED"
+                ]
+              },
+              "to_socket": {
+                "event": "external_models_download_run",
+                "params": {
+                  "filter_on_tag": {
+                    "tag_name": "simulationRun",
+                    "value_database_key": "model_job_id"
+                  },
+                  "esdl_object_name_field": "assetName",
+                  "excel_sheets_per_table": [
+                    {
+                      "name_postfix": "PinW",
+                      "field_name_recorded_per_esdl_object": "allocationPower",
+                      "field_names_unrelated_to_esdl_objects": [
+                        "imbalancePower"
+                      ]
+                    },
+                    {
+                      "name_postfix": "EinJ",
+                      "field_name_recorded_per_esdl_object": "allocationEnergy",
+                      "field_names_unrelated_to_esdl_objects": [
+                        "imbalanceEnergy"
+                      ],
+                      "exclude_values": {
+                        "field_name": "capability",
+                        "values_to_exclude": [
+                          "Transport"
+                        ]
+                      }
+                    }
+                  ],
+                  "influxdb_host_override": "localhost"
+                },
+                "table_record_params": {
+                  "run_id": "run_id"
+                }
+              }
+            },
+            {
               "title": "Delete",
               "icon": "far fa-trash-alt",
               "enabled": {
@@ -455,7 +503,7 @@
                 "params": {
                   "delete_result_url": ""
                 },
-                "record_params": {
+                "table_record_params": {
                   "run_id": "run_id"
                 }
               }
@@ -494,7 +542,7 @@
               "animation": {
                 "filter_on_tag": {
                   "tag_name": "simulationRun",
-                  "database_key": "model_job_id"
+                  "value_database_key": "model_job_id"
                 }
               },
               "external_link": {
@@ -646,6 +694,12 @@
               "description": "Input parameters (can be empty)",
               "parameter_name": "input_params_dict",
               "location": "body"
+            },
+            {
+              "name": "timeout_after_s",
+              "description": "Job timeout in seconds",
+              "value": 86400,
+              "location": "body"
             }
           ],
           "body": "json_text",
@@ -688,7 +742,8 @@
               "progress_fraction": "progress_fraction",
               "progress_message": "progress_message",
               "output_esdl": "output_esdl",
-              "logs": "logs"
+              "logs": "logs",
+              "esdl_feedback": "esdl_feedback"
             },
             "model_specific_response_mapping": {
               "registered_at": "registered_at",
@@ -777,6 +832,15 @@
               }
             },
             {
+              "title": "View feedback",
+              "icon": "far fa-comment",
+              "next_step": "view_feedback_messages",
+              "enabled": {
+                "dataIndex": "esdl_feedback",
+                "exists": true
+              }
+            },
+            {
               "title": "View details",
               "icon": "fas fa-info-circle",
               "next_step": "view_run_details"
@@ -806,7 +870,7 @@
                 "params": {
                   "delete_result_url": "http://localhost:9200/job/<MODEL_JOB_ID>"
                 },
-                "record_params": {
+                "table_record_params": {
                   "run_id": "run_id"
                 }
               }
@@ -845,6 +909,35 @@
               "animation": {
                 "influxdb_host_override": "localhost"
               }
+            }
+          ],
+          "with_jwt_token": true,
+          "state_params": true,
+          "next_step": "base_steps_with_table"
+        }
+      },
+      {
+        "reference": "view_feedback_messages",
+        "name": "View feedback messages",
+        "description": "Loads the in- or output ESDL and show the feedback messages",
+        "type": "service",
+        "state_params": {
+          "run_id": "model_run.run_id",
+          "run_name": "model_run.run_name"
+        },
+        "service": {
+          "id": "x1c9d1a2-c92a-46ed-a7e4-9931971cbb50",
+          "name": "View feedback messages",
+          "description": "The feedback messages should be visible",
+          "button_label": "Go back to results",
+          "auto": true,
+          "type": "",
+          "external_model": "omotes",
+          "result": [
+            {
+              "action": "esdl",
+              "run_esdl_key": "input_esdl",
+              "show_asset_feedback": true
             }
           ],
           "with_jwt_token": true,
@@ -922,7 +1015,7 @@
         "type": "select-query",
         "multiple": false,
         "source": {
-          "url": "http://esdl-validator:5000/schema",
+          "url": "http://localhost:5000/schema",
           "http_method": "get",
           "label_fields": [
             "name"
@@ -941,12 +1034,12 @@
         },
         "service": {
           "id": "64c9d1a2-c92a-46ed-a7e4-9931971cbb20",
-          "name": "Validate ESDL against scehema",
+          "name": "Validate ESDL against schema",
           "headers": {
             "User-Agent": "ESDL Mapeditor/0.1",
             "Content-Type": "application/xml;charset=UTF-8"
           },
-          "url": "http://esdl-validator:5000/validationToMessages/",
+          "url": "http://localhost:5000/validationToMessages/",
           "http_method": "post",
           "type": "send_esdl",
           "query_parameters": [

@@ -30,6 +30,21 @@ class NotificationPlacement(str, Enum):
     BOTTOM_RIGHT = "bottomRight"
 
 
+class FileDownloadType(str, Enum):
+    """Download file type options."""
+
+    EXCEL = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+@dataclass
+class FileDownload:
+    """File download data."""
+
+    file_name: str
+    content_b64string: str
+    file_type: FileDownloadType
+
+
 @dataclass
 class ToastNotification:
     """AntDV notification configuration."""
@@ -39,6 +54,7 @@ class ToastNotification:
     type: NotificationType = NotificationType.INFO
     placement: NotificationPlacement = NotificationPlacement.TOP_RIGHT
     close_after_seconds: float = 5  # '0': don't close automatically
+    file_download: FileDownload | None = None
 
     def as_dict(self) -> dict:
         return asdict(self)

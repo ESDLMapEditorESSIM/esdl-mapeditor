@@ -454,7 +454,8 @@ class ESDLServices:
                                 model_run_data = self.models_storage.get_model_run(state_params["run_id"])
                                 filter_tag_name = service["result"][0]["animation"]["filter_on_tag"]["tag_name"]
                                 filter_tag_value = get_nested_dict_value(
-                                    model_run_data, service["result"][0]["animation"]["filter_on_tag"]["database_key"]
+                                    model_run_data,
+                                    service["result"][0]["animation"]["filter_on_tag"]["value_database_key"],
                                 )
                             emit(
                                 "animation_esdl_data",
@@ -470,12 +471,12 @@ class ESDLServices:
                             )
                         except Exception as e:
                             logger.error(e)
-                            return False, f"\nCould not retrieve animation data: {str(e)} ",  None
+                            return False, f"\nCould not retrieve animation data: {str(e)} ", None
 
                     if "external_link" in service["result"][0]:
                         model_run_data = self.models_storage.get_model_run(state_params["run_id"])
                         external_link_url = get_nested_dict_value(
-                            model_run_data, service["result"][0]["external_link"]["database_key"]
+                            model_run_data, service["result"][0]["external_link"]["value_database_key"]
                         )
                         emit(
                             "results_external_link",
