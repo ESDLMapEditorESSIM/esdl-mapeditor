@@ -43,7 +43,7 @@ class ESDL2InlineProfile:
             content = uri.getvalue()
             response = Response(content, direct_passthrough=True)
             response.headers.set('Content-Type', 'application/esdl+xml')
-            response.headers.set('Content-Disposition', 'attachment', filename='%s.esdl' % es_converted.name)
+            response.headers.set('Content-Disposition', 'attachment', filename='%s' % es_converted.name)
 
             return response
 
@@ -70,7 +70,6 @@ def convert_esdl_profiles(
     esi: EnergySystemInformation = es.energySystemInformation
 
     # Remove all InfluxDBProfiles from the global profiles list
-    # TODO: for some reason not all global (InfluxDBProfile) profiles are found and thus not removed
     logger.info("Removing InfluxDBProfiles from global profiles")
     global_profiles = esi.profiles.profile
     influxdb_profiles = [profile for profile in global_profiles if isinstance(profile, InfluxDBProfile)]

@@ -100,7 +100,7 @@ class ESDLFileImport:
         prof_servers = Profiles.get_instance().get_profiles_settings()["profiles_servers"]
         if len(prof_servers) == 0:
             raise Exception("No profiles servers found in profiles settings.")
-        prof_server = prof_servers[0]  # TODO: ugly and potentially dangerous
+        prof_server = prof_servers[0]  # TODO: ugly and potentially incorrect
         influxdb_settings = ConnectionSettings(
             host=prof_server["host"],
             port=int(prof_server["port"]),
@@ -120,7 +120,8 @@ class ESDLFileImport:
             # if this profile was converted from an InfluxDBProfile to TimeSeriesProfile.
             field_name = prof_manager.profile_header[1]
             field_name_split = field_name.split("_")
-            measurement = f"{inline_es.name}"
+            measurement = inline_esi.id.replace("-", "_")
+
             # If the profile is based on a default profile we don't need to save it to the database,
             # and we can create a profile directly.
             if field_name.startswith("standard_profiles_point"):
@@ -140,18 +141,40 @@ class ESDLFileImport:
             else:
                 # If the profile is not based on a default profile we need to save it to the database
                 # TODO: we could create a panel for these profiles...
-                prof_manager.profile_header[1] = f"{(prof.id or str(uuid.uuid4())).replace('-', '_')}"
+                field_name = f"{(prof.id or str(uuid.uuid4()))}"
+                prof_manager.profile_header[1] = field_name
                 influx_profile = prof_manager.save_influxdb(
                     measurement=measurement,
                     field_names=[prof_manager.profile_header[1]],
                 )
-            influx_profile.name = prof.name
+            influx_profile.name = prof.name  # equal to f"{measurement}_{field_name}" for standard profiles and a UUID for custom profiles
             influx_profile.profileType = "ENERGY_IN_TJ"
             if multiplier is not None:
                 influx_profile.multiplier = multiplier
+            # Fix to fix temporary fix in profile manager that removes http from host
+            if not influx_profile.host.startswith("http"):
+                influx_profile.host = f"http://{influx_profile.host}"
             handled_profiles[prof.name] = influx_profile
 
         def _convert_profile_for_port(port: esdl.Port):
+            port_profiles_remove = []
+            port_profiles_add = []
+
+            def add_handled_profile(handled_profile: esdl.InfluxDBProfile, multiplier: float):
+                port_profiles_add.append(InfluxDBProfile(
+                    id=str(uuid.uuid4()),
+                    name=handled_profile.name,
+                    host=handled_profile.host,
+                    port=handled_profile.port,
+                    database=handled_profile.database,
+                    measurement=handled_profile.measurement,
+                    field=handled_profile.field,
+                    filters=handled_profile.filters,
+                    startDate=handled_profile.startDate,
+                    endDate=handled_profile.endDate,
+                    multiplier=multiplier,
+                ))
+
             for profile in port.profile:
                 if isinstance(profile, esdl.TimeSeriesProfile):
                     profile_name = profile.name
@@ -161,19 +184,8 @@ class ESDLFileImport:
 
                     handled_influx_profile = handled_profiles[profile_name]
                     assert isinstance(handled_influx_profile, esdl.InfluxDBProfile)
-                    port.profile.append(InfluxDBProfile(
-                        id=str(uuid.uuid4()),
-                        host=handled_influx_profile.host,
-                        port=handled_influx_profile.port,
-                        database=handled_influx_profile.database,
-                        measurement=handled_influx_profile.measurement,
-                        field=handled_influx_profile.field,
-                        filters=handled_influx_profile.filters,
-                        startDate=handled_influx_profile.startDate,
-                        endDate=handled_influx_profile.endDate,
-                        multiplier=1.0,
-                    ))
-                    port.profile.remove(profile)
+                    add_handled_profile(handled_influx_profile, multiplier=1.0)
+                    port_profiles_remove.append(profile)
                 elif isinstance(profile, esdl.ProfileReference):
                     # Reference of ProfileReference should be TimeSeriesProfile
                     if not isinstance(profile.reference, esdl.TimeSeriesProfile):
@@ -187,22 +199,14 @@ class ESDLFileImport:
 
                     handled_influx_profile = handled_profiles[profile_name]
                     assert isinstance(handled_influx_profile, esdl.InfluxDBProfile)
-                    port.profile.append(InfluxDBProfile(
-                        id=str(uuid.uuid4()),
-                        host=handled_influx_profile.host,
-                        port=handled_influx_profile.port,
-                        database=handled_influx_profile.database,
-                        measurement=handled_influx_profile.measurement,
-                        field=handled_influx_profile.field,
-                        filters=handled_influx_profile.filters,
-                        startDate=handled_influx_profile.startDate,
-                        endDate=handled_influx_profile.endDate,
-                        multiplier=profile.multiplier,
-                    ))
-                    port.profile.remove(profile)
+                    add_handled_profile(handled_influx_profile, multiplier=profile.multiplier)
+                    port_profiles_remove.append(profile)
 
-                # Only convert the first profile
-                return
+            # Update port profiles after iterating to avoid changing the list while iterating
+            for profile in port_profiles_add:
+                port.profile.append(profile)
+            for profile in port_profiles_remove:
+                port.profile.remove(profile)
 
         def _convert_asset_profiles(asset: esdl.Asset):
             if hasattr(asset, 'port'):
