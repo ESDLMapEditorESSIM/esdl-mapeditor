@@ -104,6 +104,7 @@ from src.custom_icons import CustomIcons
 from src.kpi_dashboard import KPIDashboard
 from utils.datetime_utils import parse_date
 from extensions.residential_area.residential_area import ResidentialArea
+from extensions.ownership.ownership import Ownership
 
 print('MapEditor version {}'.format(mapeditor_version))
 print('MapEditor git describe {}'.format(mapeditor_long_version))
@@ -217,6 +218,7 @@ KPIDashboard(app, socketio, settings_storage)
 TooltipInfo(app, socketio)
 ActivityContextExtension(app, socketio, settings_storage)
 ResidentialArea(app, socketio, settings_storage)
+Ownership(app, socketio, settings_storage)
 data_manager = DataManager(app, socketio)
 
 app.config.update({

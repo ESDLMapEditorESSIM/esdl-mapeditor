@@ -222,6 +222,7 @@
 
     <script type="text/javascript" src="./utils/KPIDashboard.js"></script>
     <script type="text/javascript" src="./utils/esdl_analytics.js"></script>
+    <script type="text/javascript" src="./utils/ownership.js"></script>/
 
     <script type="text/javascript" src="./utils/esdl_file_io.js"></script>
     <script type="text/javascript" src="./utils/custom_icons.js"></script>
@@ -1539,6 +1540,7 @@
                                     <li><a class="dropdown-item" href="#" onclick="carriers_window();"><div class="menu-icon">&nbsp;</div>Energy carriers...</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="sectors_window();"><div class="menu-icon">&nbsp;</div>Sectors...</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="environmental_profiles();"><div class="menu-icon ui-icon ui-icon-star">&nbsp;</div>Environmental profiles...</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="ownership_dialog.open();"><div class="menu-icon" id="menu_ownership">&nbsp;</div>Ownership</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="shapefile_converter_window.open_window();"><div class="menu-icon ui-icon ui-icon-image">&nbsp;</div>Shapefile converter...</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="search_assets_window();"><div class="menu-icon ui-icon ui-icon-search">&nbsp;</div>Search assets...</a></li>
                                 </ul>
@@ -1891,6 +1893,18 @@
     }
     const esdl_analytics = new ESDLAnalytics(esdl_analytics_dialog_options);
     map.addControl(esdl_analytics);
+
+    const ownership_dialog_options = {
+        size: [ 1100, 700 ],
+        minSize: [ 100, 100 ],
+        maxSize: [ 4000, 2000 ],
+        anchor: [ 10, 50 ],
+        initOpen: false,
+        state: 'maximized',
+        allowable_states: ['custom', 'maximized', 'minimized']
+    }
+    const ownership_dialog = new OwnerShipDialog(ownership_dialog_options);
+    map.addControl(ownership_dialog);
 
 {% if essim_enabled and 'essim' in role %}
     L.control.essim_control().addTo(map);
