@@ -38,7 +38,7 @@
 <script setup="props">
 import {setattrd} from "@/utils/utils";
 
-import {RESET_WORKFLOW, useWorkflow} from "@/composables/workflow";
+import {useWorkflow} from "@/composables/workflow";
 import {useEsdlLayers} from "@/composables/esdlLayers";
 import {onMounted, ref, watch} from "vue";
 
@@ -60,11 +60,11 @@ let workflowTrigger = props.workflowStep.workflowTrigger;
 const buttonDisabled = ref(false);
 
 onMounted(() => {
-  init(true);
+  init();
 });
 
-watch(workflowTrigger, (currentValue) => {
-  init(currentValue[RESET_WORKFLOW]);
+watch(workflowTrigger, () => {
+  init();
 });
 
 const esdlWasLoaded = () => {
@@ -123,8 +123,8 @@ const loadEsdl = () => {
   }
 };
 
-const init = (reset) => {
-  if (reset && workflowStep.service.auto) {
+const init = () => {
+  if (workflowStep.service.auto) {
     // Load the ESDL upon loading of this step.
     clearLayersAndLoadEsdl();
   }

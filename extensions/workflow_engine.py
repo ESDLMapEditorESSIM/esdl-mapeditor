@@ -110,7 +110,7 @@ class WorkflowStep:
                     if not self.update_values_from_query(updated_values, query_config):
                         return False
 
-            if updated_values[STATUS] is None:
+            if STATUS not in updated_values or updated_values[STATUS] is None:
                 return False
             updated_values[LAST_UPDATED_TO_EXTERNAL_MODEL_AT] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 

@@ -24,6 +24,7 @@ export const WorkflowStepTypes = Object.freeze({
     ENGINE_MONITOR: 'workflow-engine-monitor',
     // Custom component.
     CUSTOM: 'custom',
+    COMPOSITE: 'composite',
 });
 
 // TODO: Move to different file
@@ -75,6 +76,7 @@ export function useWorkflow() {
      *
      * @param {*} service_index
      * @param {*} service
+     * @param {*} state
      */
     const startNewWorkflow = (service_index, service, state) => {
         currentWorkflow.value = new Workflow(service_index, service, state);
@@ -136,7 +138,7 @@ export function useWorkflow() {
                 const parsedWorkflow = response;
                 const workflowObj = new Workflow(currentWorkflow.value.service_index, currentWorkflow.value.service);
                 workflowObj.uuid = parsedWorkflow.uuid;
-                workflowObj.activeWorkflowSteps = parsedWorkflow.workflowStep;
+                workflowObj.workflowStep = parsedWorkflow.step;
                 workflowObj.prevWorkflowSteps = parsedWorkflow.prevWorkflowSteps;
                 workflowObj.state = parsedWorkflow.state;
                 workflowObj.name = parsedWorkflow.name;
@@ -169,7 +171,7 @@ export function useWorkflow() {
 
     const deletePersistedWorkflow = (uuid) => {
         window.show_loader();
-        window.socket.emit('/workflow/delete', {workflow_id: uuid}, function (msg) {
+        window.socket.emit('/workflow/delete', {workflow_id: uuid}, function () {
             window.hide_loader();
             loadSavedWorkflows();
         });
@@ -210,6 +212,13 @@ export function useWorkflow() {
     };
 
     /**
+     * Get workflow step, used by the composite workflow component
+     */
+    const getWorkflowStep = (stepIndexOrReference) => {
+        return currentWorkflow.value.getWorkflowStep(stepIndexOrReference);
+    };
+
+    /**
      * Go to given step.
      */
     const goToStep = (stepIdx) => {
@@ -244,6 +253,7 @@ export function useWorkflow() {
         goToFirstStep,
         goToNextStep,
         goToPreviousStep,
+        getWorkflowStep,
         getState,
         getFromState,
         getParamsFromState,
@@ -270,7 +280,7 @@ export class Workflow {
         this.service = service;
 
         this.workflowTrigger = {"index": 0};  // for component watcher
-        this.setActiveWorkflowSteps(0);
+        this.workflowStep = this.getWorkflowStep(0);
 
         this.prevWorkflowSteps = [];
         if (!initialState) {
@@ -301,7 +311,7 @@ export class Workflow {
      */
     doNext(targetStepIdx = null) {
         if (targetStepIdx === null || targetStepIdx === undefined) {
-            const nextStepData = this.activeWorkflowSteps[0].next_step;
+            const nextStepData = this.workflowStep.next_step;
             if (nextStepData === undefined) {
                 // No next step. Go to the beginning.
                 while (this.hasPreviousStep()) {
@@ -333,14 +343,12 @@ export class Workflow {
             }
         }
 
-        if (typeof targetStepIdx === "string") {
-            targetStepIdx = this.getStepIdxFromReference(targetStepIdx);
-        }
-        if (targetStepIdx >= 0) {
-            if (targetStepIdx !== this.activeWorkflowIndex) {
-                this.prevWorkflowSteps.push(this.activeWorkflowSteps);
-            }
-            this.setActiveWorkflowSteps(targetStepIdx);
+        const nextStep = this.getWorkflowStep(targetStepIdx);
+
+        // Don't add to previous steps if staying on the same step which happens with the 'composite' step
+        if (nextStep !== null && nextStep !== this.workflowStep) {
+            this.prevWorkflowSteps.push(this.workflowStep);
+            this.workflowStep = nextStep;
         }
     }
 
@@ -350,53 +358,33 @@ export class Workflow {
                 return index;
             }
         }
+        return null;
     }
 
     /**
      * Go to the previous step.
      */
     doPrevious() {
-        this.activeWorkflowSteps = this.prevWorkflowSteps.pop();
+        this.workflowStep = this.prevWorkflowSteps.pop();
         this.workflowTrigger["index"] += 1;
-        // to avoid infinite loop with auto_next_step
-        this.workflowTrigger[RESET_WORKFLOW] = true;
-        // to update values in other 'co view steps' via 'watch'
-        for (const step of this.activeWorkflowSteps) {
-            step.workflowTrigger = this.workflowTrigger;
-        }
     }
 
     hasPreviousStep() {
         return this.prevWorkflowSteps && this.prevWorkflowSteps.length > 0;
     }
 
-    setActiveWorkflowSteps(targetStepIdx) {
+    getWorkflowStep(stepIndexOrReference) {
         this.workflowTrigger["index"] += 1;
-        // to avoid infinite loop with auto_next_step: don't reset when staying on the same steps
-        this.workflowTrigger[RESET_WORKFLOW] = this.activeWorkflowIndex !== targetStepIdx;
-        this.activeWorkflowIndex = targetStepIdx;
-        const currentSteps = [this.add_main_service_id(this.service.workflow[targetStepIdx])];
-        if ("co_view_steps" in currentSteps[0]) {
-            for (let stepIndex of currentSteps[0].co_view_steps) {
-                if (typeof stepIndex === "string") {
-                    stepIndex = this.getStepIdxFromReference(stepIndex);
-                }
-                if (stepIndex < targetStepIdx) {
-                    currentSteps.unshift(this.add_main_service_id(this.service.workflow[stepIndex]));
-                } else {
-                    currentSteps.push(this.add_main_service_id(this.service.workflow[stepIndex]));
-                }
-            }
-        }
-        // to update values in other 'co view steps' via 'watch'
-        for (const step of currentSteps) {
-            step.workflowTrigger = this.workflowTrigger;
-        }
-        this.activeWorkflowSteps = currentSteps;
-    }
+        let stepIndex = typeof stepIndexOrReference === "string" ?
+            this.getStepIdxFromReference(stepIndexOrReference) : stepIndexOrReference;
 
-    add_main_service_id(step) {
-        step["main_service_id"] = this.service.id;
-        return step;
+        if (stepIndex === null) {
+            console.error("Workflow step reference or index could not be found: ", stepIndexOrReference);
+            return null;
+        }
+        const wfStep = this.service.workflow[stepIndex];
+        wfStep.workflowTrigger = this.workflowTrigger;
+        wfStep["main_service_id"] = this.service.id;
+        return wfStep;
     }
 }

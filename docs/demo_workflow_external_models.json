@@ -4,9 +4,23 @@
     "name": "Essim",
     "explanation": "Run, view and manage Essim calculations",
     "type": "vueworkflow",
+    "hide_step_history": true,
     "workflow": [
       {
         "reference": "base_steps_with_table",
+        "type": "composite",
+        "ids_or_refs": [
+          "select_name_and_time_step",
+          "select_simulation_period",
+          "select_custom_period",
+          "select_kpis",
+          "start_run",
+          "runs_table"
+        ],
+        "next_step": "base_steps_with_table"
+      },
+      {
+        "reference": "select_name_and_time_step",
         "name": "New Run",
         "type": "json-form2",
         "data": {
@@ -55,14 +69,7 @@
           }
         },
         "next_step": "base_steps_with_table",
-        "auto_next_step": true,
-        "co_view_steps": [
-          "select_simulation_period",
-          "select_custom_period",
-          "select_kpis",
-          "start_run",
-          "runs_table"
-        ]
+        "auto_next_step": true
       },
       {
         "reference": "select_simulation_period",
@@ -243,7 +250,8 @@
         "state_params": {
           "run_name": "run_name",
           "start_time": "start_time",
-          "end_time": "end_time"
+          "end_time": "end_time",
+          "time_step": "time_step"
         },
         "datetimes_convert_Z": true,
         "service": {
@@ -282,7 +290,7 @@
             {
               "name": "timeStep",
               "description": "time step",
-              "value": "1h",
+              "parameter_name": "time_step",
               "location": "body"
             },
             {
@@ -547,7 +555,7 @@
               },
               "external_link": {
                 "description": "Open Dashboard",
-                "database_key": "model_specific_output.dashboardURL"
+                "value_database_key": "model_specific_output.dashboardURL"
               }
             }
           ],
@@ -595,9 +603,22 @@
     "name": "Omotes",
     "explanation": "Run, view and manage heat network simulations and optimizations",
     "type": "vueworkflow",
+    "hide_step_history": true,
     "workflow": [
       {
         "reference": "base_steps_with_table",
+        "type": "composite",
+        "ids_or_refs": [
+          "select_name",
+          "select_workflow_type",
+          "other_input_parameters",
+          "start_run",
+          "runs_table"
+        ],
+        "next_step": "base_steps_with_table"
+      },
+      {
+        "reference": "select_name",
         "name": "New optimization/simulation",
         "type": "json-form2",
         "data": {
@@ -616,13 +637,7 @@
           }
         },
         "next_step": "base_steps_with_table",
-        "auto_next_step": true,
-        "co_view_steps": [
-          "select_workflow_type",
-          "other_input_parameters",
-          "start_run",
-          "runs_table"
-        ]
+        "auto_next_step": true
       },
       {
         "reference": "select_workflow_type",

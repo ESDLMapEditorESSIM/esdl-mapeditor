@@ -17,7 +17,7 @@
 
 <script setup="props">
 import {onMounted, ref, watch} from "vue";
-import {useWorkflow, RESET_WORKFLOW} from "@/composables/workflow";
+import {useWorkflow} from "@/composables/workflow";
 import {getJsonForm, postJsonForm} from "./utils/api";
 import {JsonForms} from "@jsonforms/vue";
 import Ajv from "ajv";
@@ -56,11 +56,11 @@ const autoNextStep = ref(false);
 const {goToNextStep, getState, getFromState, setWorkflowStepInputValid} = useWorkflow();
 
 onMounted(() => {
-  init(true);
+  init();
 });
 
-watch(workflowTrigger, (currentValue) => {
-  init(currentValue[RESET_WORKFLOW]);
+watch(workflowTrigger, () => {
+  init();
 });
 
 const updateData = (jsonFormData) => {
@@ -164,10 +164,7 @@ const updateState = () => {
   return dataSubmitFormatted;
 };
 
-const init = (reset) => {
-  if (reset) {
-    formData.value = {};
-  }
+const init = () => {
   workflowStep = props.workflowStep;
   workflowTrigger = props.workflowStep.workflowTrigger;
   if ("auto_next_step" in workflowStep) {
