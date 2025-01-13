@@ -1,10 +1,29 @@
 <template>
-  <div>
-    <h3 class="panel_title">
-      {{ options.title }}
-    </h3>
-    <span class="settings" @click="showImageSettings"><i class="fa fa-edit" /></span>
-  </div>
+  <a-row style="justify-content: space-between;">
+    <a-col :span="20">
+      <a-typography-title :level="5" style="padding-left: 12px;">
+        {{ options.title }}
+      </a-typography-title>
+    </a-col>
+    <a-col>
+      <a-button 
+        type="text" 
+        @click="showImageSettings"
+      >
+        <template #icon>
+          <FormOutlined />
+        </template>
+      </a-button>
+      <a-button 
+        type="text" 
+        @click="emit('onRemove')"
+      >
+        <template #icon>
+          <CloseOutlined />
+        </template>
+      </a-button>
+    </a-col>
+  </a-row>
   <img
     v-if="options.base64_image_data"
     :src="options.base64_image_data"
@@ -31,9 +50,10 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-// eslint-disable-next-line no-unused-vars
-import DropZone from './Dropzone.vue'
+import { ref } from 'vue';
+import { CloseOutlined, FormOutlined } from "@ant-design/icons-vue";
+import DropZone from './Dropzone.vue';
+
 
 const image_settings_visible = ref(false);
 
@@ -46,26 +66,26 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmit(['updateImageSettings']);
+const emit = defineEmits(['updateImageSettings', 'onRemove']);
 
 // eslint-disable-next-line no-unused-vars
 const showImageSettings = () => {
   image_settings_visible.value = true;
-}
+};
 
 const fileToBase64String = (file) => {
   let reader = new FileReader();
   reader.readAsDataURL(file);
   reader.onload = readerEvent => {
     props.options.base64_image_data = readerEvent.target.result;
-  }
-}
+  };
+};
 
 // eslint-disable-next-line no-unused-vars
 const handleOk = () => {
   image_settings_visible.value = false;
   emit('updateImageSettings', props.options);
-}
+};
 
 const dropzoneFile = ref("");
 
@@ -91,23 +111,8 @@ const selectedFile = () => {
 
 </script>
 
-<style>
+<style scoped>
 
-.panel_title {
-    font-weight: bold;
-    color: darkblue;
-}
-
-.settings {
-  cursor: default;
-  position: absolute;
-  top: 3px;
-  right: 20px;
-}
-
-.settings i {
-  color: lightgrey;
-}
 
 .panel_image {
   border-radius: 8px;

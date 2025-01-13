@@ -19,6 +19,7 @@ import {
     DatePicker,
     Divider,
     Dropdown,
+    Empty,
     Form,
     Input,
     InputNumber,
@@ -79,6 +80,7 @@ export function mountApp(component, elementSelector) {
     app.use(DatePicker);
     app.use(Divider);
     app.use(Dropdown);
+    app.use(Empty);
     app.use(Form);
     app.use(Input);
     app.use(InputNumber);
