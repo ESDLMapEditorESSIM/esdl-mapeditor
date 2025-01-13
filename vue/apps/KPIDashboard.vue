@@ -381,6 +381,24 @@ const sortLayoutItems = (layout) => {
 };
 
 /**
+ * Reset and empty the layout references.
+ */
+const emptyLayout = () => {
+  layout.value = [];
+  dashboard_config.layout.value = [];
+};
+
+/**
+ * Append and synchronize a panel object to the layout and dashboard_config.layout array.
+ * 
+ * @param panelObj A panel object to be appended to the layout array.
+ */
+const appendAndSyncPanelToLayout = (panelObj) => {
+  layout.value.push(panelObj);
+  dashboard_config.layout.value = [...layout.value];
+};
+
+/**
  * Update dashboard contents according to the given esId and kpiScope.
  * 
  * @param {string} esId Energy system Id.
@@ -388,10 +406,8 @@ const sortLayoutItems = (layout) => {
  */
 function updateDashboard(esId, kpiScope) {
   console.debug(`Updating KPI dashboard for ES: ${esId} and scope: ${kpiScope}`);
-  
-  // Reset layout reference.
-  layout.value = [];
-  dashboard_config.layout.value = [];
+
+  emptyLayout();
 
   // Preprocessing KPIs data
   const scopeKPIs = esKPIs[esId][kpiScope];
@@ -454,7 +470,8 @@ const findNewPanelId = () => {
 const handleLoadDashboard = (dashboard_id) => {
   window.socket.emit('kpi_dashboard_load', {dashboard_id: dashboard_id}, function(response) {
     if (response) {
-      layout.value = [];
+      emptyLayout();
+
       layout.value = response.layout;
       dashboard_config.id.value = response.id;
       dashboard_config.name.value = response.name;
@@ -591,8 +608,7 @@ const addTitlePanel = () => {
       'title': 'New title',
     }
   };
-  layout.value.push(titlePanelConfig);
-  dashboard_config.layout.value.push(titlePanelConfig);
+  appendAndSyncPanelToLayout(titlePanelConfig);
 };
 
 const addTextPanel = () => {
@@ -609,8 +625,7 @@ const addTextPanel = () => {
       'text': 'New text',
     }
   };
-  layout.value.push(textPanelConfig);
-  dashboard_config.layout.value.push(textPanelConfig);
+  appendAndSyncPanelToLayout(textPanelConfig);
 };
 
 const addImagePanel = () => {
@@ -627,8 +642,7 @@ const addImagePanel = () => {
       'base64_image_data': '',
     }
   };
-  layout.value.push(imagePanelConfig);
-  dashboard_config.layout.value.push(imagePanelConfig);
+  appendAndSyncPanelToLayout(imagePanelConfig);
 };
 
 // TODO: fix SankeyPanel when ready
@@ -645,8 +659,7 @@ const addImagePanel = () => {
 //       'title': 'New title',
 //     }
 //   };
-//   layout.value.push(sankeyPanelConfig);
-//   dashboard_config.layout.value.push(sankeyPanelConfig);
+//   appendAndSyncPanelToLayout(sankeyPanelConfig);
 // };
 
 
@@ -706,8 +719,7 @@ const addNewAnalyticsPanelToDash = () => {
     type: GridItemTypes.ANALYTICS,
     options: analyticsPanelOptions
   };
-  layout.value.push(analyticsPanelConfig);
-  dashboard_config.layout.value.push(analyticsPanelConfig);
+  appendAndSyncPanelToLayout(analyticsPanelConfig);
 
   closeESDLAnalyticsModal();
 };
