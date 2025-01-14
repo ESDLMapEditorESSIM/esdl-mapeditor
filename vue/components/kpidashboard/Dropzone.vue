@@ -1,33 +1,28 @@
 <template>
   <div
+    :class="{ 'active-dropzone': active }"
+    class="dropzone"
     @dragenter.prevent="toggleActive"
     @dragleave.prevent="toggleActive"
     @dragover.prevent
     @drop.prevent="toggleActive"
-    :class="{ 'active-dropzone': active }"
-    class="dropzone"
   >
     <span>Drag and drop a new image</span>
     <span>OR</span>
     <label for="dropzoneFile">Select image file</label>
-    <input type="file" id="dropzoneFile" class="dropzoneFile" />
+    <input id="dropzoneFile" type="file" class="dropzoneFile">
   </div>
 </template>
 
-<script>
+<script setup>
 import { ref } from "vue";
-export default {
-  name: "DropZone",
-  setup() {
-    const active = ref(false);
 
-    const toggleActive = () => {
-      active.value = !active.value;
-    };
+const active = ref(false);
 
-    return { active, toggleActive };
-  },
+const toggleActive = () => {
+  active.value = !active.value;
 };
+
 </script>
 
 <style scoped lang="scss">
