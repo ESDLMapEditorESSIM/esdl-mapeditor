@@ -14,6 +14,8 @@ import {MessageNames, PubSubManager} from "@/bridge";
 /** @type {import('vue').Ref<string[]>} */
 const enabledEsdlIdList = ref([]);
 
+const esdlLoadingStatus = ref({});
+
 export function useEsdlLayers() {
     const {createVisibleLayerGroup, removeVisibleLayerGroup, hideVisibleLayer, showVisibleLayer} = useVisibleLayers();
 
@@ -35,7 +37,7 @@ export function useEsdlLayers() {
      * @param force_redo
      */
     function enableEsdl(es_id, force_redo = false) {
-        console.debug("Enabling ESDL layer with ID " + es_id, window.esdl_list[es_id].title);
+        console.debug("Enabling ESDL layer with ID " + es_id);
         // Check if the ESDL layer is already enabled. If so, do nothing.
         if (enabledEsdlIdList.value.includes(es_id)) {
             if (force_redo) {
@@ -144,9 +146,47 @@ export function useEsdlLayers() {
         hideEsdlLayerFromMap,
         hideEsdlLayerAllEsdls,
         showEsdlLayerAllEsdls,
+        isEsdlLoaded,
     }
 }
 
+/**
+ * A list of message names that are mandatory for loading an ESDL. This is used to check if all messages have been
+ * received for a specific ESDL.
+ * @type {(string)[]}
+ */
+const MANDATORY_ESDL_LOADING_MESSAGES = [
+    MessageNames.CREATE_NEW_ESDL_LAYER,
+    // MessageNames.SET_ACTIVE_LAYER_ID,
+    MessageNames.CARRIER_LIST,
+    MessageNames.ADD_BUILDING_OBJECTS,
+    MessageNames.ADD_ESDL_OBJECTS,
+    MessageNames.AREA_BLD_LIST,
+    MessageNames.ADD_CONNECTIONS,
+    MessageNames.ADD_NOTES,
+    // MessageNames.BRING_KPIS_TO_FRONT,
+];
+
+/**
+ * Add a status to the ESDL loading status object.
+ * @param es_id
+ * @param status
+ */
+function addEsdlLoadingStatus(es_id, status) {
+    if (!esdlLoadingStatus.value[es_id]) {
+        esdlLoadingStatus.value[es_id] = new Set();
+    }
+    esdlLoadingStatus.value[es_id].add(status);
+}
+
+/**
+ * Check if all messages have been received for the given ESDL ID.
+ * @param es_id
+ * @returns {this is (string)[]}
+ */
+function isEsdlLoaded(es_id) {
+    return MANDATORY_ESDL_LOADING_MESSAGES.every((messageName) => esdlLoadingStatus.value[es_id]?.has(messageName));
+}
 
 /**
  * This function sets up a subscription to the create_new_esdl_layer event. When this event is received, the ESDL layer
@@ -165,9 +205,23 @@ function setupSubscription() {
     PubSubManager.subscribe(MessageNames.REMOVE_ESDL_LAYER, (name, message) => {
         disableEsdl(message.es_id);
     });
-    PubSubManager.subscribe(MessageNames.CLEAR_ESDL_LAYER_LIST, (name, message) => {
+    PubSubManager.subscribe(MessageNames.CLEAR_ESDL_LAYER_LIST, () => {
         disableAllEsdls();
     });
+
+    const esdlLoadingStatusHandler = (name, message) => {
+        const es_id = message.es_id;
+        addEsdlLoadingStatus(es_id, name);
+        window.show_loader("es")
+        // Check if all message names are in the esdlLoadingStatus. If so, hide the loader.
+        if (isEsdlLoaded(es_id)) {
+            window.hide_loader("es");
+        }
+    }
+
+    for (const messageName of MANDATORY_ESDL_LOADING_MESSAGES) {
+        PubSubManager.subscribe(messageName, esdlLoadingStatusHandler);
+    }
 }
 
 // Setup the subscription. Call this function outside the composable to start listening as soon as possible.

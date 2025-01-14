@@ -98,7 +98,7 @@ from src.roles import is_mapeditor_admin
 from src.shape import Shape
 from src.table_editor import TableEditor
 from src.tno.events_api import EventsAPI
-from src.tno.live_model_interface.api import send_init_new_project_to_lmi, send_project_manager_to_lmi, \
+from src.tno.live_model_interface.api import send_init_new_project_to_lmi, send_project_manager_to_lmi_async, \
     send_add_variant_and_esdl_message_to_lmi
 from src.tno.live_model_interface.lmi_listener import start_live_model_interface_thread
 from src.tno.locking import NamedLocker
@@ -377,7 +377,8 @@ def logout_user():
     """
     oidc.logout()
     pm = get_project_manager()
-    pm.clear_project()
+    if pm:
+        pm.clear_project()
 
 
 @app.route('/auth_status')
@@ -3432,7 +3433,7 @@ def initialize_app():
 
     client_id = session['client_id']
     try:
-        send_project_manager_to_lmi(only_send_for_client_id=client_id)
+        send_project_manager_to_lmi_async(only_send_for_client_id=client_id)
     except Exception:
         logger.exception("Exception sending project manager to LMI")
     es_info_list = {}

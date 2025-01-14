@@ -112,7 +112,7 @@ def on_change_recorded(change: HighLevelChange, change_context: ChangeContext):
     send_rabbitmq_message(message, "events.esdl.high_level_change")
 
 
-def get_project_manager() -> ProjectManager:
+def get_project_manager() -> ProjectManager | None:
     """
     Retrieve the ProjectManager from the session for the currently logged in user, or create a brand new one.
     """
@@ -129,11 +129,8 @@ def get_project_manager() -> ProjectManager:
             set_project_manager(pm)
         return pm
     else:
-        logger.warning("Session has timed-out. Returning empty project manager")
-        pm = ProjectManager()
-        pm.add_change_listener("session_manager", on_change_recorded)
-        set_project_manager(pm)
-        return pm
+        logger.warning("Session has timed-out. Returning None")
+        return None
 
 
 def get_project_manager_with_client_id(client_id: str) -> ProjectManager:

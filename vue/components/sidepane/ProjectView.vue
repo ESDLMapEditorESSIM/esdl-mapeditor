@@ -58,6 +58,7 @@ const getTree = () => $('#' + treeId).jstree(true);
 onMounted(() => {
   // When the component is mounted, get the ESDL project to make sure we show the most up to date info.
   console.debug("Mounted ProjectView")
+  getESDLProject()
 });
 
 // eslint-disable-next-line no-unused-vars
@@ -253,7 +254,6 @@ const eventHandlersByName = {
       enableEsdl(original.esId);
       hideOtherVariantsInTree(data.node);
       if (!original.active) {
-        window.show_loader();
         setActiveVariant(original.id, original.esId);
         // window.add_layer_control(); // hard update the old layer control
       }

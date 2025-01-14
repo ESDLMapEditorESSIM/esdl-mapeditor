@@ -17,6 +17,7 @@
 Support functions for managing EObjects
 """
 import logging
+from functools import lru_cache
 from typing import Dict
 
 from pyecore.ecore import EAttribute, EObject, EClass, EReference, EStructuralFeature
@@ -48,6 +49,10 @@ def clone(self):
                 newone.eSet(x.name, self.eGet(x.name))
     return newone
 
+@lru_cache(maxsize=None)
+def get_features_for_class(eclass: EClass):
+    return eclass.eAllStructuralFeatures()
+
 
 def deepcopy(self, memo=None, uuid_dict: Dict[str, EObject]=None ) -> EObject:
     """
@@ -72,7 +77,8 @@ def deepcopy(self, memo=None, uuid_dict: Dict[str, EObject]=None ) -> EObject:
 
 
     eclass: EClass = self.eClass
-    for x in eclass.eAllStructuralFeatures():
+    features = get_features_for_class(eclass)
+    for x in features:
         if isinstance(x, EReference):
             ref: EReference = x
             value = self.eGet(ref)

@@ -1534,6 +1534,7 @@ function add_geojson_listener(socket, map) {
     });
     socket.on('bring_kpis_to_front', function(es_id) {
         bring_KPI_layer_to_front(es_id);
+        window.PubSubManager.broadcast('BRING_KPIS_TO_FRONT', es_id);
     });
 }
 

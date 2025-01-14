@@ -7,11 +7,14 @@ from flask import session
 from esdlproject import Variant, VariantCollection
 from esdlproject.ProjectManager import ProjectManager
 from extensions.session_manager import get_project_manager, get_session, managed_sessions, PM_KEY
+from src.app import executor
+from src.log import get_logger
 from src.tno.live_model_interface.shared.message_types import InitNewProjectMessage, ProjectManagerMessage, \
     ActivateDeactivateLmiMessage, AddVariantAndESDLMessage, DeleteVariantMessage
 from src.tno.live_model_interface.shared.publisher import send_rabbitmq_message
-from utils.utils import timed
 
+
+logger = get_logger(__name__)
 
 def send_init_new_project_to_lmi():
     """
@@ -84,13 +87,22 @@ def send_delete_variant_message_to_lmi(variant: Variant | VariantCollection):
     send_rabbitmq_message(message, "events.pm.delete")
 
 
-@timed
+def send_project_manager_to_lmi_async(only_send_for_client_id: str | None = None):
+    """
+    Send project managers for all users, or only for the provided users. This function performs the sending in a
+    separate thread.
+    """
+    send_project_manager_to_lmi.submit(only_send_for_client_id=only_send_for_client_id)
+
+
+@executor.job
 def send_project_manager_to_lmi(only_send_for_client_id: str | None = None):
     """
     Send project managers for all users, or only for the provided users.
 
     :param only_send_for_client_id: If provided, only send the project manager for this client id.
     """
+    logger.info("Sending project managers to LMI", only_send_for_client_id=only_send_for_client_id)
     for client_id, session_data in managed_sessions.items():
         if only_send_for_client_id is not None and client_id != only_send_for_client_id:
             continue
@@ -114,9 +126,6 @@ def send_project_manager_to_lmi(only_send_for_client_id: str | None = None):
 def activate_live_model_interface(lmi_id: str, client_id: str):
     """
     Activate the live model interface with the given id for the given user.
-    :param lmi_id:
-    :param client_id:
-    :return:
     """
     message = ActivateDeactivateLmiMessage(
         id=str(uuid.uuid4()),
@@ -132,9 +141,6 @@ def activate_live_model_interface(lmi_id: str, client_id: str):
 def deactivate_live_model_interface(lmi_id: str, client_id: str):
     """
     Activate the live model interface with the given id for the given user.
-    :param lmi_id:
-    :param client_id:
-    :return:
     """
     message = ActivateDeactivateLmiMessage(
         id=str(uuid.uuid4()),

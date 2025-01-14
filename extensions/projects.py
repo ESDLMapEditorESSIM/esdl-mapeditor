@@ -24,7 +24,7 @@ from esdlproject.variant_api import create_new_variant
 from extensions.session_manager import get_project_manager, set_session
 from src.app import executor, socketio
 from src.process_es_area_bld import call_process_energy_system, process_energy_system
-from src.tno.live_model_interface.api import send_project_manager_to_lmi, send_delete_variant_message_to_lmi
+from src.tno.live_model_interface.api import send_project_manager_to_lmi_async, send_delete_variant_message_to_lmi
 from src.tno.projects.emits import emit_active_esdl_project, emit_clear_frontend_esdls, emit_clear_ui
 from src.tno.projects.types import serialize_esdl_project
 from src.tno.undoredo.emits import emit_update_undo_redo_stack
@@ -52,7 +52,7 @@ def load_esdl_project():
     """
     base64_file = request.json['base64_file']
     file_content = base64.urlsafe_b64decode(base64_file.split(',')[1]).decode('utf-8')
-    filename:str = request.json['filename']
+    filename: str = request.json['filename']
     pm = get_project_manager()
     if not filename.endswith(".project"):
         filename = filename + ".project"
@@ -60,8 +60,9 @@ def load_esdl_project():
     project = pm.load(uri)
     if project:
         set_session("es_info_list", {})
-    send_project_manager_to_lmi(only_send_for_client_id=session['client_id'])
-    return jsonify(serialize_esdl_project(pm, pm.project))
+    send_project_manager_to_lmi_async(only_send_for_client_id=session['client_id'])
+    serialized_esdl_project = serialize_esdl_project(pm, pm.project)
+    return jsonify(serialized_esdl_project)
 
 
 @projects.route("/save_esdl_project")
@@ -84,7 +85,7 @@ def new_esdl_project(_):
     pm = get_project_manager()
     pm.init_empty_project()
     set_session("es_info_list", {})
-    send_project_manager_to_lmi(only_send_for_client_id=session['client_id'])
+    send_project_manager_to_lmi_async(only_send_for_client_id=session['client_id'])
     emit_clear_frontend_esdls()
     emit_clear_ui()
     call_process_energy_system.submit()
@@ -136,9 +137,9 @@ def set_active_variant(message: SetActiveVariantRequest):
 @socketio.on('create_variant_collection', namespace='/esdl')
 def create_variant_collection():
     pm = get_project_manager()
-    pm.add_new_variant_collection()
+    pm.create_empty_variant_collection()
     emit_active_esdl_project()
-    send_project_manager_to_lmi(only_send_for_client_id=session['client_id'])
+    send_project_manager_to_lmi_async(only_send_for_client_id=session['client_id'])
 
 
 class CreateChildVariantRequest(TypedDict):
@@ -151,7 +152,7 @@ def create_child_variant(message: CreateChildVariantRequest):
     parent_variant = pm.get_variant_by_id(message['parent_variant_id'])
     create_new_variant(parent_variant)
     emit_active_esdl_project()
-    send_project_manager_to_lmi(only_send_for_client_id=session['client_id'])
+    send_project_manager_to_lmi_async(only_send_for_client_id=session['client_id'])
 
 
 class DeleteVariantRequest(TypedDict):
@@ -184,4 +185,4 @@ def rename_variant(message: RenameVariantRequest):
     variant.name = message["name"]
     if variant.snapshotRef:
         variant.snapshotRef.name = f'{pm.project.name} - {variant.name}'
-    send_project_manager_to_lmi(only_send_for_client_id=session['client_id'])
+    send_project_manager_to_lmi_async(only_send_for_client_id=session['client_id'])

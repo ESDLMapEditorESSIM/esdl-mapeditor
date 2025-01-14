@@ -31,7 +31,7 @@ from extensions.session_manager import get_project_manager_with_client_id, manag
 from src.log import get_logger
 from src.process_es_area_bld import call_process_energy_system
 from src.tno.envsettings import EnvSettings
-from src.tno.live_model_interface.api import send_project_manager_to_lmi, \
+from src.tno.live_model_interface.api import send_project_manager_to_lmi_async, \
     activate_live_model_interface
 from src.tno.live_model_interface.shared.config import AMQP_URL, RABBITMQ_APP_ID
 from src.tno.live_model_interface.shared.consumer import RabbitMQConsumerConfig, ReconnectingConsumer
@@ -116,7 +116,7 @@ def on_pm_refresh_request(message: LmiMessage):
 
     only_send_for_client_id = message.get("client_id")
     if only_send_for_client_id:
-        send_project_manager_to_lmi(only_send_for_client_id=only_send_for_client_id)
+        send_project_manager_to_lmi_async(only_send_for_client_id=only_send_for_client_id)
     else:
         timestamp = message['timestamp']
         if isinstance(timestamp, str):
@@ -125,7 +125,7 @@ def on_pm_refresh_request(message: LmiMessage):
         if LAST_PM_REFRESH_SENT is not None and LAST_PM_REFRESH_SENT >= timestamp:
             logger.info("Ignoring PM refresh request, because the last refresh was already sent.")
             return
-        send_project_manager_to_lmi()
+        send_project_manager_to_lmi_async()
         LAST_PM_REFRESH_SENT = datetime.now(timezone.utc)
 
     # Also send the currently active LMI's, if any.

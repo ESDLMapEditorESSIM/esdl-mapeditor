@@ -282,6 +282,9 @@
 
         window.jquery = $;
 
+        const loaders = new Set();
+        loaders.add('es');
+
         // ------------------------------------------------------------------------------------------------------------
         //
         // ------------------------------------------------------------------------------------------------------------
@@ -296,13 +299,28 @@
             socket.emit('command', {cmd: 'debug'});
         }
 
-        function show_loader() {
+        function show_loader(scope) {
+            if (scope === undefined) {
+                scope = 'default';
+            }
+            console.debug("Show loader for scope: " + scope, loaders);
+            loaders.add(scope);
             document.getElementById("loader").style.display = "block";
         }
 
-        function hide_loader() {
-            console.log("Hide loader");
-            document.getElementById("loader").style.display = "none";
+        function hide_loader(scope) {
+            if (scope === undefined) {
+                scope = 'default';
+            }
+            console.debug("Hide loader for scope: " + scope, loaders);
+            if (scope === "all") {
+                loaders.clear();
+            } else {
+                loaders.delete(scope);
+            }
+            if (loaders.size === 0) {
+                document.getElementById("loader").style.display = "none";
+            }
         }
 
         function select_area_bld_list(id) {
@@ -706,6 +724,7 @@
                 add_layer_control();    // add jstree layer control
                 // title_div = document.getElementById('es_title');
                 // title_div.innerHTML = '<b>' + title + '<b>';
+                window.PubSubManager.broadcast('CREATE_NEW_ESDL_LAYER', message);
             });
 
             socket.on('set_active_layer_id', function(id) {
@@ -725,8 +744,7 @@
                 // set_selected_layer(active_layer_id);
                 update_area_legend();
                 update_building_legend();
-                console.log("set_active_layer_id, hide loader");
-                window.hide_loader();
+                window.PubSubManager.broadcast('SET_ACTIVE_LAYER_ID', id);
             });
 
             // ------------------------------------------------------------------------------------------------------------
@@ -780,6 +798,7 @@
 
                 // Ewoud: should also work with building editor now...
                 set_leaflet_sizes();
+                window.PubSubManager.broadcast('ADD_ESDL_OBJECTS', options);
             });
 
             // deletes an esdl_object in the active layer
@@ -883,6 +902,7 @@
 
                 add_building_geojson_layer_with_legend(geojson_list);
                 set_leaflet_sizes();
+                window.PubSubManager.broadcast('ADD_BUILDING_OBJECTS', options);
             });
 
             socket.on('area_bld_list', function(areas_buildings) {
@@ -890,6 +910,7 @@
                 area_bld_list = areas_buildings['area_bld_list'];
                 set_area_bld_list(es_id, area_bld_list);
                 update_area_bld_list_select();
+                window.PubSubManager.broadcast('AREA_BLD_LIST', areas_buildings);
             });
 
             socket.on('clear_connections', function(message) {
@@ -990,6 +1011,7 @@
                     line.to_port_id = con['to-port-id'];
                     add_object_to_layer(es_bld_id, 'connection_layer', line);
                 }
+                window.PubSubManager.broadcast('ADD_CONNECTIONS', connections);
             });
 
             socket.on('remove_single_connection', function(message) {
@@ -1023,10 +1045,11 @@
 
             socket.on('carrier_list', function(carr_list) {
                 set_carrier_list(carr_list['es_id'], carr_list['carrier_list']);
+                window.PubSubManager.broadcast('CARRIER_LIST', carr_list);
             });
 
-            socket.on('sector_list', function(list) {
-                set_sector_list(list['es_id'], list['sector_list']);
+            socket.on('sector_list', function(sect_list) {
+                set_sector_list(sect_list['es_id'], sect_list['sector_list']);
             });
 
             // ------------------------------------------------------------------------------------------------------------
@@ -1691,8 +1714,8 @@
 
         <div id="ctrl" style="float: right; position: relative; padding:3px;">
 <!--            <input class="inputFile" type="file" style="display: none;" onchange="open_ESDL(event);"> -->
-            <input class="inputFile" type="file" style="display: none;" onchange="load_esdl_files(event);" onclick="this.value=null;" multiple>
-            <input class="inputImportFile" type="file" style="display: none;" onchange="import_ESDL(event);" onclick="this.value=null;">
+            <input class="inputFile" type="file" style="display: none;" onchange="load_esdl_files(event);" accept=".esdl" onclick="this.value=null;" multiple>
+            <input class="inputImportFile" type="file" style="display: none;" onchange="import_ESDL(event);" accept=".esdl" onclick="this.value=null;">
 
 {% if edr_enabled %}
             <button id="edr-asset-btn" onclick="edr_asset_window();" title="EDR assets" class="ui-button ui-widget ui-corner-all">EDR assets</button>

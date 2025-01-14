@@ -99,7 +99,7 @@ class ESDLFileIO:
             for v in variants:
                 if v.id in exclude_variant_ids:
                     continue
-                es = pm.get_variant_snapshot(v)
+                es = pm.get_or_create_variant_snapshot(v)
                 if es is not None: # no snapshot yet available
                     stack = pm.get_undo_redo_stack(es)
                     if stack.last_changed > datetime.min.replace(tzinfo=timezone.utc):

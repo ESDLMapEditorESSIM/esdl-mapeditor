@@ -5,7 +5,7 @@
   </a>
   <a class="dropdown-item" href="#">
     <div class="menu-icon fas fa-project-diagram fa-smaller" />
-    <input id="upload-project-file" type="file" name="upload-file" hidden @change="onLoadProject">
+    <input id="upload-project-file" type="file" name="upload-file" accept=".project" hidden @change="onLoadProject">
     <label for="upload-project-file">
       Load project...
     </label>
@@ -25,7 +25,7 @@ import {download_binary_file_from_base64_str_with_type} from "../../utils/files"
 import {useSocketIO} from "../../composables/socketio";
 import {useActivityContext} from "../../composables/activityContext";
 
-const {esdlProject} = useESDLProjects();
+const {setEsdlProject, setActiveVariant} = useESDLProjects();
 const {socket} = useSocketIO();
 const {clearActivityContext} = useActivityContext();
 
@@ -36,11 +36,12 @@ async function loadProjectFile(file) {
   // This function will do the actual uploading. It is triggered when
   // calling readAsDataURL on the file_reader.
   file_reader.onload = async () => {
-    window.show_loader();
     try {
+      window.show_loader("load_project");
       const base64_file = file_reader.result;
       const params = {base64_file: base64_file, filename: file_name};
 
+      // This requires a POST request instead of websockets, because of the size of the file.
       const response = await fetch("projects/load_esdl_project", {
         method: "POST",
         body: JSON.stringify(params),
@@ -52,15 +53,16 @@ async function loadProjectFile(file) {
         const responseProject = await response.json()
         if (responseProject) {
           window.clear_esdl_layer_list();
-          esdlProject.value = responseProject;
+          setEsdlProject(responseProject);
           // This triggers all work necessary to update the frontend.
-          //socket.value.emit("set_active_variant", {id: responseProject.active_variant_id});
+          socket.value.emit("set_active_variant", {id: responseProject.active_variant_id});
+          setActiveVariant(responseProject.active_variant_id, null);
         }
       } else {
         alert("Failed loading energy project file.");
       }
     } finally {
-      window.hide_loader();
+      window.hide_loader("load_project");
     }
   }
   // Trigger the onload.
@@ -104,7 +106,7 @@ async function onNewProject() {
     try {
       socket.value.emit("new_esdl_project", {}, (responseProject) => {
         if (responseProject) {
-          esdlProject.value = responseProject;
+          setEsdlProject(responseProject);
           clearActivityContext();
         }
       })

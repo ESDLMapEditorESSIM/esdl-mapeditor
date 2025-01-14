@@ -127,7 +127,6 @@ class XMLResource(XMIResource):
         self.uri.close_stream()
 
 
-    @timed
     def save(self, output=None, options=None):
         self.options = options or {}
         output = self.open_out_stream(output)

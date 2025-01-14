@@ -1064,8 +1064,8 @@ def get_building_connections(building):
 @executor.job
 def call_process_energy_system(force_update_es_id=None, zoom=True):
     # emit('clear_ui')
-    print("Processing energysystems contained in Project manager")
-    print("active_es_id at start: {}".format(get_session('active_es_id')))
+    logger.info("Processing energysystems contained in Project manager")
+    logger.info("active_es_id at start: {}".format(get_session('active_es_id')))
 
     try:
         process_energy_system(force_update_es_id, zoom)
@@ -1131,7 +1131,7 @@ def process_energy_system(force_update_es_id=None, zoom=True):
                         emit('sector_list', {'es_id': es.id, 'sector_list': sector_list})
 
                     # KPIs that are connected to top-level area are visualized in a KPI dialog
-                    print('- Processing KPIs')
+                    logger.info('- Processing KPIs')
                     area_kpis = ESDLEnergySystem.process_area_KPIs(area)
                     area_name = area.name
                     if not area_name:
@@ -1147,9 +1147,9 @@ def process_energy_system(force_update_es_id=None, zoom=True):
 
                     # Probably the following call is not required anymore, everything is handled by find_boundaries_in_ESDL
                     # add_missing_coordinates(area)
-                    print(f'- Processing area, zoom={zoom}')
+                    logger.info(f'- Processing area, zoom={zoom}')
                     process_area(pm, es.id, asset_list, building_list, area_bld_list, conn_list, area, 0)
-                    print(f'#assets: {len(asset_list)}, #buildings: {len(building_list)}, #area_bld: {len(area_bld_list)}, #conn: {len(conn_list)}')
+                    logger.info(f'#assets: {len(asset_list)}, #buildings: {len(building_list)}, #area_bld: {len(area_bld_list)}, #conn: {len(conn_list)}')
                     notes_list = get_notes_list(es)
 
                     emit('add_building_objects', {'es_id': es.id, 'building_list': building_list, 'zoom': zoom})
@@ -1168,12 +1168,12 @@ def process_energy_system(force_update_es_id=None, zoom=True):
                         "processed": True
                     }
                 else:
-                    print("- Energysystem with id {} already processed".format(es.id))
+                    logger.info("- Energysystem with id {} already processed".format(es.id))
 
             emit('set_active_layer_id', pm.get_active_energy_system().id)
             emit_active_esdl_project()
 
-            print('session variables set', session)
+            logger.info('session variables set', session=session)
         except Exception:
             logger.exception("Exception while processing energy system")
     finally:

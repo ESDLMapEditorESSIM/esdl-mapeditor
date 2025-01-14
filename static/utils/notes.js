@@ -46,6 +46,7 @@ class Notes {
                     return $(this).attr('title');
                 }
             });
+            window.PubSubManager.broadcast('ADD_NOTES', options);
         });
     }
 
