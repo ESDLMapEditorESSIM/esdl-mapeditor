@@ -104,6 +104,7 @@
         :w="item.w"
         :h="item.h"
         :i="item.i"
+        :is-resizable="item.isResizable"
         drag-ignore-from=".no-drag"
       >
         <TitlePanel
@@ -332,13 +333,21 @@ function calGridItemLayout(breakpoint, itemNr, itemHeight=8) {
   const sortedLayout = sortLayoutItems(layout.value);
   const newLayout = sortedLayout.map((item, itemNr) => {
     const [x, y, w, h] = calGridItemLayout(currentBreakpoint.value, itemNr);
-    return {
-      ...item,
-      x: x,
-      y: y,
-      w: w,
-      h: h
-    };
+    if (item.isResizable === false) {
+      return {
+        ...item,
+        x: x,
+        y: y,
+      };
+    } else {
+      return {
+        ...item,
+        x: x,
+        y: y,
+        w: w,
+        h: h
+      };
+    }
   });
   layout.value = [...newLayout];
   dashboard_config.layout.value = [...newLayout];
@@ -380,13 +389,6 @@ const sortLayoutItems = (layout) => {
   return sortedLayout;
 };
 
-/**
- * Reset and empty the layout references.
- */
-const emptyLayout = () => {
-  layout.value = [];
-  dashboard_config.layout.value = [];
-};
 
 /**
  * Append and synchronize a panel object to the layout and dashboard_config.layout array.
@@ -397,6 +399,14 @@ const appendAndSyncPanelToLayout = (panelObj) => {
   layout.value.push(panelObj);
   dashboard_config.layout.value = [...layout.value];
 };
+
+/**
+ * Reset and empty the layout references.
+ */
+ function emptyLayout() {
+  layout.value = [];
+  dashboard_config.layout.value = [];
+}
 
 /**
  * Update dashboard contents according to the given esId and kpiScope.
@@ -603,6 +613,7 @@ const addTitlePanel = () => {
     w: 12,
     h: 2,
     i: i,
+    isResizable: false,
     type: GridItemTypes.TITLE,
     options: {
       'title': 'New title',
