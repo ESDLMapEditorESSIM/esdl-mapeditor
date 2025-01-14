@@ -120,6 +120,7 @@
         <ImagePanel
           v-if="item.type === GridItemTypes.IMAGE"
           :options="item.options"
+          @on-edit-save="(options) => onImageEditSave(item.i, options)"
           @on-remove="onRemovePanel(item.i)"
         />
         <PlotPanel
@@ -637,6 +638,16 @@ const addTextPanel = () => {
     }
   };
   appendAndSyncPanelToLayout(textPanelConfig);
+};
+
+/**
+ * Update the corresponding image panel options after receiving the emitted editedOptions.
+ * 
+ * @param {number} gridItemId The target grid item id.
+ * @param {Object} editedOptions An object contains the edited image panel title and base64_image_data. 
+ */
+ const onImageEditSave = (gridItemId, editedOptions) => {
+  layout.value.find(item => item.i === gridItemId).options = editedOptions;
 };
 
 const addImagePanel = () => {
