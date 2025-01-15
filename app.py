@@ -1617,38 +1617,36 @@ def process_command(message):
         shape = message['shape']
         geometry = ESDLGeometry.create_ESDL_geometry(shape)
 
-        if area_bld_id == 'find_area_location_based':
-            area_bld_id = find_area_location_based(pm, active_es_id, geometry)
-
         if object_type == 'Area':
             if not isinstance(geometry, esdl.Polygon):
                 send_alert('Areas with geometries other than polygons are not supported')
             else:
-                if isinstance(geometry, esdl.Polygon):
-                    new_area = esdl.Area(id=asset_id, name=asset_name)
-                    new_area.geometry = geometry
+                new_area = esdl.Area(id=asset_id, name=asset_name)
+                new_area.geometry = geometry
 
-                    # Update shape dictionary
-                    shape_dictionary = get_session('shape_dictionary')
-                    shape_dictionary[new_area.id] = Shape.create(geometry)
-                    set_session('shape_dictionary', shape_dictionary)
+                # Update shape dictionary
+                shape_dictionary = get_session('shape_dictionary')
+                shape_dictionary[new_area.id] = Shape.create(geometry)
+                set_session('shape_dictionary', shape_dictionary)
 
-                    # Update drop down list with areas and buildings
-                    add_area_to_area_bld_list(new_area, area_bld_id, area_bld_list)
-                    emit('area_bld_list', {'es_id': active_es_id, 'area_bld_list': area_bld_list})
+                if area_bld_id == 'find_area_location_based':
+                    # For Areas find the parent based on the location by using the geometry
+                    area_bld_id = find_area_location_based(pm, active_es_id, geometry)
 
-                    # Add area to the indicated area
-                    if not ESDLEnergySystem.add_area_to_area(active_es, new_area, area_bld_id):
-                        send_alert('Can not add area to building')
+                # Update drop down list with areas and buildings
+                add_area_to_area_bld_list(new_area, area_bld_id, area_bld_list)
+                emit('area_bld_list', {'es_id': active_es_id, 'area_bld_list': area_bld_list})
 
-                    # Send new area shapes to the browser
-                    area_list = []
-                    boundary_wgs = ESDLGeometry.create_boundary_from_geometry(geometry)
-                    area_list.append(ESDLGeometry.create_geojson(new_area.id, new_area.name, [], boundary_wgs))
-                    # pm.add_object_to_dict(active_es_id, new_area)
-                    emit('geojson', {"layer": "area_layer", "geojson": area_list})
-                else:
-                    send_alert('Can not add an area with another shap than a Polygon')
+                # Add area to the indicated area
+                if not ESDLEnergySystem.add_area_to_area(active_es, new_area, area_bld_id):
+                    send_alert('Can not add area to building')
+
+                # Send new area shapes to the browser
+                area_list = []
+                boundary_wgs = ESDLGeometry.create_boundary_from_geometry(geometry)
+                area_list.append(ESDLGeometry.create_geojson(new_area.id, new_area.name, [], boundary_wgs))
+                # pm.add_object_to_dict(active_es_id, new_area)
+                emit('geojson', {"layer": "area_layer", "geojson": area_list})
         else:
             edr_asset_str = get_session('adding_edr_assets')
             if edr_asset_str:
@@ -1658,7 +1656,6 @@ def process_command(message):
                 # Quick fix: session variable adding_edr_assets now contains ESDL string
                 class_ = type(asset)
                 object_type = class_.__name__
-                print(asset)
                 # Check if any IDs were 'accidentally' set in EDR model template and replace them by a new unique ID
                 # If no ID was set, assign no new ID either
                 for c in asset.eContents:
@@ -1685,6 +1682,10 @@ def process_command(message):
                 potential.name = asset_name
                 potential.geometry = geometry
 
+                if area_bld_id == 'find_area_location_based':
+                    # For Potentials find the parent based on the location by using the potential
+                    area_bld_id = find_area_location_based(pm, active_es_id, potential)
+
                 add_to_building = False
                 if not ESDLAsset.add_object_to_area(active_es, potential, area_bld_id):
                     ESDLAsset.add_object_to_building(active_es, potential, area_bld_id)
@@ -1710,6 +1711,12 @@ def process_command(message):
                 asset.id = asset_id
                 asset.name = asset_name
                 asset.geometry = geometry
+
+                if area_bld_id == 'find_area_location_based':
+                    # For Assets find the parent based on the location by using the asset
+                    # such that the asset type can be used to determine the right Area (DSO service area for Transport
+                    # assets and CBS area for all others)
+                    area_bld_id = find_area_location_based(pm, active_es_id, asset)
 
                 if isinstance(geometry, esdl.Point):
                     port_loc = (shape['coordinates']['lat'], shape['coordinates']['lng'])
