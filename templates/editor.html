@@ -222,7 +222,7 @@
 
     <script type="text/javascript" src="./utils/KPIDashboard.js"></script>
     <script type="text/javascript" src="./utils/esdl_analytics.js"></script>
-    <script type="text/javascript" src="./utils/ownership.js"></script>/
+    <script type="text/javascript" src="./utils/ownership.js"></script>
 
     <script type="text/javascript" src="./utils/esdl_file_io.js"></script>
     <script type="text/javascript" src="./utils/custom_icons.js"></script>
@@ -1903,7 +1903,7 @@
         state: 'maximized',
         allowable_states: ['custom', 'maximized', 'minimized']
     }
-    const ownership_dialog = new OwnerShipDialog(ownership_dialog_options);
+    const ownership_dialog = new OwnershipDialog(ownership_dialog_options);
     map.addControl(ownership_dialog);
 
 {% if essim_enabled and 'essim' in role %}

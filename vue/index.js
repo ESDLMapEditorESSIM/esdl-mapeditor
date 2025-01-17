@@ -189,7 +189,7 @@ window.activate_esdl_analytics_window = () => {
 }
 
 window.activate_ownership_window = () => {
-    mountApp(OwnershipDialog, '#ownership_window')
+    mountApp(OwnershipDialog, '#ownership_window');
 }
 
 createVueLControl(ResultVisualizationsToolbar, {

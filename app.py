@@ -218,7 +218,7 @@ KPIDashboard(app, socketio, settings_storage)
 TooltipInfo(app, socketio)
 ActivityContextExtension(app, socketio, settings_storage)
 ResidentialArea(app, socketio, settings_storage)
-Ownership(app, socketio, settings_storage)
+Ownership(app)
 data_manager = DataManager(app, socketio)
 
 app.config.update({

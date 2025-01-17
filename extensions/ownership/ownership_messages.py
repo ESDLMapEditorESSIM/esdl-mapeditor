@@ -11,28 +11,31 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-import dataclasses
-import json
+
 from dataclasses import dataclass
-from typing import List
-
-from bson import json_util
-
+from typing import List, Optional
 
 @dataclass
-class Party:
+class OwnershipParty:
     id: str
     name: str
     short_name: str
 
+@dataclass
+class GetPartiesResp:
+    parties: List[OwnershipParty]
 
 @dataclass
-class PartiesListResponse:
-    parties: List[Party]
+class OwnershipAsset:
+    id: str
+    name: str
+    is_owned_by: Optional[OwnershipParty] #TODO: list?
 
+@dataclass
+class GetAssetsResp:
+    assets: List[OwnershipAsset]
 
-class EnhancedJSONEncoder(json.JSONEncoder):
-    def default(self, o):
-        if dataclasses.is_dataclass(o):
-            return dataclasses.asdict(o)
-        return super().default(o)
+@dataclass
+class Assignment:
+    assigned_asset_ids: List[str]
+    revoked_asset_ids: List[str]
