@@ -15,25 +15,30 @@
 from dataclasses import dataclass
 from typing import List, Optional
 
+
 @dataclass
 class OwnershipParty:
     id: str
     name: str
     short_name: str
 
+
 @dataclass
 class GetPartiesResp:
     parties: List[OwnershipParty]
+
 
 @dataclass
 class OwnershipAsset:
     id: str
     name: str
-    is_owned_by: Optional[OwnershipParty] #TODO: list?
+    is_owned_by: Optional[OwnershipParty]
+
 
 @dataclass
 class GetAssetsResp:
     assets: List[OwnershipAsset]
+
 
 @dataclass
 class Assignment:
