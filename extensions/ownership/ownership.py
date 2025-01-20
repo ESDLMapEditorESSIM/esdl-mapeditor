@@ -128,8 +128,10 @@ class Ownership:
 
         if parties:
             for p in parties.party:
+                p: esdl.Party
                 if p.id == party_id:
-                    parties.party.remove(p)
+                    # This ensures the reference party of asset.isOwnedby is also cleaned up.
+                    p.delete(recursive=True)
 
     def get_parties_list(self) -> List[OwnershipParty]:
         es = self.get_es()
@@ -138,6 +140,7 @@ class Ownership:
         parties_list: List[OwnershipParty] = []
         if parties:
             for p in parties.party:
+                p: esdl.Party
                 party = OwnershipParty(
                     id=p.id,
                     name=p.name,

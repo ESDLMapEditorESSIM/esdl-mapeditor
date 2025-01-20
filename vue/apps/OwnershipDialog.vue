@@ -66,7 +66,7 @@
         <a-row style="justify-content: flex-end;">
           <a-button
             type="primary"
-            style="margin: 16px;"
+            style="margin-top: 16px;"
             @click="deleteParty"
           >
             {{ `Remove ${party.name}` }}
@@ -85,7 +85,7 @@ const displayedText = ref('');
 
 // Control which collapse panel is opened.
 // The value contains a list of one collapse panel key (which is defined as party.id)
-const activeKey = ref([]);
+const activeKey = ref(null);
 
 const initNewParty = {
   id: '', // Default to an empty string
@@ -167,7 +167,6 @@ const deleteParty = async () => {
 
     if (response.status === 204) {
       displayNotification("Success", "Successfully removed the party.");
-      // TODO: remove assignment from the party
       initOwnershipState();
     } else {
       const result = await response.json();
@@ -214,6 +213,7 @@ const updateOwnershipState = (parties, assets) => {
     const enrichedAssets = assets.map((a) => {
       return {
         ...a,
+        // Attributes required by the Transfer component
         key: a.id,
         title: a.name,
         description: a.is_owned_by ? a.is_owned_by.name : null,
@@ -252,22 +252,18 @@ const renderTransferListItem = (item) => {
   return text;
 };
 
-const onChange = async (keys) => {
+const onChange = async (targetKeys, direction, moveKeys) => {
   const activePartyId = activeKey.value;
-  const assigned_asset_ids = keys;
-  // TODO: Use movekey?
-  const revoked_asset_ids = ownershipState.value[activePartyId]
-                              .filter(e => !assigned_asset_ids.includes(e.id))
-                              // This is required to avoid overwriting the assets already owned by the other party
-                              .filter(e => !e.disabled)
-                              .map(e => e.id);
-  const assignment = {
-    'assigned_asset_ids': assigned_asset_ids,
-    'revoked_asset_ids': revoked_asset_ids
+  let assignment = {
+    'assigned_asset_ids': [],
+    'revoked_asset_ids': [],
   };
-  postOwnershipAssignment(activePartyId, assignment).then(async () => {
-    initOwnershipState();
-  });
+  if (direction === 'right') {
+    assignment.assigned_asset_ids = targetKeys;
+  } else if (direction === 'left') {
+    assignment.revoked_asset_ids = moveKeys;
+  }
+  postOwnershipAssignment(activePartyId, assignment);
 };
 
 const postOwnershipAssignment = async (partyId, assignment) => {
@@ -278,21 +274,18 @@ const postOwnershipAssignment = async (partyId, assignment) => {
       body: JSON.stringify(assignment),
       headers: { "Content-type": "application/json; charset=UTF-8" }
     });
-
     const result = await response.json();
 
-    if (!response.ok) {
+    if (response.status === 200) {
+      displayNotification("Success", `${result.message}`);
+    } else {
       console.error(response.status, result.error);
-      // TODO: undo change handling.
-      displayNotification("Error", "Something went wrong when assigning ownership. Abort the change.");
-      initOwnershipState();
-      return;
-    }
-
-    displayNotification("Success", `${result.message}`);
+      displayNotification("Error", "Something went wrong when assigning ownership.");
+    }    
   } catch (error) {
     console.error(error);
-    displayNotification("Error", "Something went wrong when assigning ownership. Abort the change.");
+    displayNotification("Error", "Something went wrong when assigning ownership.");
+  } finally {
     initOwnershipState();
   }
 };
