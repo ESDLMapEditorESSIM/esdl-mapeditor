@@ -27,6 +27,7 @@ from shapely import MultiPoint
 from esdl import esdl
 from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEnergySystem, ESDLQuantityAndUnits
 from esdl.processing.ESDLEnergySystem import get_notes_list
+from esdl.processing.ESDLGeometry import calculate_polygon_center
 from esdlproject.ProjectManager import ProjectManager
 from extensions.boundary_service import BoundaryService, is_valid_boundary_id
 from extensions.mapeditor_settings import MapEditorSettings
@@ -942,9 +943,16 @@ def find_area_location_based(pm: ProjectManager, active_es_id, object):
     shape_dictionary = get_session('shape_dictionary')
 
     if isinstance(object, esdl.Geometry):
-        obj_geometry_shape = Shape.create(object)
+        obj_geom = object
     else:
-        obj_geometry_shape = Shape.create(object.geometry)
+        obj_geom = object.geometry
+
+    if isinstance(obj_geom, esdl.Polygon):
+        # For Polygon shaped objects, use the center of the polygon to determine in which Area the object must be placed
+        center_lat, center_lon = calculate_polygon_center(obj_geom)
+        obj_geom = esdl.Point(lat=center_lat, lon=center_lon)
+
+    obj_geometry_shape = Shape.create(obj_geom)
 
     areas_that_contain_obj = list()
 
