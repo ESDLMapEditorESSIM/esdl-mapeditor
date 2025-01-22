@@ -125,9 +125,6 @@ class ProjectManager:
     # Dict for all variant collections, key is the variant collection id. We need this because we juggle with the
     # energysystemRef while saving, which leads to race conditions.
     variant_collection_resources: dict[str, XMLResource]
-    # Dict for snapshot references, key is the variant id, value is the snapshot reference. We need this because we
-    # empty the snapshotRef when we save the project, leading to race conditions.
-    variant_snapshots: dict[str, esdl.EnergySystem]
 
     lock: threading.Lock
 
@@ -137,6 +134,9 @@ class ProjectManager:
         If using uri to load a project, use StringURI(uri, text) to load a text string
         """
         patch_esdl()
+        # TODO: Add these to patch_esdl or to the pyecore model.
+        Variant.snapshotRef.transient = True
+        VariantCollection.energysystemRef.transient = True
         self.change_listeners = dict()
         self.variant_activation_timestamps = dict()
         self.lock = threading.Lock()
@@ -217,7 +217,6 @@ class ProjectManager:
         self.change_tracker.reset()  # reset changetracker
         self.variant_activation_timestamps = {}
         self.variant_collection_resources = {}
-        self.variant_snapshots = {}
         self.active_variant = None
         # TODO check if this is necessary, i dont think so: self.change_listeners.clear() # reset listeners
 
@@ -254,11 +253,10 @@ class ProjectManager:
         variant = Variant(name=es_name, id=str(uuid4()), lastChanged=datetime.now(timezone.utc))
         new_collection.variant = variant
         es = create_empty_energysystem(es_name, es_description, instance_name, top_area_name)
-        variantCollection_resource: XMLResource = self.rset.create_resource(StringURI(f"VariantCollection_{count}.esdl"))
-        variantCollection_resource.type = ProjectManagerResourceType.VARIANT_COLLECTION
-        #variantCollection_resource.append(es)
-        variantCollection_resource.set_content(es)
-        self.variant_collection_resources[new_collection.id] = variantCollection_resource
+        variant_collection_resource: XMLResource = self.rset.create_resource(StringURI(f"VariantCollection_{count}.esdl"))
+        variant_collection_resource.type = ProjectManagerResourceType.VARIANT_COLLECTION
+        variant_collection_resource.set_content(es)
+        self.variant_collection_resources[new_collection.id] = variant_collection_resource
         update_uuid_dict(es)  # Energy system is now attached to a resource, update UUID dict
         new_collection.energysystemRef = es
         return new_collection
@@ -436,34 +434,32 @@ class ProjectManager:
         :param variant:
         :return:
         """
-        snapshot = self.variant_snapshots.get(variant.id, None)
+        snapshot = self.get_variant_snapshot(variant)
         logger.info(f"Removing {snapshot.eResource}")
         tracker = self.change_tracker.get_tracker(resource=snapshot.eResource)
         if tracker is not None:
             self.change_tracker.delete(tracker=tracker)
         self.rset.remove_resource(snapshot.eResource)
-        del self.variant_snapshots[variant.id]
         variant.snapshotRef = None
 
-    def replay_parent_variant_changes(self, new_variant: Variant):
+    def replay_parent_variant_changes(self, variant: Variant):
         """
         Find base Variant energy system and set that as active variant
         0: store current es as active snapshot for current active es
         1: load base variant
         2: replay changes in this variant
         """
-        collection = get_variant_collection(new_variant)
+        variant_collection = get_variant_collection(variant)
         # base_variant_resource = get_base_variant_resource(base_variant)
         # self.active_resource.set_content(base_variant_resource.contents[0].deepcopy())
-        collection_resource = self.get_variant_collection_resource(collection)
+        collection_resource = self.get_variant_collection_resource(variant_collection)
+        # TODO: On load ESDL or just after adding a variant, the collection_resource can be none. This is becasue of pm.save. Not sure why though.
         contents = collection_resource.contents
         contents_0 = contents[0]
-        collection.energysystemRef = collection_resource.contents[0]
+        variant_collection.energysystemRef = collection_resource.contents[0]
 
-        variant_path_list = get_variant_path_list(new_variant)
+        variant_path_list = get_variant_path_list(variant)
         variant_path_list.reverse()
-        # Ensure we have a snapshot.
-        #variant_snapshot = self.get_variant_snapshot(new_variant)
 
         changes_list = []
         for parent_variant in variant_path_list:
@@ -478,7 +474,7 @@ class ProjectManager:
         # sort list
         changes_list.sort(key=lambda k: k.changedAt)
         #print(changes_list)
-        self.apply_changes_to_variant(changes_list, new_variant, False)
+        self.apply_changes_to_variant(changes_list, variant, False)
 
     def apply_changes_to_variant(self, change_list: List[AbstractChange], target_variant: Variant, record_changes: bool):
         es = self.get_or_create_variant_snapshot(target_variant)
@@ -575,9 +571,9 @@ class ProjectManager:
 
     def get_variant_snapshot(self, variant: Variant) -> esdl.EnergySystem | None:
         """
-        Get the snapshot of a variant. If the snapshot does not exist, it is created.
+        Get the snapshot of a variant. Do not create a snapshot if it does not exist.
         """
-        return self.variant_snapshots.get(variant.id, None)
+        return variant.snapshotRef
 
     def get_energy_system(self, variant: Variant) -> esdl.EnergySystem:
         """
@@ -620,7 +616,6 @@ class ProjectManager:
             variant.snapshotRef = snapshot
             snapshot.name = variant.name  # overwrite name of ES to match the variant name
             snapshot.id = variant.id  # str(uuid4())  # generate a new energy system id for this variant
-            self.variant_snapshots[variant.id] = snapshot
 
             #snapshot_resource.uuid_dict = dict(es.eResource.uuid_dict) # copy uuid_dict to speed up lookups by id
             #update_uuid_dict(snapshot_resource.contents[0])
@@ -669,7 +664,8 @@ class ProjectManager:
 
         if isinstance(variant, VariantCollection):
             variant_collection: VariantCollection = variant
-            del self.variant_collection_resources[variant_collection.id]
+            if variant_collection.id in self.variant_collection_resources:
+                del self.variant_collection_resources[variant_collection.id]
             if variant_collection.variant:
                 self.delete_variant(variant_collection.variant)
             if variant_collection.energysystemRef:
@@ -690,7 +686,6 @@ class ProjectManager:
             if snapshot:
                 resource = snapshot.eResource
                 variant.snapshotRef = None
-                del self.variant_snapshots[variant.id]
                 logger.debug(f"Removing snapshot of {variant.name} at {resource.uri}")
                 self.rset.remove_resource(resource)
             parent = get_parent_variant(variant)
@@ -713,21 +708,12 @@ class ProjectManager:
         # first store the active ES in the active BV
         logger.info("Saving project to string.")
 
-        # TODO: not needed anymore? Check
-        # TODO: as changes are saved in variant already (and the stack is same as variant.changes)
-        all_variants: list[Variant] = []
-
         # Go through all variant collections and variants and empty the snapshotRef. Store this in the
         # variant_snapshot_refs dict to restore it after we are done saving.
         for variantCollection in self.project.variantCollection:
-            collection_resource = self.get_variant_collection_resource(variantCollection)
-            variantCollection.energysystem = collection_resource.contents[0]
-            variantCollection.energysystemRef = None
+            # collection_resource = self.get_variant_collection_resource(variantCollection)
+            variantCollection.energysystem = variantCollection.energysystemRef
             # Find all variants in the variant collection
-            all_variants.append(variantCollection.variant)
-            for variant in all_variants:
-                variant.snapshotRef = None
-                all_variants.extend(variant.variant)
 
         uri = StringURI(uri=f"to_string_{str(uuid4())}.project")
         self.project_resource.save(output=uri)
@@ -737,11 +723,9 @@ class ProjectManager:
         for variantCollection in self.project.variantCollection:
             collection_resource = self.get_variant_collection_resource(variantCollection)
             # use set_content() here instead of append, somehow eResource does not get updated otherwise
+            # TODO: Why is this so important here? If I remove it, everything breaks. But it seems like it shouldn't happen at all here!
             collection_resource.set_content(variantCollection.energysystem)
-            variantCollection.energysystemRef = collection_resource.contents[0]
             variantCollection.energysystem = None
-        for variant in all_variants:
-            variant.snapshotRef = self.get_variant_snapshot(variant)
 
         return project_as_string
 
@@ -790,24 +774,29 @@ class ProjectManager:
             # no base variant exists: create one
             self.init_empty_project()
 
+        # variant_collections: list[VariantCollection] = self.project.variantCollection
+
         # load the base variant energy systems into resources and set the references
         for variant_collection in self.project.variantCollection:
+            # This breaks a lot of things.
+            # variant_collection_resource = variant_collection.energysystemRef.eResource
+            # variant_collection_resource.set_content(variant_collection.energysystemRef)
             self.variant_collection_resources[variant_collection.id] = variant_collection.energysystemRef.eResource
-            if variant_collection.energysystem:
-                # with the new ProjectResource, this is not needed anymore and is skipped, because
-                # variant_collection.energysystem is None and variant_collection.energysystemRef is set to the
-                # content of the Resource that has loaded the energy system at variant_collection.energysystem
-                variant_collection: VariantCollection = variant_collection
-                index = get_variant_collection_index(variant_collection)
-                bv_uri = StringURI(uri=f"VariantCollection.{index}_{str(uuid4())[:4]}.esdl")
-                variant_collection_resource = self.rset.create_resource(bv_uri)
-                variant_collection_resource.type = ProjectManagerResourceType.VARIANT_COLLECTION
-                if not isinstance(variant_collection_resource, XMLResource):
-                    raise Exception("ESDL files are mapped to the wrong Resource type. Should be XMLResource.")
-                variant_collection_resource: XMLResource = variant_collection_resource
-                # self.base_variant_resources.insert(index, bv_resource)
-                variant_collection_resource.set_content(variant_collection.energysystem)
-                variant_collection.energysystemRef = variant_collection_resource.contents[0]
+            # if variant_collection.energysystem:
+            #     # with the new ProjectResource, this is not needed anymore and is skipped, because
+            #     # variant_collection.energysystem is None and variant_collection.energysystemRef is set to the
+            #     # content of the Resource that has loaded the energy system at variant_collection.energysystem
+            #     variant_collection: VariantCollection = variant_collection
+            #     index = get_variant_collection_index(variant_collection)
+            #     bv_uri = StringURI(uri=f"VariantCollection.{index}_{str(uuid4())[:4]}.esdl")
+            #     variant_collection_resource = self.rset.create_resource(bv_uri)
+            #     variant_collection_resource.type = ProjectManagerResourceType.VARIANT_COLLECTION
+            #     if not isinstance(variant_collection_resource, XMLResource):
+            #         raise Exception("ESDL files are mapped to the wrong Resource type. Should be XMLResource.")
+            #     variant_collection_resource: XMLResource = variant_collection_resource
+            #     # self.base_variant_resources.insert(index, bv_resource)
+            #     variant_collection_resource.set_content(variant_collection.energysystem)
+            #     variant_collection.energysystemRef = variant_collection_resource.contents[0]
 
         self.active_variant = None
         self.set_active_variant(self.project.variantCollection[0].variant)

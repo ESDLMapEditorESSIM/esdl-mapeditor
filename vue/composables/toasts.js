@@ -19,8 +19,8 @@ watchEffect(() => {
     }
 });
 
-// export function useToasts () {
-//     return {
-//         showToast
-//     }
-// }
+export function useToasts () {
+    return {
+        showToast
+    }
+}

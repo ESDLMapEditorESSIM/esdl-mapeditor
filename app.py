@@ -3424,9 +3424,9 @@ def initialize_app():
     pm = get_project_manager()
     pm.add_change_listener("incremental_ui_updates", change_handler)
 
-    last_es = pm.get_active_energy_system()
-    if last_es:
-        set_session('active_es_id', last_es.id)
+    active_es = pm.get_active_energy_system()
+    if active_es:
+        set_session('active_es_id', active_es.id)
     else:
         # This happens when there is an exception in loading an EnergySystem
         logger.error("No energy systems in Project Manager - Edwin and Ewoud discuss!!")
@@ -3440,7 +3440,7 @@ def initialize_app():
     set_session("es_info_list", es_info_list)
     emit('clear_ui')
     emit('clear_esdl_layer_list')
-    call_process_energy_system.submit()  # run in a separate thread
+    call_process_energy_system.submit(only_process_es_id=active_es.id)  # run in a separate thread
 
 
 @socketio.on('connect', namespace='/esdl')

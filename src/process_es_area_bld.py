@@ -1062,19 +1062,19 @@ def get_building_connections(building):
 #  TODO: We also call process_energy_system asynchronously through executor.submit(process_energy_system). We should probably make that approach consistent.
 # ---------------------------------------------------------------------------------------------------------------------
 @executor.job
-def call_process_energy_system(force_update_es_id=None, zoom=True):
+def call_process_energy_system(force_update_es_id=None, zoom=True, only_process_es_id=None):
     # emit('clear_ui')
     logger.info("Processing energysystems contained in Project manager")
     logger.info("active_es_id at start: {}".format(get_session('active_es_id')))
 
     try:
-        process_energy_system(force_update_es_id, zoom)
+        process_energy_system(force_update_es_id, zoom, only_process_es_id)
     except Exception as e:
         # Exceptions get swallowed by the executor. Log it here.
         logger.exception(str(e))
 
 @timed
-def process_energy_system(force_update_es_id=None, zoom=True):
+def process_energy_system(force_update_es_id=None, zoom=True, only_process_es_id=None):
     """
     Initialization after an update to the energy system.
 
@@ -1100,9 +1100,19 @@ def process_energy_system(force_update_es_id=None, zoom=True):
             logger.info("Processing active energy system")
 
             pm = get_project_manager()
+            active_es = pm.get_active_energy_system()
+            set_session('active_es_id', active_es.id)
             es_info_list = get_session("es_info_list")
 
-            for es in pm.get_energy_systems():
+            energy_systems = pm.get_energy_systems()
+            if only_process_es_id:
+                energy_systems = [es for es in energy_systems if es.id == only_process_es_id]
+
+            if not energy_systems:
+                logger.error("No energy systems found in project manager!")
+                return
+
+            for es in energy_systems:
                 asset_list = []
                 building_list = []
                 area_bld_list = []
@@ -1119,8 +1129,8 @@ def process_energy_system(force_update_es_id=None, zoom=True):
                         title = name
 
                     emit('create_new_esdl_layer', {'es_id': es.id, 'title': title}) # removes old layer if exists
-                    emit('set_active_layer_id', es.id)
-                    set_session('active_es_id', es.id)
+                    if es.id == active_es.id:
+                        emit('set_active_layer_id', es.id)
 
                     area = es.instance[0].area
                     find_boundaries_in_ESDL(area, es.id)       # also adds coordinates to assets if possible

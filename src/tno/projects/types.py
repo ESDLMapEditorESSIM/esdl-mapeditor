@@ -59,7 +59,7 @@ def serialize_variant(pm: ProjectManager, variant: VariantCollection) -> dict:
         description=variant.description,
         nr_of_changes=len(variant.change),
         es_id=variant.snapshotRef.id if variant.snapshotRef else None,
-        active=active_variant.id == variant.id,
+        active=active_variant.id == variant.id if active_variant else False,
         children=[serialize_variant(pm, variant) for variant in variant.variant],
         changes=[],  # don't show changes anymore, TODO: update frontend code to remove this attribute
     )

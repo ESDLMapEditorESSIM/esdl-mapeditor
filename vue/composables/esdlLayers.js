@@ -10,6 +10,9 @@
 import {ref} from "vue";
 import {useVisibleLayers} from "@/composables/visibleLayers";
 import {MessageNames, PubSubManager} from "@/bridge";
+import {useToasts} from "@/composables/toasts";
+
+const {showToast} = useToasts();
 
 /** @type {import('vue').Ref<string[]>} */
 const enabledEsdlIdList = ref([]);
@@ -38,7 +41,7 @@ export function useEsdlLayers() {
      */
     function enableEsdl(es_id, force_redo = false) {
         console.debug("Enabling ESDL layer with ID " + es_id);
-        // Check if the ESDL layer is already enabled. If so, do nothing.
+        // Check if the ESDL layer is already enabled. If so, do nothing (unless forced).
         if (enabledEsdlIdList.value.includes(es_id)) {
             if (force_redo) {
                 disableEsdl(es_id);
@@ -157,14 +160,12 @@ export function useEsdlLayers() {
  */
 const MANDATORY_ESDL_LOADING_MESSAGES = [
     MessageNames.CREATE_NEW_ESDL_LAYER,
-    // MessageNames.SET_ACTIVE_LAYER_ID,
     MessageNames.CARRIER_LIST,
     MessageNames.ADD_BUILDING_OBJECTS,
     MessageNames.ADD_ESDL_OBJECTS,
     MessageNames.AREA_BLD_LIST,
     MessageNames.ADD_CONNECTIONS,
     MessageNames.ADD_NOTES,
-    // MessageNames.BRING_KPIS_TO_FRONT,
 ];
 
 /**
@@ -212,9 +213,11 @@ function setupSubscription() {
     const esdlLoadingStatusHandler = (name, message) => {
         const es_id = message.es_id;
         addEsdlLoadingStatus(es_id, name);
+        console.debug("Received message " + name + " for ESDL with ID " + es_id);
         window.show_loader("es")
         // Check if all message names are in the esdlLoadingStatus. If so, hide the loader.
         if (isEsdlLoaded(es_id)) {
+            console.debug("All messages received for ESDL with ID " + es_id);
             window.hide_loader("es");
         }
     }

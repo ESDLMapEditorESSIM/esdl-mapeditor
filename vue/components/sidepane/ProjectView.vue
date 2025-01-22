@@ -108,6 +108,7 @@ function variantToJstreeData(variant) {
     a_attr: {
       "class": variant.active ? "is-active" : "",
     },
+    // TODO: The persisting of checked does not work when creating a child variant of a selected variant.
     state: {"checked": enabledEsdlIdList.value.includes(variant.es_id), opened: children.length > 0},
   }
 }
@@ -250,9 +251,8 @@ const eventHandlersByName = {
     }
     if (type === 'variant') {
       const tree = treeElement.jstree(true);
+      // The below also triggers the check_node handler, which handles visibility.
       tree.check_node(data.node);
-      enableEsdl(original.esId);
-      hideOtherVariantsInTree(data.node);
       if (!original.active) {
         setActiveVariant(original.id, original.esId);
         // window.add_layer_control(); // hard update the old layer control
@@ -265,17 +265,18 @@ const eventHandlersByName = {
     if (type === 'variant') {
       if (original.esId in window.esdl_list) {
         enableEsdl(original.esId);
-        if (data.event) {
-          if (!data.event.ctrlKey) {
-            // if event and ctrlKey + click do not hide other variants
-            hideOtherVariantsInTree(data.node);
-          }
-        } else {
-          hideOtherVariantsInTree(data.node);
-        }
+        // When holding ctrl key, do not hide other variants.
       } else {
-        // TODO: Just get the energy system from this variant, it should not be necessary to also activate it.
-        socket.value.emit("set_active_variant", {id: original.id});
+        // We have no way to just get the energy system without activating it right now. I don't think it's a problem.
+        setActiveVariant(original.id, original.esId)
+      }
+      if (!data.event || !data.event.ctrlKey) {
+        // if event and ctrlKey + click do not hide other variants
+        hideOtherVariantsInTree(data.node);
+        // If any of the others were active, make this one active as it would be the only one left checked.
+        if (!original.active) {
+          setActiveVariant(original.id, original.esId);
+        }
       }
     } else if (type === 'base_layer') {
       const baseLayer = getBaseLayerByLabel(original.text);

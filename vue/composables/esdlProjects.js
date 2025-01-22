@@ -65,8 +65,11 @@ export function useESDLProjects() {
     const toggleProjectView = () => showProjectView.value = !showProjectView.value;
 
     function setActiveVariant(variantId, esId) {
-        console.debug("Setting active variant", variantId);
-        socket.value.emit('set_active_variant', {id: variantId});
+        const loaderScope = "set_active_variant"
+        window.show_loader(loaderScope);
+        socket.value.emit('set_active_variant', {id: variantId}, () => {
+            window.hide_loader(loaderScope);
+        });
         if (esId) {
             // TODO: This doesn't work until the active variant is done generating.
             // window.select_active_layer(esId);
