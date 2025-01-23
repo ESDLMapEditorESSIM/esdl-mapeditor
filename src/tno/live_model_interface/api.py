@@ -92,10 +92,14 @@ def send_project_manager_to_lmi_async(only_send_for_client_id: str | None = None
     Send project managers for all users, or only for the provided users. This function performs the sending in a
     separate thread.
     """
-    send_project_manager_to_lmi.submit(only_send_for_client_id=only_send_for_client_id)
+    _send_project_manager_to_lmi_job.submit(only_send_for_client_id=only_send_for_client_id)
 
 
 @executor.job
+def _send_project_manager_to_lmi_job(only_send_for_client_id: str | None = None):
+    send_project_manager_to_lmi(only_send_for_client_id=only_send_for_client_id)
+
+
 def send_project_manager_to_lmi(only_send_for_client_id: str | None = None):
     """
     Send project managers for all users, or only for the provided users.
