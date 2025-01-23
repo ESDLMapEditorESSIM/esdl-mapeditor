@@ -599,16 +599,12 @@ class ProjectManager:
             if variant_snapshot is not None:
                 return variant_snapshot
 
-            base_variant_resource = self.get_variant_collection_resource(variant)
-            if base_variant_resource is None:
-                logger.warning("Could not find base variant resource for variant", variant=variant.name)
-                return None
+            variant_collection = get_variant_collection(variant)
+            es = variant_collection.energysystemRef
 
             snapshot_resource: XMLResource = self.rset.create_resource(StringURI(f"Snapshot_{variant.name}_{str(uuid4())[:4]}.esdl"))
             snapshot_resource.type = ProjectManagerResourceType.SNAPSHOT
             logger.info(f'Saving variant snapshot for "{variant.name}" (in {variant.eResource}) to {snapshot_resource.uri}')
-
-            es = base_variant_resource.contents[0]
 
             # TODO: This deepcopy is very slow.
             snapshot_resource.set_content(es.deepcopy(uuid_dict=snapshot_resource.uuid_dict))
