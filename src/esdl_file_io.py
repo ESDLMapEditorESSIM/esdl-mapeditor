@@ -13,7 +13,6 @@
 #      TNO
 import base64
 from datetime import datetime, timezone
-from typing import List
 
 from flask import Flask, request
 from flask_executor import Executor
@@ -66,9 +65,9 @@ class ESDLFileIO:
                 self.clear_current_loaded_variants(exclude_variant_ids=[v.id for v in added_variants])
                 # TODO send clear loaded variants message to LMI
                 return {'message': 'all ESDL(s) received'}, 201
-            except Exception:
-                logger.exception("Error processing ESDL file(s)")
-                return {'message': 'Error processing ESDL file(s)'}, 500
+            except Exception as e:
+                logger.exception("Error processing ESDL file(s)", exception=e)
+                return {'message': 'Error processing ESDL file(s): ' + str(e)}, 500
 
 
         @self.socketio.on("process_loaded_energysystems", namespace='/esdl')
@@ -127,7 +126,7 @@ class ESDLFileIO:
         except Exception as e:
             logger.exception(f"Error opening {filename}")
             self.send_alert("Error opening {}. Exception is: {}".format(filename, e))
-            return None
+            raise e
 
     @staticmethod
     def call_process_energy_system():

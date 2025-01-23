@@ -62,12 +62,17 @@ function load_esdl_files(event) {
                 hide_loader();
                 socket.emit('process_loaded_energysystems');
             },
-            error: function (xhr, ajaxOptions, thrownError) {
+            error: function (xhr, textStatus, thrownError) {
                 hide_loader();
                 console.error('AJAX request failed:', xhr);
                 console.error('Status:', xhr.status);
                 console.error('Error:', thrownError);
-                alert('Error occurred in load_esdl_files: ' + xhr.status + ' - ' + thrownError);
+                console.error('Error message:', xhr.responseJSON);
+                let response_msg = "";
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    response_msg = '\n\nError message: ' +  xhr.responseJSON.message;
+                }
+                alert('Error occurred in load_esdl_files: ' + xhr.status + ' - ' + thrownError + response_msg);
             }
         });
     }).catch((error) => {

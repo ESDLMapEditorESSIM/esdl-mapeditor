@@ -311,7 +311,7 @@ class ProjectManager:
             #return es_resource.contents[0], parse_info
         except Exception as e:
             logger.error("Exception when loading resource: {}: {}".format(uri, e))
-            raise
+            raise e
 
         variant_collection = VariantCollection(name=f"VariantCollection for {es.name}", id=str(uuid4()))
         self.project.variantCollection.append(variant_collection)
