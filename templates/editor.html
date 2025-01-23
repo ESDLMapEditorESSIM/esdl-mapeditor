@@ -580,6 +580,14 @@
             namespace = '/esdl';
             socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace, {'timeout':50000, 'connect timeout': 15000, path: "/socketio.io"});
 
+            function handleErrors(err) {
+                console.error("SocketIO error!", err)
+            }
+
+            socket.on('connect_error', err => handleErrors(err))
+            socket.on('connect_failed', err => handleErrors(err))
+            socket.on('disconnect', err => handleErrors(err))
+
             // add_handler();
             add_geojson_listener(socket, map);
             add_area_map_handlers(socket, map);
@@ -1713,7 +1721,6 @@
         </div>
 
         <div id="ctrl" style="float: right; position: relative; padding:3px;">
-<!--            <input class="inputFile" type="file" style="display: none;" onchange="open_ESDL(event);"> -->
             <input class="inputFile" type="file" style="display: none;" onchange="load_esdl_files(event);" accept=".esdl" onclick="this.value=null;" multiple>
             <input class="inputImportFile" type="file" style="display: none;" onchange="import_ESDL(event);" accept=".esdl" onclick="this.value=null;">
 
