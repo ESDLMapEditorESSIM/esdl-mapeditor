@@ -449,14 +449,14 @@ class ProjectManager:
         1: load base variant
         2: replay changes in this variant
         """
-        variant_collection = get_variant_collection(variant)
+        # variant_collection = get_variant_collection(variant)
         # base_variant_resource = get_base_variant_resource(base_variant)
         # self.active_resource.set_content(base_variant_resource.contents[0].deepcopy())
-        collection_resource = self.get_variant_collection_resource(variant_collection)
+        # collection_resource = self.get_variant_collection_resource(variant_collection)
         # TODO: On load ESDL or just after adding a variant, the collection_resource can be none. This is becasue of pm.save. Not sure why though.
-        contents = collection_resource.contents
-        contents_0 = contents[0]
-        variant_collection.energysystemRef = collection_resource.contents[0]
+        # contents = collection_resource.contents
+        # contents_0 = contents[0]
+        # variant_collection.energysystemRef = collection_resource.contents[0]
 
         variant_path_list = get_variant_path_list(variant)
         variant_path_list.reverse()
