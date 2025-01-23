@@ -109,7 +109,7 @@ onMounted(async () => {
 /**
  * Displays a notification with the specified level and description.
  * 
- * @param {string} level The level of the notification ("info", "warning", "error").
+ * @param {string} level The level of the notification ("success", "info", "warning", "error").
  * @param {string} description The description text of the notification.
  */
  const displayNotification = (level, description) => {
@@ -187,7 +187,7 @@ const getPartiesList = async () => {
   } catch (error) {
     console.error(error);
     displayNotification(
-      "error", 
+      "Error", 
       "Something went wrong when retrieving the party list from the ESDL."
     );
   }
@@ -201,7 +201,7 @@ const getAssetsList = async () => {
   } catch (error) {
     console.error(error);
     displayNotification(
-      "error", 
+      "Error", 
       "Something went wrong when retrieving the asset list from the ESDL."
     );
   }

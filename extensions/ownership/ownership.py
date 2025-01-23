@@ -151,9 +151,10 @@ class Ownership:
 
     def get_esdl_assets(self) -> List[OwnershipAsset]:
         es = self.get_es()
+        top_area = es.instance[0].area
 
         assets_list: List[OwnershipAsset] = []
-        for eobj in es.eAllContents():
+        for eobj in top_area.eAllContents():
             if isinstance(eobj, esdl.Asset):
                 if eobj.isOwnedBy is not None:
                     party = OwnershipParty(
