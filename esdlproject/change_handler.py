@@ -33,9 +33,9 @@ def applyChange(change, resource: XMLResource):
     :param change: the change to apply
     :param resource: the resource to apply the change to
     """
-    logger.debug(
-        f"Processing {change.eClass.name}, owner={change.ownerFragment}, feature={change.feature} applying it to {resource.uri}"
-    )
+    # logger.debug(
+    #     f"Processing {change.eClass.name}, owner={change.ownerFragment}, feature={change.feature} applying it to {resource.uri}"
+    # )
     if isinstance(change, Set):
         if change.objectValue is not None:
             #print(f"\\- Set change applied to {change.ownerFragment}")
