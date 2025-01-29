@@ -34,7 +34,6 @@ class TooltipInfo:
 
         @self.flask_app.route('/tooltip_info/<object_id>')
         def get_tooltip_info(object_id):
-            active_es_id = get_session('active_es_id')
             pm = get_project_manager()
             es_edit = pm.get_active_energy_system()
             active_es_id = es_edit.id

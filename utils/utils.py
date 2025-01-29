@@ -14,6 +14,7 @@
 
 import re
 import time
+from contextlib import contextmanager
 from functools import wraps
 
 from src.log import get_logger
@@ -60,6 +61,19 @@ def timed(func):
 
     return wrapper
 
+
+@contextmanager
+def timed_context(name):
+    """Context manager to measure the execution time of a code block."""
+    start = time.time()
+    yield
+    end = time.time()
+    runtime = round(end - start, 2)
+    logger.debug(
+        f"{name} ran in {runtime}s",
+        function=name,
+        runtime=runtime,
+    )
 
 # def display_mem_usage(snapshot, key_type = 'lineno', limit = 10):
 #    """ show memory stats, requires tracemalloc, but that seems to slow down everything. """

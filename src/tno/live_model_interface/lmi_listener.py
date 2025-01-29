@@ -70,7 +70,6 @@ def on_high_level_change(message: HighLevelChangeMessage):
     variant_id = message['variant_id']
     variant = pm.get_variant_by_id(variant_id)
     es = pm.get_energy_system(variant)
-    #es = pm.get_active_energy_system()
 
     # TODO: make sure we only apply changes when process energy system is not in progress
     # otherwise it might be in a non final stage when these changes are added to the energy system
