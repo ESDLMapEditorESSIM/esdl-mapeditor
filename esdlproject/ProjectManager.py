@@ -652,12 +652,6 @@ class ProjectManager:
         """
         logger.info(f"Deleting variant: {variant.name} @ {variant.eURIFragment()}")
 
-        if variant in get_variant_path_list(self.active_variant):  # or get_variant_collection(variant) == variant:
-            # TODO reset active variant to other variant and check if there is at least 1 variant
-            logger.warn("Deleted variant was active variant. Please set a new active variant")
-            #self.active_variant = None
-            self.set_active_variant(self._select_new_active_variant())
-
         if isinstance(variant, VariantCollection):
             variant_collection: VariantCollection = variant
             if variant_collection.id in self.variant_collection_resources:
@@ -691,6 +685,13 @@ class ProjectManager:
                 self.delete_variant(parent)
             else:
                 parent.variant.remove(variant)
+
+        if variant in get_variant_path_list(self.active_variant):  # or get_variant_collection(variant) == variant:
+            # TODO reset active variant to other variant and check if there is at least 1 variant
+            logger.warn("Deleted variant was active variant. Please set a new active variant")
+            #self.active_variant = None
+            self.set_active_variant(self._select_new_active_variant())
+
 
     @timed
     def save(self) -> str:
@@ -801,6 +802,8 @@ class ProjectManager:
     def get_variant_collection_resource(self, variant: Union[VariantCollection, Variant]) -> XMLResource | None:
         """
         Get the resource of the variant collection of the given variant.
+
+        NOTE: During pm.save(), the contents of this resource are None.
 
         :param variant: the variant to get the base variant resource for
         :return: the resource of the base variant of the given variant

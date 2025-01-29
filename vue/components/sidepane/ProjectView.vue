@@ -218,7 +218,12 @@ class VariantTreeSpec {
         'icon': 'fa fa-trash-o',
         'action': function () {
           const msg = {id: node.original.id};
-          socket.value.emit("delete_variant", msg);
+          const loaderScope = "delete_variant"
+          window.show_loader(loaderScope)
+
+          socket.value.emit("delete_variant", msg, () => {
+            window.hide_loader(loaderScope)
+          })
           // TODO: remove this when new layer control is ready
           window.remove_esdl_layer_from_ui(node.original.id);  // remove from old layer control layer and esdl_list
           window.add_layer_control(); // hard update the old layer control

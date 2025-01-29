@@ -35,9 +35,7 @@ function read_esdl_file_as_array_buffer(file) {
 }
 
 function load_esdl_files(event) {
-    var file = event.target.files[0];
-
-    let files = [];
+    const files = [];
     for (let file_nr=0; file_nr<event.target.files.length; file_nr++) {
         let file = event.target.files[file_nr];
         if (file) files.push(file);
@@ -45,7 +43,7 @@ function load_esdl_files(event) {
 
     if (!files.length) return;
 
-    let readers = [];
+    const readers = [];
     for (let i=0; i<files.length; i++) {
         readers.push(this.read_esdl_file_as_array_buffer(files[i]));
     }
@@ -53,17 +51,17 @@ function load_esdl_files(event) {
     Promise.all(readers).then((array_with_file_info) => {
         let load_esdl_url = resource_uri + '/esdl_file_io';
 
-        show_loader();
+        window.show_loader();
         $.ajax({
             url: load_esdl_url,
             type: 'POST',
             data: { file_info: array_with_file_info },
             success: function (data) {
-                hide_loader();
+                window.hide_loader();
                 socket.emit('process_loaded_energysystems');
             },
             error: function (xhr, textStatus, thrownError) {
-                hide_loader();
+                window.hide_loader();
                 console.error('AJAX request failed:', xhr);
                 console.error('Status:', xhr.status);
                 console.error('Error:', thrownError);

@@ -36,54 +36,33 @@ function new_ESDL() {
 }
 
 function click_new_ESDL_button(obj) {
-    new_name = document.getElementById('new_name').value;
-    new_description = document.getElementById('new_description').value;
-    new_instance_name = document.getElementById('new_instance_name').value;
-    new_top_area_name = document.getElementById('new_area_name').value;
+    const new_name = document.getElementById('new_name').value;
+    const new_description = document.getElementById('new_description').value;
+    const new_instance_name = document.getElementById('new_instance_name').value;
+    const new_top_area_name = document.getElementById('new_area_name').value;
 
-    socket.emit('file_command', {cmd: 'new_esdl', name: new_name, description: new_description,
+    window.socket.emit('file_command', {cmd: 'new_esdl', name: new_name, description: new_description,
         instance_name: new_instance_name, top_area_name: new_top_area_name});
 
     window.PubSubManager.broadcast('NEW_ESDL', {});
 }
 
-function open_ESDL(event) {
-    // getting a hold of the file reference
-    var file = event.target.files[0];
-
-    // setting up the reader
-    var reader = new FileReader();
-    reader.readAsText(file); // this is reading as data url
-
-    // here we tell the reader what to do when it's done reading...
-    reader.onload = readerEvent => {
-        var content = readerEvent.target.result; // this is the content!
-        socket.emit('file_command', {cmd: 'load_esdl_from_file', filename: file.name, file_content: content});
-    }
-
-    // clear file input so that one could load the same file the next time
-    $('.inputFile')[0].value = "";
-
-    // show loader
-    show_loader();
-}
-
 function import_ESDL(event) {
     // getting a hold of the file reference
-    var file = event.target.files[0];
+    const file = event.target.files[0];
 
     // setting up the reader
-    var reader = new FileReader();
+    const reader = new FileReader();
     reader.readAsText(file); // this is reading as data url
 
     // here we tell the reader what to do when it's done reading...
     reader.onload = readerEvent => {
-        var content = readerEvent.target.result; // this is the content!
-        socket.emit('file_command', {cmd: 'import_esdl_from_file', filename: file.name, file_content: content});
+        const content = readerEvent.target.result; // this is the content!
+        window.socket.emit('file_command', {cmd: 'import_esdl_from_file', filename: file.name, file_content: content});
     }
 
     // show loader
-    show_loader();
+    window.show_loader();
 }
 
 function send_cmd_load_ESDL() {

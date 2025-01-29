@@ -167,6 +167,8 @@ def delete_variant(message: DeleteVariantRequest):
         pm.delete_variant(variant)
 
     emit_active_esdl_project()
+    es = pm.get_active_energy_system()
+    executor.submit(process_energy_system, force_update_es_id=es.id)
     send_delete_variant_message_to_lmi(variant)
 
 
