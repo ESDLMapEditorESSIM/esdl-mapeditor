@@ -47,24 +47,6 @@ function click_new_ESDL_button(obj) {
     window.PubSubManager.broadcast('NEW_ESDL', {});
 }
 
-function import_ESDL(event) {
-    // getting a hold of the file reference
-    const file = event.target.files[0];
-
-    // setting up the reader
-    const reader = new FileReader();
-    reader.readAsText(file); // this is reading as data url
-
-    // here we tell the reader what to do when it's done reading...
-    reader.onload = readerEvent => {
-        const content = readerEvent.target.result; // this is the content!
-        window.socket.emit('file_command', {cmd: 'import_esdl_from_file', filename: file.name, file_content: content});
-    }
-
-    // show loader
-    window.show_loader();
-}
-
 function send_cmd_load_ESDL() {
     socket.emit('file_command', {cmd: 'get_list_from_store'});
 }

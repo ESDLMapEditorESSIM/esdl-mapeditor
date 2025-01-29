@@ -44,7 +44,14 @@ def create_app(name):
     app.config['SESSION_FILE_DIR'] = '/tmp/flask_session'
     app.config['EXECUTOR_PROPAGATE_EXCEPTIONS'] = True # make sure errors are logged for tasks run in threads
 
-    socketio.init_app(app, async_mode=settings.ASYNC_MODE, manage_session=False, path='/socketio.io', logger=settings.FLASK_DEBUG)
+    socketio.init_app(
+        app,
+        async_mode=settings.ASYNC_MODE,
+        manage_session=False,
+        path='/socketio.io',
+        logger=settings.FLASK_DEBUG,
+        engineio_logger=settings.FLASK_DEBUG,
+    )
 
     # logging.getLogger('engineio').setLevel(logging.WARNING)  # don't print all the messages
 
