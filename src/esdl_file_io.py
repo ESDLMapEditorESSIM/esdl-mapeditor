@@ -14,16 +14,17 @@
 import base64
 from datetime import datetime, timezone
 
-from flask import Flask, request
+from flask import Flask, request, session
 from flask_executor import Executor
 from flask_socketio import SocketIO, emit
 
 import src.log as log
 from esdl.processing.string_uri import StringURI
 from esdlproject import Variant
-from extensions.session_manager import set_session, get_project_manager
-from src.process_es_area_bld import process_energy_system
-from src.tno.live_model_interface.api import send_add_variant_and_esdl_message_to_lmi
+from esdlproject.ProjectManager import ProjectManager
+from extensions.session_manager import set_session, get_project_manager, set_project_manager, managed_sessions
+from src.process_es_area_bld import process_energy_system, call_process_energy_system
+from src.tno.live_model_interface.api import send_add_variant_and_esdl_message_to_lmi, send_project_manager_to_lmi_async
 from src.tno.projects.emits import emit_active_esdl_project
 
 logger = log.get_logger(__name__)
@@ -42,6 +43,7 @@ class ESDLFileIO:
         @self.flask_app.route("/esdl_file_io", methods=['POST'])
         def esdl_file_io():
             try:
+                new_pm = ProjectManager(create_empty_variant=False)
                 #with self.flask_app.request_context():
                 # len(request.values) seems to be a multiple of 2
                 added_variants = []
@@ -58,12 +60,15 @@ class ESDLFileIO:
                         esdlstr_bytes = base64.b64decode(esdlstr_base64_bytes)
                         esdl_str = esdlstr_bytes.decode('utf-8')
 
-                        variant = self.add_esdl_to_project(filename, esdl_str)
+                        variant = self.add_esdl_to_project(new_pm, filename, esdl_str)
                         added_variants.append(variant)
                         #emit_active_esdl_project() # cant do emit here, because it is not socket io request
-                # Now clear current loaded variants. We do this at the end to not destroy the current project if something goes wrong.
-                self.clear_current_loaded_variants(exclude_variant_ids=[v.id for v in added_variants])
-                # TODO send clear loaded variants message to LMI
+
+                # Now overwrite the project manager. We do this at the end to prevent the project manager from being
+                # overwritten with an incomplete project manager in case of an error.
+                set_project_manager(new_pm)
+                client_id = session["client_id"]
+                send_project_manager_to_lmi_async(only_send_for_client_id=client_id)
                 return {'message': 'all ESDL(s) received'}, 201
             except Exception as e:
                 logger.exception("Error processing ESDL file(s)", exception=e)
@@ -72,10 +77,15 @@ class ESDLFileIO:
 
         @self.socketio.on("process_loaded_energysystems", namespace='/esdl')
         def process_loaded_energysystems():
+            """
+            The user has loaded one or more ESDL files. Process them.
+
+            This endpoint really only exists so that we can emit to the frontend.
+            """
             with self.flask_app.app_context():
                 self.clear_mapeditor_ui()
                 emit_active_esdl_project()
-                self.executor.submit(self.call_process_energy_system)  # run in seperate thread
+                call_process_energy_system.submit()
 
     def send_alert(self, message):
         logger.warning(message)
@@ -87,36 +97,12 @@ class ESDLFileIO:
         emit('clear_ui')
         emit('clear_esdl_layer_list')
 
-    def clear_current_loaded_variants(self, exclude_variant_ids: list[str] = None):
-        if exclude_variant_ids is None:
-            exclude_variant_ids = []
-        pm = get_project_manager()
-        for vc in list(pm.project.variantCollection):
-            variants: list[Variant] = []
-            pm.get_variant_list(vc.variant, variants)
-            variants.reverse()  # go from tail to root
-            for v in variants:
-                if v.id in exclude_variant_ids:
-                    continue
-                es = pm.get_or_create_variant_snapshot(v)
-                if es is not None: # no snapshot yet available
-                    stack = pm.get_undo_redo_stack(es)
-                    if stack.last_changed > datetime.min.replace(tzinfo=timezone.utc):
-                        # warn for unsaved changes
-                        self.send_alert(f"{v.name} contains unsaved changes")
-                        return
-
-                pm.delete_variant(v)
-            #pm.delete_variant(vc)
-
-    def add_esdl_to_project(self, filename, file) -> Variant | None:
-        pm = get_project_manager()
-
+    def add_esdl_to_project(self, pm, filename, file) -> Variant | None:
         try:
             uri = StringURI(filename, file)
             variant, parse_info = pm.add_energy_system(uri) #add_from_string(esdl_string=file, name=filename)
             pm.set_active_variant(variant)
-            send_add_variant_and_esdl_message_to_lmi(variant)
+            # send_add_variant_and_esdl_message_to_lmi(variant)
             if len(parse_info) > 0:
                 info = ''
                 for line in parse_info:
@@ -127,7 +113,3 @@ class ESDLFileIO:
             logger.exception(f"Error opening {filename}")
             self.send_alert("Error opening {}. Exception is: {}".format(filename, e))
             raise e
-
-    @staticmethod
-    def call_process_energy_system():
-        process_energy_system(force_update_es_id=None, zoom=True)

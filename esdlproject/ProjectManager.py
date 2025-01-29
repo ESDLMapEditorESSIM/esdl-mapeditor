@@ -19,7 +19,7 @@ from esdl.undo import ChangeTracker, Tracker, UndoRedoCommandStack, ChangeContex
 from esdlproject import ESDLProject, HighLevelChange, Variant, VariantCollection, AbstractChange
 from esdlproject.change_handler import applyChange
 from esdlproject.variant_api import get_parent_variant, get_variant_path_list
-from utils.utils import timed
+from utils.utils import timed, timed_context
 
 logger = log.get_logger(__name__)
 
@@ -128,7 +128,7 @@ class ProjectManager:
 
     lock: threading.Lock
 
-    def __init__(self, uri: URI = None):
+    def __init__(self, uri: URI = None, create_empty_variant = True):
         """
         Creates a new project manager with an empty project.
         If using uri to load a project, use StringURI(uri, text) to load a text string
@@ -148,7 +148,7 @@ class ProjectManager:
             self.load(uri)
             # TODO handle active esdl, is based on selected VariantCollection
         else:
-            self.init_empty_project()
+            self.init_empty_project(create_empty_variant=create_empty_variant)
 
     def __create_resource_set(self) -> ResourceSet:
         resource_set = ResourceSet()
@@ -220,14 +220,23 @@ class ProjectManager:
         self.active_variant = None
         # TODO check if this is necessary, i dont think so: self.change_listeners.clear() # reset listeners
 
-    def init_empty_project(self,
-                           es_name="New Energy System",
-                           es_description=None,
-                           instance_name="Untitled Instance",
-                           top_area_name="Untitled Area"
-                           ):
+    def init_empty_project(
+            self,
+            create_empty_variant: bool = True,
+            es_name="New Energy System",
+            es_description=None,
+            instance_name="Untitled Instance",
+            top_area_name="Untitled Area"
+    ):
         """
         Initialize an empty project. This is called when no project is loaded. It creates a new project with a base variant.
+
+        :param create_empty_variant: whether to create an empty variant. Note that if this is False, the project is in an
+            corrupt state. You should add your own variants directly after, probably through `add_energy_system`.
+        :param es_name: the name of the energy system
+        :param es_description: the description of the energy system
+        :param instance_name: the name of the instance
+        :param top_area_name: the name of the top area
         """
         self._reset_project_manager()
 
@@ -235,31 +244,45 @@ class ProjectManager:
         self.project_resource.type = ProjectManagerResourceType.PROJECT
         self.project = ESDLProject(name="Untitled ESDL Project")
         self.project_resource.append(self.project)
-        variant_collection = self.create_empty_variant_collection(es_name, es_description, instance_name, top_area_name)
-        self.set_active_variant(variant_collection.variant)
+        if create_empty_variant:
+            variant_collection = self.create_empty_variant_collection(es_name, es_description, instance_name, top_area_name)
+            self.set_active_variant(variant_collection.variant)
 
-    def create_empty_variant_collection(self,
-                                        es_name="New Energy System",
-                                        es_description=None,
-                                        instance_name="Untitled Instance",
-                                        top_area_name="Untitled Area") -> VariantCollection:
+    def create_empty_variant_collection(
+            self,
+            es_name="New Energy System",
+            es_description=None,
+            instance_name="Untitled Instance",
+            top_area_name="Untitled Area"
+    ) -> VariantCollection:
         """
         Create a new, empty base variant. With an empty energy system with specified name, description, instance_name
         and top_area_name
         """
+        # Create the VariantCollection
         count = len(self.project.variantCollection) + 1
-        new_collection = VariantCollection(name=f"Variant Collection - EnergySystem {count}", id=str(uuid4()))
-        self.project.variantCollection.append(new_collection)
+        variant_collection = VariantCollection(name=f"Variant Collection - EnergySystem {count}", id=str(uuid4()))
+        self.project.variantCollection.append(variant_collection)
+
+        # Create the Variant.
         variant = Variant(name=es_name, id=str(uuid4()), lastChanged=datetime.now(timezone.utc))
-        new_collection.variant = variant
+        variant_collection.variant = variant
+
+        # Create an empty energy system.
         es = create_empty_energysystem(es_name, es_description, instance_name, top_area_name)
+
+        # Create the resource for the VariantCollection which will contain the energy system.
         variant_collection_resource: XMLResource = self.rset.create_resource(StringURI(f"VariantCollection_{count}.esdl"))
         variant_collection_resource.type = ProjectManagerResourceType.VARIANT_COLLECTION
         variant_collection_resource.set_content(es)
-        self.variant_collection_resources[new_collection.id] = variant_collection_resource
-        update_uuid_dict(es)  # Energy system is now attached to a resource, update UUID dict
-        new_collection.energysystemRef = es
-        return new_collection
+        variant_collection.energysystemRef = es
+
+        # Store the resource here as the contents of the resource can be empty during saving of the pm.
+        self.variant_collection_resources[variant_collection.id] = variant_collection_resource
+
+        # Energy system is now attached to a resource, update UUID dict
+        update_uuid_dict(es)
+        return variant_collection
 
     def get_active_energy_system(self) -> esdl.EnergySystem:
         """
@@ -270,7 +293,7 @@ class ProjectManager:
             self.set_active_variant(self.project.variantCollection[0].variant)
         return self.get_or_create_variant_snapshot(self.active_variant)
 
-    def add_energy_system(self, uri: URI, variant_id:str = None) -> Tuple[Variant, List[str]]:
+    def add_energy_system(self, uri: URI, variant_id: str = None) -> Tuple[Variant, list[str]]:
         """
         Loads an external energy system as a base variant and create a new Variant for capturing future changes
 
@@ -292,17 +315,15 @@ class ProjectManager:
             uri.__init__(new_path)  # update uri
             logger.debug(f"This energy system is already loaded: {orig_uri}, using a new URI: {uri.plain}")
         try:
-            es_resource: XMLResource = self.rset.create_resource(uri)
-            es_resource.type = ProjectManagerResourceType.VARIANT_COLLECTION
-            logger.debug(f"Loading {uri.plain}")
-            start = time.time()
-            es_resource.load()
-            end = time.time()
-            logger.debug(f"Loading of ESDL in {round(end - start, 2)}s")
-            es = es_resource.contents[0]
+            # Create the resource for the VariantCollection, which will contain the energy system.
+            variant_collection_resource: XMLResource = self.rset.create_resource(uri)
+            variant_collection_resource.type = ProjectManagerResourceType.VARIANT_COLLECTION
+            with timed_context(f"Loading {uri.plain}"):
+                variant_collection_resource.load()
+            es = variant_collection_resource.contents[0]
             parse_info = []
-            if isinstance(es_resource, XMLResource):
-                parse_info = es_resource.get_parse_information()
+            if isinstance(variant_collection_resource, XMLResource):
+                parse_info = variant_collection_resource.get_parse_information()
                 if len(parse_info) > 0:
                     # TODO: handle parse information to gui
                     logger.warn(f"Resource {uri} contains parse information/errors: {parse_info}")
@@ -313,17 +334,25 @@ class ProjectManager:
             logger.error("Exception when loading resource: {}: {}".format(uri, e))
             raise e
 
-        variant_collection = VariantCollection(name=f"VariantCollection for {es.name}", id=str(uuid4()))
+        # Create the VariantCollection
+        variant_collection = VariantCollection(name=f"Variant Collection - {es.name}", id=str(uuid4()))
         self.project.variantCollection.append(variant_collection)
-        variant_collection.energysystemRef = es  # link variantCollection to the loaded EnergySystem
-        # self.base_variant_resources.insert(self.get_base_variant_index(base_variant), es_resource)
+
+        # Create the Variant, with the provided variant_id if present.
         if not variant_id:
             variant_id = str(uuid4())
-        es_variant = Variant(name=f"{es.name}", id=variant_id, lastChanged=datetime.now(timezone.utc))
-        variant_collection.variant = es_variant
-        snapshot_es = self.get_or_create_variant_snapshot(es_variant)  # create snapshot for this new variant
-        #self.add_object_to_dict(es.id, es)  # TODO: check if this is still necessary: should at least be at the end
-        return es_variant, parse_info
+        variant = Variant(name=es.name, id=variant_id, lastChanged=datetime.now(timezone.utc))
+        variant_collection.variant = variant
+
+        # Link variantCollection to the loaded EnergySystem
+        variant_collection.energysystemRef = es
+
+        # Store the resource here as the contents of the resource can be empty during saving of the pm.
+        self.variant_collection_resources[variant_collection.id] = variant_collection_resource
+
+        # Energy system is now attached to a resource, update UUID dict
+        update_uuid_dict(es)
+        return variant, parse_info
 
     def get_variant_by_id(self, variant_id: str) -> Optional[Variant]:
         """
@@ -449,15 +478,6 @@ class ProjectManager:
         1: load base variant
         2: replay changes in this variant
         """
-        # variant_collection = get_variant_collection(variant)
-        # base_variant_resource = get_base_variant_resource(base_variant)
-        # self.active_resource.set_content(base_variant_resource.contents[0].deepcopy())
-        # collection_resource = self.get_variant_collection_resource(variant_collection)
-        # TODO: On load ESDL or just after adding a variant, the collection_resource can be none. This is becasue of pm.save. Not sure why though.
-        # contents = collection_resource.contents
-        # contents_0 = contents[0]
-        # variant_collection.energysystemRef = collection_resource.contents[0]
-
         variant_path_list = get_variant_path_list(variant)
         variant_path_list.reverse()
 

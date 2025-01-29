@@ -20,8 +20,9 @@ from flask import Blueprint, jsonify, request, session
 import src.log as log
 from esdl.processing.string_uri import StringURI
 from esdlproject import ESDLProject
+from esdlproject.ProjectManager import ProjectManager
 from esdlproject.variant_api import create_new_variant
-from extensions.session_manager import get_project_manager, set_session
+from extensions.session_manager import get_project_manager, set_session, set_project_manager
 from src.app import executor, socketio
 from src.process_es_area_bld import call_process_energy_system, process_energy_system
 from src.tno.live_model_interface.api import send_project_manager_to_lmi_async, send_delete_variant_message_to_lmi
@@ -82,16 +83,16 @@ def new_esdl_project(_):
     """
     Create a brand-new energy project.
     """
-    pm = get_project_manager()
-    pm.init_empty_project()
+    new_pm = ProjectManager()
+    set_project_manager(new_pm)
     set_session("es_info_list", {})
     send_project_manager_to_lmi_async(only_send_for_client_id=session['client_id'])
     emit_clear_frontend_esdls()
     emit_clear_ui()
     call_process_energy_system.submit()
     emit_active_esdl_project()
-    emit_update_undo_redo_stack(pm.active_tracker.stack)
-    return serialize_esdl_project(pm, pm.project)
+    emit_update_undo_redo_stack(new_pm.active_tracker.stack)
+    return serialize_esdl_project(new_pm, new_pm.project)
 
 
 class RenameEsdlProjectRequest(TypedDict):
