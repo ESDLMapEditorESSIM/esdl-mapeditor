@@ -3300,27 +3300,28 @@ def process_file_command(message):
     #     set_session('es_filename', filename)
 
 
-    if message['cmd'] == 'import_esdl_from_file':
-        file_content = message['file_content']
-        filename = message['filename']
-        pm = get_project_manager()
-
-        try:
-            uri = StringURI(filename, file_content)
-            es_variant, parse_info = pm.add_energy_system(uri)
-            if len(parse_info) > 0:
-                info = ''
-                for line in parse_info:
-                    info += line + "\n"
-                send_alert("Warnings while opening {}:\n\n{}".format(filename, info))
-            emit_active_esdl_project()
-            call_process_energy_system.submit()  # run in separate thread
-            # TODO: This seems unused.
-            set_session('es_filename', filename)
-            send_add_variant_and_esdl_message_to_lmi(es_variant)
-        except Exception as e:
-            logger.exception("Error loading {}: {}".format(filename, e))
-            send_alert('Error interpreting ESDL from file - Exception: ' + str(e))
+    # 01-2025: is not used anymore, see esdl_file_io
+    # if message['cmd'] == 'import_esdl_from_file':
+    #     file_content = message['file_content']
+    #     filename = message['filename']
+    #     pm = get_project_manager()
+    #
+    #     try:
+    #         uri = StringURI(filename, file_content)
+    #         es_variant, parse_info = pm.add_energy_system(uri)
+    #         if len(parse_info) > 0:
+    #             info = ''
+    #             for line in parse_info:
+    #                 info += line + "\n"
+    #             send_alert("Warnings while opening {}:\n\n{}".format(filename, info))
+    #         emit_active_esdl_project()
+    #         call_process_energy_system.submit()  # run in separate thread
+    #         # TODO: This seems unused.
+    #         set_session('es_filename', filename)
+    #         send_add_variant_and_esdl_message_to_lmi(es_variant)
+    #     except Exception as e:
+    #         logger.exception("Error loading {}: {}".format(filename, e))
+    #         send_alert('Error interpreting ESDL from file - Exception: ' + str(e))
 
     if message['cmd'] == 'get_list_from_store':
         role = get_session('user-role')
