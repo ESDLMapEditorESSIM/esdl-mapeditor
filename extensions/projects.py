@@ -186,3 +186,15 @@ def rename_variant(message: RenameVariantRequest):
     if variant.snapshotRef:
         variant.snapshotRef.name = f'{pm.project.name} - {variant.name}'
     send_project_manager_to_lmi_async(only_send_for_client_id=session['client_id'])
+
+class FlattenVariantRequest(TypedDict):
+    id: str
+
+
+@socketio.on('flatten_variant', namespace='/esdl')
+def flatten_variant(message: FlattenVariantRequest):
+    pm = get_project_manager()
+    variant = pm.get_variant_by_id(message["id"])
+    flattened_variant = pm.flatten_variant(variant)
+    emit_active_esdl_project()
+    send_project_manager_to_lmi_async(only_send_for_client_id=session['client_id'])

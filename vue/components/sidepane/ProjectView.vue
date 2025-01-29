@@ -224,6 +224,14 @@ class VariantTreeSpec {
           window.add_layer_control(); // hard update the old layer control
         }
       },
+      'flatten': {
+        'label': 'Flatten Variant',
+        'icon': 'fa fa-layer-group',
+        'action': function () {
+          const msg = {id: node.original.id};
+          socket.value.emit("flatten_variant", msg);
+        }
+      },
     }
   }
 

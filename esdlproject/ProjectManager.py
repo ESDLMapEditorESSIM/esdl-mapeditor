@@ -1059,6 +1059,26 @@ class ProjectManager:
         #    logger.debug(f"\t\t- {v.name}: RS={v.snapshotRef.eResource.uri}, ES={v.snapshotRef}")
 
 
+    def flatten_variant(self, variant:Variant) -> Variant:
+        """
+        Creates a new VariantCollection from an existing variant and creates a new variant in that new VariantCollection
+        and returns this variant
+        """
+        source_es = self.get_variant_snapshot(variant)
+        count = len(self.project.variantCollection) + 1
+        new_collection = VariantCollection(name=f"Variant Collection - EnergySystem {count}", id=str(uuid4()))
+        self.project.variantCollection.append(new_collection)
+        variant = Variant(name=f'{variant.name} - Flattened', id=str(uuid4()), lastChanged=datetime.now(timezone.utc))
+        new_collection.variant = variant
+        variant_collection_resource: XMLResource = self.rset.create_resource(StringURI(f"VariantCollection_{count}_flattened_{variant.name}.esdl"))
+        variant_collection_resource.type = ProjectManagerResourceType.VARIANT_COLLECTION
+        copy_es = source_es.deepcopy(uuid_dict=variant_collection_resource.uuid_dict)
+        variant_collection_resource.set_content(copy_es)
+        self.variant_collection_resources[new_collection.id] = variant_collection_resource
+        new_collection.energysystemRef = copy_es
+        return variant
+
+
 def resource_as_string(resource: Resource):
     """
     Get the string representation of the given resource. If the resource is a StringURI, the value of the StringURI
