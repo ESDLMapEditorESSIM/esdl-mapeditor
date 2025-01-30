@@ -28,13 +28,13 @@ from esdl import esdl, EnergySystem
 from esdl.processing import ESDLAsset
 from esdl.processing.ESDLQuantityAndUnits import build_qau_from_unit_string
 from esdl.profiles.influxdbprofilemanager import InfluxDBProfileManager
+from esdl.undo import UndoRedoCommandStack
 from esdl.undo_wrapper import undo_record_changes
 from esdl.units.conversion import convert_to_unit, ENERGY_IN_PJ
 from extensions.session_manager import get_project_manager, get_session
 from extensions.settings_storage import SettingsStorage
 from src.edr_client import EDRClient
-from src.process_es_area_bld import get_area_id_from_mapeditor_id, find_boundaries_in_ESDL, \
-    find_and_send_KPI_information_in_ESDL
+from src.process_es_area_bld import get_area_id_from_mapeditor_id, find_and_send_KPI_information_in_ESDL
 from utils.utils import timed
 
 logger = log.get_logger(__name__)
@@ -197,13 +197,14 @@ class ETMInterface:
                 return None
 
         @self.socketio.on('etm_heat_transition_apply', namespace='/esdl')
-        def etm_heat_transition_apply(message):
+        @undo_record_changes("Add heat transition vision data")
+        def etm_heat_transition_apply(message, stack:UndoRedoCommandStack):
             # area_id could have "(3 of 5)" in it, if the Area clicked is the third polygon af a total of five polygons
             area_id = get_area_id_from_mapeditor_id(message["area_id"])
             active_es_id = get_session('active_es_id')
             pm = get_project_manager()
             area = pm.get_by_id(active_es_id, area_id)
-
+            stack.update_label(f"Add heat transition vision data to {area.name}")
             etm_sankey = ETMSankeyToESDL(None)
             etm_sankey.apply_heat_transition(area, message["technology_info"])
 

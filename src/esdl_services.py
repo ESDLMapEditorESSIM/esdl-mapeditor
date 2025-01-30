@@ -29,6 +29,7 @@ import src.log as log
 from esdl import esdl
 from esdl.processing import ESDLAsset, ESDLGeometry, ESDLEnergySystem
 from esdl.processing.string_uri import StringURI
+from esdl.undo import UndoRedoCommandStack
 from esdl.undo_wrapper import undo_record_changes
 from extensions.profiles import Profiles
 from extensions.session_manager import get_project_manager, get_session, set_session
@@ -194,7 +195,7 @@ class ESDLServices:
             return str(ar)
 
     @undo_record_changes("External service call")
-    def call_esdl_service(self, service_params):
+    def call_esdl_service(self, service_params, stack: UndoRedoCommandStack):
         """Actually call an ESDL service."""
 
         pm = get_project_manager()
@@ -230,7 +231,7 @@ class ESDLServices:
 
         if service is None:
             return False, None, None
-
+        stack.update_label(service["name"])
         url = service["url"]
         headers = service["headers"]
         if service.get("with_jwt_token", False):

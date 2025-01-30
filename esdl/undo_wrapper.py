@@ -21,8 +21,7 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-
-from contextlib import contextmanager
+import inspect
 from functools import wraps
 
 from flask_socketio import emit
@@ -37,6 +36,8 @@ def undo_record_changes(label: str, change_context: ChangeContext = None):
      Wraps undo_record_changes, such that changes are automatically recorded
      In a seperate file to avoid cyclic imports.
      Label is required.
+     a UndoRedoCommandStack 'stack' parameter is injected in the function
+        if that 'stack' parameter is present in the function signature
     """
     def internal_recording(fn):
         @wraps(fn)
@@ -46,6 +47,8 @@ def undo_record_changes(label: str, change_context: ChangeContext = None):
             # stack = pm.get_undo_redo_stack(es_id=active_es_id)
             stack = pm.get_undo_redo_stack()
             with stack.track_changes(label=label, change_context=change_context):
+                if 'stack' in inspect.getfullargspec(fn).args:
+                    kwargs['stack'] = stack # Optionally inject the stack into the wrapped function fn
                 result = fn(*args, **kwargs)
             emit('update_undo_redo_stack', serialize_command_stack(stack))
             return result
