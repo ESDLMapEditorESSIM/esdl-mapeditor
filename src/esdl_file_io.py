@@ -43,9 +43,12 @@ class ESDLFileIO:
         @self.flask_app.route("/esdl_file_io", methods=['POST'])
         def esdl_file_io():
             try:
-                new_pm = ProjectManager(create_empty_variant=False)
-                #with self.flask_app.request_context():
-                # len(request.values) seems to be a multiple of 2
+                is_import = request.values.get("is_import", True)
+                if is_import:
+                    pm = get_project_manager()
+                else:
+                    pm = ProjectManager(create_empty_variant=False)
+
                 added_variants = []
                 for i in range(int(len(request.values)/2)):
                     base64_file_contents = request.values.get(f'file_info[{i}][file]')
@@ -60,15 +63,21 @@ class ESDLFileIO:
                         esdlstr_bytes = base64.b64decode(esdlstr_base64_bytes)
                         esdl_str = esdlstr_bytes.decode('utf-8')
 
-                        variant = self.add_esdl_to_project(new_pm, filename, esdl_str)
+                        variant = self.add_esdl_to_project(pm, filename, esdl_str)
                         added_variants.append(variant)
                         #emit_active_esdl_project() # cant do emit here, because it is not socket io request
 
+                last_variant = added_variants[-1]
+                if last_variant is not None:
+                    send_add_variant_and_esdl_message_to_lmi(last_variant)
+                client_id = session["client_id"]
                 # Now overwrite the project manager. We do this at the end to prevent the project manager from being
                 # overwritten with an incomplete project manager in case of an error.
-                set_project_manager(new_pm)
-                client_id = session["client_id"]
-                send_project_manager_to_lmi_async(only_send_for_client_id=client_id)
+                if is_import:
+                    send_project_manager_to_lmi_async(only_send_for_client_id=client_id)
+                else:
+                    set_project_manager(pm)
+                    send_project_manager_to_lmi_async(only_send_for_client_id=client_id)
                 return {'message': 'all ESDL(s) received'}, 201
             except Exception as e:
                 logger.exception("Error processing ESDL file(s)", exception=e)
@@ -101,8 +110,6 @@ class ESDLFileIO:
         try:
             uri = StringURI(filename, file)
             variant, parse_info = pm.add_energy_system(uri) #add_from_string(esdl_string=file, name=filename)
-            pm.set_active_variant(variant)
-            # send_add_variant_and_esdl_message_to_lmi(variant)
             if len(parse_info) > 0:
                 info = ''
                 for line in parse_info:
