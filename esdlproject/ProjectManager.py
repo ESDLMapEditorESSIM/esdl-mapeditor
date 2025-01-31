@@ -184,6 +184,9 @@ class ProjectManager:
         """
         self.change_listeners[listener_id] = call_back_fun
 
+    def has_change_listener(self, listener_id: str) -> bool:
+        return listener_id in self.change_listeners
+
     def remove_change_listener(self, listener_id):
         """ Remove listener_id from the list of listeners"""
         if listener_id in self.change_listeners:
@@ -351,7 +354,7 @@ class ProjectManager:
         self.variant_collection_resources[variant_collection.id] = variant_collection_resource
 
         # Energy system is now attached to a resource, update UUID dict
-        update_uuid_dict(es)
+        #update_uuid_dict(es)
         return variant, parse_info
 
     def get_variant_by_id(self, variant_id: str) -> Optional[Variant]:

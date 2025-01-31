@@ -28,6 +28,8 @@ from esdlproject.ProjectManager import ProjectManager, eobject_to_string, ESDLFo
 from src.tno.live_model_interface.shared.message_types import HighLevelChangeMessage
 from src.tno.live_model_interface.shared.publisher import send_rabbitmq_message
 
+SESSION_MANAGER_LISTENER_ID = "session_manager"
+
 logger = log.get_logger(__name__)
 managed_sessions = dict()
 ESH_KEY = "esh"
@@ -125,7 +127,7 @@ def get_project_manager() -> ProjectManager | None:
         else:
             logger.warning("No Project Manager in session. Returning empty project manager")
             pm = ProjectManager()
-            pm.add_change_listener("session_manager", on_change_recorded)
+            pm.add_change_listener(SESSION_MANAGER_LISTENER_ID, on_change_recorded)
             set_project_manager(pm)
         return pm
     else:
@@ -145,7 +147,7 @@ def get_project_manager_with_client_id(client_id: str) -> ProjectManager:
         else:
             logger.warning("No Project Manager in session. Returning empty project manager")
             pm = ProjectManager()
-            pm.add_change_listener("session_manager", on_change_recorded)
+            pm.add_change_listener(SESSION_MANAGER_LISTENER_ID, on_change_recorded)
             set_project_manager(pm)
         return pm
     else:
@@ -160,7 +162,11 @@ def get_project_manager_with_client_id(client_id: str) -> ProjectManager:
 def set_project_manager(pm: ProjectManager):
     global managed_sessions
     client_id = session["client_id"]
-    logger.debug("Set PM client_id={}".format(client_id))
+    if not pm.has_change_listener(SESSION_MANAGER_LISTENER_ID):
+        pm.add_change_listener(SESSION_MANAGER_LISTENER_ID, on_change_recorded)
+        logger.debug("Set PM client_id={} with listener for ESDL changes for LMI".format(client_id))
+    else:
+        logger.debug("Set PM client_id={}".format(client_id))
     set_session(PM_KEY, pm)
 
 

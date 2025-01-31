@@ -22,8 +22,10 @@ from esdl.processing.string_uri import StringURI
 from esdlproject import ESDLProject
 from esdlproject.ProjectManager import ProjectManager
 from esdlproject.variant_api import create_new_variant
-from extensions.session_manager import get_project_manager, set_session, set_project_manager
+from extensions.session_manager import get_project_manager, set_session, set_project_manager, \
+    SESSION_MANAGER_LISTENER_ID, on_change_recorded
 from src.app import executor, socketio
+from src.incremental_ui.ui_change_handler import INCREMENTAL_UI_LISTENER_ID, change_handler
 from src.process_es_area_bld import call_process_energy_system, process_energy_system
 from src.tno.live_model_interface.api import send_project_manager_to_lmi_async, send_delete_variant_message_to_lmi
 from src.tno.projects.emits import emit_active_esdl_project, emit_clear_frontend_esdls, emit_clear_ui
@@ -33,6 +35,19 @@ from src.tno.undoredo.emits import emit_update_undo_redo_stack
 logger = log.get_logger(__name__)
 
 projects = Blueprint('projects', __name__, url_prefix='/projects')
+
+def init_mapeditor_change_handlers(pm: ProjectManager):
+    """
+    Makes sure this ProjectManager has the correct listeners for changes attached to it
+    """
+    client_id = session["client_id"]
+    if not pm.has_change_listener(SESSION_MANAGER_LISTENER_ID):
+        pm.add_change_listener(SESSION_MANAGER_LISTENER_ID, on_change_recorded)
+        logger.debug("Init PM client_id={} with listener for ESDL changes for LMI".format(client_id))
+    if not pm.has_change_listener(INCREMENTAL_UI_LISTENER_ID):
+        pm.add_change_listener(INCREMENTAL_UI_LISTENER_ID, change_handler)
+        logger.debug("Init PM client_id={} with UI listener for ESDL changes from LMI".format(client_id))
+
 
 
 @socketio.on('get_active_esdl_project', namespace='/esdl')
@@ -85,6 +100,7 @@ def new_esdl_project(_):
     """
     new_pm = ProjectManager()
     set_project_manager(new_pm)
+    init_mapeditor_change_handlers(new_pm)
     set_session("es_info_list", {})
     send_project_manager_to_lmi_async(only_send_for_client_id=session['client_id'])
     emit_clear_frontend_esdls()

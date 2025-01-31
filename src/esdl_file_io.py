@@ -12,7 +12,6 @@
 #  Manager:
 #      TNO
 import base64
-from datetime import datetime, timezone
 
 from flask import Flask, request, session
 from flask_executor import Executor
@@ -22,8 +21,9 @@ import src.log as log
 from esdl.processing.string_uri import StringURI
 from esdlproject import Variant
 from esdlproject.ProjectManager import ProjectManager
-from extensions.session_manager import set_session, get_project_manager, set_project_manager, managed_sessions
-from src.process_es_area_bld import process_energy_system, call_process_energy_system
+from extensions.projects import init_mapeditor_change_handlers
+from extensions.session_manager import set_session, get_project_manager, set_project_manager
+from src.process_es_area_bld import call_process_energy_system
 from src.tno.live_model_interface.api import send_add_variant_and_esdl_message_to_lmi, send_project_manager_to_lmi_async
 from src.tno.projects.emits import emit_active_esdl_project
 
@@ -67,18 +67,20 @@ class ESDLFileIO:
                         added_variants.append(variant)
                         #emit_active_esdl_project() # cant do emit here, because it is not socket io request
 
+                if not is_import:
+                    # Now overwrite the project manager. We do this at the end to prevent the project manager from being
+                    # overwritten with an incomplete project manager in case of an error.
+                    set_project_manager(pm)
+                    init_mapeditor_change_handlers(pm)
+                client_id = session["client_id"]
+                send_project_manager_to_lmi_async(only_send_for_client_id=client_id)
                 last_variant = added_variants[-1]
                 if last_variant is not None:
                     pm.set_active_variant(last_variant)
+                    # Ewoud: Not sure if this is necessary, as we already send the whole project manager
                     send_add_variant_and_esdl_message_to_lmi(last_variant)
-                client_id = session["client_id"]
-                # Now overwrite the project manager. We do this at the end to prevent the project manager from being
-                # overwritten with an incomplete project manager in case of an error.
-                if is_import:
-                    send_project_manager_to_lmi_async(only_send_for_client_id=client_id)
-                else:
-                    set_project_manager(pm)
-                    send_project_manager_to_lmi_async(only_send_for_client_id=client_id)
+
+
                 return {'message': 'all ESDL(s) received'}, 201
             except Exception as e:
                 logger.exception("Error processing ESDL file(s)", exception=e)

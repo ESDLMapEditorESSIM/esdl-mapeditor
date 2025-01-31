@@ -133,7 +133,7 @@ class UndoRedoCommandStack:
         :param change_context: the context of the change, default INTERNAL
         """
         logger.debug("Acquiring recording lock", label=label)
-        acquired = self.recording_lock.acquire(timeout=10)  # lock is released in stop_recording()
+        acquired = self.recording_lock.acquire() # timeout=60)  # lock is released in stop_recording()
         if acquired:
             self._failed_lock_acquire_count = 0
         else:

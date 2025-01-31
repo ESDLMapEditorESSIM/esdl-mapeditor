@@ -24,6 +24,8 @@ from src.incremental_ui.connections import create_connection, remove_connection_
 from src.log import get_logger
 from src.process_es_area_bld import find_and_send_KPI_information_in_ESDL, call_process_energy_system
 
+INCREMENTAL_UI_LISTENER_ID = "incremental_ui_updates"
+
 logger = get_logger(__name__)
 
 
@@ -140,4 +142,6 @@ def change_handler(high_level_change: HighLevelChange, context: ChangeContext):
             # re-process whole energy system
             #es = pm.get_active_energy_system()
             call_process_energy_system.submit(force_update_es_id=es.id, zoom=False)  # run in seperate thread
+
+
 

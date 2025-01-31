@@ -86,7 +86,7 @@ from src.esdl_helper import asset_state_to_ui, generate_profile_info, get_asset_
 from src.esdl_services import ESDLServices
 from src.essim_kpis import ESSIM_KPIs
 from src.essim_validation import validate_ESSIM
-from src.incremental_ui.ui_change_handler import change_handler
+from src.incremental_ui.ui_change_handler import change_handler, INCREMENTAL_UI_LISTENER_ID
 from src.kpi_dashboard import KPIDashboard
 from src.log import get_logger
 from src.model_contexts import ModelContexts
@@ -98,8 +98,7 @@ from src.roles import is_mapeditor_admin
 from src.shape import Shape
 from src.table_editor import TableEditor
 from src.tno.events_api import EventsAPI
-from src.tno.live_model_interface.api import send_init_new_project_to_lmi, send_project_manager_to_lmi_async, \
-    send_add_variant_and_esdl_message_to_lmi
+from src.tno.live_model_interface.api import send_init_new_project_to_lmi, send_project_manager_to_lmi_async
 from src.tno.live_model_interface.lmi_listener import start_live_model_interface_thread
 from src.tno.locking import NamedLocker
 from src.tno.projects.emits import emit_active_esdl_project
@@ -1217,6 +1216,8 @@ def split_conductor(conductor, location, mode, conductor_container):
 def update_coordinates(message):
     # This function can also be called when the geometry of an asset is of type esdl.Polygon, because
     # the asset on the leaflet map is both represented as a Polygon and a Point (to connect, to attach menus)
+    # The UI is updated directly in the front-end, but connections are recalculated in the backend and send to the
+    # front-end
 
     active_es_id = get_session('active_es_id')
     pm = get_project_manager()
@@ -3196,6 +3197,7 @@ def query_esdl_services(params):
         logger.exception("Exception when querying ESDL service")
         esdl_service_ok = False
         esdl_service_result = str(exc)
+        logger.error("ESDL Services call error: " + esdl_service_result)
         es = None
 
     logger.debug('emitting result to browser')
@@ -3430,7 +3432,7 @@ def initialize_app():
     logger.info('Client connected: {}'.format(request.sid))
 
     pm = get_project_manager()
-    pm.add_change_listener("incremental_ui_updates", change_handler)
+    pm.add_change_listener(INCREMENTAL_UI_LISTENER_ID, change_handler)
 
     active_es = pm.get_active_energy_system()
     if active_es:
