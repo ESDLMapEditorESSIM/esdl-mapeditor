@@ -98,7 +98,7 @@ function import_esdl_helper(event) {
             url: import_esdl_url,
             type: 'POST',
             // data: {file_content: content, filename: file.name, import: true},
-            data: { file_info: array_with_file_info, import: true },
+            data: { file_info: array_with_file_info, is_import: true },
             success: function () {
                 window.hide_loader();
                 window.socket.emit('process_loaded_energysystems');
