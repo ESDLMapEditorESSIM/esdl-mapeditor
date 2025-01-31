@@ -1625,14 +1625,14 @@ def process_command(message):
                 new_area = esdl.Area(id=asset_id, name=asset_name)
                 new_area.geometry = geometry
 
+                if area_bld_id == 'find_area_location_based':
+                    # For Areas find the parent based on the location by using the geometry
+                    area_bld_id = find_area_location_based(pm, active_es_id, geometry)
+
                 # Update shape dictionary
                 shape_dictionary = get_session('shape_dictionary')
                 shape_dictionary[new_area.id] = Shape.create(geometry)
                 set_session('shape_dictionary', shape_dictionary)
-
-                if area_bld_id == 'find_area_location_based':
-                    # For Areas find the parent based on the location by using the geometry
-                    area_bld_id = find_area_location_based(pm, active_es_id, geometry)
 
                 # Update drop down list with areas and buildings
                 add_area_to_area_bld_list(new_area, area_bld_id, area_bld_list)
