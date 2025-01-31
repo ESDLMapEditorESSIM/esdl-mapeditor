@@ -43,7 +43,7 @@ class ESDLFileIO:
         @self.flask_app.route("/esdl_file_io", methods=['POST'])
         def esdl_file_io():
             try:
-                is_import = request.values.get("is_import", True)
+                is_import = request.values.get("is_import", 'true') == 'true'
                 if is_import:
                     pm = get_project_manager()
                 else:
@@ -69,6 +69,7 @@ class ESDLFileIO:
 
                 last_variant = added_variants[-1]
                 if last_variant is not None:
+                    pm.set_active_variant(last_variant)
                     send_add_variant_and_esdl_message_to_lmi(last_variant)
                 client_id = session["client_id"]
                 # Now overwrite the project manager. We do this at the end to prevent the project manager from being
