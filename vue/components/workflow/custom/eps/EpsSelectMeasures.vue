@@ -15,7 +15,7 @@
   </div>
   <hr>
   <div id="eps-measures-checkbox-group">
-    <a-checkbox-group v-model:value="selectedMeasures" name="measures" :options="plainOptions" />
+    <a-checkbox-group v-model:value="selectedMeasures" name="measures" :options="plainOptions" style="flex-direction: column"/>
   </div>
   <a-button type="primary" @click="loadEsdl"> Retrieve ESDL for selected measures </a-button>
 </template>
