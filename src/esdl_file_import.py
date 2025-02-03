@@ -127,16 +127,16 @@ class ESDLFileImport:
             if field_name.startswith("standard_profiles_point"):
                 field_name = "_".join(field_name_split[3:])
                 measurement = "_".join(field_name_split[:3])
-                influx_profile = prof_manager.get_esdl_influxdb_profile(measurement, [field_name])
+                influx_profile = prof_manager.get_esdl_influxdb_profile(measurement, [field_name], profile_type=prof.profileType)
             # TODO: elif field_name.startswith("standard_profiles"):
             elif field_name.startswith("bedrijfstijden_profielen"):
                 field_name = "_".join(field_name_split[2:])
                 measurement = "_".join(field_name_split[:2])
-                influx_profile = prof_manager.get_esdl_influxdb_profile(measurement, [field_name])
+                influx_profile = prof_manager.get_esdl_influxdb_profile(measurement, [field_name], profile_type=prof.profileType)
             elif field_name.startswith("KIP_EH_profielen_point"):
                 field_name = "_".join(field_name_split[4:])
                 measurement = "_".join(field_name_split[:4])
-                influx_profile = prof_manager.get_esdl_influxdb_profile(measurement, [field_name])
+                influx_profile = prof_manager.get_esdl_influxdb_profile(measurement, [field_name], profile_type=prof.profileType)
             # TODO: elif field_name.startswith("KIP_EH_profielen"):
             else:
                 # If the profile is not based on a default profile we need to save it to the database
@@ -146,9 +146,10 @@ class ESDLFileImport:
                 influx_profile = prof_manager.save_influxdb(
                     measurement=measurement,
                     field_names=[prof_manager.profile_header[1]],
+                    profile_type=prof.profileType,
                 )
             influx_profile.name = prof.name  # equal to f"{measurement}_{field_name}" for standard profiles and a UUID for custom profiles
-            influx_profile.profileType = "ENERGY_IN_TJ"
+            influx_profile.profileType = prof.profileType
             if multiplier is not None:
                 influx_profile.multiplier = multiplier
             # Fix to fix temporary fix in profile manager that removes http from host
@@ -173,6 +174,7 @@ class ESDLFileImport:
                     startDate=handled_profile.startDate,
                     endDate=handled_profile.endDate,
                     multiplier=multiplier,
+                    profileType=handled_profile.profileType,
                 ))
 
             for profile in port.profile:

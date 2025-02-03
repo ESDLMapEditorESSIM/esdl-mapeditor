@@ -32,7 +32,7 @@ class ESDL2InlineProfile:
                 try:
                     es_converted = copy_and_convert_esdl_profiles(active_es_id)
                 except Exception as e:
-                    logger.error(f"Error converting ESDL to in-line profiles: {e}")
+                    logger.exception(f"Error converting ESDL to in-line profiles: {e}")
                     return make_response("Error converting ESDL to in-line profiles", 500)
 
             uri = StringURI('es_converted.esdl')
@@ -48,7 +48,7 @@ class ESDL2InlineProfile:
             return response
 
 def copy_and_convert_esdl_profiles(
-    es_id: str,
+        es_id: str,
 ) -> EnergySystem:
     """
     Copy the active EnergySystem and convert its profiles to in-line profiles.
@@ -64,8 +64,8 @@ def copy_and_convert_esdl_profiles(
 
 
 def convert_esdl_profiles(
-    es: EnergySystem,
-    profiles_settings: dict[str, object],
+        es: EnergySystem,
+        profiles_settings: dict[str, object],
 ) -> EnergySystem:
     esi: EnergySystemInformation = es.energySystemInformation
 
@@ -108,10 +108,10 @@ def convert_asset_profiles(asset: Asset, esi: EnergySystemInformation, handled_p
             convert_asset_profiles(sub_asset, esi, handled_profiles, profiles_settings)
 
 def convert_profile_for_port(
-    esi: EnergySystemInformation,
-    port: Port,
-    handled_profiles: Dict[str, GenericProfile],
-    profiles_settings: Dict[str, object],
+        esi: EnergySystemInformation,
+        port: Port,
+        handled_profiles: Dict[str, GenericProfile],
+        profiles_settings: Dict[str, object],
 ):
     def convert_influx_profile(prof: InfluxDBProfile):
         # Create TimeSeriesProfile for the profile of the port in global profiles if it does not exist yet
@@ -141,6 +141,7 @@ def convert_profile_for_port(
             )
             timeseries_profile = prof_manager.get_esdl_timeseries_profile()
             timeseries_profile.name = prof.name
+            timeseries_profile.profileType = prof.profileType
             esi.profiles.profile.append(timeseries_profile)
             handled_profiles[prof.name] = timeseries_profile
             logger.info(f"Converted InfluxDBProfile '{prof.name}' to TimeSeriesProfile")
@@ -148,7 +149,7 @@ def convert_profile_for_port(
         # Replace InfluxDBProfile with ProfileReference
         reference_profile: ProfileReference = ProfileReference(
             multiplier=prof.multiplier,
-            reference=handled_profiles[prof.name]
+            reference=handled_profiles[prof.name],
         )
         port.profile.append(reference_profile)
         port.profile.remove(prof)
