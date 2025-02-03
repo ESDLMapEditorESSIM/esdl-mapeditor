@@ -405,11 +405,13 @@ esdl_config = {
                                 "name": "Explore EPS results",
                                 "type": "primary",
                                 "next_step": 12,
+                                "enable_if_state": "execution.success",
                             },
                             {
                                 "name": "Apply EPS measures",
                                 "type": "primary",
                                 "next_step": 13,
+                                "enable_if_state": "execution.success",
                             },
                             # ESTIMATE FLEX ASSETS
                             {
@@ -420,15 +422,17 @@ esdl_config = {
                                 "name": "Start Flex Scan phase 1",
                                 "type": "primary",
                                 "next_step": 14,
+                                "enable_if_state": "execution.success",
                             },
                             {
                                 "name": "Load FS phase 1 results",
                                 "type": "primary",
                                 "next_step": 15,
+                                "enable_if_state": "execution.success",
                             },
                             # CONFIGURE ENERGY INFRASTRUCTURE
                             {
-                                "name": "Energy infrastructure",
+                                "name": "Configure energy infrastructure",
                                 "type": "header",
                             },
                             {
@@ -999,7 +1003,7 @@ esdl_config = {
                         "type": "text",
                         "text": """
                             For the energy hub configured in an ESDL layer, the economical optimal collective battery specifications can be calculated with the EHC, together with the corresponding business case.
-                            Currently the EHC only accepts ESDL files with in-line placed energy profiles. Please, first make sure the correct ESDL layer is selected. Then the required ESDL file can be obtained from the 'File' menu in the top-left corner of the screen. Within this menu, select the 'Export with in-line profiles' option. The resulting ESDL file can be used by the EHC.
+                            Currently the EHC only accepts ESDL files with in-line placed energy profiles. Please, first make sure the correct ESDL layer is selected. Then the required ESDL file can be obtained from the 'File' menu in the top-left corner of the screen. Within this menu, select the 'Export ESDL with in-line profiles' option. The resulting ESDL file can be used by the EHC.
                         """,
                     },
                     # {
