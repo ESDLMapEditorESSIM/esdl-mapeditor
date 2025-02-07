@@ -239,8 +239,8 @@ export function useWorkflow() {
         currentWorkflow.value = null;
     };
 
-    const setWorkflowStepInputValid = (workflowStepReference, valid) => {
-        currentWorkflow.value.input_valid_dict[workflowStepReference] = valid;
+    const setWorkflowStepInputValid = (workflowStepId, valid) => {
+        currentWorkflow.value.input_valid_dict[workflowStepId] = valid;
     };
 
     const isAllInputValid = () => {
@@ -280,7 +280,7 @@ export class Workflow {
         this.service = service;
 
         this.workflowTrigger = {"index": 0};  // for component watcher
-        this.workflowStep = this.getWorkflowStep(0);
+        this.workflowStep = this.getWorkflowStep(this.service.workflow[0].id);
 
         this.prevWorkflowSteps = [];
         if (!initialState) {
@@ -309,8 +309,8 @@ export class Workflow {
     /**
      * Go to the next step.
      */
-    doNext(targetStepIdx = null) {
-        if (targetStepIdx === null || targetStepIdx === undefined) {
+    doNext(targetStepId = null) {
+        if (targetStepId === null || targetStepId === undefined) {
             const nextStepData = this.workflowStep.next_step;
             if (nextStepData === undefined) {
                 // No next step. Go to the beginning.
@@ -329,21 +329,21 @@ export class Workflow {
                     }
                     const isConditionMet = evaluateConditions(ifRule, this.state);
                     if (isConditionMet) {
-                        targetStepIdx = ifRule.then;
+                        targetStepId = ifRule.then;
                         break
                     }
                 }
-                if (targetStepIdx === null && nextStepData.else !== undefined) {
+                if (targetStepId === null && nextStepData.else !== undefined) {
                     // No if rule matches. Trigger the else if it's there.
-                    targetStepIdx = nextStepData.else.then;
+                    targetStepId = nextStepData.else.then;
                 }
             } else {
                 // Step with a single next step.
-                targetStepIdx = nextStepData;
+                targetStepId = nextStepData;
             }
         }
 
-        const nextStep = this.getWorkflowStep(targetStepIdx);
+        const nextStep = this.getWorkflowStep(targetStepId);
 
         // Don't add to previous steps if staying on the same step which happens with the 'composite' step
         if (nextStep !== null && nextStep !== this.workflowStep) {
@@ -352,9 +352,9 @@ export class Workflow {
         }
     }
 
-    getStepIdxFromReference(stepReference) {
+    getStepIndexFromId(stepId) {
         for (const [index, step] of this.service.workflow.entries()) {
-            if ("reference" in step && step.reference === stepReference) {
+            if ("id" in step && step.id === stepId) {
                 return index;
             }
         }
@@ -373,13 +373,12 @@ export class Workflow {
         return this.prevWorkflowSteps && this.prevWorkflowSteps.length > 0;
     }
 
-    getWorkflowStep(stepIndexOrReference) {
+    getWorkflowStep(stepId) {
         this.workflowTrigger["index"] += 1;
-        let stepIndex = typeof stepIndexOrReference === "string" ?
-            this.getStepIdxFromReference(stepIndexOrReference) : stepIndexOrReference;
+        let stepIndex = this.getStepIndexFromId(stepId);
 
         if (stepIndex === null) {
-            console.error("Workflow step reference or index could not be found: ", stepIndexOrReference);
+            console.error("Workflow step id could not be found: ", stepId);
             return null;
         }
         const wfStep = this.service.workflow[stepIndex];

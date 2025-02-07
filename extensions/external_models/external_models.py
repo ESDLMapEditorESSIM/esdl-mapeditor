@@ -187,9 +187,10 @@ class ExternalModels:
                             if field_name_recorded_per_esdl_object in result_row and result_row[esdl_object_name_field]:
                                 esdl_object_name = result_row[esdl_object_name_field]
                                 new_row[esdl_object_name] = result_row[field_name_recorded_per_esdl_object]
-                            for field_name in field_names_unrelated_to_esdl_objects:
-                                if field_name in result_row:
-                                    new_row[field_name] = result_row[field_name]
+                            if field_names_unrelated_to_esdl_objects:
+                                for field_name in field_names_unrelated_to_esdl_objects:
+                                    if field_name in result_row:
+                                        new_row[field_name] = result_row[field_name]
                         if new_row:  # last row has not been appended yet
                             sheet_data.append(new_row)
                         if sheet_data:

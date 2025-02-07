@@ -776,6 +776,7 @@ class Profiles:
                     port=profile.port,
                     database=database
                 )
+                influxdb_client.close()
 
             return influxdb_client
         else:

@@ -25,12 +25,11 @@
       </a-row>
       <a-table
         :columns="columns"
-        :row-key="rowkey"
+        :row-key="rowKey"
         :data-source="filteredRows"
         :pagination="pagination"
         :loading="isLoading"
         size="small"
-        class="resulttable"
         style="font-size: 12px;"
       >
         <template #action="{ record }">
@@ -124,7 +123,7 @@ form[workflowStep.target_variable] = "";
 const {getParamsFromState, goToStep, getState} = useWorkflow();
 const state = getState();
 const columns = ref([]);
-const rowkey = ref("");
+const rowKey = ref("");
 const additional_fields = ref(null);
 const actions = ref([]);
 const tableRows = ref([]);
@@ -158,9 +157,9 @@ const getTagColor = (text) => {
 
 const doAction = (record, action) => {
   hide_jquery_ui_popup();
-  console.log('Action selected: ', record[rowkey.value], action);
+  console.log('Action selected: ', record[rowKey.value], action);
   state[workflowStep.target_variable] = {};
-  state[workflowStep.target_variable][rowkey.value] = record[rowkey.value];
+  state[workflowStep.target_variable][rowKey.value] = record[rowKey.value];
   for (const field of additional_fields.value) {
     state[workflowStep.target_variable][field] = record[field];
   }
@@ -288,7 +287,7 @@ const handleData = (data) => {
     }
     actions.value = source.actions;
     columns.value = source.columns;
-    rowkey.value = source.value_field; // "job_id"
+    rowKey.value = source.value_field; // "job_id"
     additional_fields.value = source.additional_fields;
     tableRows.value = data;
     updateFilteredRows();
@@ -340,12 +339,6 @@ const hide_jquery_ui_popup = () => {
 </script>
 
 <style scoped>
-.resulttable { /* does not work...*/
-  font-size: 10px;
-  table-layout: auto;
-  line-height: 1.2;
-}
-
 .ant-table table {
   font-size: 10px !important;
   line-height: 1.2 !important;

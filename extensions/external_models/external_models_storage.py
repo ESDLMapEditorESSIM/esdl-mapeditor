@@ -61,7 +61,7 @@ class RunStatus(Enum):
     SUCCEEDED = "SUCCEEDED"
     CANCELLED = "CANCELLED"
     ERROR = "ERROR"
-    INPUT_NEEDED = "INPUT_NEEDED"
+    NEED_INPUT = "NEED_INPUT"
 
 
 class ExternalModelsStorage:

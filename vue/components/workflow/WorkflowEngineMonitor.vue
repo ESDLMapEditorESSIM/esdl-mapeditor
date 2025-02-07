@@ -46,7 +46,7 @@ const doGetData = () => {
 const getProgressStatus = (stepProgress) => {
   if (["SUBMITTED", "RUNNING"].includes(stepProgress["status"])) {
     return "normal";
-  } else if (["SUCCEEDED", "INPUT_NEEDED"].includes(stepProgress["status"])) {
+  } else if (["SUCCEEDED", "NEED_INPUT"].includes(stepProgress["status"])) {
     return "success";
   } else if (["CANCELLED", "ERROR"].includes(stepProgress["status"])) {
     return "exception";

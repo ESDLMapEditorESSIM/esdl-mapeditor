@@ -98,11 +98,11 @@ const {getWorkflowStep} = useWorkflow();
 const workflowSteps = ref([]);
 
 onMounted(() => {
-  init(true);
+  init();
 });
 
 const init = () => {
-  for (const stepIdOrRef of props.workflowStep.ids_or_refs) {
+  for (const stepIdOrRef of props.workflowStep.step_ids) {
     workflowSteps.value.push(getWorkflowStep(stepIdOrRef));
   }
 };

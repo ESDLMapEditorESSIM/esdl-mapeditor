@@ -336,7 +336,7 @@ class WorkflowEngine:
         run_succeeded = False
         while next_step:
             step_config = self.get_workflow_step_config(sequence_data.main_service_config, next_step)
-            logger.info(f"Running workflow engine step '{step_config['reference']}' for run '{sequence_data.run_name}")
+            logger.info(f"Running workflow engine step '{step_config['id']}' for run '{sequence_data.run_name}")
             step = WorkflowStep(
                 socketio=self.socketio,
                 sequence_data=sequence_data,
@@ -375,6 +375,6 @@ class WorkflowEngine:
         """Get workflow step config from service config from step_identifier as reference (string) or index (int)."""
         if isinstance(step_identifier, str):
             for step_index, step in enumerate(service_config["workflow"]):
-                if step["reference"] == step_identifier:
+                if step["id"] == step_identifier:
                     return step
         return service_config["workflow"][step_identifier]

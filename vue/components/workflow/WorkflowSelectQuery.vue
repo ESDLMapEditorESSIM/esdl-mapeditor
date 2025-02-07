@@ -35,7 +35,7 @@ const workflowStep = props.workflowStep;
 const isLoading = ref(true);
 const options = ref([]);
 const placeholder = ref("Select");
-const form = ref({});
+const form = ref([]);
 const autoNextStep = ref(false);
 const mode = ref("");
 
@@ -48,11 +48,11 @@ const state = getState();
 let choicesByValue;
 
 onMounted(() => {
-  init(true);
+  init();
 });
 
 const onSubmit = () => {
-  const value = form[workflowStep.target_variable];
+  const value = form.value[workflowStep.target_variable];
   if (!value) {
     alert("Please select a valid option.");
     return;
@@ -62,7 +62,7 @@ const onSubmit = () => {
 };
 
 const onSelectValue = (value) => {
-  form[workflowStep.target_variable] = value;
+  form.value[workflowStep.target_variable] = value;
   updateInputState();
   if (autoNextStep.value) {
     onSubmit();
@@ -70,9 +70,9 @@ const onSelectValue = (value) => {
 };
 
 const updateInputState = () => {
-  const isValid = mode.value === "multiple" || form[workflowStep.target_variable] !== "";
+  const isValid = mode.value === "multiple" || form.value[workflowStep.target_variable] !== "";
   selectStatus.value = isValid ? "" : "error";
-  setWorkflowStepInputValid(workflowStep.reference, isValid);
+  setWorkflowStepInputValid(workflowStep.id, isValid);
 };
 
 const doGetData = async () => {
@@ -116,14 +116,19 @@ const doGetData = async () => {
   if ("multiple" in workflowStep) {
     mode.value = workflowStep.multiple ? "multiple" : "";
   }
+  if (!(workflowStep.target_variable in form.value)) {
+    if (mode.value === "multiple") {
+      form.value = [];
+    } else {
+      form.value = {};
+      form.value[workflowStep.target_variable] = "";
+    }
+  }
   updateInputState();
   isLoading.value = false;
 };
 
-const init = (reset) => {
-  if (reset) {
-    form[workflowStep.target_variable] = "";
-  }
+const init = () => {
   if ("auto_next_step" in workflowStep) {
     autoNextStep.value = workflowStep.auto_next_step;
   }

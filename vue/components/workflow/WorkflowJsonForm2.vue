@@ -74,7 +74,7 @@ const updateData = (jsonFormData) => {
   } else {
     schema = {};
     jsonFormDataReceived.value = false;
-    setWorkflowStepInputValid(workflowStep.reference, true);
+    setWorkflowStepInputValid(workflowStep.id, true);
     isLoading.value = false;
     return;
   }
@@ -204,7 +204,7 @@ const onSubmit = async () => {
 const validateJsonForm = (data) => {
   const validate = ajv.compile(schema);
   const isValid = validate(data) || schema === {};
-  setWorkflowStepInputValid(workflowStep.reference, isValid);
+  setWorkflowStepInputValid(workflowStep.id, isValid);
   return {isValid, errors: validate.errors};
 };
 </script>
