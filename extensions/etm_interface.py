@@ -397,10 +397,13 @@ class ETMSankeyToESDL:
                 "Thuislaadpunten": {
                     "sector": "Households excl. space heating and hot water"
                 },
+                "Werklaadpunten": {
+                    "sector": "National transport"
+                },
                 "Semi publiekelaadpunten": {
                     "sector": "National transport"
                 },
-                "Laadpunten parkeergarages": {
+                "Snellaadpunten": {
                     "sector": "National transport"
                 },
             }
