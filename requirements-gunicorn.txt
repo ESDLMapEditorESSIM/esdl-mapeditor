@@ -4,23 +4,19 @@
 #
 #    pip-compile requirements-gunicorn.in
 #
-cffi==1.16.0
-    # via gevent
-gevent==23.9.1
+gevent==24.11.1
     # via gevent-websocket
 gevent-websocket==0.10.1
     # via -r requirements-gunicorn.in
-greenlet==3.0.2
+greenlet==3.1.1
     # via gevent
-gunicorn==21.2.0
+gunicorn==23.0.0
     # via -r requirements-gunicorn.in
 packaging==24.0
     # via gunicorn
-pycparser==2.21
-    # via cffi
 zope-event==5.0
     # via gevent
-zope-interface==6.1
+zope-interface==7.2
     # via gevent
 
 # The following packages are considered to be unsafe in a requirements file:
