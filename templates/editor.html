@@ -588,6 +588,9 @@
             socket.on('connect_failed', err => handleErrors(err))
             socket.on('disconnect', err => handleErrors(err))
 
+            socket.onerror = (err) => handleErrors(err)
+            socket.onclose = () => console.log("WebSocket closed");
+
             // add_handler();
             add_geojson_listener(socket, map);
             add_area_map_handlers(socket, map);
