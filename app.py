@@ -3523,22 +3523,15 @@ def browser_initialize():
 #  Disconnect
 # ---------------------------------------------------------------------------------------------------------------------
 @socketio.on('disconnect', namespace='/esdl')
-def on_disconnect():
-    logger.info('SocketIO: Client disconnected: {}'.format(request.sid))
-
-
-@socketio.on('events.frontend', namespace='/esdl')
 def on_disconnect(msg):
-    logger.info("HELLO THERE")
-    logger.info(msg)
-
+    logger.info('SocketIO: Client disconnected', request_sid=request.sid, msg=msg)
 
 # ---------------------------------------------------------------------------------------------------------------------
 #  Error logging
 # ---------------------------------------------------------------------------------------------------------------------
 @socketio.on_error_default
-def default_error_handler(e):
-    logger.error('Error in SocketIO handler: '+str(e))
+def default_error_handler(msg):
+    logger.error('Error in SocketIO handler: ' + str(msg))
     import traceback
     logger.error('Socket IO message: {}'.format(request.event["message"]))  # "my error event"
     logger.error('Socket IO arguments: {}'.format(request.event["args"]))
