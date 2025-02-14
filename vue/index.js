@@ -22,6 +22,7 @@ import AssetTableEditor from '@/apps/AssetTableEditor.vue';
 import CustomIconsSettings from "@/apps/CustomIconsSettings.vue";
 import KPIDashboard from '@/apps/KPIDashboard.vue';
 import ESDLAnalytics from '@/apps/ESDLAnalytics.vue';
+import OwnershipDialog from '@/apps/OwnershipDialog.vue';
 import {
     createVueLControl,
     mountApp,
@@ -191,6 +192,10 @@ window.activate_kpi_dashboard_window = () => {
 
 window.activate_esdl_analytics_window = () => {
     mountApp(ESDLAnalytics, '#esdl_analytics_window');
+}
+
+window.activate_ownership_window = () => {
+    mountApp(OwnershipDialog, '#ownership_window');
 }
 
 createVueLControl(ResultVisualizationsToolbar, {
