@@ -1,4 +1,4 @@
-#  This work is based on original code developed and copyrighted by TNO 2020.
+#  This work is based on original code developed and copyrighted by TNO 2025.
 #  Subsequent contributions are licensed to you by the developers of such code and are
 #  made available to the Project under one or several contributor license agreements.
 #
@@ -182,7 +182,7 @@ def get_all_session_ids_for_all_users() -> dict:
             else:
                 socketio_sid_list[user_email] = [socketio_sid]
         else:
-            logger.info(
+            logger.debug(
                 "user-email or socketio_sid missing in managed session info. Could be the session from the sending application."
             )
 
@@ -198,6 +198,6 @@ def get_all_session_ids_for_user(user_email: str) -> list:
             if user_email == session_info["user-email"]:
                 sid_list.append(session_info["socketio_sid"])
     if len(sid_list) == 0:
-        logger.info(f"No sessions found for user-email '{user_email}'.")
+        logger.debug(f"No sessions found for user-email '{user_email}'.")
 
     return sid_list

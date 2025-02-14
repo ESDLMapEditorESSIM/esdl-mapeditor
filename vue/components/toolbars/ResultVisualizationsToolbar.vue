@@ -122,7 +122,6 @@ const handleShowExternalLink = () => {
 };
 
 const handleLoadAnimation = () => {
-  console.log("Results animation");
   time_dimension.initialize(
       esdl_id.value, anim_filter_tag_name.value, anim_filter_tag_value.value, [], anim_selected_field.value, anim_influxdb_host_override.value
   );
@@ -133,7 +132,6 @@ const handleDismiss = () => {
 };
 
 const handleChange = (value) => {
-  console.log(`selected: ${value}`);
   anim_selected_field.value = value;
 };
 

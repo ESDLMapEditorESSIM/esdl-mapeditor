@@ -318,7 +318,9 @@ class WorkflowEngine:
                 # run subsequent steps on new thread outside request context (will continue when user disconnects)
                 if "workflow_engine_next_step" in init_data:
                     t = threading.Thread(
-                        target=self.run_sequence, args=(sequence_data, init_data["workflow_engine_next_step"])
+                        target=self.run_sequence,
+                        name=f"{user_email}/workflow-engine/{run_name}/{sequence_id}",
+                        args=(sequence_data, init_data["workflow_engine_next_step"]),
                     )
                     t.daemon = True
                     t.start()

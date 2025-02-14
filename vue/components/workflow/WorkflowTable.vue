@@ -138,7 +138,7 @@ const getTagColor = (text) => {
 
 const doAction = (record, action) => {
   hide_jquery_ui_popup();
-  console.log('Action selected: ', record[rowKey.value], action);
+  // console.log('Action selected: ', record[rowKey.value], action);
   if (stepParams.value.data.output_wrapper_variable) {
     state[stepParams.value.data.output_wrapper_variable] = {};
     state[stepParams.value.data.output_wrapper_variable][rowKey.value] = record[rowKey.value];

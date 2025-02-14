@@ -1,4 +1,4 @@
-#  This work is based on original code developed and copyrighted by TNO 2020.
+#  This work is based on original code developed and copyrighted by TNO 2025.
 #  Subsequent contributions are licensed to you by the developers of such code and are
 #  made available to the Project under one or several contributor license agreements.
 #
