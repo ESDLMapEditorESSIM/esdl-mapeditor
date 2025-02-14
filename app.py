@@ -40,6 +40,8 @@ from esdl.processing.ESDLAsset import get_asset_capability_type
 from esdl.processing.ESDLEcore import instantiate_type
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from esdl.processing.string_uri import StringURI
+from esdl.undo import UndoRedoCommandStack
+from esdl.undo_wrapper import undo_record_changes
 from esdlproject import Variant
 from extensions.activity_context import ActivityContextExtension
 from extensions.application_context import ApplicationContextExtension
@@ -1591,7 +1593,8 @@ def get_first_last_of_line(line):
 #  React on commands from the browser (add, remove, ...)
 # ---------------------------------------------------------------------------------------------------------------------
 @socketio.on('command', namespace='/esdl')
-def process_command(message):
+@undo_record_changes(label="User command")
+def process_command(message, stack: UndoRedoCommandStack):
     logger.info('received: ' + message['cmd'])
     if not valid_session():
         send_alert("Session has timed out, please refresh")
@@ -1606,8 +1609,7 @@ def process_command(message):
     active_es_id = active_es.id
     area_bld_list = get_session_for_esid(active_es.id, 'area_bld_list')
 
-    undo_redo = pm.get_undo_redo_stack()
-    undo_redo.start_recording(combine_commands=True, label=message['cmd'])
+    stack.update_label(message['cmd'])
 
     if message['cmd'] == 'add_object':
         area_bld_id = message['area_bld_id']
@@ -1779,7 +1781,6 @@ def process_command(message):
                                     else esdl.OutPort.eClass.name
                                 send_alert(
                                     "Please connect the {} to an {}".format(object_type, other_type))
-                                undo_redo.stop_recording()
                                 return
 
                             require_reversed = False  # to indicate the coordinates of the line need reversal
@@ -2037,7 +2038,7 @@ def process_command(message):
                 set_project_manager(pm)
 
         # update label to human readable
-        undo_redo.update_label("Add {}".format(object_type))
+        stack.update_label("Add {}".format(object_type))
 
     if message['cmd'] == 'remove_object':
         # removes asset or potential from EnergySystem
@@ -2065,7 +2066,7 @@ def process_command(message):
             # remove from asset dict
             asset_list = get_session_for_esid(active_es_id, 'asset_list')
             asset_list[:] = [a for a in asset_list if a[3] != obj_id] # filter list in place
-            undo_redo.update_label("Remove {}".format(asset.name or asset.eClass.name))
+            stack.update_label("Remove {}".format(asset.name or asset.eClass.name))
             conn_list[:] = [c for c in conn_list
                             if not ((c['from-asset-id'] == obj_id) or (c['to-asset-id'] == obj_id))]  # xor: filter list in place
             ESDLAsset.remove_object_from_energysystem(active_es, obj_id)
@@ -2140,7 +2141,7 @@ def process_command(message):
         asset_and_coord2 = get_asset_and_coord_from_port_id(pm, active_es_id, port2_id)
         asset1 = asset_and_coord1['asset']
         asset2 = asset_and_coord2['asset']
-        undo_redo.update_label(f"Connect {asset1.name or asset.eClass.name} to {asset2.name or asset.eClass.name}")
+        stack.update_label(f"Connect {asset1.name or asset.eClass.name} to {asset2.name or asset.eClass.name}")
         asset1_port_location = asset_and_coord1['coord']
         asset2_port_location = asset_and_coord2['coord']
 
@@ -2378,7 +2379,7 @@ def process_command(message):
 
         for asset in assets:
             logger.debug('Set param '+ param_name + ' for class ' + asset.eClass.name + ' to value '+ str(param_value))
-            undo_redo.update_label(f"Set {asset.eClass.name}.{param_name} to {str(param_value)}")
+            stack.update_label(f"Set {asset.eClass.name}.{param_name} to {str(param_value)}")
 
             try:
                 attribute = asset.eClass.findEStructuralFeature(param_name)
@@ -2677,7 +2678,7 @@ def process_command(message):
         from_asset_id = from_port.eContainer().id
         to_asset_id = to_port.eContainer().id
 
-        undo_redo.update_label(f"Remove connection from {from_port.eContainer().name or from_port.name} "
+        stack.update_label(f"Remove connection from {from_port.eContainer().name or from_port.name} "
                                f"to {to_port.eContainer().name or to_port.name}")
 
         # refresh connections in gui
@@ -2717,7 +2718,7 @@ def process_command(message):
         to_port = pm.get_by_id(active_es.id, to_port_id)
         building_id = message['building_id'] if 'building_id' in message else None
         from_port.connectedTo.remove(to_port)
-        undo_redo.update_label(f"Remove connection from {from_port.eContainer().name or from_port.name} "
+        stack.update_label(f"Remove connection from {from_port.eContainer().name or from_port.name} "
                                f"to {to_port.eContainer().name or to_port.name}")
 
         # refresh connections in gui
@@ -2849,7 +2850,6 @@ def process_command(message):
 
         carrier_list = ESDLEnergySystem.get_carrier_list(active_es)
         emit('carrier_list', {'es_id': active_es.id, 'carrier_list': carrier_list})
-        undo_redo.stop_recording() # because it returns a value, we need to release the lock!
         return True
 
     if message['cmd'] == 'remove_carrier':
@@ -3094,7 +3094,6 @@ def process_command(message):
         emit('add_connections', {'es_id': active_es_id, 'add_to_building': True, 'conn_list': bld_info["conn_list"]})
 
     if message['cmd'] == 'get_building_connections':
-        undo_redo.stop_recording() # this does not need recording and does a return statement
         bld_id = message['id']
         building = pm.get_by_id(active_es_id, bld_id)
         return get_building_connections(building)
@@ -3140,50 +3139,52 @@ def process_command(message):
         call_process_energy_system.submit(force_update_es_id=active_es.id, zoom=False)  # run in seperate thread
 
     if message['cmd'] == 'undo':
-        logger.debug(f'Undo stack: {undo_redo.stack}')
-        undo_redo.stop_recording()
-        if undo_redo.can_undo():
-            undo_redo.undo()
+        logger.debug(f'Undo stack: {stack.stack}')
+        if stack.can_undo():
+            # stop recording as we don't want to record these redo changes in the ESDL (they are already on the stack)
+            stack.stop_recording()
+            stack.undo()
+            # do start recording, because the wrapper contains stop_recording otherwise issue with the recording lock...
+            stack.start_recording(label="undo")
             # refresh the changes, now done by reparsing the whole energysystem... could be done smarter
             call_process_energy_system.submit(force_update_es_id=active_es.id, zoom=False)  # run in seperate thread
         else:
             send_alert("Nothing to undo at this time")
-        undo_redo.start_recording(label="undo")  # TODO fixme: do start recording, because below is stop_recording otherwise issue with the lock...
+
 
     if message['cmd'] == 'redo':
-        logger.debug(f'Redo stack: {undo_redo.stack}')
-        undo_redo.stop_recording()
-        if undo_redo.can_redo():
-            undo_redo.redo()
+        logger.debug(f'Redo stack: {stack.stack}')
+        if stack.can_redo():
+            # stop recording as we don't want to record these redo changes in the ESDL (they are already on the stack)
+            stack.stop_recording()
+            stack.redo()
+            # Do a start recording, because in wrapper is stop_recording otherwise issue with the lock...
+            stack.start_recording(label="redo")
             # refresh the changes, now done by reparsing the whole energysystem... could be done smarter
             call_process_energy_system.submit(force_update_es_id=active_es.id, zoom=False)  # run in seperate thread
         else:
             send_alert("Nothing to redo at this time")
-        undo_redo.start_recording(label="rndo")  # TODO fixme: do start recording, because below is stop_recording otherwise issue with the lock...
+
 
     if message['cmd'] == 'undo_redo_until':
         target_idx = message['target_idx']
-        undo_redo.stop_recording()
-        diff = undo_redo.stack_index - target_idx
-        while diff > 0 and undo_redo.can_undo():
-            undo_redo.undo()
+        stack.stop_recording()
+        diff = stack.stack_index - target_idx
+        while diff > 0 and stack.can_undo():
+            stack.undo()
             diff -= 1
-        while diff < 0 and undo_redo.can_redo():
-            undo_redo.redo()
+        while diff < 0 and stack.can_redo():
+            stack.redo()
             diff += 1
-        undo_redo.start_recording(label="undo")  # TODO fixme: do start recording, because below is stop_recording otherwise issue with the lock...
+        # do a start recording, because undo wrapper contains stop_recording otherwise issue with the lock...
+        stack.start_recording(label="undo")
         call_process_energy_system.submit(force_update_es_id=active_es.id, zoom=False)  # run in seperate thread
 
     if message['cmd'] == 'debug':
         pm = get_project_manager()
         pm.debug(dump_project=True)
 
-    undo_redo.stop_recording()
-
-    # Normally this emit is done with the undo_record_changes decorator, but this function is a bit too messy for that.
-    emit('update_undo_redo_stack', serialize_command_stack(undo_redo))
-
-    logger.debug("Undo/Redo size={}".format(len(undo_redo.stack)))
+    logger.debug("Undo/Redo size={}".format(len(stack.stack)))
     #set_project_manager(pm)
     session.modified = True
 
