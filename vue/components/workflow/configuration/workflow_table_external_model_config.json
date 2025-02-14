@@ -1,0 +1,270 @@
+{
+  "columns": [
+    {
+      "dataIndex": "run_name",
+      "title": "Name",
+      "ellipsis": true
+    },
+    {
+      "dataIndex": "status",
+      "title": "Status",
+      "align": "center",
+      "progressAttribute": "progress_fraction",
+      "slots": {
+        "customRender": "tags"
+      }
+    },
+    {
+      "dataIndex": "submitted_to_external_model_at",
+      "title": "Submitted",
+      "formatter": "formatDate",
+      "defaultSortOrder": "descend"
+    }
+  ],
+  "actions": [
+    {
+      "title": "Load result",
+      "icon": "far fa-eye",
+      "next_step_config": {
+        "id": "load_run_results",
+        "name": "Load ESDL",
+        "description": "Loads the result in the ESDL MapEditor",
+        "type": "esdl-service",
+        "config": {
+          "state_params": {
+            "run_id": "model_run.run_id",
+            "run_name": "model_run.run_name"
+          }
+        },
+        "service": {
+          "id": "x1c9d1a2-c92a-46qd-a7e4-9931971cbb33",
+          "name": "Load ESDL results",
+          "description": "The results should have been loaded in the MapEditor",
+          "button_label": "Go back to results",
+          "auto": true,
+          "type": "",
+          "external_model": "essim",
+          "result": [
+            {
+              "action": "esdl",
+              "run_esdl_key": "input_esdl",
+              "model_short_name": "essim",
+              "animation": {
+                "filter_on_tag": {
+                  "tag_name": "simulationRun",
+                  "value_database_key": "model_job_id"
+                }
+              },
+              "external_link": {
+                "description": "Open Dashboard",
+                "value_database_key": "model_specific_output.dashboardURL"
+              }
+            }
+          ],
+          "with_jwt_token": true,
+          "state_params": true
+        },
+        "next_step": "base_steps_with_table",
+        "next_step_trigger": "loading_complete"
+      },
+      "enabled": {
+        "dataIndex": "status",
+        "values": [
+          "SUCCEEDED"
+        ]
+      }
+    },
+    {
+      "title": "View feedback",
+      "icon": "far fa-comment",
+      "next_step_config": {
+        "id": "view_feedback_messages",
+        "name": "View feedback messages",
+        "description": "Loads the in- or output ESDL and show the feedback messages",
+        "type": "esdl-service",
+        "config": {
+          "state_params": {
+            "run_id": "model_run.run_id",
+            "run_name": "model_run.run_name"
+          }
+        },
+        "service": {
+          "id": "x1c9d1a2-c92a-46ed-a7e4-9931971cbb50",
+          "name": "View feedback messages",
+          "description": "The feedback messages should be visible",
+          "button_label": "Go back to results",
+          "type": "",
+          "external_model": "omotes",
+          "result": [
+            {
+              "action": "esdl",
+              "run_esdl_key": "input_esdl",
+              "show_asset_feedback": true
+            }
+          ],
+          "with_jwt_token": true,
+          "state_params": true
+        },
+        "next_step": "base_steps_with_table",
+        "next_step_trigger": "loading_complete"
+      },
+      "enabled": {
+        "dataIndex": "esdl_feedback",
+        "exists": true
+      }
+    },
+    {
+      "title": "View details",
+      "icon": "fas fa-info-circle",
+      "next_step_config": {
+        "id": "view_run_details",
+        "name": "View model run details",
+        "type": "text",
+        "data": {
+          "from_socket": {
+            "event": "external_models_get_run_text",
+            "state_params": {
+              "run_id": "model_run.run_id"
+            }
+          }
+        },
+        "button_text": "Back",
+        "next_step": "base_steps_with_table"
+      }
+    },
+    {
+      "title": "Edit",
+      "icon": "far fa-edit",
+      "next_step_config": {
+        "id": "edit_run",
+        "name": "Edit model run",
+        "type": "json-form2",
+        "data": {
+          "from_socket": {
+            "event": "external_models_get_run_jsonforms",
+            "state_params": {
+              "run_id": "model_run.run_id"
+            }
+          },
+          "to_socket": {
+            "event": "external_models_update_run"
+          }
+        },
+        "button_text": "Save",
+        "next_step": "base_steps_with_table"
+      },
+      "enabled": {
+        "dataIndex": "is_owner",
+        "values": [
+          true
+        ]
+      }
+    },
+    {
+      "title": "Download xlsx",
+      "icon": "fas fa-download",
+      "wait_title": "Extracting data..",
+      "wait_icon": "fas fa-spinner fa-spin",
+      "next_step_config": {
+        "id": "download_xlsx",
+        "name": "Download time series data",
+        "type": "get-send-data",
+        "data": {
+          "from_config": {
+            "filter_on_tag": {
+              "tag_name": "simulationRun",
+              "value_database_key": "model_job_id"
+            },
+            "esdl_object_name_field": "assetName",
+            "excel_sheets_per_table": [
+              {
+                "name_postfix": "PinW",
+                "field_name_recorded_per_esdl_object": "allocationPower",
+                "field_names_unrelated_to_esdl_objects": [
+                  "imbalancePower"
+                ],
+                "exclude_values": {
+                  "field_name": "capability",
+                  "values_to_exclude": [
+                    "Transport"
+                  ]
+                }
+              },
+              {
+                "name_postfix": "EinJ",
+                "field_name_recorded_per_esdl_object": "allocationEnergy",
+                "field_names_unrelated_to_esdl_objects": [
+                  "imbalanceEnergy"
+                ],
+                "exclude_values": {
+                  "field_name": "capability",
+                  "values_to_exclude": [
+                    "Transport"
+                  ]
+                }
+              }
+            ],
+            "influxdb_host_override": "localhost"
+          },
+          "from_state": {
+            "run_id": "model_run.run_id"
+          },
+          "to_socket": {
+            "event": "external_models_download_run"
+          }
+        },
+        "next_step_trigger": "loading_complete",
+        "next_step": "base_steps_with_table"
+      },
+      "enabled": {
+        "dataIndex": "status",
+        "values": [
+          "SUCCEEDED"
+        ]
+      }
+    },
+    {
+      "title": "Delete",
+      "icon": "far fa-trash-alt",
+      "next_step_config": {
+        "id": "delete_run",
+        "name": "Delete model run",
+        "description": "Are you sure you want to delete all run data (see below)?",
+        "type": "get-send-data",
+        "config": {
+          "text_below_button_variable": "model_text"
+        },
+        "data": {
+          "from_config": {
+            "delete_result_url": "http://localhost:9200/job/<MODEL_JOB_ID>"
+          },
+          "from_state": {
+            "run_id": "model_run.run_id"
+          },
+          "from_socket": {
+            "event": "external_models_get_run_text",
+            "state_params": {
+              "run_id": "model_run.run_id"
+            },
+            "wrapper_variable": "model_text"
+          },
+          "to_socket": {
+            "event": "external_models_delete_run"
+          }
+        },
+        "button_text": "Delete",
+        "next_step": "base_steps_with_table"
+      },
+      "enabled": {
+        "dataIndex": "is_owner",
+        "values": [
+          true
+        ]
+      }
+    }
+  ],
+  "value_field": "run_id",
+  "additional_fields": [
+    "run_name"
+  ]
+}

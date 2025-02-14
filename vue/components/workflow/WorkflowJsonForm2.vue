@@ -11,14 +11,20 @@
       @input="validateEvent"
       @keyup="validateEvent"
     />
-    <a-button v-if="!autoNextStep" type="primary" @click="onSubmit">{{ buttonText }}</a-button>
+    <a-button
+      v-if="stepParams.nextStepTrigger === WorkflowNextStepTriggerOptions.BUTTON_CLICK && stepParams.buttonText"
+      type="primary"
+      :disabled="!isAllInputValid()"
+      @click="onSubmit"
+    >
+      {{ stepParams.buttonText }}
+    </a-button>
   </div>
 </template>
 
 <script setup="props">
 import {onMounted, ref, watch} from "vue";
-import {useWorkflow} from "@/composables/workflow";
-import {getJsonForm, postJsonForm} from "./utils/api";
+import {useWorkflow, WorkflowNextStepTriggerOptions} from "@/composables/workflow";
 import {JsonForms} from "@jsonforms/vue";
 import Ajv from "ajv";
 import addFormats from "ajv-formats";
@@ -39,9 +45,7 @@ const props = defineProps({
   },
 });
 
-let workflowStep = props.workflowStep;
-let workflowTrigger = props.workflowStep.workflowTrigger;
-let buttonText = workflowStep.button || "Submit";
+const stepParams = ref({});
 
 const formData = ref({});
 let schema = {};
@@ -51,30 +55,33 @@ const dataToSubmit = {};
 const isLoading = ref(true);
 const jsonFormDataReceived = ref(false);
 
-const autoNextStep = ref(false);
-
-const {goToNextStep, getState, getFromState, setWorkflowStepInputValid} = useWorkflow();
+const {
+  getWorkflowStepParameters,
+  goToNextStep,
+  setWorkflowStepInputValid,
+  getInputData,
+  sendOutputData,
+  isAllInputValid
+} = useWorkflow();
 
 onMounted(() => {
   init();
-});
-
-watch(workflowTrigger, () => {
-  init();
+  watch(props.workflowStep.workflowTrigger, () => {
+    init();
+  });
 });
 
 const updateData = (jsonFormData) => {
-  const jsonFormDataConfig = workflowStep.data;
-
   jsonFormDataReceived.value = true;
-  if ("schema" in jsonFormDataConfig) {
-    schema = jsonFormDataConfig.schema;
-  } else if (jsonFormData && "schema" in jsonFormData) {
+  if (stepParams.value.config && stepParams.value.config.data_from_variable) {
+    jsonFormData = jsonFormData[stepParams.value.config.data_from_variable];
+  }
+  if (jsonFormData && "schema" in jsonFormData) {
     schema = jsonFormData.schema;
   } else {
     schema = {};
     jsonFormDataReceived.value = false;
-    setWorkflowStepInputValid(workflowStep.id, true);
+    setWorkflowStepInputValid(stepParams.value.id, true);
     isLoading.value = false;
     return;
   }
@@ -86,42 +93,10 @@ const updateData = (jsonFormData) => {
     schema["properties"]["end_time"]["formatExclusiveMinimum"] = {$data: "1/start_time"};
   }
 
-  if ("uischema" in jsonFormDataConfig) {
-    uischema = jsonFormDataConfig.uischema;
-  } else if (jsonFormData && "uischema" in jsonFormData) {
-    uischema = jsonFormData.uischema;
-  } else {
-    uischema = null;
-  }
+  uischema = jsonFormData && "uischema" in jsonFormData ? jsonFormData.uischema : null;
+  formData.value = jsonFormData && "formData" in jsonFormData ? jsonFormData.formData : formData.value;
 
-  if ("formData" in jsonFormDataConfig) {
-    formData.value = jsonFormDataConfig.formData;
-  } else if (jsonFormData && "formData" in jsonFormData) {
-    formData.value = jsonFormData.formData;
-  }
   isLoading.value = false;
-};
-
-const doGetData = async () => {
-  if (workflowStep.url) {
-    updateData(await getJsonForm(workflowStep.url));
-  } else if ("from_state_variable" in workflowStep.data) {
-    updateData(getState()[workflowStep.data.from_state_variable]);
-  } else if ("from_socket" in workflowStep.data) {
-    const fromSocket = workflowStep.data.from_socket;
-
-    let params = "params" in fromSocket ? fromSocket.params : {};
-    if ("state_params" in fromSocket) {
-      for (const [key, state_key] of Object.entries(fromSocket.state_params)) {
-        params[key] = getFromState(state_key);
-      }
-    }
-    window.socket.emit(fromSocket.event, params, (res) => {
-      updateData(res);
-    });
-  } else {
-    updateData(null);
-  }
 };
 
 const validateEvent = (event) => {
@@ -140,73 +115,42 @@ const validateEvent = (event) => {
 
   dataToSubmit[varName] = varValue;
   validateJsonForm(dataToSubmit);
-  if (autoNextStep.value) {
-    goToNextStep();
+  if (stepParams.value.nextStepTrigger === WorkflowNextStepTriggerOptions.INPUT_CHANGE) {
+    goToNextStep(props.workflowStep); // make sure components in the same composite step are refreshed
   }
 };
 
 const onChange = (event) => {
   Object.assign(dataToSubmit, event.data);
   validateJsonForm(event.data);
-  if (autoNextStep.value) {
+  if (stepParams.value.nextStepTrigger === WorkflowNextStepTriggerOptions.INPUT_CHANGE) {
     onSubmit();
-  }
-};
-
-const updateState = () => {
-  let dataSubmitFormatted = {};
-  if ("target_variable" in workflowStep) {
-    dataSubmitFormatted[workflowStep.target_variable] = jsonFormDataReceived.value ? dataToSubmit : {};
-  } else {
-    dataSubmitFormatted = jsonFormDataReceived.value ? dataToSubmit : {};
-  }
-  Object.assign(getState(), dataSubmitFormatted);
-  return dataSubmitFormatted;
-};
-
-const init = () => {
-  workflowStep = props.workflowStep;
-  workflowTrigger = props.workflowStep.workflowTrigger;
-  if ("auto_next_step" in workflowStep) {
-    autoNextStep.value = workflowStep.auto_next_step;
-  } else {
-    autoNextStep.value = false;
-  }
-  buttonText = workflowStep.button || "Submit";
-  doGetData();
-  updateState();
-};
-
-const onSubmit = async () => {
-  const dataSubmitFormatted = updateState();
-
-  if (workflowStep.url) {
-    // POST data to remote URL.
-    isLoading.value = true;
-    try {
-      const response = await postJsonForm(workflowStep.url, dataSubmitFormatted);
-      console.log(response);
-      if (response != null && response.ok) {
-        goToNextStep();
-      }
-    } finally {
-      isLoading.value = false;
-    }
-  } else if ("to_socket" in workflowStep.data) {
-    window.socket.emit(workflowStep.data.to_socket.event, dataSubmitFormatted, () => {
-      goToNextStep();
-    });
-  } else {
-    goToNextStep();
   }
 };
 
 const validateJsonForm = (data) => {
   const validate = ajv.compile(schema);
   const isValid = validate(data) || schema === {};
-  setWorkflowStepInputValid(workflowStep.id, isValid);
+  setWorkflowStepInputValid(stepParams.value.id, isValid);
   return {isValid, errors: validate.errors};
 };
+
+const init = async () => {
+  stepParams.value = getWorkflowStepParameters(props.workflowStep);
+  await getInputData(stepParams.value.data, updateData);
+};
+
+const onSubmit = async () => {
+  isLoading.value = true;
+  await sendOutputData(stepParams.value.data, dataToSubmit, afterSendOutput);
+  isLoading.value = false;
+};
+
+const afterSendOutput = () => {
+  isLoading.value = false;
+  goToNextStep(props.workflowStep);
+};
+
 </script>
 
 <style scoped>

@@ -9,12 +9,16 @@
       :key="step.name"
       :workflow-step="step"
     />
-    <WorkflowSelectQuery
-      v-else-if="step.type === WorkflowStepTypes.SELECT_QUERY"
+    <WorkflowSelect
+      v-else-if="step.type === WorkflowStepTypes.SELECT"
       :workflow-step="step"
     />
-    <WorkflowTableQuery
-      v-else-if="step.type === WorkflowStepTypes.TABLE_QUERY"
+    <WorkflowTable
+      v-else-if="step.type === WorkflowStepTypes.TABLE"
+      :workflow-step="step"
+    />
+    <WorkflowTableExternalModel
+      v-else-if="step.type === WorkflowStepTypes.TABLE_EXTERNAL_MODEL"
       :workflow-step="step"
     />
     <WorkflowEsdlService
@@ -61,6 +65,10 @@
       v-else-if="step.type === WorkflowStepTypes.JSON_FORM2"
       :workflow-step="step"
     />
+    <WorkflowDataIO
+      v-else-if="step.type === WorkflowStepTypes.GET_SEND_DATA"
+      :workflow-step="step"
+    />
     <p v-else>
       Unknown workflow step: {{ step.type }}.
       <br>
@@ -72,8 +80,9 @@
 import {ref, onMounted} from "vue";
 import {useWorkflow, WorkflowStepTypes} from "@/composables/workflow";
 import {default as WorkflowChoice} from "@/components/workflow/WorkflowChoice";
-import {default as WorkflowSelectQuery} from "@/components/workflow/WorkflowSelectQuery";
-import {default as WorkflowTableQuery} from "@/components/workflow/WorkflowTableQuery";
+import {default as WorkflowSelect} from "@/components/workflow/WorkflowSelect";
+import {default as WorkflowTable} from "@/components/workflow/WorkflowTable";
+import {default as WorkflowTableExternalModel} from "@/components/workflow/WorkflowTableExternalModel";
 import {default as WorkflowEsdlService} from "@/components/workflow/WorkflowEsdlService";
 import {default as WorkflowDownloadFile} from "@/components/workflow/WorkflowDownloadFile";
 import {default as WorkflowUploadFile} from "@/components/workflow/WorkflowUploadFile";
@@ -85,6 +94,7 @@ import {default as WorkflowCustomComponent} from "@/components/workflow/Workflow
 import {default as WorkflowJsonForm} from "@/components/workflow/WorkflowJsonForm";
 import {default as WorkflowJsonForm2} from "@/components/workflow/WorkflowJsonForm2";
 import {default as WorkflowCallJsFunction} from "@/components/workflow/WorkflowCallJsFunction";
+import {default as WorkflowDataIO} from "@/components/workflow/WorkflowDataIO";
 
 const props = defineProps({
   workflowStep: {
@@ -94,7 +104,7 @@ const props = defineProps({
   },
 });
 
-const {getWorkflowStep} = useWorkflow();
+const {getWorkflowStepParameters, getWorkflowStep} = useWorkflow();
 const workflowSteps = ref([]);
 
 onMounted(() => {
@@ -102,8 +112,11 @@ onMounted(() => {
 });
 
 const init = () => {
-  for (const stepIdOrRef of props.workflowStep.step_ids) {
+  for (const stepIdOrRef of getWorkflowStepParameters(props.workflowStep).config.step_ids) {
     workflowSteps.value.push(getWorkflowStep(stepIdOrRef));
   }
 };
 </script>
+
+<style scoped>
+</style>

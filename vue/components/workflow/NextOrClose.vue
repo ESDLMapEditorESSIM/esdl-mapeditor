@@ -1,12 +1,20 @@
 <template>
-  <a-button v-if="workflowStep.next_step != null" type="primary" @click="goToNextStep"> Next </a-button>
+  <a-button
+    v-if="workflowStep.next_step != null &&
+      stepParams.nextStepTrigger === WorkflowNextStepTriggerOptions.BUTTON_CLICK && stepParams.buttonText"
+    type="primary"
+    @click="() => goToNextStep(workflowStep)"
+  >
+    {{ stepParams.buttonText }}
+  </a-button>
   <div v-else>
-    <a-button @click="startOver"> Back to beginning </a-button>
+    <a-button @click="startOver">Back to beginning</a-button>
   </div>
 </template>
 
 <script setup="props">
-import { useWorkflow } from "../../composables/workflow.js";
+import {useWorkflow, WorkflowNextStepTriggerOptions} from "@/composables/workflow";
+import {onMounted, ref} from "vue";
 
 const props = defineProps({
   workflowStep: {
@@ -16,9 +24,14 @@ const props = defineProps({
   },
 });
 
-// eslint-disable-next-line no-unused-vars
-const { goToNextStep, startOver } = useWorkflow();
-// eslint-disable-next-line no-unused-vars
-const workflowStep = props.workflowStep;
+const {getWorkflowStepParameters, goToNextStep, startOver} = useWorkflow();
+const stepParams = ref({});
 
+onMounted(() => {
+  init();
+});
+
+const init = () => {
+  stepParams.value = getWorkflowStepParameters(props.workflowStep);
+}
 </script>

@@ -7,8 +7,8 @@
 </template>
 
 <script setup="props">
-import { genericErrorHandler } from "../../utils/errors.js";
-import { useWorkflow } from "../../composables/workflow.js";
+import { genericErrorHandler } from "@/utils/errors";
+import { useWorkflow } from "@/composables/workflow";
 import { workflowPostData } from "./utils/api.js";
 import Swal from "sweetalert2";
 

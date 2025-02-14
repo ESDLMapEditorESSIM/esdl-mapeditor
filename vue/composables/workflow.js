@@ -2,15 +2,17 @@ import {ref} from "vue";
 import {getattrd} from "@/utils/utils";
 import {v4 as uuidv4} from 'uuid';
 import {nextStepsSchemaValidator} from "@/utils/workflowSchemas";
+import {workflowGetData, workflowPostData} from "@/components/workflow/utils/api";
+import {useOngoingBackendProcesses} from "@/composables/ongoingBackendProcesses";
 
+const {getStartingBackendProcessId} = useOngoingBackendProcesses();
 
 export const WorkflowStepTypes = Object.freeze({
     CHOICE: 'choice',
-    SELECT_QUERY: 'select-query',
-    MULTI_SELECT_QUERY: 'multi-select-query',
-    TABLE_QUERY: 'table-query',
-    // TODO: Rename?
-    ESDL_SERVICE: 'service',
+    SELECT: 'select',
+    TABLE: 'table',
+    TABLE_EXTERNAL_MODEL: 'table-external-model',
+    ESDL_SERVICE: 'esdl-service',
     JSON_FORM: 'json-form',
     JSON_FORM2: 'json-form2',
     DOWNLOAD_FILE: 'download_file',
@@ -24,6 +26,7 @@ export const WorkflowStepTypes = Object.freeze({
     ENGINE_MONITOR: 'workflow-engine-monitor',
     // Custom component.
     CUSTOM: 'custom',
+    GET_SEND_DATA: 'get-send-data',
     COMPOSITE: 'composite',
 });
 
@@ -76,7 +79,6 @@ export function useWorkflow() {
      *
      * @param {*} service_index
      * @param {*} service
-     * @param {*} state
      */
     const startNewWorkflow = (service_index, service, state) => {
         currentWorkflow.value = new Workflow(service_index, service, state);
@@ -198,8 +200,16 @@ export function useWorkflow() {
     /**
      * Go to the next workflow step.
      */
-    const goToNextStep = () => {
-        currentWorkflow.value.doNext();
+    const goToNextStep = (nestedStep = undefined) => {
+        currentWorkflow.value.doNext(undefined, nestedStep);
+        persistWorkflow();
+    };
+
+    /**
+     * Go to the next workflow step.
+     */
+    const goToNextStepConfig = (stepConfig) => {
+        currentWorkflow.value.addStep(stepConfig);
         persistWorkflow();
     };
 
@@ -240,11 +250,144 @@ export function useWorkflow() {
     };
 
     const setWorkflowStepInputValid = (workflowStepId, valid) => {
-        currentWorkflow.value.input_valid_dict[workflowStepId] = valid;
+        currentWorkflow.value.inputValidDict[workflowStepId] = valid;
     };
 
     const isAllInputValid = () => {
-        return Object.values(currentWorkflow.value.input_valid_dict).every(value => value === true);
+        if (Object.keys(currentWorkflow.value.inputValidDict).length === 0) {
+            return true;
+        } else {
+            return Object.values(currentWorkflow.value.inputValidDict).every(value => value === true);
+        }
+    };
+
+    /**
+     * Get the workflow step input.
+     *
+     * @param {*} dataConfig the data config from the json service configuration for the workflow step
+     * @param {*} afterDataRetrievedFunction optional function that will be called after getting the data
+     */
+    const getInputData = async (dataConfig, afterDataRetrievedFunction = () => {
+    }) => {
+        let data = {};
+
+        if ("from_config" in dataConfig) {
+            data = {...data, ...dataConfig.from_config};
+        }
+        if ("from_url" in dataConfig) {
+            const request_params = {};
+            if ("request_params" in dataConfig.from_url) {
+                dataConfig.from_url.request_params.forEach(function (param) {
+                    if ("value" in param) {
+                        request_params[param.name] = param.value;
+                    } else if ("parameter_name" in param) {
+                        request_params[param.name] = getFromState(param.parameter_name);
+                    } else {
+                        console.error("request parameter found in service config without 'value' or 'parameter_name'");
+                    }
+                });
+            }
+            const response = await workflowGetData(dataConfig.from_url.url, request_params);
+            if ("wrapper_variable" in dataConfig.from_url) {
+                data[dataConfig.from_url.wrapper_variable] = response;
+            } else {
+                data = {...data, ...response};
+            }
+        }
+        if ("from_state" in dataConfig) {
+            for (const [key, value] of Object.entries(dataConfig.from_state)) {
+                data[key] = getFromState(value);
+            }
+        }
+        if ("from_socket" in dataConfig) {
+            const fromSocket = dataConfig.from_socket;
+
+            let params = "params" in fromSocket ? fromSocket.params : {};
+            if ("state_params" in fromSocket) {
+                for (const [key, state_key] of Object.entries(fromSocket.state_params)) {
+                    params[key] = getFromState(state_key);
+                }
+            }
+            window.socket.emit(fromSocket.event, params, (response) => {
+                if ("wrapper_variable" in fromSocket) {
+                    data[fromSocket.wrapper_variable] = response;
+                } else {
+                    data = {...data, ...response};
+                }
+                afterDataRetrievedFunction(data);
+            });
+        } else {
+            if (Object.keys(data).length === 0) {
+                data = null;
+            }
+            afterDataRetrievedFunction(data);
+        }
+    };
+
+    /**
+     * Send the workflow step output.
+     *
+     * @param {*} dataConfig the data config from the json service configuration for the workflow step
+     * @param {*} output output data that will be sent
+     * @param {*} afterDataSentFunction function that will be called after the data has been sent
+     */
+    const sendOutputData = async (dataConfig, output, afterDataSentFunction = () => {
+    }) => {
+        if (getStartingBackendProcessId() !== null) {
+            output["backend_process_id"] = getStartingBackendProcessId();
+        }
+        let formattedOutput;
+        if (dataConfig.output_wrapper_variable) {
+            formattedOutput = {}
+            formattedOutput[dataConfig.output_wrapper_variable] = output;
+        } else {
+            formattedOutput = output;
+        }
+        let responseOk = true;
+        if ("to_url" in dataConfig) {
+            try {
+                const response = await workflowPostData(dataConfig.to_url.url, formattedOutput);
+                responseOk = response.ok;
+            } catch {
+                console.error("Problem sending POST:", dataConfig.to_url, formattedOutput);
+                responseOk = false;
+            }
+        }
+        if ("to_state" in dataConfig) {
+            Object.assign(getState(), {...getState(), ...formattedOutput});
+        }
+        if ("to_socket" in dataConfig) {
+            window.socket.emit(dataConfig.to_socket.event, formattedOutput, () => {
+                afterDataSentFunction(responseOk);
+            });
+        } else {
+            afterDataSentFunction(responseOk);
+        }
+    };
+
+    const getWorkflowStepParameters = (stepConfig) => {
+        if (!stepConfig.id) {
+            console.error("Workflow step without id found:", stepConfig.name);
+        }
+        let nextStepTrigger = null;
+        if (stepConfig.next_step_trigger) {
+            if (Object.values(WorkflowNextStepTriggerOptions).includes(stepConfig.next_step_trigger)) {
+                nextStepTrigger = stepConfig.next_step_trigger;
+            } else {
+                console.error("Workflow next step trigger option not found:", stepConfig.next_step_trigger);
+            }
+        } else {
+            nextStepTrigger = WorkflowNextStepTriggerOptions.BUTTON_CLICK;  // default
+        }
+        return new StepParameters(
+            stepConfig.id,
+            stepConfig.config || null,
+            stepConfig.data || null,
+            stepConfig.button_text,
+            stepConfig.workflow_engine || null,
+            stepConfig.next_step,
+            nextStepTrigger,
+        );
     };
 
     return {
@@ -252,6 +395,7 @@ export function useWorkflow() {
         goToStep,
         goToFirstStep,
         goToNextStep,
+        goToNextStepConfig,
         goToPreviousStep,
         getWorkflowStep,
         getState,
@@ -269,7 +413,28 @@ export function useWorkflow() {
         activatePersistedWorkflow,
         setWorkflowStepInputValid,
         isAllInputValid,
+        getWorkflowStepParameters,
+        getInputData,
+        sendOutputData
     };
+}
+
+export const WorkflowNextStepTriggerOptions = Object.freeze({
+    LOADING_COMPLETE: "loading_complete",
+    INPUT_CHANGE: "input_change",
+    BUTTON_CLICK: "button_click",
+});
+
+export class StepParameters {
+    constructor(id, config, data, buttonText, workflowEngine, nextStep, nextStepTrigger) {
+        this.id = id;
+        this.config = config;
+        this.data = data;
+        this.buttonText = buttonText;
+        this.workflowEngine = workflowEngine;
+        this.nextStep = nextStep;
+        this.nextStepTrigger = nextStepTrigger;
+    }
 }
 
 export class Workflow {
@@ -291,7 +456,7 @@ export class Workflow {
         this.persisted = false;
         this.resumable = service.resumable || false;
         this.drive_paths = [];
-        this.input_valid_dict = {};
+        this.inputValidDict = {};
     }
 
     setName(name) {
@@ -308,10 +473,13 @@ export class Workflow {
 
     /**
      * Go to the next step.
+     *
+     * There is the option to pass a nested step which is necessary when in a composite step
      */
-    doNext(targetStepId = null) {
+    doNext(targetStepId = null, nestedStep = undefined) {
+        const step = nestedStep === undefined ? this.workflowStep : nestedStep;
         if (targetStepId === null || targetStepId === undefined) {
-            const nextStepData = this.workflowStep.next_step;
+            const nextStepData = step.next_step;
             if (nextStepData === undefined) {
                 // No next step. Go to the beginning.
                 while (this.hasPreviousStep()) {
@@ -348,7 +516,20 @@ export class Workflow {
         // Don't add to previous steps if staying on the same step which happens with the 'composite' step
         if (nextStep !== null && nextStep !== this.workflowStep) {
             this.prevWorkflowSteps.push(this.workflowStep);
+            this.inputValidDict = {};
             this.workflowStep = nextStep;
+        }
+    }
+
+    addStep(step) {
+        // Don't add to previous steps if staying on the same step which happens with the 'composite' step
+        if (step !== null && step !== this.workflowStep) {
+            this.prevWorkflowSteps.push(this.workflowStep);
+            this.workflowTrigger["index"] += 1;
+            step.workflowTrigger = this.workflowTrigger;
+            step["main_service_id"] = this.service.id;
+            this.inputValidDict = {};
+            this.workflowStep = step;
         }
     }
 
@@ -374,14 +555,14 @@ export class Workflow {
     }
 
     getWorkflowStep(stepId) {
-        this.workflowTrigger["index"] += 1;
         let stepIndex = this.getStepIndexFromId(stepId);
-
         if (stepIndex === null) {
             console.error("Workflow step id could not be found: ", stepId);
             return null;
         }
         const wfStep = this.service.workflow[stepIndex];
+
+        this.workflowTrigger["index"] += 1;
         wfStep.workflowTrigger = this.workflowTrigger;
         wfStep["main_service_id"] = this.service.id;
         return wfStep;

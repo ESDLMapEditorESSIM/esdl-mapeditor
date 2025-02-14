@@ -95,8 +95,7 @@ class ExternalModels:
             """
             logger.info(f"external_models_download_run: {model_run_info}")
             run_id = model_run_info[RUN_ID]
-            process_finished_event = model_run_info.get("process_finished_event")
-            process_identifier = model_run_info.get("process_identifier")
+            backend_process_id = model_run_info.get("backend_process_id")
             filter_on_tag = model_run_info.get("filter_on_tag")
             esdl_object_name_field = model_run_info.get("esdl_object_name_field")
             excel_sheets_per_table = model_run_info.get("excel_sheets_per_table")
@@ -119,17 +118,9 @@ class ExternalModels:
             esh = get_handler()
             es, parse_info = esh.add_from_string("ext_mod_download", esdl_str)
 
-            influxdb_client = Profiles.connect_to_animation_profiles_database(es.id, es.id, influxdb_host_override)
-
-            if not influxdb_client:
-                self.toast_notifications.send(
-                    ToastNotification(
-                        title=f"Could not connect to the time series database: '{es.id}'.",
-                        description="Check your browser downloads",
-                        type=NotificationType.ERROR,
-                    )
-                )
-            else:
+            influxdb_client = None
+            try:
+                influxdb_client = Profiles.connect_to_animation_profiles_database(es.id, es.id, influxdb_host_override)
                 # Query to get the list of measurements in the database
                 measurements_query = "SHOW MEASUREMENTS"
                 measurements_result = influxdb_client.query(measurements_query)
@@ -196,6 +187,9 @@ class ExternalModels:
                         if sheet_data:
                             processed_data[sheet_name] = sheet_data
 
+                if not processed_data:
+                    raise RuntimeError("No data found.")
+
                 # remove common starting part from sheet names
                 common_name = None
                 if len(processed_data) <= 1:
@@ -238,18 +232,35 @@ class ExternalModels:
                         ),
                     )
                 )
-
-            if process_finished_event:
-                self.socketio.emit(
-                    process_finished_event,
-                    dict(process_identifier=process_identifier, run_id=run_id),
-                    namespace="/esdl",
+            except ConnectionError as e:
+                self.toast_notifications.send(
+                    ToastNotification(
+                        title=f"Could not connect to the time series database: '{es.id}'.",
+                        description=str(e),
+                        type=NotificationType.ERROR,
+                    )
                 )
+            except RuntimeError as e:
+                self.toast_notifications.send(
+                    ToastNotification(
+                        title=f"Error extracting time series data for: '{run_data[RUN_NAME]}.",
+                        description=str(e),
+                        type=NotificationType.ERROR,
+                    )
+                )
+            finally:
+                # Close the client connection
+                if influxdb_client:
+                    influxdb_client.close()
 
-            # Close the client connection
-            influxdb_client.close()
+                if backend_process_id:
+                    self.socketio.emit(
+                        "backend_process_complete",
+                        dict(backend_process_id=backend_process_id),
+                        namespace="/esdl",
+                    )
 
-            return {"message": f"{run_data[MODEL_NAME]} run '{run_data[RUN_NAME]}' downloaded ok."}
+                return {"message": f"{run_data[MODEL_NAME]} run '{run_data[RUN_NAME]}' downloaded ok."}
 
         @self.socketio.on("external_models_delete_run", namespace="/esdl")
         def external_models_delete_run(model_run_info: dict) -> dict:
@@ -265,7 +276,7 @@ class ExternalModels:
             deleted_run_data = self.external_models_storage.delete_model_run(run_id)
 
             delete_result_url = model_run_info.get("delete_result_url")
-            if deleted_run_data:
+            if deleted_run_data and delete_result_url:
                 url = parse_string_with_parameters(delete_result_url, deleted_run_data)
                 try:
                     requests.delete(url)

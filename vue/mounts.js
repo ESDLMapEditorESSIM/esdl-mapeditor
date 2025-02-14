@@ -54,7 +54,7 @@ export function mountSidebarComponent(component) {
     let sidebar_ctr = window.sidebar.getContainer();
     sidebar_ctr.innerHTML = '<div id="vue_sidebar_app"></div>';
     window.sidebar.show();
-    sidebar_app = mountApp(component, '#vue_sidebar_app');
+    [sidebar_app] = mountApp(component, '#vue_sidebar_app');
 }
 
 export function mountSettingsComponent(component) {
@@ -113,6 +113,6 @@ export function mountApp(component, elementSelector) {
     app.use(Upload);
     app.use(VueGridLayout);
 
-    app.mount(elementSelector);
-    return app;
+    const componentInstance = app.mount(elementSelector);
+    return [app, componentInstance];
 }

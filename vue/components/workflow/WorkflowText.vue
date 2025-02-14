@@ -1,12 +1,21 @@
 <template>
-  <!-- eslint-disable vue/no-v-html -->
-  <p v-html="text" />
-  <a-button v-if="showButton" type="primary" @click="goToNextStep">{{ buttonText }}</a-button>
+  <p v-if="isLoading">Loading...</p>
+  <div v-else>
+    <!-- eslint-disable vue/no-v-html -->
+    <p v-html="text" />
+    <a-button
+      v-if="stepParams.nextStepTrigger === WorkflowNextStepTriggerOptions.BUTTON_CLICK && stepParams.buttonText"
+      type="primary"
+      @click="() => goToNextStep(workflowStep)"
+    >
+      {{ stepParams.buttonText }}
+    </a-button>
+  </div>
 </template>
 
 <script setup="props">
-import {ref, watch} from "vue";
-import {useWorkflow} from "@/composables/workflow";
+import {onMounted, ref, watch} from "vue";
+import {useWorkflow, WorkflowNextStepTriggerOptions} from "@/composables/workflow";
 
 const props = defineProps({
   workflowStep: {
@@ -16,45 +25,30 @@ const props = defineProps({
   },
 });
 
-let workflowStep = props.workflowStep;
-let workflowTrigger = props.workflowStep.workflowTrigger;
-watch(workflowTrigger, () => {
+const stepParams = ref({});
+
+onMounted(() => {
   init();
+  watch(props.workflowStep.workflowTrigger, () => {
+    init();
+  });
 });
 
 const text = ref("");
-let showButton = false;
-let buttonText = "";
+const isLoading = ref(true);
 
-const {getFromState, goToNextStep} = useWorkflow();
+const {getWorkflowStepParameters, getInputData, goToNextStep} = useWorkflow();
 
-const handleData = (data) => {
-  text.value = data;
-}
-
-const doGetData = () => {
-  if ("from_socket" in workflowStep.data) {
-    const fromSocket = workflowStep.data.from_socket;
-    let params = "params" in fromSocket ? fromSocket.params : {};
-    if ("state_params" in fromSocket) {
-      for (const [key, state_key] of Object.entries(fromSocket.state_params)) {
-        params[key] = getFromState(state_key);
-      }
-    }
-    window.socket.emit(fromSocket.event, params, (res) => {
-      handleData(res);
-    });
-  } else {
-    handleData(workflowStep.text);
+const updateData = (data) => {
+  if (typeof data !== "string") {
+    data = Object.values(data).join("");
   }
+  text.value = data;
+  isLoading.value = false;
 };
 
-const init = () => {
-  workflowStep = props.workflowStep;
-  workflowTrigger = props.workflowStep.workflowTrigger;
-  buttonText = workflowStep.button || "Submit";
-  showButton = !!("showButton" in workflowStep && workflowStep.showButton);
-  doGetData();
+const init = async () => {
+  stepParams.value = getWorkflowStepParameters(props.workflowStep);
+  await getInputData(stepParams.value.data, updateData);
 };
-init();
 </script>

@@ -6,12 +6,18 @@
     <a-progress :percent="getProgressPercent(stepProgress)" :status="getProgressStatus(stepProgress)" />
     <p>Status: {{ stepProgress["status"] }}</p>
   </div>
-  <a-button v-if="showButton" type="primary" @click="goToNextStep">{{ buttonText }}</a-button>
+  <a-button
+    v-if="stepParams.nextStepTrigger === WorkflowNextStepTriggerOptions.BUTTON_CLICK && stepParams.buttonText"
+    type="primary"
+    @click="() => goToNextStep(workflowStep)"
+  >
+    {{ stepParams.buttonText }}
+  </a-button>
 </template>
 
 <script setup="props">
 import {onMounted, ref, watch} from "vue";
-import {useWorkflow} from "@/composables/workflow";
+import {useWorkflow, WorkflowNextStepTriggerOptions} from "@/composables/workflow";
 
 const props = defineProps({
   workflowStep: {
@@ -21,27 +27,18 @@ const props = defineProps({
   },
 });
 
-const {goToNextStep, getState} = useWorkflow();
-let workflowStep = props.workflowStep;
+const {getWorkflowStepParameters, goToNextStep, getState} = useWorkflow();
+const stepParams = ref({});
 let wfeSequenceId = null;
 const runName = ref(null);
 const stepsProgress = ref();
 
-let workflowTrigger = props.workflowStep.workflowTrigger;
-watch(workflowTrigger, () => {
-  init();
-});
-
 onMounted(() => {
   init();
+  watch(props.workflowStep.workflowTrigger, () => {
+    init();
+  });
 });
-
-let showButton = false;
-let buttonText = "";
-
-const doGetData = () => {
-  wfeSequenceId = getState().wfeSequenceId;
-};
 
 const getProgressStatus = (stepProgress) => {
   if (["SUBMITTED", "RUNNING"].includes(stepProgress["status"])) {
@@ -59,16 +56,13 @@ const getProgressPercent = (stepProgress) => {
   }
   const progress_fraction = stepProgress["progress_fraction"];
   if (!isNaN(progress_fraction)) {
-    return 100 * progress_fraction;
+    return Math.round(100 * progress_fraction);
   }
 };
 
 const init = () => {
-  workflowStep = props.workflowStep;
-  workflowTrigger = props.workflowStep.workflowTrigger;
-  buttonText = workflowStep.button || "Submit";
-  showButton = !!("showButton" in workflowStep && workflowStep.showButton);
-  doGetData();
+  stepParams.value = getWorkflowStepParameters(props.workflowStep);
+  wfeSequenceId = getState().wfeSequenceId;
 
   // console.log("Registering socket io bindings for WorkflowEngineMonitor");
   window.socket.off('wfe_sequence_progress');
@@ -79,5 +73,4 @@ const init = () => {
     }
   });
 };
-init();
 </script>

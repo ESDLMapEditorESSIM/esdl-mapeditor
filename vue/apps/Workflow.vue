@@ -69,15 +69,18 @@
 
     <WorkflowChoice
       v-if="currentWorkflow.workflowStep.type === WorkflowStepTypes.CHOICE"
-      :key="currentWorkflow.workflowStep.name"
       :workflow-step="currentWorkflow.workflowStep"
     />
-    <WorkflowSelectQuery
-      v-else-if="currentWorkflow.workflowStep.type === WorkflowStepTypes.SELECT_QUERY"
+    <WorkflowSelect
+      v-else-if="currentWorkflow.workflowStep.type === WorkflowStepTypes.SELECT"
       :workflow-step="currentWorkflow.workflowStep"
     />
-    <WorkflowTableQuery
-      v-else-if="currentWorkflow.workflowStep.type === WorkflowStepTypes.TABLE_QUERY"
+    <WorkflowTable
+      v-else-if="currentWorkflow.workflowStep.type === WorkflowStepTypes.TABLE"
+      :workflow-step="currentWorkflow.workflowStep"
+    />
+    <WorkflowTableExternalModel
+      v-else-if="currentWorkflow.workflowStep.type === WorkflowStepTypes.TABLE_EXTERNAL_MODEL"
       :workflow-step="currentWorkflow.workflowStep"
     />
     <WorkflowEsdlService
@@ -124,6 +127,10 @@
       v-else-if="currentWorkflow.workflowStep.type === WorkflowStepTypes.JSON_FORM2"
       :workflow-step="currentWorkflow.workflowStep"
     />
+    <WorkflowDataIO
+      v-else-if="currentWorkflow.workflowStep.type === WorkflowStepTypes.GET_SEND_DATA"
+      :workflow-step="currentWorkflow.workflowStep"
+    />
     <WorkflowCompositeStep
       v-else-if="currentWorkflow.workflowStep.type === WorkflowStepTypes.COMPOSITE"
       :workflow-step="currentWorkflow.workflowStep"
@@ -139,8 +146,9 @@
 <script setup>
 import {useWorkflow, WorkflowStepTypes} from "@/composables/workflow";
 import {default as WorkflowChoice} from "@/components/workflow/WorkflowChoice";
-import {default as WorkflowSelectQuery} from "@/components/workflow/WorkflowSelectQuery";
-import {default as WorkflowTableQuery} from "@/components/workflow/WorkflowTableQuery";
+import {default as WorkflowSelect} from "@/components/workflow/WorkflowSelect";
+import {default as WorkflowTable} from "@/components/workflow/WorkflowTable";
+import {default as WorkflowTableExternalModel} from "@/components/workflow/WorkflowTableExternalModel";
 import {default as WorkflowEsdlService} from "@/components/workflow/WorkflowEsdlService";
 import {default as WorkflowDownloadFile} from "@/components/workflow/WorkflowDownloadFile";
 import {default as WorkflowUploadFile} from "@/components/workflow/WorkflowUploadFile";
@@ -153,6 +161,7 @@ import {default as WorkflowJsonForm} from "@/components/workflow/WorkflowJsonFor
 import {default as WorkflowJsonForm2} from "@/components/workflow/WorkflowJsonForm2";
 import {default as WorkflowCallJsFunction} from "@/components/workflow/WorkflowCallJsFunction";
 import {default as WorkflowCompositeStep} from "@/components/workflow/WorkflowCompositeStep.vue";
+import WorkflowDataIO from "@/components/workflow/WorkflowDataIO.vue";
 import {MenuOutlined} from "@ant-design/icons-vue";
 import {MessageNames, PubSubManager} from "@/bridge";
 import {useEsdlLayers} from "@/composables/esdlLayers";

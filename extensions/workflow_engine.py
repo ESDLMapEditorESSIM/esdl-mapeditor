@@ -31,6 +31,7 @@ from extensions.external_models.external_models_storage import (
     LAST_UPDATED_TO_EXTERNAL_MODEL_AT,
     PROGRESS_FRACTION,
     MODEL_SPECIFIC_OUTPUT,
+    RunStatus,
 )
 from src.tno.shared.util import get_nested_dict_value, parse_string_with_parameters
 from extensions.session_manager import get_session, get_all_session_ids_for_user
@@ -40,8 +41,8 @@ import src.log as log
 logger = log.get_logger(__name__)
 
 
-DEFAULT_RETRY_INTERVAL_SECONDS = 10
-DEFAULT_MAXIMUM_WAIT_SECONDS = 3600
+QUERY_POLLING_DEFAULT_RETRY_INTERVAL_SECONDS = 10
+QUERY_POLLING_DEFAULT_MAXIMUM_WAIT_SECONDS = 3600
 
 
 @dataclass
@@ -95,20 +96,32 @@ class WorkflowStep:
         step_progress = StepProgress(name=self.step_config.get("monitor_name"), status="STARTED", progress_fraction=0)
         self.sequence_data.steps_progress.append(step_progress)
 
-        retry_interval_seconds = self.step_config.get("retry_interval_seconds")
+        if "model_run_result_polling" in self.step_config["config"]:
+            return self.action_model_run_result_polling(
+                step_progress, self.step_config["config"]["model_run_result_polling"]
+            )
+        # TODO implement other actions
+        else:
+            logger.error(
+                f"No implemented workflow engine action found for step '{self.step_config['id']}'"
+                f" with config '{self.step_config['config']}'."
+            )
+            return False
+
+    def action_model_run_result_polling(self, step_progress: StepProgress, config: dict) -> bool:
+        retry_interval_seconds = config.get("retry_interval_seconds")
         if not retry_interval_seconds:
-            retry_interval_seconds = DEFAULT_RETRY_INTERVAL_SECONDS
-        maximum_wait_seconds = self.step_config.get("maximum_wait_seconds")
+            retry_interval_seconds = QUERY_POLLING_DEFAULT_RETRY_INTERVAL_SECONDS
+        maximum_wait_seconds = config.get("maximum_wait_seconds")
         if not maximum_wait_seconds:
-            maximum_wait_seconds = DEFAULT_MAXIMUM_WAIT_SECONDS
+            maximum_wait_seconds = QUERY_POLLING_DEFAULT_MAXIMUM_WAIT_SECONDS
 
         nr_of_retries = 0
         while True:
             updated_values = dict(model_specific_output=dict())
-            if "queries" in self.step_config:
-                for query_config in self.step_config["queries"]:
-                    if not self.update_values_from_query(updated_values, query_config):
-                        return False
+            for query_config in config["query_list"]:
+                if not self.update_values_from_query(updated_values, query_config):
+                    return False
 
             if STATUS not in updated_values or updated_values[STATUS] is None:
                 return False
@@ -143,14 +156,13 @@ class WorkflowStep:
                         )
 
                 # check if workflow step finished
-                completed_statuses = self.step_config.get("completed_statuses")
-                if not completed_statuses or updated_values[STATUS] in completed_statuses["success"]:
+                if updated_values[STATUS] == RunStatus.SUCCEEDED.value:
                     logger.info(
                         f"Workflow engine sequence for user '{self.sequence_data.user_email}' succeeded:"
                         f" sequence '{self.sequence_data.run_id}'."
                     )
                     return True
-                elif updated_values[STATUS] in completed_statuses["error"]:
+                elif updated_values[STATUS] in [RunStatus.CANCELLED.value, RunStatus.ERROR.value]:
                     logger.info(
                         f"Workflow engine sequence for user '{self.sequence_data.user_email}' terminated"
                         f" with status '{updated_values[STATUS]}': sequence '{self.sequence_data.run_id}'."
@@ -345,8 +357,12 @@ class WorkflowEngine:
             )
             run_succeeded = step.run()
             logger.info(f"Workflow engine step '{next_step}' finished for run '{sequence_data.run_name}")
-            if run_succeeded and "workflow_engine_next_step" in step_config:
-                next_step = step_config["workflow_engine_next_step"]
+            if (
+                run_succeeded
+                and "workflow_engine" in step_config
+                and "workflow_engine_next_step" in step_config["workflow_engine"]
+            ):
+                next_step = step_config["workflow_engine"]["workflow_engine_next_step"]
             else:
                 next_step = None
 

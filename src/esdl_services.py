@@ -29,7 +29,8 @@ import src.log as log
 from esdl import esdl
 from esdl.esdl_handler import StringURI
 from esdl.processing import ESDLAsset, ESDLGeometry
-from extensions.external_models.external_models_storage import ExternalModelsStorage, ESDL_FEEDBACK
+from extensions.external_models.external_models_storage import ExternalModelsStorage, ESDL_FEEDBACK, OUTPUT_ESDL, \
+    INPUT_ESDL
 from extensions.profiles import Profiles
 from extensions.session_manager import get_handler, get_session, set_session
 from extensions.settings_storage import SettingsStorage
@@ -212,23 +213,26 @@ class ESDLServices:
         # Find the currently active service.
         service = None
         # services_list = get_session('services_list')
-        user_email = get_session("user-email")
-        role = get_session("user-role")
-        services_list = self.get_user_services_list(user_email, role)
-        for config_service in services_list:
-            if config_service["id"] == service_params["service_id"]:
-                service = config_service
-                break
-            # If it's a workflow, look in its steps.
-            if "type" in config_service and config_service["type"] in (
-                "workflow",
-                "vueworkflow",
-            ):
-                for step in config_service["workflow"]:
-                    if step["type"] in ("service", "custom"):
-                        if "service" in step and step["service"]["id"] == service_params["service_id"]:
-                            service = step["service"]
-                            break
+        if "service_config" in service_params:
+            service = service_params["service_config"]
+        else:
+            user_email = get_session("user-email")
+            role = get_session("user-role")
+            services_list = self.get_user_services_list(user_email, role)
+            for config_service in services_list:
+                if config_service["id"] == service_params["service_id"]:
+                    service = config_service
+                    break
+                # If it's a workflow, look in its steps.
+                if "type" in config_service and config_service["type"] in (
+                    "workflow",
+                    "vueworkflow",
+                ):
+                    for step in config_service["workflow"]:
+                        if step["type"] in ("esdl-service", "custom"):
+                            if "service" in step and step["service"]["id"] == service_params["service_id"]:
+                                service = step["service"]
+                                break
 
         if service is None:
             return False, None, None
@@ -395,8 +399,10 @@ class ESDLServices:
 
             if not url or url_response.status_code == 200 or url_response.status_code == 201:
                 if service["result"][0]["action"] == "esdl":
-                    if "run_esdl_key" in service["result"][0]:
-                        esdl_data = input_data[service["result"][0]["run_esdl_key"]]
+                    if input_data.get(OUTPUT_ESDL):
+                        esdl_data = input_data.get(OUTPUT_ESDL)
+                    elif input_data.get(INPUT_ESDL):
+                        esdl_data = input_data.get(INPUT_ESDL)
                     elif "json_field" in service["result"][0]:
                         esdl_data = url_response.json()[service["result"][0]["json_field"]]
                     else:

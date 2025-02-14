@@ -776,12 +776,13 @@ class Profiles:
                     port=profile.port,
                     database=database
                 )
-                influxdb_client.close()
+            if not influxdb_client:
+                raise ConnectionError(f"Could not connect to influxdb '{influxdb_host}' to database '{database}'")
 
             return influxdb_client
         else:
             logger.info("Not all profiles use same host, port, database")
-            return None
+            raise ConnectionError("Could not connect to influxdb")
 
     @staticmethod
     def check_if_profiles_have_same_host_port_database(profile_list):
