@@ -28,7 +28,7 @@ from flask import Flask
 
 logger = get_logger(__name__)
 
-socketio = SocketIO()
+socketio = SocketIO(async_mode='gevent')
 executor = Executor()
 
 
