@@ -28,6 +28,29 @@ class ChartType(Enum):
     BAR = "bar"
     TABLE = "table"
 
+class ProfileVizType(Enum):
+    PROFILE = "Profile"
+    AGGREGATED = "Aggregated"
+
+class ProfileAggInterval(Enum):
+    WEEK = "Week"
+    MONTH = "Month"
+    QUARTER = "Quarter"
+    YEAR = "Year"
+
+class ProfileAggType(Enum):
+    MAX = "Max"
+    MIN = "Min"
+    SUM = "Sum"
+    MEAN = "Mean"
+
+@dataclass
+class ProfileQueryOptions:
+    viz_type: ProfileVizType
+    data_range: List[str]
+    agg_interval: Optional[ProfileAggInterval]
+    agg_type: Optional[ProfileAggType]
+
 @dataclass
 class QueryRequestBody:
     dataset_ids: List[int]
@@ -35,3 +58,4 @@ class QueryRequestBody:
     group_by: List[str]
     filters: Dict[str, List[str]]
     chart_type: ChartType
+    profile: Optional[ProfileQueryOptions]

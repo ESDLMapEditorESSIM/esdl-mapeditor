@@ -16,6 +16,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, TypedDict, List, Dict, Optional, Sequence, Iterable
 import json
+import re
 
 from flask import Flask
 from flask_socketio import SocketIO
@@ -29,6 +30,8 @@ from pandas import DataFrame
 import esdl
 from esdl.processing.ESDLAsset import get_asset_capability_type
 from esdl.processing.ESDLQuantityAndUnits import unit_to_string, build_qau_from_unit_string, qau_to_string
+from esdl.profiles.influxdbprofilemanager import InfluxDBProfileManager, ConnectionSettings
+from extensions.profiles import Profiles
 from extensions.data_manager import db
 from extensions.data_manager.data_manager_message import (ChartType,
                                                           MetadataUpdateRequestBody,
@@ -46,11 +49,6 @@ import statistics
 
 logger = get_logger(__name__)
 
-
-class ESDLScope(Enum):
-    ALL = 0
-    PROFILE = 1
-    KPI = 2
 
 class MetadataCRUDStatus(Enum):
     SUCCESS = "SUCCESS"
@@ -70,6 +68,7 @@ class Label(TypedDict):
     name: str
     value: str
 
+dt_str_format = '%Y-%m-%d %H:%M:%S'
 
 def physical_q_to_str(qau: esdl.QuantityAndUnitType):
     if qau.physicalQuantity:
@@ -140,9 +139,67 @@ def check_qau(qau: esdl.AbstractQuantityAndUnit) -> esdl.QuantityAndUnitType:
         qau = esdl.QuantityAndUnitType()  # empty/unknown unit
     return qau
 
-def handle_profile(profile: esdl.GenericProfile, ds: DataSet, variable_name: str = None) -> [Data, esdl.QuantityAndUnitType, str]:
+def handle_influxdb_profile(profile: esdl.InfluxDBProfile, ds: DataSet):
     """
-    Process an esdl GenericProfile
+    Process an esdl InfluxDBProfile
+
+    :param profile: InfluxDBProfile to process
+    :param ds: Data set this data belongs to
+    :return: Data point, its unit and variable_name of this data point
+    """
+    container = profile.eContainer()
+
+    d = Data(dataset=ds, value=None) # Default value to None
+    qau = check_qau(profile.profileQuantityAndUnit)
+    variable_name = f"{profile.field} [{unit_to_string(qau)}]"
+
+    labels = {}
+    # Label profile id, so it can be retrieved when the query_influxdb_profile() method is called.
+    labels['profile_id'] = profile.id
+    labels['Profile entry'] = profile.measurement
+
+    # TODO: extract below code to avoid duplication in handle_static_profile()
+    if isinstance(container, esdl.Port):
+        port: esdl.Port = container
+        asset: esdl.EnergyAsset = port.energyasset
+        capability = get_asset_capability_type(asset)
+        labels['Capability'] = capability
+        area = asset.area
+        if asset.containingBuilding or asset.containingAsset:
+            container_asset = asset.eContainer()
+            area = container_asset.area
+            labels['Parent asset'] = container_asset.name
+        d.sector = asset.sector.name if asset.sector else None
+        d.node = asset.name or asset.id
+        d.region = area.name
+        d.technology = asset.eClass.name
+        
+        if isinstance(port, esdl.InPort):
+            d.input = port.carrier.name if port.carrier else None
+            labels["Flow direction"] = 'In'
+        else:
+            port: esdl.OutPort
+            d.output = port.carrier.name if port.carrier else None
+            labels["Flow direction"] = 'Out'
+            if len(port.connectedTo) > 0:
+                target_asset = port.connectedTo[0].energyasset
+                d.to_node = target_asset.name or target_asset.id
+        other_ports = asset.port.select(lambda p: p != port)
+        if len(other_ports) > 0:
+            labels['Graph position'] = "Interior"
+        else:
+            labels['Graph position'] = "Edge"
+    elif isinstance(container, esdl.CostInformation):
+        # TODO?
+        logger.warn("Profile with CostInformation as a container is not yet supported")
+
+    d.labels = labels
+    
+    return d, qau, variable_name
+
+def handle_static_profile(profile: esdl.StaticProfile, ds: DataSet, variable_name: str = None) -> [Data, esdl.QuantityAndUnitType, str]:
+    """
+    Process an esdl StaticProfile
 
     :param profile: Profile to process
     :param ds: Data set this data belongs to
@@ -167,8 +224,8 @@ def handle_profile(profile: esdl.GenericProfile, ds: DataSet, variable_name: str
         logger.warn("DateTimeSeriesProfile not yet supported")
     elif isinstance(profile, esdl.InfluxDBProfile):
         logger.warn("DateTimeSeriesProfile not yet supported")
-    if isinstance(container, esdl.Port):  # usually a port
 
+    if isinstance(container, esdl.Port):  # usually a port
         port: esdl.Port = container
         asset: esdl.EnergyAsset = port.energyasset
         capability = get_asset_capability_type(asset)
@@ -182,7 +239,6 @@ def handle_profile(profile: esdl.GenericProfile, ds: DataSet, variable_name: str
         d.node = asset.name or asset.id
         d.region = area.name
         d.technology = asset.eClass.name
-
 
         variable_name = f'{physical_q_to_str(qau)} [{unit_to_string(qau)}]'
         if isinstance(port, esdl.InPort):
@@ -289,17 +345,16 @@ class DataManager:
         def _get_columns(params: Dict) -> dict:
             req_body = GetColumnsRequestBody(**params)
             return self.get_columns(db.session, dataset_ids=req_body.dataset_ids, variable_name=req_body.variable_name)
-        
+                
         @self.socketio.on("datamanager/query", namespace="/esdl")
-        def _query(params: Dict) -> list:
+        def _query(params: Dict) -> dict:
             params['chart_type'] = ChartType(params['chart_type'])
             req_body = QueryRequestBody(**params)
-            return self.query(db.session,
-                              dataset_ids=req_body.dataset_ids,
-                              variable_name=req_body.variable_name,
-                              group_by=req_body.group_by,
-                              filters=req_body.filters,
-                              chart_type=req_body.chart_type)
+
+            if req_body.profile:
+                return self.query_influxdb_profile(db.session, options=req_body) 
+            else:
+                return self.query(db.session, options=req_body)
 
     def process_esdl(self, es: esdl.EnergySystem, owner: str) -> List[BaseModel]:
         """
@@ -324,17 +379,20 @@ class DataManager:
         ds = DataSet(name=es.name, energy_system_id=es.id, created_by=owner, description=es.description, model="Unknown")
 
         for eobj in es.eAllContents():
-            #variable_name = eobj.name if hasattr(eobj, 'name') else None
             variable_name = None
+            is_profile_variable = None
+
             if isinstance(eobj, esdl.SingleValue) or isinstance(eobj, esdl.TimeSeriesProfile):
                 logger.debug(f"Handling {eobj.eClass.name}/{eobj.name}")
                 # single value profile
                 # profile: esdl.SingleValue = eobj
-                d, qau, variable_name = handle_profile(eobj, ds, variable_name)
-
+                d, qau, variable_name = handle_static_profile(eobj, ds, variable_name)
             elif isinstance(eobj, esdl.ProfileReference):
                 # handle reference too, as we need a reference to the asset
-                d, qau, variable_name = handle_profile(eobj, ds, variable_name)
+                d, qau, variable_name = handle_static_profile(eobj, ds, variable_name)
+            elif isinstance(eobj, esdl.InfluxDBProfile):
+                is_profile_variable = True
+                d, qau, variable_name = handle_influxdb_profile(eobj, ds)
             elif isinstance(eobj, esdl.DoubleKPI):
                 d = Data(dataset=ds)
                 d.labels = d.labels if d.labels is not None else {}
@@ -427,16 +485,21 @@ class DataManager:
                 #variable_name = eobj.name if hasattr(eobj, 'name') else None
                 #logger.debug(f"Ignoring {eobj.eClass.name}")
                 continue
+
             variable: Variable = variables.get(variable_name, None)
             if variable is None:
                 if variable_name is None:
                     logger.warn(f"Variable name is empty for {eobj}, ignoring")
                     continue
+
+                # Distinguish variable data type (Profile or Single Value).
+                data_type = DataType.PROFILE if is_profile_variable else DataType.SINGLE_VALUE
+
                 variable = Variable(
                     name=variable_name,
                     unit=unit_to_string(qau),
                     quantity=qau.physicalQuantity.name if qau.physicalQuantity else None,
-                    datatype=DataType.SINGLE_VALUE,
+                    datatype=data_type
                 )
                 variables[variable.name] = variable
                 data_list.append(variable)
@@ -668,7 +731,7 @@ class DataManager:
                 'name': dataset.name,
                 'id': dataset.id,
                 'description': dataset.description,
-                'run_timestamp': timestamp.strftime('%Y-%m-%d %H:%M:%S')
+                'run_timestamp': timestamp.strftime(dt_str_format)
             })
         return response
 
@@ -731,20 +794,28 @@ class DataManager:
                 sorted_value['options'] = sorted(value['options'], key=lambda x: str(x))
             sorted_resp[key] = sorted_value
 
+        # Remove profile_id, as it is not used as a filter option in the frontend,
+        # but only as a reference to be used by query_influxdb_profile() in the backend. 
+        if "profile_id" in sorted_resp:
+            del sorted_resp["profile_id"]
+
         return sorted_resp
     
-    def query(self,
-              session: Session,
-              dataset_ids: List[int],
-              variable_name: str,
-              group_by: List[str],
-              filters: Dict[str, List[str]],
-              chart_type: ChartType) -> list:
+
+    def query(self, session: Session, options: QueryRequestBody) -> dict:
         """
-        Queries and returns traces of data based on the specified dataset IDs, variable name, grouping, and filters.
+        Queries and returns a dictionary with data traces filtered by dataset IDs, variable name, grouping, and filters.
 
         Note that group_by is ordered: the first element goes on the X axis, the rest goes in the grouping.
         """
+        dataset_ids = options.dataset_ids
+        variable_name = options.variable_name
+        group_by = options.group_by
+        filters = options.filters
+        chart_type = options.chart_type
+
+        traces = []
+        
         logger.info(f"Querying {chart_type.value} chart traces with dataset_ids: \
                     {dataset_ids}, variable: {variable_name}, group_by: {group_by}, and filters: {filters}")
                 
@@ -775,9 +846,11 @@ class DataManager:
         df = pd.read_sql_query(query.statement, session.get_bind())
 
         if chart_type == ChartType.TABLE:
-            return self.process_table_trace(df)
+            traces = self.process_table_trace(df)
         else:
-            return self.process_bar_chart_trace(df, dataset_ids, variable_name, group_by)
+            traces = self.process_bar_chart_trace(df, dataset_ids, variable_name, group_by)
+
+        return { "traces": traces }
     
     @staticmethod
     def process_table_trace(df: DataFrame) -> list:

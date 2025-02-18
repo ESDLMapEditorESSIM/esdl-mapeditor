@@ -910,6 +910,14 @@ const tableTraceHandler = (traces) => {
 	background-color: white; 
 }
 
+.ant-segmented-item,
+.ant-segmented-item::selection {
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 .graph-header-control {
 	width: 100%;
 	justify-content: space-between;
