@@ -47,7 +47,7 @@ const selectStatus = ref("error");
 
 const {
   getWorkflowStepParameters,
-  goToNextStep,
+  goToStep,
   setWorkflowStepInputValid,
   getInputData,
   sendOutputData,
@@ -68,7 +68,7 @@ const onSubmit = async () => {
     return;
   }
   await sendOutputData(
-      stepParams.value.data, choicesByValue.get(value), () => goToNextStep(props.workflowStep)
+      stepParams.value.data, choicesByValue.get(value), () => goToStep(stepParams.value.nextStep)
   );
 };
 

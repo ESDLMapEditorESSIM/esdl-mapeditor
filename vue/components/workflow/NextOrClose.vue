@@ -3,7 +3,7 @@
     v-if="workflowStep.next_step != null &&
       stepParams.nextStepTrigger === WorkflowNextStepTriggerOptions.BUTTON_CLICK && stepParams.buttonText"
     type="primary"
-    @click="() => goToNextStep(workflowStep)"
+    @click="() => goToStep(stepParams.nextStep)"
   >
     {{ stepParams.buttonText }}
   </a-button>
@@ -24,7 +24,7 @@ const props = defineProps({
   },
 });
 
-const {getWorkflowStepParameters, goToNextStep, startOver} = useWorkflow();
+const {getWorkflowStepParameters, goToStep, startOver} = useWorkflow();
 const stepParams = ref({});
 
 onMounted(() => {

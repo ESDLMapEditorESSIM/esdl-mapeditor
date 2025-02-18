@@ -9,7 +9,7 @@
   <a-button
     v-if="stepParams.nextStepTrigger === WorkflowNextStepTriggerOptions.BUTTON_CLICK && stepParams.buttonText"
     type="primary"
-    @click="() => goToNextStep(workflowStep)"
+    @click="() => goToStep(stepParams.nextStep)"
   >
     {{ stepParams.buttonText }}
   </a-button>
@@ -27,7 +27,7 @@ const props = defineProps({
   },
 });
 
-const {getWorkflowStepParameters, goToNextStep, getState} = useWorkflow();
+const {getWorkflowStepParameters, goToStep, getState} = useWorkflow();
 const stepParams = ref({});
 let wfeSequenceId = null;
 const runName = ref(null);

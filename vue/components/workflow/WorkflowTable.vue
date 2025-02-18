@@ -79,7 +79,7 @@ const props = defineProps({
 const {
   getWorkflowStepParameters,
   goToStep,
-  goToNextStepConfig,
+  goToStepFromConfig,
   getState,
   getInputData,
 } = useWorkflow();
@@ -159,7 +159,7 @@ const doAction = (record, action) => {
   }
 
   if ("next_step_config" in action) {
-    goToNextStepConfig(action.next_step_config);
+    goToStepFromConfig(action.next_step_config);
   } else if ("next_step" in action) {
     goToStep(action.next_step);
   }

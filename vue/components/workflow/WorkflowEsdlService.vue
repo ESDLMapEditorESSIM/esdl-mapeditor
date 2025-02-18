@@ -51,7 +51,7 @@ const {
   goToPreviousStep,
   goToFirstStep,
   getState,
-  goToNextStep,
+  goToStep,
   isAllInputValid
 } = useWorkflow();
 const state = getState();
@@ -119,12 +119,12 @@ const loadEsdl = () => {
     window.socket.emit("wfe_initialize_sequence", params, (sequenceId) => {
       // after workflow engine start, set id and go to next Vue step (table overview or monitor progress)
       Object.assign(getState(), {"wfeSequenceId": sequenceId});
-      goToNextStep(props.workflowStep);
+      goToStep(stepParams.value.nextStep);
       window.hide_loader();
     });
   } else {
     window.socket.emit("command", {cmd: "query_esdl_service", params: params}, () => {
-      goToNextStep(props.workflowStep);
+      goToStep(stepParams.value.nextStep);
     });
   }
 };

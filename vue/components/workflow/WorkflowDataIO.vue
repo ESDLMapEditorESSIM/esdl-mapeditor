@@ -26,7 +26,7 @@
 import {onMounted, ref, watch} from "vue";
 import {useWorkflow, WorkflowNextStepTriggerOptions} from "@/composables/workflow";
 
-const {getWorkflowStepParameters, goToNextStep, getInputData, sendOutputData} = useWorkflow();
+const {getWorkflowStepParameters, goToStep, getInputData, sendOutputData} = useWorkflow();
 
 const props = defineProps({
   workflowStep: {
@@ -53,7 +53,7 @@ const init = async () => {
   stepParams.value = getWorkflowStepParameters(props.workflowStep);
   await getInputData(stepParams.value.data, onDataRetrieved);
   if (stepParams.value.nextStepTrigger === WorkflowNextStepTriggerOptions.LOADING_COMPLETE) {
-    goToNextStep(props.workflowStep);
+    goToStep(stepParams.value.nextStep);
   } else {
     isLoading.value = false;
   }
@@ -76,7 +76,7 @@ const onSubmit = async () => {
 
 const onDataSent = (responseOk) => {
   if (responseOk) {
-    goToNextStep(props.workflowStep);
+    goToStep(stepParams.value.nextStep);
   } else {
     errorMessage.value = "Error submitting data.";
   }

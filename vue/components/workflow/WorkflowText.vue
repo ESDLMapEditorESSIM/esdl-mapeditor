@@ -6,7 +6,7 @@
     <a-button
       v-if="stepParams.nextStepTrigger === WorkflowNextStepTriggerOptions.BUTTON_CLICK && stepParams.buttonText"
       type="primary"
-      @click="() => goToNextStep(workflowStep)"
+      @click="() => goToStep(stepParams.nextStep)"
     >
       {{ stepParams.buttonText }}
     </a-button>
@@ -37,7 +37,7 @@ onMounted(() => {
 const text = ref("");
 const isLoading = ref(true);
 
-const {getWorkflowStepParameters, getInputData, goToNextStep} = useWorkflow();
+const {getWorkflowStepParameters, getInputData, goToStep} = useWorkflow();
 
 const updateData = (data) => {
   if (typeof data !== "string") {

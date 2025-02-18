@@ -57,7 +57,7 @@ const jsonFormDataReceived = ref(false);
 
 const {
   getWorkflowStepParameters,
-  goToNextStep,
+  goToStep,
   setWorkflowStepInputValid,
   getInputData,
   sendOutputData,
@@ -116,7 +116,7 @@ const validateEvent = (event) => {
   dataToSubmit[varName] = varValue;
   validateJsonForm(dataToSubmit);
   if (stepParams.value.nextStepTrigger === WorkflowNextStepTriggerOptions.INPUT_CHANGE) {
-    goToNextStep(props.workflowStep); // make sure components in the same composite step are refreshed
+    goToStep(stepParams.value.nextStep); // make sure components in the same composite step are refreshed
   }
 };
 
@@ -148,7 +148,7 @@ const onSubmit = async () => {
 
 const afterSendOutput = () => {
   isLoading.value = false;
-  goToNextStep(props.workflowStep);
+  goToStep(stepParams.value.nextStep);
 };
 
 </script>

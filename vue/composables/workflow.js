@@ -213,17 +213,10 @@ export function useWorkflow() {
     };
 
     /**
-     * Go to the next workflow step.
+     * Go to the workflow step from config.
+     * Go to a step which is not loaded in mongo, used by WorkflowTableExternalModel
      */
-    const goToNextStep = (nestedStep = undefined) => {
-        currentWorkflow.value.doNext(undefined, nestedStep);
-        persistWorkflow();
-    };
-
-    /**
-     * Go to the next workflow step.
-     */
-    const goToNextStepConfig = (stepConfig) => {
+    const goToStepFromConfig = (stepConfig) => {
         currentWorkflow.value.addStep(stepConfig);
         persistWorkflow();
     };
@@ -245,9 +238,11 @@ export function useWorkflow() {
 
     /**
      * Go to given step.
+     *
+     * @param stepIdOrObject Step id (string) or object with rules/conditions
      */
-    const goToStep = (stepIdx) => {
-        currentWorkflow.value.doNext(stepIdx);
+    const goToStep = (stepIdOrObject) => {
+        currentWorkflow.value.doNext(stepIdOrObject);
         persistWorkflow();
     };
 
@@ -409,8 +404,7 @@ export function useWorkflow() {
         currentWorkflow,
         goToStep,
         goToFirstStep,
-        goToNextStep,
-        goToNextStepConfig,
+        goToStepFromConfig,
         goToPreviousStep,
         getWorkflowStep,
         getState,
@@ -489,41 +483,38 @@ export class Workflow {
     /**
      * Go to the next step.
      *
-     * There is the option to pass a nested step which is necessary when in a composite step
+     * @param nextStepIdOrObject Step id (string) or object with rules/conditions
      */
-    doNext(targetStepId = null, nestedStep = undefined) {
-        const step = nestedStep === undefined ? this.workflowStep : nestedStep;
-        if (targetStepId === null || targetStepId === undefined) {
-            const nextStepData = step.next_step;
-            if (nextStepData === undefined) {
-                // No next step. Go to the beginning.
-                while (this.hasPreviousStep()) {
-                    this.doPrevious();
-                }
-                return;
-            } else if (typeof nextStepData === 'object') {
-                // Step with multiple next steps.
-                const ifRules = nextStepData.if;
-                for (const ifRule of ifRules) {
-                    const isValid = nextStepsSchemaValidator(ifRule);
-                    if (!isValid) {
-                        console.error("Invalid next steps schema", ifRule);
-                        continue
-                    }
-                    const isConditionMet = evaluateConditions(ifRule, this.state);
-                    if (isConditionMet) {
-                        targetStepId = ifRule.then;
-                        break
-                    }
-                }
-                if (targetStepId === null && nextStepData.else !== undefined) {
-                    // No if rule matches. Trigger the else if it's there.
-                    targetStepId = nextStepData.else.then;
-                }
-            } else {
-                // Step with a single next step.
-                targetStepId = nextStepData;
+    doNext(nextStepIdOrObject) {
+        let targetStepId = null;
+        if (nextStepIdOrObject === null || nextStepIdOrObject === undefined) {
+            // No next step. Go to the beginning.
+            while (this.hasPreviousStep()) {
+                this.doPrevious();
             }
+            return;
+        } else if (typeof nextStepIdOrObject === 'object') {
+            // Step with multiple next steps.
+            const ifRules = nextStepIdOrObject.if;
+            for (const ifRule of ifRules) {
+                const isValid = nextStepsSchemaValidator(ifRule);
+                if (!isValid) {
+                    console.error("Invalid next steps schema", ifRule);
+                    continue;
+                }
+                const isConditionMet = evaluateConditions(ifRule, this.state);
+                if (isConditionMet) {
+                    targetStepId = ifRule.then;
+                    break;
+                }
+            }
+            if (targetStepId === null && nextStepIdOrObject.else !== undefined) {
+                // No if rule matches. Trigger the else if it's there.
+                targetStepId = nextStepIdOrObject.else.then;
+            }
+        } else {
+            // Step with a single next step.
+            targetStepId = nextStepIdOrObject;
         }
 
         const nextStep = this.getWorkflowStep(targetStepId);
