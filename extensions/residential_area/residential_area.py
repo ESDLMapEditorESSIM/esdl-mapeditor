@@ -29,7 +29,7 @@ from extensions.session_manager import set_session, get_project_manager, get_ses
 from extensions.settings_storage import SettingsStorage
 from src.edr_client import EDRClient
 from src.log import get_logger
-from src.process_es_area_bld import get_area_id_from_mapeditor_id
+from src.process_es_area_bld import get_area_id_from_mapeditor_id, calc_building_assets_location
 from src.settings import edr_config
 
 logger = get_logger(__name__)
@@ -294,6 +294,8 @@ class ResidentialArea:
             ]
         )
 
+        # add locations to building assets (to make building editor work)
+        calc_building_assets_location(aggr_bld)
         return aggr_bld
 
     def store_asset_for_drawing_on_map(self, asset):
