@@ -28,6 +28,7 @@ const props = defineProps({
 });
 
 const {getWorkflowStepParameters, goToStep, getState} = useWorkflow();
+/** @type {import('vue').Ref<StepParameters|null>} */
 const stepParams = ref({});
 let wfeSequenceId = null;
 const runName = ref(null);

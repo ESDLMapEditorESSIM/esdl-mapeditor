@@ -92,7 +92,6 @@ For more details see the json example below.
 
 - `columns`: list of columns to be displayed using which keys (dataIndex).
 - `actions`: list of actions with `title`, `icon`, `next_step` and `enabled` options.
-  with a `_` to form the label shown to the user.
 - `value_field`: key of a unique field in each row by which to identify.
 - `additional_fields`: list of key values that will also be added to the workflow state along with the `value_field`.
 
@@ -209,12 +208,15 @@ Example config:
 
 ## `table-external-model`
 
-This Workflow step shows a table of all runs for an external model. It is a wrapper around the `table` component
-including the components related to the actions. There is also a filter to only show run from a specific project or
-group.
-This component was created since there is a lot of configuration which is the same for all external models. This
-component uses `vue/components/workflow/configuration/workflow_table_external_model_config.json` as a basis and
-overrides specific parameters described below in the `config` section.
+This Workflow step shows a table of all runs for an external model with run actions. There is also a filter to only show
+run from a specific project or group.
+The following run actions are available:
+- Load result
+- View feedback (if `has_feedback_messages`)
+- View details
+- Edit
+- Download xlsx (if `time_series_xlsx_download`)
+- Delete
 
 #### `config` options
 
@@ -222,6 +224,7 @@ For more details see the json example below.
 
 - `external_model`: name of the external model.
 - `model_short_name`: a short name to be displayed in the result visualization.
+- `has_feedback_messages`: boolean flag for feedback messages from a model run.
 - `result_animation`: activates the ESDL animation option with the optional `influxdb_host_override` which can be useful
   for local development when the profiles in the esdl point to another host, the `filter_on_tag` determines how to
   extract data from influxdb.
@@ -229,7 +232,7 @@ For more details see the json example below.
 - `delete_result_url`: optional external model endpoint to also delete data from the external model database when
   deleting a run.
 - `time_series_xlsx_download`: activates the time series download to xlsx option. There are quite some configuration
-  settings, see below for essim output, here is also an optional `influxdb_host_override`.
+  settings, see below for essim format, here is also an optional `influxdb_host_override`.
 
 #### required input data
 
@@ -237,8 +240,7 @@ The required input consists of a list of row objects with key-value pairs. The v
 
 #### output data
 
-When an action is clicked for a specific row, the `value_field` and `additional_fields` are added to the state. There is
-no real output data from this component.
+There is no output data from this component.
 
 Example config:
 

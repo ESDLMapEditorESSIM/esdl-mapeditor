@@ -65,6 +65,7 @@ const props = defineProps({
   },
 });
 
+/** @type {import('vue').Ref<StepParameters|null>} */
 const stepParams = ref({});
 
 onMounted(() => {

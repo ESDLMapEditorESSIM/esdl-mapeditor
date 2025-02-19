@@ -89,6 +89,7 @@ const {
   isBackendProcessIdOngoing,
 } = useOngoingBackendProcesses();
 
+/** @type {import('vue').Ref<StepParameters|null>} */
 const stepParams = ref({});
 
 onMounted(() => {
@@ -138,7 +139,8 @@ const getTagColor = (text) => {
 
 const doAction = (record, action) => {
   hide_jquery_ui_popup();
-  // console.log('Action selected: ', record[rowKey.value], action);
+
+  // put record key, optional additional variables, in state
   if (stepParams.value.data.output_wrapper_variable) {
     state[stepParams.value.data.output_wrapper_variable] = {};
     state[stepParams.value.data.output_wrapper_variable][rowKey.value] = record[rowKey.value];
@@ -171,7 +173,6 @@ const actionWaiting = (action, record) => {
 
 const actionEnabled = (action, row) => {
   if (action.enabled) {
-    // console.log("Action enabled: ", action, row);
     if (action.enabled.dataIndex) {
       if ("values" in action.enabled) {
         let value = row[action.enabled.dataIndex];

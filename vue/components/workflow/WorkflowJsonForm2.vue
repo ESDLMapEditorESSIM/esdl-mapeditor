@@ -44,7 +44,7 @@ const props = defineProps({
     required: true,
   },
 });
-
+/** @type {import('vue').Ref<StepParameters|null>} */
 const stepParams = ref({});
 
 const formData = ref({});

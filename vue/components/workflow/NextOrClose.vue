@@ -25,6 +25,7 @@ const props = defineProps({
 });
 
 const {getWorkflowStepParameters, goToStep, startOver} = useWorkflow();
+/** @type {import('vue').Ref<StepParameters|null>} */
 const stepParams = ref({});
 
 onMounted(() => {
