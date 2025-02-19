@@ -3,7 +3,7 @@
     <div id="menu_doc" class="menu-icon" style="margin-top:0px"><i class="fas fa-home" aria-hidden="true" /></div>
     Residential Area
   </a>
-  <a-modal v-model:visible="visible" title="Residential Area" width="1200px">
+  <a-modal v-model:open="visible" title="Residential Area" width="1200px">
     <template #footer>
       <a-button key="ok" type="primary" @click="handleOk">
         Ok
