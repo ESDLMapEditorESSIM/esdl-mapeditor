@@ -3,7 +3,7 @@
     <a-button type="primary" @click="showModal">
       <i :class="load_dashboard_icon" />
     </a-button>
-    <a-modal v-model:visible="visible" :title="loadDashboardTitle" width="750px" @ok="handleOk">
+    <a-modal v-model:open="visible" :title="loadDashboardTitle" width="750px" @ok="handleOk">
       <a-card>
         <span>
           {{ loadDashboardText }}

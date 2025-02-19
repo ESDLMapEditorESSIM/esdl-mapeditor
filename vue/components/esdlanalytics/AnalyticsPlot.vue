@@ -1,5 +1,5 @@
 <template>
-  <div v-show="trace.length === 0" class="no-data">Not configured</div>
+  <div v-show="trace.length === 0" class="no-analytics-data">Not configured</div>
   <div v-show="trace.length" class="with-data">
     <div id="plot" ref="plotDiv" class="plotly-plot" />
   </div>
@@ -90,7 +90,10 @@ const unmountPlot = () => {
 	}
 };
 
-$(document).on('esdlAnalyticsIsClosed', (_, data) => {
+// Listens to esdlAnalyticsIsClosed or kpiDashboardIsClosed events emitted from esdl_analytics.js or KPIDashboard.js
+// to ensure the Plotly plot is properly cleaned up after closing instead of only becoming invisible 
+// (default behavior of the Leaflet Control Dialog).
+$(document).on("esdlAnalyticsIsClosed kpiDashboardIsClosed", (_, data) => {
 	if (data) {
 		unmountPlot();
 	}
@@ -99,7 +102,6 @@ $(document).on('esdlAnalyticsIsClosed', (_, data) => {
 
 <style>
 .plotly-plot {
-  width: 100%;
 	height: 90%;
 }
 
@@ -107,21 +109,23 @@ $(document).on('esdlAnalyticsIsClosed', (_, data) => {
   display: flex;
   flex-direction: column;
   height: 100%;
+  width: 100%;
   justify-content: space-between;
   border: 1px solid rgba(100, 100, 100, 0.15);
 	border-radius: .5rem;
 }
 
-.no-data {
-    height: 100%;
-    display: flex;
-    flex-grow: auto;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    font-size: 20pt;
-    color: grey;
-    border: 1px solid rgba(100, 100, 100, 0.15);
-    border-radius: .5rem;
+.no-analytics-data {
+	height: 100%;
+	width: 100%;
+	display: flex;
+	flex-grow: auto;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	font-size: 20pt;
+	color: grey;
+	border: 1px solid rgba(100, 100, 100, 0.15);
+	border-radius: .5rem;
 }
 </style>

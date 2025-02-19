@@ -11,14 +11,15 @@
           <component :is="plotTypeIcon" />
         </template>
       </a-button>
-      <!-- TODO: implement the same close button in other dashboard panels (e.g. text, image, etc.)  -->
-      <!-- <a-button 
+      <a-button 
         type="text" 
+        class="panel-header-icon-btn"
+        @click="emit('onRemove')"
       >
         <template #icon>
-          <CloseOutlined class="panel-header-icon-btn" />
+          <CloseOutlined />
         </template>
-      </a-button> -->
+      </a-button>
     </a-row>
     <a-row class="panel-plot-container no-drag">
       <Plot
@@ -33,7 +34,7 @@
 <script setup>
 import { defineProps, ref, computed, watch } from "vue";
 import Plot from "./Plot.vue";
-import { PieChartOutlined, BarChartOutlined, TableOutlined } from "@ant-design/icons-vue";
+import { CloseOutlined, PieChartOutlined, BarChartOutlined, TableOutlined } from "@ant-design/icons-vue";
 
 const plotTypes = ["bar", "pie", "table"];
 
@@ -59,6 +60,8 @@ const props = defineProps({
 });
 
 const resizeEventCounter = ref(0);
+
+const emit = defineEmits(["onRemove"]);
 
 /**
  * Listens to the panelDimension prop state update
