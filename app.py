@@ -167,7 +167,14 @@ app.config['EXECUTOR_PROPAGATE_EXCEPTIONS'] = True # make sure errors are logged
 logger.info("Socket.IO Async mode: {}".format(settings.ASYNC_MODE))
 logger.info('Running inside uWSGI: {}'.format(is_running_in_uwsgi()))
 
-socketio = SocketIO(app, async_mode=settings.ASYNC_MODE, manage_session=False, path='/socket.io', logger=settings.FLASK_DEBUG)
+socketio = SocketIO(
+    app,
+    async_mode=settings.ASYNC_MODE,
+    manage_session=False,
+    path='/socket.io',
+    logger=settings.FLASK_DEBUG,
+    engineio_logger=settings.FLASK_DEBUG,
+)
 # logging.getLogger('engineio').setLevel(logging.WARNING)  # don't print all the messages
 
 # remove existing sessions when restarting, existing sessions will give errors

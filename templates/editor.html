@@ -561,7 +561,22 @@
         // ------------------------------------------------------------------------------------------------------------
         $(document).ready(function() {
             namespace = '/esdl';
-            socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace, {'timeout':50000, 'connect timeout': 15000, path: "/socket.io"});
+            socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace, {
+                'timeout': 50000,
+                'connect timeout': 15000,
+                path: "/socket.io"
+            });
+
+            function handleErrors(err) {
+                console.error("SocketIO error!", err)
+            }
+
+            socket.on('connect_error', err => handleErrors(err))
+            socket.on('connect_failed', err => handleErrors(err))
+            socket.on('disconnect', err => handleErrors(err))
+
+            socket.onerror = (err) => handleErrors(err)
+            socket.onclose = () => console.log("WebSocket closed");
 
             // add_handler();
             add_geojson_listener(socket, map);
