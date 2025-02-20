@@ -950,12 +950,13 @@ class DataManager:
 
                 query_filters = []
                 if profile.filters:
-                    # Parse filter string with regex e.g. '"assetId"=\'example_UUID\''
-                    match = re.search(r'"(\w+)"=\'([^\']+)\'', profile.filters)
-                    if match:
-                        key = match.group(1)
-                        value = match.group(2)
-                        query_filters = [{"tag": key, "value": value}]
+                    # Parse filter string with regex
+                    if "AND" in profile.filters:
+                        matches = re.findall(r"(\w+)='([^']*)'", profile.filters)
+                    else:
+                        matches = re.findall(r'"(\w+)"=\'([^\']+)\'', profile.filters)                        
+                    if len(matches):
+                        query_filters = [{"tag": key, "value": value} for key, value in matches]
 
                 # If the data range is presented in the request, select a subset of data.
                 if len(data_range) > 0:
