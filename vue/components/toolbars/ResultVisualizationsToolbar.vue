@@ -1,6 +1,6 @@
 <template>
   <div
-    v-show="kpis_present || animation_possible"
+    v-show="kpis_present || animation_possible || external_link_description!=null"
     class="my-control leaflet-result-visualizations-toolbar"
   >
     <a-row type="flex" justify="space-between">
@@ -14,9 +14,9 @@
       </a-col>
     </a-row>
 
-    <a-row v-if="service_short_name!=null && calc_name!=null">
+    <a-row v-if="model_name!=null && calc_name!=null">
       <a-space direction="vertical" align="center">
-        <span>For '{{ service_short_name }}' result: '{{ calc_name }}'</span>
+        <span>For {{ model_name }} result: '{{ calc_name }}'</span>
       </a-space>
     </a-row>
     <br>
@@ -26,20 +26,25 @@
           <a-button v-if="kpis_present" size="small" type="primary" @click="handleShowDashboard">
             Show KPI dashboard
           </a-button>
-          <span v-else>No KPI's available</span>
         </a-space>
-
+        <a-space>
+          <a-button
+            v-if="external_link_description!=null" size="small" type="primary"
+            @click="handleShowExternalLink"
+          >
+            {{ external_link_description }}
+          </a-button>
+        </a-space>
         <a-space-compact v-if="animation_possible" block size="small">
           <a-select
             ref="select"
-            v-model:value="selected_field"
+            v-model:value="anim_selected_field"
             style="width: 150px"
-            :options="field_options"
-            @focus="focus"
+            :options="anim_field_options"
             @change="handleChange"
           />
           <a-button
-            :disabled="selected_field === 'Choose field ...'"
+            :disabled="anim_selected_field === 'Choose field ...'"
             size="small"
             type="primary"
             @click="handleLoadAnimation"
@@ -47,7 +52,7 @@
             Load animation
           </a-button>
         </a-space-compact>
-        <a-space v-else-if="service_short_name!=null && calc_name!=null">
+        <a-space v-else-if="model_name!=null && calc_name!=null">
           <span>No animation available</span>
         </a-space>
       </a-space>
@@ -61,42 +66,49 @@ import {CloseOutlined} from '@ant-design/icons-vue';
 
 const kpis_present = ref(false);
 const animation_possible = ref(false);
-const field_options = ref([]);
-const selected_field = ref("Choose field ...");
-const anim_esdl_id = ref(null);
-const service_short_name = ref(null);
+const anim_field_options = ref([]);
+const anim_selected_field = ref("Choose field ...");
+const esdl_id = ref(null);
+const anim_filter_tag_name = ref(null);
+const anim_filter_tag_value = ref(null);
+const anim_influxdb_host_override = ref(null);
+const model_name = ref(null);
 const calc_name = ref(null);
+const external_link_description = ref(null);
+const external_link_url = ref(null);
 
 onMounted(() => {
   window.addEventListener('load', () => {
     // run after everything is in-place
     window.socket.on('kpis_present', function (data) {
       console.log('kpis_present:', data['es_id']);
-      if (data['es_id'] !== anim_esdl_id.value) {  // remove animation info if new ESDL
-        time_dimension.removeGeoJSONLayers();
-        time_dimension.show_hide_animation_toolbar(false);
-        animation_possible.value = false;
-        anim_esdl_id.value = null;
-        service_short_name.value = null;
-        calc_name.value = null;
-      }
+      setEsdlId(data['es_id']);
       kpis_present.value = true;
     });
     window.socket.on('animation_esdl_data', function (data) {
-      console.log('animation_possible, esdl id: ', data['es_id']);
+      console.log('animation_esdl_data, esdl id: ', data['es_id']);
+      setEsdlId(data['es_id']);
       animation_possible.value = true;
-      field_options.value = [];
+      anim_field_options.value = [];
       data['fields'].forEach((field) => {
-        field_options.value.push(
+        anim_field_options.value.push(
             {
               value: field,
               label: field,
             }
-        )
+        );
       });
-      anim_esdl_id.value = data['es_id'];
-      service_short_name.value = data['service_short_name'];
+      model_name.value = data['model_name'];
       calc_name.value = data['calc_name'];
+      anim_filter_tag_name.value = data["filter_tag_name"];
+      anim_filter_tag_value.value = data["filter_tag_value"];
+      anim_influxdb_host_override.value = data["influxdb_host_override"];
+    });
+    window.socket.on('results_external_link', function (data) {
+      console.log('results_external_link:', data);
+      setEsdlId(data['es_id']);
+      external_link_description.value = data["description"]
+      external_link_url.value = data["url"]
     });
   });
 });
@@ -104,24 +116,45 @@ onMounted(() => {
 const handleShowDashboard = () => {
   window.kpi_dashboard.open();
 };
-const handleLoadAnimation = () => {
-  console.log("Results animation");
-  // TODO simulation_id set to 'null' since we don't know the output mesido simulationRun, use for essim
 
-  time_dimension.initialize(anim_esdl_id.value, null, [], selected_field.value);
+const handleShowExternalLink = () => {
+  window.open(external_link_url.value, '_blank');
 };
+
+const handleLoadAnimation = () => {
+  time_dimension.initialize(
+      esdl_id.value, anim_filter_tag_name.value, anim_filter_tag_value.value, [], anim_selected_field.value, anim_influxdb_host_override.value
+  );
+};
+
 const handleDismiss = () => {
+  clearData();
+};
+
+const handleChange = (value) => {
+  anim_selected_field.value = value;
+};
+
+const setEsdlId = (new_esdl_id) => {
+  if (new_esdl_id !== esdl_id.value) {  // remove data info if new ESDL
+    clearData();
+    esdl_id.value = new_esdl_id;
+  }
+}
+
+const clearData = () => {
   time_dimension.removeGeoJSONLayers();
   time_dimension.show_hide_animation_toolbar(false);
   kpis_present.value = false;
   animation_possible.value = false;
-  anim_esdl_id.value = null;
-  service_short_name.value = null;
+  anim_selected_field.value = "Choose field ...";
+  anim_filter_tag_name.value = null;
+  anim_filter_tag_value.value = null;
+  anim_influxdb_host_override.value = null;
+  esdl_id.value = null;
+  model_name.value = null;
   calc_name.value = null;
-};
-const handleChange = (value) => {
-  console.log(`selected: ${value}`);
-  selected_field.value = value;
+  external_link_description.value = null;
 };
 
 </script>

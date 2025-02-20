@@ -38,7 +38,8 @@ SQLALCHEMY_DATABASE_URI = os.environ.get('SQLALCHEMY_DATABASE_URI', f"sqlite:///
 settings_storage_config = {
     "host": os.environ.get('SETTINGS_STORAGE_HOST', None),  # "mongo",
     "port": os.environ.get('SETTINGS_STORAGE_PORT', "27017"),
-    "database": "esdl_mapeditor_settings"
+    "database": "esdl_mapeditor_settings",
+    "external_models_collection": "external_model_runs"
 }
 
 user_logging_config = {

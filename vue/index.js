@@ -54,6 +54,7 @@ import ResidentialArea from "@/apps/ResidentialArea.vue";
 import HeatTransition from "@/apps/HeatTransition.vue";
 import './utils/startDrawAsset';
 import ResultVisualizationsToolbar from "@/components/toolbars/ResultVisualizationsToolbar.vue";
+import ToastNotifications from "@/apps/ToastNotifications.vue";
 
 // Vue.config.productionTip = false
 
@@ -172,9 +173,14 @@ createApp(ToggleShowAssetDrawToolbar).mount('#vue_toggle_show_asset_draw_toolbar
 mountApp(SidePane, '#vue_side_pane_root')
 createApp(ActivityContextSelector).mount('#vue_activity_context_selector')
 
+const [,toastNotificationInstance] = mountApp(ToastNotifications, '#toast_notifications');
+import {useToastNotifications} from "@/composables/toastNotifications";
+const {setToastNotificationsInstance } = useToastNotifications();
+setToastNotificationsInstance(toastNotificationInstance);
+
 createVueLControl(AssetsToBeAddedToolbar, {
         position: 'bottomright',
-    });
+});
 
 window.activate_table_editor_window = () => {
     mountApp(AssetTableEditor, '#table_editor_window');

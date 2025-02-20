@@ -431,10 +431,11 @@ function cancel_ESSIM_simulation() {
 }
 
 function poll_simulation_progress() {
+    console.log("ESS PROG URL", ESSIM_simulation_URL_prefix + 'simulation_progress');
     $.ajax({
         url: ESSIM_simulation_URL_prefix + 'simulation_progress',
         success: function(data){
-            console.log(data);
+            console.log("ESS PROG", ESSIM_simulation_URL_prefix + 'simulation_progress', data);
             if (data["status"] == "ERROR") {
                 let description = data["description"];
                 let more_info = data["moreInfo"];
