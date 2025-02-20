@@ -399,9 +399,9 @@ class ESDLServices:
 
             if not url or url_response.status_code == 200 or url_response.status_code == 201:
                 if service["result"][0]["action"] == "esdl":
-                    if input_data.get(OUTPUT_ESDL):
+                    if isinstance(input_data, dict) and input_data.get(OUTPUT_ESDL):
                         esdl_data = input_data.get(OUTPUT_ESDL)
-                    elif input_data.get(INPUT_ESDL):
+                    elif isinstance(input_data, dict) and input_data.get(INPUT_ESDL):
                         esdl_data = input_data.get(INPUT_ESDL)
                     elif "json_field" in service["result"][0]:
                         esdl_data = url_response.json()[service["result"][0]["json_field"]]

@@ -213,15 +213,6 @@ export function useWorkflow() {
     };
 
     /**
-     * Go to the workflow step from config.
-     * Go to a step which is not loaded in mongo, used by WorkflowTableExternalModel
-     */
-    const goToStepFromConfig = (stepConfig) => {
-        currentWorkflow.value.addStep(stepConfig);
-        persistWorkflow();
-    };
-
-    /**
      * Go to the next workflow step.
      */
     const goToPreviousStep = () => {
@@ -404,7 +395,6 @@ export function useWorkflow() {
         currentWorkflow,
         goToStep,
         goToFirstStep,
-        goToStepFromConfig,
         goToPreviousStep,
         getWorkflowStep,
         getState,

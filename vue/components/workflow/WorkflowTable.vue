@@ -79,7 +79,6 @@ const props = defineProps({
 const {
   getWorkflowStepParameters,
   goToStep,
-  goToStepFromConfig,
   getState,
   getInputData,
 } = useWorkflow();
@@ -160,9 +159,7 @@ const doAction = (record, action) => {
     setStartingBackendProcessId(processId);
   }
 
-  if ("next_step_config" in action) {
-    goToStepFromConfig(action.next_step_config);
-  } else if ("next_step" in action) {
+  if ("next_step" in action) {
     goToStep(action.next_step);
   }
 };
