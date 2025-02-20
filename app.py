@@ -55,12 +55,15 @@ from extensions.esdl_merge import ESDLMerge
 from extensions.essim import ESSIM
 from extensions.essim_sensitivity import ESSIMSensitivity
 from extensions.etm_interface import ETMInterface
+from extensions.external_models.external_models import ExternalModels
+from extensions.external_models.external_models_storage import ExternalModelsStorage
 from extensions.heatnetwork import HeatNetwork
 from extensions.ibis import IBISBedrijventerreinen
 from extensions.mapeditor_settings import MAPEDITOR_UI_SETTINGS, MapEditorSettings
 from extensions.open_id_integration import OpenIDIntegration
 from extensions.pico_rooftoppv_potential import PICORooftopPVPotential
 from extensions.port_profile_viewer import PortProfileViewer
+from extensions.toast_notifications import ToastNotifications
 from src.edr_client import EDRClient
 from extensions.profiles import Profiles
 from extensions.session_manager import del_session, delete_sessions_on_disk, get_handler, get_session, \
@@ -84,6 +87,7 @@ from src.esdl_helper import asset_state_to_ui, generate_profile_info, get_asset_
 from src.esdl_services import ESDLServices
 from src.essim_kpis import ESSIM_KPIs
 from src.essim_validation import validate_ESSIM
+from extensions.workflow_engine import WorkflowEngine
 from src.log import get_logger
 from src.process_es_area_bld import get_building_information, process_energy_system, get_building_connections, \
     find_area_location_based, calc_building_assets_location
@@ -129,6 +133,7 @@ if settings.settings_storage_config["host"] is None or settings.settings_storage
     logger.error("Settings storage is not configured. Aborting...")
     exit(1)
 settings_storage = SettingsStorage(named_locker)
+models_storage = ExternalModelsStorage(named_locker)
 
 
 # handler to retrieve ESDL documentation
@@ -177,6 +182,7 @@ executor = Executor(app)
 
 #extensions
 schedule_session_clean_up()
+toast_notifications = ToastNotifications(app, socketio)
 wms_layers = WMSLayers(app, socketio, settings_storage)
 HeatNetwork(app, socketio)
 IBISBedrijventerreinen(app, socketio)
@@ -201,7 +207,7 @@ ShapefileConverter(app, socketio, executor)
 time_dimension = TimeDimension(app, socketio, executor, settings_storage)
 ETMInterface(app, socketio, settings_storage)
 PortProfileViewer(app, socketio, settings_storage)
-esdl_services = ESDLServices(app, socketio, settings_storage)
+esdl_services = ESDLServices(app, socketio, settings_storage, models_storage)
 PICORooftopPVPotential(app, socketio)
 SpatialOperations(app, socketio)
 DataLayerAPI(app, socketio, esdl_doc)
@@ -220,6 +226,11 @@ ActivityContextExtension(app, socketio, settings_storage)
 ResidentialArea(app, socketio, settings_storage)
 Ownership(app)
 data_manager = DataManager(app, socketio)
+ExternalModels(app, socketio, models_storage, toast_notifications)
+WorkflowEngine(app, socketio, models_storage, esdl_services, toast_notifications)
+
+
+#TODO: check secret key with itsdangerous error and testing and debug here
 
 app.config.update({
     'TESTING': True,
@@ -331,6 +342,7 @@ def editor():
                     # 'mapeditor-admin' gives you admin rights in this app
                     mapeditor_role = resource_access[client]['roles']
         logger.debug(f"User has following mapeditor role(s): {mapeditor_role}")
+        set_session('user-group-path', openid.get_user_profile().get('user_group_path'))
         set_session('user-group', openid.get_user_profile().get('user_group'))
         set_session('user-role', role)
         set_session('user-email', user_email)
@@ -413,7 +425,7 @@ def logout():
 
     # Cleanup all user-associated data manager metadata before logging out.
     data_manager.delete_dataset(db.session, None, user_email)
-    
+
     oidc_auth_token = openid.get_full_oauth_token()
     # print("Flask-OIDC User:", user)
     # print("Flask-OIDC auth_profile:", session.get("oidc_auth_profile"))
@@ -1388,9 +1400,25 @@ def get_first_last_of_line(line):
 
 
 @executor.job
-def call_process_energy_system(esh, filename=None, es_title=None, app_context=None, force_update_es_id=None, zoom=True):
-    process_energy_system(esh, filename=filename, es_title=es_title, app_context=app_context, force_update_es_id=force_update_es_id, zoom=zoom)
-
+def call_process_energy_system(
+        esh,
+        filename=None,
+        es_title=None,
+        app_context=None,
+        force_update_es_id=None,
+        zoom=True,
+        result_post_esdl_load=None,
+):
+    process_energy_system(
+        esh,
+        filename=filename,
+        es_title=es_title,
+        app_context=app_context,
+        force_update_es_id=force_update_es_id,
+        zoom=zoom,
+    )
+    if result_post_esdl_load:
+        emit('esdl_service_result', result_post_esdl_load)
 
 # ---------------------------------------------------------------------------------------------------------------------
 #  React on commands from the browser (add, remove, ...)
@@ -2945,9 +2973,13 @@ def query_esdl_services(params):
         esdl_service_result = str(exc)
 
     logger.debug('emitting result to browser')
+    esdl_service_result_post_esdl_load = None
     if esdl_service_ok:
         if esdl_service_result is not None:
-            emit('esdl_service_result', esdl_service_result)
+            if backend_action and "run_after_esdl_loaded" in backend_action and backend_action["run_after_esdl_loaded"]:
+                esdl_service_result_post_esdl_load = esdl_service_result
+            else:
+                emit('esdl_service_result', esdl_service_result)
     else:
         message = 'Error calling service'
         if isinstance(esdl_service_result, str):
@@ -2961,7 +2993,9 @@ def query_esdl_services(params):
             force_update_es_id = backend_action["force_update_es_id"]
 
     # logger.debug('processing energy system')
-    call_process_energy_system.submit(esh, force_update_es_id=force_update_es_id)
+    call_process_energy_system.submit(
+        esh, force_update_es_id=force_update_es_id, result_post_esdl_load=esdl_service_result_post_esdl_load
+    )
 
 
 @socketio.on('set_active_es_id', namespace='/esdl')
