@@ -26,7 +26,7 @@ FLASK_DEBUG = (_flask_debug.upper() == 'TRUE' or _flask_debug == '1')
 
 USER_LOGGING_ENABLED = True
 # ASYNC_MODE = 'gevent_uwsgi'
-ASYNC_MODE = None # default for non uWGSI deployments
+ASYNC_MODE = None  # default for non uWGSI deployments
 
 OIDC_CLIENT_SECRETS = os.environ.get('OIDC_CLIENT_SECRETS', None) # 'credentials/client_secrets_opensource.json'
 _use_gevent = os.environ.get('MAPEDITOR_USE_GEVENT', '')
