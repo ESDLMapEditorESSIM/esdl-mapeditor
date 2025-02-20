@@ -252,7 +252,7 @@
         },
         "data": {
           "from_url": {
-            "url": "http://localhost:8112/essim/simulation/kpiModules/"
+            "url": "http://essim-engine:8112/essim/simulation/kpiModules/"
           },
           "to_state": {},
           "output_wrapper_variable": "selected_kpis"
@@ -284,7 +284,7 @@
             "Accept": "application/json",
             "Content-Type": "application/json"
           },
-          "url": "http://localhost:8112/essim/simulation",
+          "url": "http://essim-engine:8112/essim/simulation",
           "http_method": "post",
           "type": "send_esdl",
           "send_email_in_post_body_parameter": "user_name",
@@ -368,7 +368,7 @@
           "model_run_result_polling": {
             "query_list": [
               {
-                "url": "http://localhost:8112/essim/simulation/<MODEL_JOB_ID>",
+                "url": "http://essim-engine:8112/essim/simulation/<MODEL_JOB_ID>",
                 "response_mapping": {
                   "status": "status.state",
                   "progress_fraction": "status.description"
@@ -532,7 +532,7 @@
         },
         "data": {
           "from_url": {
-            "url": "http://localhost:9200/workflow/"
+            "url": "http://omotes-rest:9200/workflow/"
           },
           "to_state": {},
           "output_wrapper_variable": "selected_workflow_type"
@@ -579,7 +579,7 @@
             "User-Agent": "ESDL Mapeditor/1.0",
             "Content-Type": "application/json"
           },
-          "url": "http://localhost:9200/job/",
+          "url": "http://omotes-rest:9200/job/",
           "http_method": "post",
           "type": "send_esdl",
           "send_email_in_post_body_parameter": "user_name",
@@ -647,7 +647,7 @@
           "model_run_result_polling": {
             "query_list": [
               {
-                "url": "http://localhost:9200/job/<MODEL_JOB_ID>",
+                "url": "http://omotes-rest:9200/job/<MODEL_JOB_ID>",
                 "response_mapping": {
                   "status": "status",
                   "progress_fraction": "progress_fraction",
@@ -697,11 +697,9 @@
         "config": {
           "external_model": "omotes",
           "model_short_name": "omotes",
-          "result_animation": {
-            "influxdb_host_override": "localhost"
-          },
+          "result_animation": {},
           "has_feedback_messages": true,
-          "delete_result_url": "http://localhost:9200/job/<MODEL_JOB_ID>",
+          "delete_result_url": "http://omotes-rest:9200/job/<MODEL_JOB_ID>",
           "time_series_xlsx_download": {
             "esdl_object_name_field": "assetName",
             "excel_sheets_per_table": [
@@ -717,8 +715,7 @@
                 "name_postfix": "PostProc.Velocity_m_per_s",
                 "field_name_recorded_per_esdl_object": "PostProc.Velocity"
               }
-            ],
-            "influxdb_host_override": "localhost"
+            ]
           }
         },
         "data": {
@@ -731,41 +728,6 @@
           "output_wrapper_variable": "model_run"
         },
         "with_jwt_token": true
-      },
-      {
-        "id": "load_run_results",
-        "name": "Load ESDL",
-        "description": "Loads the result in the ESDL MapEditor",
-        "type": "esdl-service",
-        "config": {
-          "state_params": {
-            "run_id": "model_run.run_id",
-            "run_name": "model_run.run_name"
-          }
-        },
-        "service": {
-          "id": "x1c9d1a2-c92a-46ed-a7e4-9931971cbb23",
-          "name": "Load ESDL results",
-          "description": "The results should have been loaded in the MapEditor",
-          "button_label": "Go back to results",
-          "auto": true,
-          "type": "",
-          "external_model": "omotes",
-          "result": [
-            {
-              "action": "esdl",
-              "run_esdl_key": "output_esdl",
-              "model_short_name": "omotes",
-              "animation": {
-                "influxdb_host_override": "localhost"
-              }
-            }
-          ],
-          "with_jwt_token": true,
-          "state_params": true
-        },
-        "next_step": "base_steps_with_table",
-        "next_step_trigger": "loading_complete"
       }
     ]
   },
@@ -824,7 +786,7 @@
         },
         "data": {
           "from_url": {
-            "url": "http://localhost:5000/schema"
+            "url": "http://esdl-validator:5000/schema"
           },
           "to_state": {},
           "output_wrapper_variable": "schema"
@@ -849,7 +811,7 @@
             "User-Agent": "ESDL Mapeditor/0.1",
             "Content-Type": "application/xml;charset=UTF-8"
           },
-          "url": "http://localhost:5000/validationToMessages/",
+          "url": "http://esdl-validator:5000/validationToMessages/",
           "http_method": "post",
           "type": "send_esdl",
           "query_parameters": [
