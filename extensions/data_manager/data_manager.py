@@ -12,11 +12,12 @@
 #  Manager:
 #      TNO
 import logging
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from enum import Enum
-from typing import Any, TypedDict, List, Dict, Optional, Sequence, Iterable
+from typing import Any, TypedDict, List, Dict, Optional, Sequence, Iterable, Tuple
 import json
 import re
+from urllib.parse import urlparse
 
 from flask import Flask
 from flask_socketio import SocketIO
@@ -26,10 +27,11 @@ from sqlalchemy.sql import text, func
 from sqlalchemy.exc import IntegrityError
 import pandas as pd
 from pandas import DataFrame
+from influxdb import InfluxDBClient
 
 import esdl
 from esdl.processing.ESDLAsset import get_asset_capability_type
-from esdl.processing.ESDLQuantityAndUnits import unit_to_string, build_qau_from_unit_string, qau_to_string
+from esdl.processing.ESDLQuantityAndUnits import unit_to_string
 from esdl.profiles.influxdbprofilemanager import InfluxDBProfileManager, ConnectionSettings
 from extensions.profiles import Profiles
 from extensions.data_manager import db
@@ -39,7 +41,9 @@ from extensions.data_manager.data_manager_message import (ChartType,
                                                           MetadataOperationResp,
                                                           GetVariablesRequestBody,
                                                           GetColumnsRequestBody,
-                                                          QueryRequestBody)
+                                                          QueryRequestBody,
+                                                          ProfileVizType,
+                                                          ProfileAggInterval)
 from extensions.data_manager.db_interaction import create_db, drop_db
 from extensions.data_manager.db_model import DataSet, Variable, DataType, Data, BaseModel
 from extensions.session_manager import get_handler, get_session
@@ -156,7 +160,7 @@ def handle_influxdb_profile(profile: esdl.InfluxDBProfile, ds: DataSet):
     labels = {}
     # Label profile id, so it can be retrieved when the query_influxdb_profile() method is called.
     labels['profile_id'] = profile.id
-    labels['Profile entry'] = profile.measurement
+    labels['Measurement'] = profile.measurement
 
     # TODO: extract below code to avoid duplication in handle_static_profile()
     if isinstance(container, esdl.Port):
@@ -214,6 +218,7 @@ def handle_static_profile(profile: esdl.StaticProfile, ds: DataSet, variable_nam
         profile = profile.reference
     qau = check_qau(profile.profileQuantityAndUnit)
     d = Data(dataset=ds, value=None) # Default value to None
+    # TODO: is this needed?
     if isinstance(profile, esdl.TimeSeriesProfile):
         ts_profile: esdl.TimeSeriesProfile = profile
         aggregate = aggreate_based_on_unit(qau, ts_profile.values) * multiplier
@@ -296,6 +301,89 @@ def preprocess_column(column_name: str, db_engine_driver: str = "sqlite") -> Any
             return Data.labels[key_name].astext.label(column_name)
     else:
         return column(column_name)
+    
+def get_profile_influxdb_settings(profile: esdl.InfluxDBProfile, profiles_settings: dict) -> ConnectionSettings | None:
+    """
+    Retrieves InfluxDB connection settings for a given profile.
+
+    If the profile is hosted on a publicly accessible server, 
+    it additionally checks the InfluxDB connectivity and constructs the connection settings.
+    """
+    # Find profile server information for the InfluxDBProfile
+    for prof_server in profiles_settings["profiles_servers"]:
+        if prof_server["host"] in profile.host and prof_server["port"] == str(profile.port):
+            return ConnectionSettings(
+                host=prof_server["host"],
+                port=profile.port,
+                database=profile.database,
+                username=prof_server["username"],
+                password=prof_server["password"],
+                ssl=prof_server.get("ssl_enabled", False),
+                verify_ssl=prof_server.get("ssl_enabled", False),
+            )
+
+    # Check additionally if the profile is hosted on a public accessible server
+    # Ensure host part only (without http:// or https://) 
+    host = urlparse(profile.host).netloc if profile.host.startswith(('http://', 'https://')) else profile.host
+    try:
+        influxdb_client = InfluxDBClient(host=host, port=profile.port, ssl=True, verify_ssl=True)
+        db = influxdb_client.get_list_database()
+        if db:
+            return ConnectionSettings(
+                host=host,
+                port=profile.port,
+                database=profile.database,
+                username="",
+                password="",
+                ssl=True,
+                verify_ssl=True,
+            )
+    except Exception as e:
+        logger.warn(e)
+    finally:
+        if influxdb_client:
+            influxdb_client.close()
+
+    return None
+
+def aggregate_profile_data(data: List[Tuple[datetime, float]], interval: str, agg_func: str) -> list:
+    """
+    Aggregate profile data into specified time intervals and apply the given aggregation function.
+
+    :param data: A list of tuples, each containing a datetime object and a float value.
+    :param interval: The time interval for aggregation.
+    :param agg_func: The aggregation function to apply.
+
+    :return: A list containing two lists (interval label strings and aggregated values corresponding to each interval)
+
+    TODO: double check result
+    """
+
+    df = pd.DataFrame(data, columns=["time", "value"])
+    df.set_index("time", inplace=True)
+
+    if interval == ProfileAggInterval.YEAR.value:
+        resample_interval = "YE"
+        label_format = '%Y'
+    elif interval == ProfileAggInterval.QUARTER.value:
+        resample_interval = "QE"
+        label_format = '%Y-Q%q'
+    elif interval == ProfileAggInterval.MONTH.value:
+        resample_interval = "ME"
+        label_format = '%B'
+    elif interval == ProfileAggInterval.WEEK.value:
+        resample_interval = "W"
+        label_format = 'Week-%U'
+    else:
+        raise ValueError(f"Unsupported interval: {interval}")
+    
+    aggregated_data = df.resample(resample_interval).agg({'value': agg_func.lower()})
+    aggregated_data['label'] = aggregated_data.index.strftime(label_format)
+
+    result = [aggregated_data['label'].values.tolist(),
+              aggregated_data['value'].values.tolist()]
+
+    return result
 
 class DataManager:
     def __init__(self, flask_app: Flask, socket: SocketIO):
@@ -351,6 +439,7 @@ class DataManager:
             params['chart_type'] = ChartType(params['chart_type'])
             req_body = QueryRequestBody(**params)
 
+            # TODO: return rounded query values
             if req_body.profile:
                 return self.query_influxdb_profile(db.session, options=req_body) 
             else:
@@ -801,6 +890,135 @@ class DataManager:
 
         return sorted_resp
     
+    def query_influxdb_profile(self, session: Session, options: QueryRequestBody) -> dict:
+        """
+        Query influxdb profile data and perform data aggregation if specified. 
+        Return a dict of data traces, data range, and error messages.
+
+        TODO: 
+        - To support groupby
+        - To support trace in table visualiztion
+        """
+        dataset_ids = options.dataset_ids
+        variable_name = options.variable_name
+        # group_by = options.group_by
+        filters = options.filters
+        viz_type = options.profile['viz_type']
+        data_range = options.profile['data_range']
+
+        
+        resp = { "data_range": [], "traces": [], "errors": [], "error_msg": "" }
+
+        profiles_settings = Profiles.get_instance().get_profiles_settings()
+        esh = get_handler()
+
+        # group_by_param = [DataSet.name] + [preprocess_column(group) for group in group_by]
+
+        # energy_system_id and profile_id are required to derive the profile using esh.get_by_id()
+        query = session.query(Data,
+                              Data.node.label('attached_node'),
+                              DataSet.name,
+                              DataSet.energy_system_id,
+                              func.json_extract(Data.labels, '$.profile_id').label('profile_id'),
+                              func.json_extract(Data.labels, '$.Flow direction').label('flow_direction'))\
+            .join(Variable, Variable.id == Data.variable_id).join(DataSet, Data.dataset_id == DataSet.id)\
+            .where(Variable.name == variable_name)\
+            .where(Variable.dataset_id.in_(dataset_ids))\
+            
+        for col, values in filters.items():
+            values = [x for x in values if x is not None]   # if all options of a filter are selected, values is null
+            if len(values) > 0:  # only filter when some of the values are selected, but not all.
+                query = query.where(preprocess_column(col).in_(values))
+        
+        profiles_datetimes = []
+        traces = []
+        profile_query = query.all()
+        for result in profile_query:
+            es_id = result.energy_system_id
+            profile_id = result.profile_id
+            profile: esdl.InfluxDBProfile = esh.get_by_id(es_id, profile_id)
+            influxdb_settings = get_profile_influxdb_settings(profile, profiles_settings)
+
+            dataset_name = result.name
+            profile_label = f"{result.attached_node} ({result.flow_direction}Port)"
+
+            if not influxdb_settings:
+                err = f"Error connecting to {profile.host}:{profile.port} to query {profile_label} profile."
+                resp['errors'].append(err)
+            else:
+                profiles_datetimes.extend([profile.startDate, profile.endDate])
+
+                query_filters = []
+                if profile.filters:
+                    # Parse filter string with regex e.g. '"assetId"=\'example_UUID\''
+                    match = re.search(r'"(\w+)"=\'([^\']+)\'', profile.filters)
+                    if match:
+                        key = match.group(1)
+                        value = match.group(2)
+                        query_filters = [{"tag": key, "value": value}]
+
+                # If the data range is presented in the request, select a subset of data.
+                if len(data_range) > 0:
+                    range = data_range
+                    start_date = datetime.strptime(range[0], dt_str_format).replace(tzinfo=timezone.utc)
+                    end_date = datetime.strptime(range[1], dt_str_format).replace(tzinfo=timezone.utc)
+                else:
+                    start_date = profile.startDate
+                    end_date = profile.endDate
+
+                try:
+                    prof_manager = InfluxDBProfileManager(influxdb_settings)
+                    prof_manager.load_influxdb(
+                        measurement=profile.measurement,
+                        fields=[profile.field],
+                        from_datetime=start_date,
+                        to_datetime=end_date,
+                        filters=query_filters,
+                    )
+                    datetime_profile = prof_manager.get_esdl_datetime_profile(profile_name=profile.name)
+                except Exception as e:
+                    err = f"Error retrieving {profile.host}:{profile.port} {profile_label} profile: {e}"
+                    resp['errors'].append(err)
+                    logger.error(err)
+                    continue
+
+                data = []
+                for d in datetime_profile.element.items:
+                    d: esdl.ProfileElement
+                    date: datetime = d.from_
+                    value = d.value * profile.multiplier
+                    data.append((date, value))
+
+                if viz_type == ProfileVizType.AGGREGATED.value:
+                    viz_data = aggregate_profile_data(data, options.profile['agg_interval'], options.profile['agg_func'])
+                else:
+                    datetimes = [date.strftime(dt_str_format) for date, _ in data]
+                    values = [value for _, value in data]
+                    viz_data = [datetimes, values]
+
+                trace = {
+                    "name": profile_label,
+                    "x": viz_data[0],
+                    "y": viz_data[1],
+                }
+                if len(dataset_ids) > 1:
+                    trace['legendgroup'] = dataset_name
+                    trace['legendgrouptitle'] = { "text": dataset_name }
+
+                traces.append(trace)
+        
+        if len(profiles_datetimes):
+            min_dt = (min(profiles_datetimes) - timedelta(days=1)).strftime(dt_str_format)
+            max_dt = (max(profiles_datetimes) + timedelta(days=1)).strftime(dt_str_format)
+            resp['data_range'] = [min_dt, max_dt]
+
+        if len(resp['errors']):
+            logger.error(resp['errors'])
+            error_msg = f"{len(resp['errors'])} out of {len(profile_query)} requested profiles can not be retrieved due to connection errors."
+            resp['error_msg'] = error_msg
+
+        resp['traces'] = traces
+        return resp
 
     def query(self, session: Session, options: QueryRequestBody) -> dict:
         """

@@ -25,7 +25,7 @@ class GetColumnsRequestBody:
     variable_name: str
 
 class ChartType(Enum):
-    BAR = "bar"
+    CHART = "chart"
     TABLE = "table"
 
 class ProfileVizType(Enum):
@@ -38,7 +38,8 @@ class ProfileAggInterval(Enum):
     QUARTER = "Quarter"
     YEAR = "Year"
 
-class ProfileAggType(Enum):
+class ProfileAggFunc(Enum):
+    COUNT = "Count"
     MAX = "Max"
     MIN = "Min"
     SUM = "Sum"
@@ -49,7 +50,7 @@ class ProfileQueryOptions:
     viz_type: ProfileVizType
     data_range: List[str]
     agg_interval: Optional[ProfileAggInterval]
-    agg_type: Optional[ProfileAggType]
+    agg_func: Optional[ProfileAggFunc]
 
 @dataclass
 class QueryRequestBody:

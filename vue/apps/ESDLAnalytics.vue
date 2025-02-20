@@ -5,7 +5,7 @@
   </a-row>
   <!-- Dialog content -->
   <a-row style="height: calc(100% - 60px);">
-    <div v-if="isSyncingMetaData || isDeletingMetaData" class="loading">
+    <div v-if="isSyncingMetaData || isDeletingMetaData || isLoadingData" class="loading">
       <a-spin :indicator="loadingIcon" />
     </div>
     <a-layout style="height: 100%">
@@ -37,7 +37,7 @@
               <a-typography-title :level="5">Variable</a-typography-title>
               <a-select
                 v-model:value="variableSelected"
-                :options="Object.values(variableOptions)"
+                :options="groupOptionsByDatatype(variableOptions)"
                 :disabled="datasetSelected.length === 0"
                 :placeholder="datasetSelected.length === 0 ? 'First select a dataset' : 'Select a variable'"
                 style="width: 100%"
@@ -51,7 +51,8 @@
                 {{ variableWarningMsg }}
               </span>
             </a-row>
-            <a-row>
+            <!-- TODO: support profile group by -->
+            <a-row v-if="!isProfileVariable">
               <a-typography-title :level="5">Group by</a-typography-title>
               <a-select
                 v-model:value="groupbySelected"
@@ -62,7 +63,7 @@
                   : variableSelected === null ? 'First select a variable'
                     : 'Select a category'"
                 :max-tag-count="maxGroupbySelectedCount"
-                :status="chartType === 'bar' && groupbySelected.length > maxGroupbySelectedCount ? 'warning' : ''"
+                :status="chartType === 'chart' && groupbySelected.length > maxGroupbySelectedCount ? 'warning' : ''"
                 allow-clear
                 mode="multiple"
                 style="width: 100%"
@@ -70,7 +71,7 @@
                 @mouseleave="removeTooltipPopup"
               />
               <span
-                v-if="chartType === 'bar' && groupbySelected.length > maxGroupbySelectedCount"
+                v-if="chartType === 'chart' && groupbySelected.length > maxGroupbySelectedCount"
                 style="color: #ffbb00; padding: 2px;"
               >
                 Grouping in a bar chart supports up to two selections only.
@@ -99,12 +100,76 @@
                 @change="onSelectFilters"
                 @mouseleave="removeTooltipPopup"
               />
+              <br>
             </a-row>
-            <br>
-            <!-- Bar chart configuration -->
-            <a-row v-if="datasetSelected.length && variableSelected !== null && chartType==='bar'">
-              <a-typography-title :level="4">Display options</a-typography-title>
-              <a-row style="width: 100%">
+            <a-col v-if="variableSelected !== null && chartType==='chart'">
+              <br>
+              <a-typography-title
+                :level="4"
+              >
+                Display options
+              </a-typography-title>
+            </a-col>
+            <!----------------------------------------------->
+            <!----- Profile variable - Display options ------>
+            <!----------------------------------------------->
+            <a-col v-if="isProfileVariable && filterSelected.length">
+              <a-row>
+                <a-typography-title :level="5">Data selection</a-typography-title>
+                <a-range-picker
+                  v-model:value="profileDataRangeSelected"
+                  :disabled-date="disabledDate"
+                  :show-time="{ 
+                    hideDisabledOptions: true,
+                    defaultValue: [dayjs('00:00:00', 'HH:mm:ss'), dayjs('11:59:59', 'HH:mm:ss')]
+                  }"
+                  :format="dateTimeFormat"
+                  @change="onSelectProfileDataRange"
+                />
+              </a-row>
+              <a-row>
+                <a-typography-title :level="5">Visualization type</a-typography-title>
+                <a-segmented
+                  v-model:value="profileVizTypeSelected"
+                  :options="profileVizTypes"
+                  style="width: 100%;"
+                  size="small"
+                  block
+                  @change="onSelectProfileVizType"
+                />
+              </a-row>
+              <!-- TODO: show load duration curve -->
+              <a-row v-if="profileVizTypeSelected === 'Aggregated'">
+                <a-typography-title :level="5">Aggregation Interval</a-typography-title>
+                <a-segmented
+                  v-model:value="profileAggIntervalSelected"
+                  :options="profileAggIntervals"
+                  style="width: 100%;"
+                  size="small"
+                  block
+                  @change="onSelectProfileAggInterval"
+                />
+              </a-row>
+              <a-row v-if="profileVizTypeSelected === 'Aggregated'">
+                <a-typography-title :level="5">Aggregation Function</a-typography-title>
+                <a-segmented
+                  v-model:value="profileAggFuncSelected"
+                  :options="profileAggFuncs"
+                  style="width: 100%;"
+                  size="small"
+                  block
+                  @change="onSelectProfileAggFunc"
+                />
+              </a-row>
+            </a-col>
+            <!---------------------------------------------------->
+            <!----- Display options for Bar / Profile chart ------>
+            <!---------------------------------------------------->
+            <a-col v-if="variableSelected !== null && chartType==='chart'">
+              <a-row 
+                v-if="(!isProfileVariable && variableSelected !== null) || (isProfileVariable && filterSelected.length)" 
+                style="width: 100%"
+              >
                 <a-typography-title :level="5">Color palette</a-typography-title>
                 <a-select
                   v-model:value="paletteSelected"
@@ -129,6 +194,7 @@
                 </a-select>
               </a-row>
               <a-radio-group
+                v-if="!isProfileVariable"
                 v-model:value="dataGrouping" 
                 name="groupStackRadio"
                 :options="groupStackOptions"
@@ -136,14 +202,19 @@
                 @change="onSelectDisplayOptions"
               />
               <a-checkbox
+                v-if="!isProfileVariable"
                 v-model:checked="showBarNumbers"
                 style="padding-top: 12px;"
                 @click="onSelectDisplayOptions"
               >
                 Show numbers on bar chart
               </a-checkbox>
-            </a-row>
+            </a-col>
+            <!------------------------------------------->
+            <!------------- Dataset handler ------------->
+            <!------------------------------------------->
             <a-col style="padding-top: 24px; padding-bottom: 16px;">
+              <br>
               <a-row style="padding-bottom: 8px;">
                 <a-button
                   :disabled="isSyncingMetaData"
@@ -224,7 +295,9 @@
                 v-for="type in chartTypes"
                 :key="type.value"
                 :value="type.value"
-                :disabled="datasetSelected.length === 0 || variableSelected === null"
+                :disabled="datasetSelected.length === 0 || variableSelected === null 
+                  // TODO: support profile data in a table view.
+                  || (isProfileVariable && type.value === 'table')"
                 @click="onChartTypeBtnClick"
               >
                 <component :is="type.icon" style="vertical-align: 0.05rem" />
@@ -260,6 +333,10 @@ import {
 	TableOutlined }
 from "@ant-design/icons-vue";
 import AnalyticsPlot from '../components/esdlanalytics/AnalyticsPlot.vue';
+import dayjs from 'dayjs';
+import minMax from 'dayjs/plugin/minMax';
+
+dayjs.extend(minMax);
 
 const loadingIcon = h(LoadingOutlined, {
   style: { fontSize: '5rem' }, spin: true
@@ -280,9 +357,14 @@ const props = defineProps({
 // ---------------------------------------- //
 
 const chartTypes = [
-  {value: "bar", icon: BarChartOutlined},
+  {value: "chart", icon: BarChartOutlined},
   {value: "table", icon: TableOutlined},
 ];
+
+const dateTimeFormat = "YYYY-MM-DD HH:mm:ss";
+const profileVizTypes = ['Profile', 'Aggregated'];
+const profileAggIntervals = ['Week', 'Month', 'Quarter', 'Year'];
+const profileAggFuncs = ['Count', 'Max', 'Min', 'Sum', 'Mean'];
 
 const sampleColorCount = 12;
 const colorPalettes = [
@@ -314,6 +396,11 @@ const initOptions = {
   variableSelected: null,
   variableWarningMsg: '',
   isProfileVariable: false,
+  profileDataRanges: [],
+  profileDataRangeSelected: [],
+  profileVizTypeSelected: profileVizTypes[0],
+  profileAggIntervalSelected: profileAggIntervals[0],
+  profileAggFuncSelected: profileAggFuncs[0],
   groupbyOptions: [],
   groupbySelected: [],
   filterOptions: [],
@@ -351,6 +438,7 @@ const onChartTypeBtnClick = (event) => {
 
 const isSyncingMetaData = ref(false);
 const isDeletingMetaData = ref(false);
+const isLoadingData = ref(false);
 
 const currentTrace = ref(appliedOptions.currentTrace);
 const currentLayout =  ref(appliedOptions.currentLayout);
@@ -359,8 +447,12 @@ const datasetSelected = ref(appliedOptions.datasetSelected);
 const variableOptions = ref(appliedOptions.variableOptions);
 const variableSelected = ref(appliedOptions.variableSelected);
 const variableWarningMsg = ref(appliedOptions.variableWarningMsg);
-// TODO & WIP: Profile data visualization is not supported yet.
 const isProfileVariable = ref(appliedOptions.isProfileVariable);
+const profileDataRanges = ref(appliedOptions.profileDataRanges);
+const profileDataRangeSelected = ref(appliedOptions.profileDataRangeSelected);
+const profileVizTypeSelected = ref(appliedOptions.profileVizTypeSelected);
+const profileAggIntervalSelected = ref(appliedOptions.profileAggIntervalSelected);
+const profileAggFuncSelected = ref(appliedOptions.profileAggFuncSelected);
 const groupbyOptions = ref(appliedOptions.groupbyOptions);
 const groupbySelected = ref(appliedOptions.groupbySelected);
 const filterOptions = ref(appliedOptions.filterOptions);
@@ -385,6 +477,11 @@ const getOptions = () => {
     variableSelected: variableSelected.value,
     variableWarningMsg: variableWarningMsg.value,
     isProfileVariable: isProfileVariable.value,
+    profileDataRanges: profileDataRanges.value,
+    profileDataRangeSelected: profileDataRangeSelected.value,
+    profileVizTypeSelected: profileVizTypeSelected.value,
+    profileAggIntervalSelected: profileAggIntervalSelected.value,
+    profileAggFuncSelected: profileAggFuncSelected.value,
     groupbyOptions: groupbyOptions.value,
     groupbySelected: groupbySelected.value,
     filterOptions: filterOptions.value,
@@ -464,6 +561,22 @@ const onSelectFilters = () => {
 
 const onSelectDisplayOptions = () => {
 	updateTrace();
+};
+
+const onSelectProfileDataRange = () => {
+  updateTrace();
+};
+
+const onSelectProfileVizType = () => {
+  updateTrace();
+};
+
+const onSelectProfileAggInterval = () => {
+  updateTrace();
+};
+
+const onSelectProfileAggFunc = () => {
+  updateTrace();
 };
 
 onMounted(() => {
@@ -590,6 +703,7 @@ const onDeleteBtnClick = async() => {
     console.error(error);
     displayNotification("error", `An error occurred while deleting metadata: ${error}`);
   } finally {
+    // TODO: rest all to default
     // Reset selection
     datasetSelected.value = [];
     variableSelected.value = null;
@@ -659,6 +773,24 @@ const updateVariables = async() => {
   }
 };
 
+// A helper function to turn variableOptions into a list of datatype labeled options.
+const groupOptionsByDatatype = (variableOptions) => {
+  const groupedOptions = Object.values(variableOptions).reduce((acc, obj) => {
+    const { datatype, ...rest } = obj;
+    const existingGroup = acc.find(group => group.label === datatype);
+    if (existingGroup) {
+      existingGroup.options.push({ ...rest, datatype });
+    } else {
+      acc.push({
+        label: datatype,
+        options: [{ ...rest, datatype }]
+      });
+    }
+    return acc;
+  }, []);
+  return groupedOptions;
+};
+
 /**
  * Asynchronously fetches DataManager columns and updates the groupby and filter options.
  * 
@@ -706,18 +838,23 @@ const updateColumns = async() => {
  */
 const updateTrace = async() => {
   console.debug("Updating trace");
+  isLoadingData.value = true;
+
+  const queryProfileData = isProfileVariable.value;
 
   if (datasetSelected.value.length === 0 || variableSelected.value === null) {
     currentTrace.value = [];
+    isLoadingData.value = false;
     return;
   }
 
   if (Object.keys(variableOptions.value).length === 0) {
+    isLoadingData.value = false;
     return;
   }
 
-  // Only take the first two elements as group_by selections for a bar chart.
-  const groupBySelection = chartType.value === 'bar' ? 
+  // Only take the first two elements as group_by selections for a chart visualization.
+  const groupBySelection = chartType.value === 'chart' ? 
     groupbySelected.value.slice(0, maxGroupbySelectedCount) : groupbySelected.value;
 
   let filterSelection = {};
@@ -729,31 +866,129 @@ const updateTrace = async() => {
     filterSelection[column].push(val);
   });
 
-  const options = {
+  // Continue to query profile only when the filter is selected;
+  // Otherwise, it could lead to too many profile queries and can be slow.
+  if (queryProfileData && Object.keys(filterSelection).length === 0) {
+    currentTrace.value = [];
+    isLoadingData.value = false;
+    return;
+  }
+
+  let options = {
     dataset_ids: datasetSelected.value,
     variable_name: variableSelected.value,
     group_by: groupBySelection,
     filters: filterSelection,
-    chart_type: chartType.value
+    chart_type: chartType.value,
+    profile: null
   };
 
+  // Conditionally updates profile data query options.
+  if (queryProfileData) {
+    options['profile'] = {
+        data_range: profileDataRangeSelected.value !== null ? 
+          profileDataRangeSelected.value.map(dt => formatAsDateTimeStr(dt)) : [],
+        viz_type: profileVizTypeSelected.value,
+      };
+    if (profileVizTypeSelected.value === 'Aggregated') {
+      options['profile'] = {
+        ...options['profile'],
+        agg_interval: profileAggIntervalSelected.value,
+        agg_func: profileAggFuncSelected.value
+      };
+    }
+  }
+
   try {
-    const traces = await fetchMetadata('query', options);
-    // TODO: add profile data handling with profileTraceHandler(taces) and when isProfileVariable is true
-    if (chartType.value === 'table') {
-      const formattedTable = tableTraceHandler(traces);
-      currentTrace.value = formattedTable.traces;
-      currentLayout.value = formattedTable.layout;
+    const results = await fetchMetadata('query', options);
+    const traces = results['traces'];
+    console.debug(results);
+    if (queryProfileData) {
+      profileDataRanges.value = updateProfileDataRangeLimits(results['data_range']);
+      const formattedProfile = profileTraceHandler(traces);
+      currentTrace.value = formattedProfile.traces;
+      currentLayout.value = formattedProfile.layout;
+      if (results['error_msg'] !== '') {
+        displayNotification('error', results['error_msg']);
+        console.error(results['errors']);
+      }
     }
     else {
-      const formattedBarChart = barChartTraceHandler(traces);
-      currentTrace.value = formattedBarChart.traces;
-      currentLayout.value = formattedBarChart.layout;
+      if (chartType.value === 'table') {
+        const formattedTable = tableTraceHandler(traces);
+        currentTrace.value = formattedTable.traces;
+        currentLayout.value = formattedTable.layout;
+      }
+      else {
+        const formattedBarChart = barChartTraceHandler(traces);
+        currentTrace.value = formattedBarChart.traces;
+        currentLayout.value = formattedBarChart.layout;
+      }
     }
   } catch (error) {
     console.error(error);
     displayNotification("error", `${error}`);
   }
+  isLoadingData.value = false;
+};
+
+// A helper function to format a DayJs object and return a datetime string that can be parsed by the backend. 
+const formatAsDateTimeStr = (obj) => {
+  if (!obj) {
+    return;
+  }
+  return obj.format(dateTimeFormat);
+};
+
+const updateProfileDataRangeLimits = (dataRange) => {
+  return dataRange.length ? dataRange.map(d => dayjs(d, dateTimeFormat)) : [];
+};
+
+const disabledDate = (current) => {
+  if (profileDataRanges.value.length) {
+    return current < profileDataRanges.value[0] || current > profileDataRanges.value[1];
+  } else {
+    return false;
+  }
+};
+
+/**
+ * Configures profile line chart traces and layout for visualization.
+ * 
+ * @param {Array} traces An array of trace objects to be configured for profile line chart visualization.
+ * @returns {Object} An object containing the configured traces and layout for the profile line chart.
+ */
+ const profileTraceHandler = (traces) => {
+  const colorscale = generateColorscale(paletteSelected.value, traces.length);
+  const isAggregated = profileVizTypeSelected.value === 'Aggregated';
+  traces.forEach((t, idx) => {
+    t.type = isAggregated ? 'bar' : 'scatter';
+    t.mode = isAggregated ? null : 'lines';
+    t.marker = {color: colorscale[idx % colorscale.length]};
+  });
+
+  const profileLayout = {
+    title: variableSelected.value,
+    xaxis: {
+      automargin: true,
+    },
+    yaxis: {
+      title: variableOptions.value[variableSelected.value].unit,
+      automargin: true,
+    },
+    showlegend: true,
+    autosize: true,
+    barmode: isAggregated ? 'relative' : null,
+  };
+
+  // TODO: support bar chart config
+  // t.text = showBarNumbers.value ? t.y.map(y => y.toFixed(1)) : "";
+  // barnorm: dataGrouping.value === 2 ? 'percent' : '',
+
+  return {
+    traces: traces,
+    layout: profileLayout
+  };
 };
 
 /**
