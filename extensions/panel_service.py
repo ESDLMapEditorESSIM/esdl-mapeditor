@@ -87,7 +87,7 @@ def get_panel_service_datasource(database, host=None, username=None, password=No
                 logger.debug("New datasource created:")
                 logger.debug(result)
             else:
-                logger.debug("Error creating datasource - status code: " + str(r.status_code))
+                logger.debug(f"Error creating datasource {ps_influxdb_name} - status code: " + str(r.status_code))
                 logger.debug(r.json()["message"])
                 ps_influxdb_name = None
         except Exception as e:
@@ -186,7 +186,10 @@ def create_panel(graph_title, axis_title, measurement, field, filters, qau, prof
             }
         ],
         "yaxes": [
-            {"format": axis_format}
+            {
+                "format": axis_format,
+                "min": None,
+            }
         ],
         "thresholds": [
         ],
@@ -234,7 +237,10 @@ def create_panel_multiple(graph_title, axis_title, dataset_info, qau, start_date
         "influx_queries": [
         ],
         "yaxes": [
-            {"format": axis_format}
+            {
+                "format": axis_format,
+                "min": None,
+            }
         ],
         "thresholds": [
         ],
