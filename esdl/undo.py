@@ -70,6 +70,8 @@ class UndoRedoCommandStack:
         self.stack_index = len(self.stack) - 1  # -1
         self._recording = False
         self._combine_multiple_changes = True
+        # this boolean is to signal changes that are made while processing the change_handler callbacks. This is not allowed.
+        self._detect_changes_during_change_handler = False
         self._hlc: ep.HighLevelChange | None = None
         self.max_stack_length = max_stack_length
         self.last_changed: datetime = datetime.min.replace(tzinfo=timezone.utc)
@@ -215,16 +217,20 @@ class UndoRedoCommandStack:
                 logger.debug(f"=== Filtered {len(self._hlc.change) - len(filtered)} connectedTo relations")
             self._hlc.change = filtered
             post_process_high_level_change(self._hlc)
+            # self.push() requires that _recording is True and _combine_multiple_changes is False
+            # in order to push this HighLevelChange to the stack
             self.push(self._hlc)
-
-            # Notify listeners in ProjectManger of this change
-            #logger.debug("undo.py stop recording: self._hlc:", _hlc=self._hlc)
-            #logger.debug("undo.py stop recording: self.top:", top=self.top)
-            if self.change_handler and call_change_handler:
-                logger.debug("Propagating changes to change handler")
-                self.change_handler(self.top, self.change_context)
-
             self._hlc = None
+
+            # Don't record changes during change handler calls, this is not allowed (and could lock up the app)
+            # To signal this, set the boolean
+            self._detect_changes_during_change_handler = True
+            # Notify listeners in ProjectManger of this change
+            if self.change_handler and call_change_handler:
+                logger.debug("Propagating changes to change handler(s)")
+                self.change_handler(self.top, self.change_context)
+            self._detect_changes_during_change_handler = False
+
         self._recording = False
         self.change_context.source = ChangeSource.INTERNAL  # reset to default
         if self.recording_lock.locked():
@@ -248,27 +254,25 @@ class UndoRedoCommandStack:
         """
         Pushes a high level change or detailed change to the stack. If the stack is full, the oldest command is removed.
 
-        If _combineCommands is True, the commands are added to the high_level_change. The hlc is added to the stack when
-        stop_recording() is called. This is used to combine multiple detailed changes into one high level change.
+        If _combine_multiple_changes is True, the commands are added to the high_level_change.
+        The hlc is added to the stack when  stop_recording() is called.
+        This is used to combine multiple detailed changes into one high level change.
         """
 
         if not self._recording:
             logger.debug("Undo-redo: Ignoring change NOT RECORDING", abstract_change=abstract_change)
             return
 
+        # see stop_recording(): this detects if changes are made during the execution of the change_handlers
+        if self._detect_changes_during_change_handler:
+            logger.error("ERROR: changes are made to the ESDL, while processing the change handlers. This is not allowed!")
+            logger.error("ERROR: This change is ignored, but models are now out of sync.")
+            logger.error("ERROR: Stacktrace below:")
+            import traceback
+            traceback.print_stack()
+            return
+
         if self._combine_multiple_changes:
-            # the connectedTo relation between ports will be only recorded once, as undoing 2x this 'Add' command
-            # gives problems
-            # if len(abstract_change) == 1 and len(self._hlc) > 0:
-            #     if abstract_change[-1].feature.name == 'connectedTo' and self._hlc[-1].feature.name == 'connectedTo' and \
-            #             abstract_change[-1].owner == self._hlc[-1].value:  # p1.connectedTo[0] = p2 p1 == owner, value = p2
-            #         logger.debug('Ignore 2nd connectedTo', abstract_change)
-            #         # todo add check if notifier is same as old
-            #         return  # ignore 2nd controlStrategy/energyAsset bi-directional relation
-            # elif commands[-1].feature.name == 'controlStrategy' and self._compound[-1].feature.name == 'energyAsset' and \
-            #     commands[-1].owner == self._compound[-1].value:
-            #     logger.debug('Ignore ControlStrategy bi-directional relation')
-            # only adding multiple commands to the compound
             #logger.debug("Adding change {} to HighLevelChange '{}'".format(abstract_change, self._hlc.label))
             self._hlc.change.append(abstract_change)
             return
@@ -287,6 +291,8 @@ class UndoRedoCommandStack:
             logger.debug(f"Pushed {abstract_change.label} to the stack")
         else:
             logger.debug(f"Pushed {abstract_change} to the stack")
+            logger.error(f"ERROR: a DetailedChange is added to the stack, this is not supported and "
+                         f"means there is an error or race condition somewhere that triggers this behaviour")
 
         # make sure the stack length is not larger than its max length
         if self.max_stack_length > 0:

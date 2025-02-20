@@ -176,7 +176,11 @@ class ProjectManager:
     def add_change_listener(self, listener_id: str, call_back_fun):
         """
         Adds a listener to changes of ProjectManager's managed resources by informing listeners of changes
-        to the UndoRedoCommandStack
+        to the UndoRedoCommandStack.
+
+        Note: Be aware that in the `call_back_fun` code you are not allowed to change the ESDL as these changes
+        are not recorded and will generate error messages when this is detected.
+
         Parameters
         ----------
         listener_id - string to uniquely identify a listener
@@ -197,6 +201,10 @@ class ProjectManager:
     def change_handler(self, change: HighLevelChange, change_context: ChangeContext):
         """
         Generic change handler that informs all listeners of changes to the UndoRedoCommandStack.
+
+        Note: Be aware that in the change handler code you are not allowed to change the ESDL as these changes
+        are not recorded and will generate error messages when this is detected.
+
         Parameters
         ----------
         change HighLevelChange to send to the listeners

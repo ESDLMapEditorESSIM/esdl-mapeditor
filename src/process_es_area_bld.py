@@ -106,11 +106,11 @@ def calc_building_assets_location(building, force_repositioning=False):
             num_conns = num_conns + 1
         elif isinstance(basset, esdl.Transport):
             num_transp = num_transp + 1
-        if isinstance(basset, esdl.Producer):
+        elif isinstance(basset, esdl.Producer):
             num_prod = num_prod + 1
-        if isinstance(basset, esdl.Conversion) or isinstance(basset, esdl.Storage):
+        elif isinstance(basset, esdl.Conversion) or isinstance(basset, esdl.Storage):
             num_conv_stor = num_conv_stor + 1
-        if isinstance(basset, esdl.Consumer):
+        elif isinstance(basset, esdl.Consumer):
             num_cons = num_cons + 1
     for bpotential in building.potential:
         num_potentials = num_potentials + 1
@@ -161,13 +161,13 @@ def calc_building_assets_location(building, force_repositioning=False):
                 elif isinstance(basset, esdl.Transport):
                     basset.geometry = esdl.Point(lon=column_transp_x, lat=row_transp_idx * row_transp_height, CRS="Simple")
                     row_transp_idx = row_transp_idx + 1
-                if isinstance(basset, esdl.Producer):
+                elif isinstance(basset, esdl.Producer):
                     basset.geometry = esdl.Point(lon=column_prod_x, lat=row_prod_idx * row_prod_height, CRS="Simple")
                     row_prod_idx = row_prod_idx + 1
-                if isinstance(basset, esdl.Conversion) or isinstance(basset, esdl.Storage):
+                elif isinstance(basset, esdl.Conversion) or isinstance(basset, esdl.Storage):
                     basset.geometry = esdl.Point(lon=column_cs_x, lat=row_cs_idx * row_cs_height, CRS="Simple")
                     row_cs_idx = row_cs_idx + 1
-                if isinstance(basset, esdl.Consumer):
+                elif isinstance(basset, esdl.Consumer):
                     basset.geometry = esdl.Point(lon=column_cons_x, lat=row_cons_idx * row_cons_height, CRS="Simple")
                     row_cons_idx = row_cons_idx + 1
 
@@ -740,6 +740,10 @@ def process_building(pm: ProjectManager, es_id, asset_list, building_list, area_
             elif isinstance(bld_geom, esdl.Polygon):
                 bld_coord = ESDLGeometry.calculate_polygon_center(bld_geom)
 
+    #  don't calculate building asset locations, as it changes the ESDL which should not be done
+    #  when processing an ES (generates new changes)
+    #calc_building_assets_location(building)
+    
     # Iterate over all assets in building to gather all required information
     for basset in building.asset:
         if isinstance(basset, esdl.AbstractBuilding):
@@ -756,7 +760,7 @@ def process_building(pm: ProjectManager, es_id, asset_list, building_list, area_
                 port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': conn_to_id_list, 'carrier': carrier_id})
 
             geom = basset.geometry
-            coord = ()
+            coord = (-10, -10)  # dummy value to make the code more robust.
             if geom:    # Individual asset in Building has its own geometry information
                 if isinstance(geom, esdl.Point):
                     lat = geom.lat
@@ -829,7 +833,7 @@ def process_building(pm: ProjectManager, es_id, asset_list, building_list, area_
                         # Add connections if we're editing a building or if the connection is between two different buildings
                         # ( The case of an asset in an area that is connected with an asset in a building is handled
                         #   in process_area (now all connections are added twice, from both sides) )
-                        if bld_editor or in_different_buildings:
+                        if (bld_editor or in_different_buildings) and coord and pc_asset_coord:
                             conn_list.append({'from-port-id': p.id, 'from-port-carrier': p_carr_id,
                                               'from-asset-id': basset.id, 'from-asset-coord': coord,
                                               'to-port-id': pc.id, 'to-port-carrier': pc_carr_id,
