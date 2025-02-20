@@ -578,7 +578,12 @@
         // ------------------------------------------------------------------------------------------------------------
         $(document).ready(function() {
             namespace = '/esdl';
-            socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace, {'timeout':50000, 'connect timeout': 15000, path: "/socketio.io"});
+            socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace, {
+                'timeout': 50000,
+                'connect timeout': 15000,
+                path: "/socketio.io",
+                transports: ['websocket'],
+            });
 
             function handleErrors(err) {
                 console.error("SocketIO error!", err)
