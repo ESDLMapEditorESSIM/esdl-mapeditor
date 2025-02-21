@@ -367,13 +367,13 @@ def aggregate_profile_data(data: List[Tuple[datetime, float]], interval: str, ag
         label_format = '%Y'
     elif interval == ProfileAggInterval.QUARTER.value:
         resample_interval = "QE"
-        label_format = '%Y-Q%q'
+        label_format = 'Q%q-%Y'
     elif interval == ProfileAggInterval.MONTH.value:
         resample_interval = "ME"
-        label_format = '%B'
+        label_format = '%B-%Y'
     elif interval == ProfileAggInterval.WEEK.value:
         resample_interval = "W"
-        label_format = 'Week-%U'
+        label_format = 'Week-%U-%Y'
     else:
         raise ValueError(f"Unsupported interval: {interval}")
     
