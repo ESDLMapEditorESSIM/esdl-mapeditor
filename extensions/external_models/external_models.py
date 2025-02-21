@@ -175,14 +175,15 @@ class ExternalModels:
                         sheet_data = []
                         new_row = None
                         for result_row in results.get_points():
+                            time_in_datetime = pd.to_datetime(result_row["time"]).tz_localize(None)
                             if not new_row:  # only for first row
-                                new_row = {"time": result_row["time"]}
+                                new_row = {"time": time_in_datetime}
                             elif (
-                                result_row["time"] != new_row["time"]
+                                time_in_datetime != new_row["time"]
                             ):  # create new row (assumes results rows sorted by time)
                                 if new_row:
                                     sheet_data.append(new_row)
-                                new_row = {"time": result_row["time"]}
+                                new_row = {"time": time_in_datetime}
 
                             if exclude_values:
                                 if result_row[exclude_values["field_name"]] in exclude_values["values_to_exclude"]:
@@ -253,7 +254,7 @@ class ExternalModels:
                         type=NotificationType.ERROR,
                     )
                 )
-            except RuntimeError as e:
+            except Exception as e:
                 self.toast_notifications.send(
                     ToastNotification(
                         title=f"Error extracting time series data for: '{run_data[RUN_NAME]}.",
