@@ -510,6 +510,7 @@ const setActions = () => {
           "title": DOWNLOAD_XLSX,
           "icon": "fas fa-download",
           "wait_title": "Extracting data..",
+          "wait_icon": "fas fa-spinner fa-spin",
           "enabled": {
             "dataIndex": "status",
             "values": [

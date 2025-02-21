@@ -3194,8 +3194,8 @@ def browser_initialize():
 #  Disconnect
 # ---------------------------------------------------------------------------------------------------------------------
 @socketio.on('disconnect', namespace='/esdl')
-def on_disconnect():
-    logger.info('Client disconnected: {}'.format(request.sid))
+def on_disconnect(msg):
+    logger.info('SocketIO: Client disconnected', request_sid=request.sid, msg=msg)
 
 
 # ---------------------------------------------------------------------------------------------------------------------
