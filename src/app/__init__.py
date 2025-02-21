@@ -53,7 +53,7 @@ def create_app(name):
         path='/socketio.io',
         logger=settings.FLASK_DEBUG,
         engineio_logger=settings.FLASK_DEBUG,
-        cors_allowed_origins="*"
+        cors_allowed_origins=settings.ALLOWED_ORIGINS,
     )
 
     # logging.getLogger('engineio').setLevel(logging.WARNING)  # don't print all the messages
