@@ -829,6 +829,7 @@ def recalculate_area_bld_list_area(area, area_bld_list, level):
 
 def find_area_location_based(esh, active_es_id, geometry):
     shape_dictionary = get_session('shape_dictionary')
+    logger.info(f"active_es_id = {active_es_id}, shape_dictionary contains {len(shape_dictionary.keys())} elements")
 
     obj_geometry_shape = Shape.create(geometry)
     areas_that_contain_obj = list()
@@ -839,9 +840,11 @@ def find_area_location_based(esh, active_es_id, geometry):
             areas_that_contain_obj.append(key)
 
     if len(areas_that_contain_obj) == 0:
+        logger.info("No shapes found, returning ID of top level area {es.instance[0].area.id}")
         es = esh.get_energy_system(es_id=active_es_id)
         return es.instance[0].area.id   # If no area is found, return the id of the top level area
     elif len(areas_that_contain_obj) == 1:
+        logger.info(f"One shape found, returning ID of area that contains object {areas_that_contain_obj[0]}")
         return areas_that_contain_obj[0]
     else:
         # Find area that is 'lowest' in the area hierarchy
@@ -857,6 +860,7 @@ def find_area_location_based(esh, active_es_id, geometry):
                 lowest_level = area_level
                 lowest_area_id = ar_id
 
+        logger.info(f"Multiple shapes found, returning ID of 'lowest' area {lowest_area_id}")
         return lowest_area_id
 
 
