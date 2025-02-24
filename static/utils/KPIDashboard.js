@@ -27,6 +27,15 @@ class KPIDashboard extends MapEditorDialog {
     return super.open();
   }
 
+  // Extends _handleClose() method and emits the kpiDashboardIsClosed event,
+  // which is listened by the Plot.vue component, to ensure the Ploty plot is properly cleaned up
+  // after closing the kpi_dashboard_window div.
+  _handleClose() {
+    console.debug("Closing KPI dashboard");
+    $(document).trigger('kpiDashboardIsClosed', true);
+
+    this.close();
+  }
 }
 
 export default KPIDashboard;

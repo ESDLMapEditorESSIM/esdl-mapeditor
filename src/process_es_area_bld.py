@@ -23,6 +23,7 @@ import shapely
 from flask import session
 from flask_socketio import emit
 from shapely import MultiPoint
+from typing import Dict
 
 from esdl import esdl
 from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEnergySystem, ESDLQuantityAndUnits
@@ -743,7 +744,7 @@ def process_building(pm: ProjectManager, es_id, asset_list, building_list, area_
     #  don't calculate building asset locations, as it changes the ESDL which should not be done
     #  when processing an ES (generates new changes)
     #calc_building_assets_location(building)
-    
+
     # Iterate over all assets in building to gather all required information
     for basset in building.asset:
         if isinstance(basset, esdl.AbstractBuilding):

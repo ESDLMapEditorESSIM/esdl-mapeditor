@@ -75,7 +75,6 @@ def deepcopy(self, memo=None, uuid_dict: Dict[str, EObject]=None ) -> EObject:
         uuid_dict[copy.id] = copy
     memo[self] = copy
 
-
     eclass: EClass = self.eClass
     features = get_features_for_class(eclass)
     for x in features:

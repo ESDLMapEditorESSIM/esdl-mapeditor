@@ -26,6 +26,7 @@ from src import settings
 from src.log import get_logger
 from flask import Flask
 
+
 logger = get_logger(__name__)
 
 socketio = SocketIO(async_mode='gevent')
@@ -67,5 +68,8 @@ def create_app(name):
     from extensions.projects import projects as projects_blueprint
     import extensions.undoredo  # noqa
     app.register_blueprint(projects_blueprint)
+
+    from src.tno.live_model_interface.lmi_listener import start_live_model_interface_thread
+    start_live_model_interface_thread(app)
 
     return app

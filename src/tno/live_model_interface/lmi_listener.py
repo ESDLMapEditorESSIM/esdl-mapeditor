@@ -16,7 +16,6 @@ import uuid
 from datetime import datetime, timezone
 from threading import Thread
 
-from flask import session, request
 from pika import BasicProperties
 from pika.exchange_type import ExchangeType
 from pika.spec import Basic
@@ -30,8 +29,7 @@ from esdlproject.variant_api import create_new_variant
 from extensions.session_manager import get_project_manager_with_client_id, managed_sessions
 from src.log import get_logger
 from src.tno.envsettings import EnvSettings
-from src.tno.live_model_interface.api import send_project_manager_to_lmi_async, \
-    activate_live_model_interface, send_project_manager_to_lmi
+from src.tno.live_model_interface.api import activate_live_model_interface, send_project_manager_to_lmi
 from src.tno.live_model_interface.shared.config import AMQP_URL, RABBITMQ_APP_ID
 from src.tno.live_model_interface.shared.consumer import RabbitMQConsumerConfig, ReconnectingConsumer
 from src.tno.live_model_interface.shared.message_types import HighLevelChangeMessage, LmiMessage, NewVariantMessage
