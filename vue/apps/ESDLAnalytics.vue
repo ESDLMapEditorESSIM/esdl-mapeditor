@@ -102,7 +102,11 @@
               />
               <br>
             </a-row>
-            <a-col v-if="variableSelected !== null && chartType==='chart'">
+            <a-col
+              v-if="currentTrace.length > 0 && 
+                (isProfileVariable || (!isProfileVariable && chartType==='chart'))
+              "
+            >
               <br>
               <a-typography-title
                 :level="4"
@@ -165,11 +169,11 @@
             <!---------------------------------------------------->
             <!----- Display options for Bar / Profile chart ------>
             <!---------------------------------------------------->
-            <a-col v-if="variableSelected !== null && chartType==='chart'">
-              <a-row 
-                v-if="(!isProfileVariable && variableSelected !== null) || (isProfileVariable && filterSelected.length)" 
-                style="width: 100%"
-              >
+            <a-col
+              v-if="chartType==='chart' && 
+                ((!isProfileVariable && variableSelected !== null) || (isProfileVariable && filterSelected.length))"
+            >
+              <a-row style="width: 100%">
                 <a-typography-title :level="5">Color palette</a-typography-title>
                 <a-select
                   v-model:value="paletteSelected"
@@ -194,7 +198,7 @@
                 </a-select>
               </a-row>
               <a-radio-group
-                v-if="!isProfileVariable"
+                v-if="!isProfileVariable || (isProfileVariable && profileVizTypeSelected === 'Aggregated')"
                 v-model:value="dataGrouping" 
                 name="groupStackRadio"
                 :options="groupStackOptions"
@@ -202,7 +206,7 @@
                 @change="onSelectDisplayOptions"
               />
               <a-checkbox
-                v-if="!isProfileVariable"
+                v-if="!isProfileVariable || (isProfileVariable && profileVizTypeSelected === 'Aggregated')"
                 v-model:checked="showBarNumbers"
                 style="padding-top: 12px;"
                 @click="onSelectDisplayOptions"
@@ -295,9 +299,7 @@
                 v-for="type in chartTypes"
                 :key="type.value"
                 :value="type.value"
-                :disabled="datasetSelected.length === 0 || variableSelected === null 
-                  // TODO: support profile data in a table view.
-                  || (isProfileVariable && type.value === 'table')"
+                :disabled="datasetSelected.length === 0 || variableSelected === null"
                 @click="onChartTypeBtnClick"
               >
                 <component :is="type.icon" style="vertical-align: 0.05rem" />
@@ -902,28 +904,22 @@ const updateTrace = async() => {
   try {
     const results = await fetchMetadata('query', options);
     const traces = results['traces'];
-    console.debug(results);
     if (queryProfileData) {
-      profileDataRanges.value = updateProfileDataRangeLimits(results['data_range']);
-      const formattedProfile = profileTraceHandler(traces);
-      currentTrace.value = formattedProfile.traces;
-      currentLayout.value = formattedProfile.layout;
+      profileDataRanges.value = dtStringsToDayJsObjects(results['data_range']);
       if (results['error_msg'] !== '') {
         displayNotification('error', results['error_msg']);
         console.error(results['errors']);
       }
+      const formattedData = chartType.value === 'table' ? 
+        tableTraceHandler(traces) : profileTraceHandler(traces);
+      currentTrace.value = formattedData.traces;
+      currentLayout.value = formattedData.layout;
     }
     else {
-      if (chartType.value === 'table') {
-        const formattedTable = tableTraceHandler(traces);
-        currentTrace.value = formattedTable.traces;
-        currentLayout.value = formattedTable.layout;
-      }
-      else {
-        const formattedBarChart = barChartTraceHandler(traces);
-        currentTrace.value = formattedBarChart.traces;
-        currentLayout.value = formattedBarChart.layout;
-      }
+      const formattedData = chartType.value === 'table' ? 
+        tableTraceHandler(traces) : barChartTraceHandler(traces);
+      currentTrace.value = formattedData.traces;
+      currentLayout.value = formattedData.layout;
     }
   } catch (error) {
     console.error(error);
@@ -940,8 +936,9 @@ const formatAsDateTimeStr = (obj) => {
   return obj.format(dateTimeFormat);
 };
 
-const updateProfileDataRangeLimits = (dataRange) => {
-  return dataRange.length ? dataRange.map(d => dayjs(d, dateTimeFormat)) : [];
+// A helper function to cast datetime strings array into dayjs objects array.
+const dtStringsToDayJsObjects = (dtStrings) => {
+  return dtStrings.length ? dtStrings.map(dt => dayjs(dt, dateTimeFormat)) : [];
 };
 
 const disabledDate = (current) => {
@@ -964,6 +961,7 @@ const disabledDate = (current) => {
   traces.forEach((t, idx) => {
     t.type = isAggregated ? 'bar' : 'scatter';
     t.mode = isAggregated ? null : 'lines';
+    t.text = (isAggregated && showBarNumbers.value) ? t.y.map(y => y.toFixed(1)) : "";
     t.marker = {color: colorscale[idx % colorscale.length]};
   });
 
@@ -976,14 +974,14 @@ const disabledDate = (current) => {
       title: variableOptions.value[variableSelected.value].unit,
       automargin: true,
     },
+    legend: {
+      groupclick: 'toggleitem',
+    },
+    barmode: (isAggregated && [1, 2].includes(dataGrouping.value))? 'relative' : 'group',
+    barnorm: (isAggregated && dataGrouping.value === 2) ? 'percent' : '',
     showlegend: true,
     autosize: true,
-    barmode: isAggregated ? 'relative' : null,
   };
-
-  // TODO: support bar chart config
-  // t.text = showBarNumbers.value ? t.y.map(y => y.toFixed(1)) : "";
-  // barnorm: dataGrouping.value === 2 ? 'percent' : '',
 
   return {
     traces: traces,
@@ -1096,43 +1094,6 @@ const tableTraceHandler = (traces) => {
     layout: tableLayout
   };
 };
-
-/**
- * TODO: WIP and needs refinement.
- * TODO: rename scenario to dataset
- * Configures profile traces and layout for visualization.
- */
-// const profileTraceHandler = (traces) => {
-//   const scenarios = [...new Set(traces.filter(trace => trace.scenario !== undefined).map(trace => trace.scenario))];
-//   traces.forEach((t) => {
-//     t.mode = 'lines';
-//     t.type = 'scatter';
-//     t.stackgroup = [1, 2].includes(dataGrouping.value) ? 0 : null,
-//     t.groupnorm = dataGrouping.value === 2 ? 'percent' : '';
-
-//     if (traces.length > 1 && t.scenario !== undefined) {
-//       t.xaxis = 'x' + scenarios.indexOf(t.scenario);
-//       t.yaxis = 'y' + scenarios.indexOf(t.scenario);
-//     }
-//   });
-
-//   const profileLayout = {
-//     xaxis: {
-//       type: 'date'
-//     }
-//   };
-
-//   if (scenarios.length > 1) {
-//     profileLayout.grid = { rows: scenarios.length, columns: 1, pattern: 'independent' };
-//     profileLayout.height =  scenarios.length * 450;  // for subplots, make graph bigger
-//     profileLayout.legend = { traceorder: "normal" };
-//   }
-
-//   return {
-//     traces: traces,
-//     layout: profileLayout
-//   };
-// };
 
 </script>
 

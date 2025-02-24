@@ -901,15 +901,14 @@ class DataManager:
 
         TODO: 
         - To support groupby
-        - To support trace in table visualiztion
         """
         dataset_ids = options.dataset_ids
         variable_name = options.variable_name
         # group_by = options.group_by
         filters = options.filters
+        chart_type = options.chart_type
         viz_type = options.profile['viz_type']
         data_range = options.profile['data_range']
-
         
         resp = { "data_range": [], "traces": [], "errors": [], "error_msg": "" }
 
@@ -1005,11 +1004,9 @@ class DataManager:
                     "name": profile_label,
                     "x": viz_data[0],
                     "y": viz_data[1],
+                    "legendgroup": dataset_name,
+                    "legendgrouptitle": { "text": dataset_name }
                 }
-                if len(dataset_ids) > 1:
-                    trace['legendgroup'] = dataset_name
-                    trace['legendgrouptitle'] = { "text": dataset_name }
-
                 traces.append(trace)
         
         if len(profiles_datetimes):
@@ -1022,7 +1019,11 @@ class DataManager:
             error_msg = f"{len(resp['errors'])} out of {len(profile_query)} requested profiles can not be retrieved due to connection errors."
             resp['error_msg'] = error_msg
 
-        resp['traces'] = traces
+        if chart_type == ChartType.TABLE:
+            resp['traces'] = self.process_profile_table_trace(traces)
+        else:
+            resp['traces'] = traces
+
         return resp
 
     def query(self, session: Session, options: QueryRequestBody) -> dict:
@@ -1074,6 +1075,35 @@ class DataManager:
             traces = self.process_bar_chart_trace(df, dataset_ids, variable_name, group_by)
 
         return { "traces": traces }
+    
+    @staticmethod
+    def process_profile_table_trace(traces: list[dict]) -> list:
+        """
+        Processes profile traces and formats them into a table trace structure.
+        """
+        headerValues = [['dataset'], ['asset'], ['timeperiod'], ['value']]
+        cellValues = []
+        datasets, asset_names, timeperiods, values = [], [], [], []
+
+        for trace in traces:
+            data_counts = len(trace['x'])
+            datasets.extend([trace['legendgroup'] for _ in range(data_counts)])
+            asset_names.extend([trace['name'] for _ in range(data_counts)])
+            timeperiods.extend([d for d in trace['x']])
+            values.extend([d for d in trace['y']])
+
+        cellValues = [datasets, asset_names, timeperiods, values]
+
+        trace = [{
+            'header': {
+                'values': headerValues
+            },
+            'cells': {
+                'values': cellValues
+            }
+        }]
+
+        return trace
     
     @staticmethod
     def process_table_trace(df: DataFrame) -> list:
