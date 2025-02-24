@@ -367,7 +367,6 @@ def aggregate_profile_data(data: List[Tuple[datetime, float]], interval: str, ag
         label_format = '%Y'
     elif interval == ProfileAggInterval.QUARTER.value:
         resample_interval = "QE"
-        label_format = 'Q%q-%Y'
     elif interval == ProfileAggInterval.MONTH.value:
         resample_interval = "ME"
         label_format = '%B-%Y'
@@ -378,7 +377,12 @@ def aggregate_profile_data(data: List[Tuple[datetime, float]], interval: str, ag
         raise ValueError(f"Unsupported interval: {interval}")
     
     aggregated_data = df.resample(resample_interval).agg({'value': agg_func.lower()})
-    aggregated_data['label'] = aggregated_data.index.strftime(label_format)
+
+    # Handle quarter-year label formatting separately
+    if interval == ProfileAggInterval.QUARTER.value:
+        aggregated_data['label'] = aggregated_data.index.map(lambda x: f"Q{x.quarter}-{x.year}")
+    else:
+        aggregated_data['label'] = aggregated_data.index.strftime(label_format)
 
     result = [aggregated_data['label'].values.tolist(),
               aggregated_data['value'].values.tolist()]
