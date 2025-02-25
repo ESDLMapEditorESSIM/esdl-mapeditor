@@ -1,3 +1,5 @@
+import MapEditorDialog from "./MapEditorDialog.js";
+
 class ESDLAnalytics extends MapEditorDialog {
 
   open() {
@@ -21,3 +23,5 @@ class ESDLAnalytics extends MapEditorDialog {
     this.close();
   }
 }
+
+export default ESDLAnalytics;

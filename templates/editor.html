@@ -217,8 +217,8 @@
     <script type="module" src="./utils/admin_dialog.js"></script>
 
     <script type="module" src="./utils/KPIDashboard.js"></script>
-    <script type="text/javascript" src="./utils/esdl_analytics.js"></script>
-    <script type="text/javascript" src="./utils/ownership.js"></script>
+    <script type="module" src="./utils/esdl_analytics.js"></script>
+    <script type="module" src="./utils/ownership.js"></script>
 
     <script type="text/javascript" src="./utils/esdl_file_io.js"></script>
     <script type="text/javascript" src="./utils/custom_icons.js"></script>
@@ -1963,8 +1963,6 @@
         state: 'maximized',
         allowable_states: ['custom', 'maximized', 'minimized']
     }
-    const esdl_analytics = new ESDLAnalytics(esdl_analytics_dialog_options);
-    map.addControl(esdl_analytics);
 
     const ownership_dialog_options = {
         size: [ 1100, 700 ],
@@ -1975,8 +1973,6 @@
         state: 'maximized',
         allowable_states: ['custom', 'maximized', 'minimized']
     }
-    const ownership_dialog = new OwnershipDialog(ownership_dialog_options);
-    map.addControl(ownership_dialog);
 
 {% if essim_enabled and 'essim' in role %}
     L.control.essim_control().addTo(map);
@@ -1989,6 +1985,8 @@
     import TableEditorDialog from "./utils/table_editor.js";
     import KPIDashboard from "./utils/KPIDashboard.js";
     import AdminDialog from "./utils/admin_dialog.js";
+    import ESDLAnalytics from "./utils/esdl_analytics.js";
+    import OwnershipDialog from "./utils/ownership.js";
 
     const table_editor = new TableEditorDialog(table_editor_dialog_options);
     map.addControl(table_editor);
@@ -2000,7 +1998,15 @@
 
     const admin_dialog = new AdminDialog(admin_dialog_options);
     map.addControl(admin_dialog);
-    window.admin_dialog = admin_dialog
+    window.admin_dialog = admin_dialog;
+
+    const esdl_analytics = new ESDLAnalytics(esdl_analytics_dialog_options);
+    map.addControl(esdl_analytics);
+    window.esdl_analytics = esdl_analytics;
+
+    const ownership_dialog = new OwnershipDialog(ownership_dialog_options);
+    map.addControl(ownership_dialog);
+    window.ownership_dialog = ownership_dialog;
 </script>
 
 {% if debug %}

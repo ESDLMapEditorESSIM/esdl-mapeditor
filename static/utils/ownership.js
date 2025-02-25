@@ -1,3 +1,5 @@
+import MapEditorDialog from "./MapEditorDialog.js";
+
 class OwnershipDialog extends MapEditorDialog {
 
     open() {
@@ -11,3 +13,5 @@ class OwnershipDialog extends MapEditorDialog {
       return super.open();
     }
   }
+
+export default OwnershipDialog;
