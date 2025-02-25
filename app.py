@@ -1469,6 +1469,7 @@ def process_command(message):
 
         if area_bld_id == 'find_area_location_based':
             area_bld_id = find_area_location_based(esh, active_es_id, geometry)
+            logger.info(f"Find area_location_based found area {area_bld_id}")
 
         if object_type == 'Area':
             if not isinstance(geometry, esdl.Polygon):
@@ -1801,6 +1802,7 @@ def process_command(message):
 
                 add_to_building = False
                 if not ESDLAsset.add_object_to_area(es_edit, asset, area_bld_id):
+                    logger.info(f"Cannot add {asset.name} to area_bld_id {area_bld_id}. Setting add_to_building to True")
                     ESDLAsset.add_object_to_building(es_edit, asset, area_bld_id)
                     add_to_building = True
 
