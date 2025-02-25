@@ -25,16 +25,18 @@ from extensions.session_manager import delete_sessions_on_disk
 from src import settings
 from src.log import get_logger
 from flask import Flask
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 
 logger = get_logger(__name__)
 
-socketio = SocketIO(async_mode='gevent')
+socketio = SocketIO()
 executor = Executor()
 
 
 def create_app(name):
     app = Flask(name)
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
     app.config['SECRET_KEY'] = b'\xc3g\x19\xbf\x8e\xa0\xe7\xc8\x9a/\xae%\x04g\xbe\x9f\xaex\xb5\x8c\x81f\xaf`' #os.urandom(24)   #'secret!'
     app.config['SESSION_COOKIE_NAME'] = 'ESDL-WebEditor-session'
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
@@ -52,6 +54,7 @@ def create_app(name):
         path='/socketio.io',
         logger=settings.FLASK_DEBUG,
         engineio_logger=settings.FLASK_DEBUG,
+        cors_allowed_origins=settings.ALLOWED_ORIGINS,
     )
 
     # logging.getLogger('engineio').setLevel(logging.WARNING)  # don't print all the messages
