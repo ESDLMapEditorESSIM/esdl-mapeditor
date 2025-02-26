@@ -355,8 +355,6 @@ def aggregate_profile_data(data: List[Tuple[datetime, float]], interval: str, ag
     :param agg_func: The aggregation function to apply.
 
     :return: A list containing two lists (interval label strings and aggregated values corresponding to each interval)
-
-    TODO: double check result
     """
 
     df = pd.DataFrame(data, columns=["time", "value"])
