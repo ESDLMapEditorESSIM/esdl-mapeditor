@@ -67,7 +67,8 @@ from extensions.toast_notifications import ToastNotifications
 from src.edr_client import EDRClient
 from extensions.profiles import Profiles
 from extensions.session_manager import del_session, delete_sessions_on_disk, get_handler, get_session, \
-    get_session_for_esid, schedule_session_clean_up, set_handler, set_session, set_session_for_esid, valid_session
+    get_session_for_esid, schedule_session_clean_up, set_handler, set_session, set_session_for_esid, valid_session, \
+    clear_session_key_for_esid
 from extensions.settings_storage import SettingsStorage
 from extensions.shapefile_converter import ShapefileConverter
 from extensions.spatial_operations import SpatialOperations
@@ -2959,7 +2960,10 @@ def process_command(message):
         remove_es_id = message['remove_es_id']
         es_info_list = get_session("es_info_list")
         del es_info_list[remove_es_id]  # update es info list too
-        # TODO: clear other session variables
+        clear_session_key_for_esid(remove_es_id, 'shape_dictionary')
+        clear_session_key_for_esid(remove_es_id, 'conn_list')
+        clear_session_key_for_esid(remove_es_id, 'asset_list')
+        clear_session_key_for_esid(remove_es_id, 'area_bld_list')
         esh.remove_energy_system(es_id=remove_es_id)
 
     if message['cmd'] == 'refresh_esdl':

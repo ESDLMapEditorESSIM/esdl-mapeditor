@@ -72,7 +72,8 @@ class ESDLFileIO:
         # emit('alert', message, namespace='/esdl')
 
     def clear_mapeditor_ui(self):
-        # clear these completely, but not when importing!
+        # clear these completely, but not when importing, only loading.
+        # but importing is not using the REST API, but socket.io, so this works
         del_session("shape_dictionary")
         del_session("conn_list")
         del_session("asset_list")
@@ -82,10 +83,6 @@ class ESDLFileIO:
         set_session("es_info_list", es_info_list)
         emit('clear_ui')
         emit('clear_esdl_layer_list')
-        # client_id = session["client_id"]
-        # print("Left over state:")
-        # for key in managed_sessions[client_id]:
-        #     print(f"key: {key}-->{managed_sessions[client_id][key]}")
 
     def load_esdl_in_esh(self, filename, file):
         esh = get_handler()

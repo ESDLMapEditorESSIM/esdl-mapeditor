@@ -160,6 +160,16 @@ def set_session_for_esid(es_id, key, value):
         new_dict[es_id] = value
         set_session(key, new_dict)
 
+def clear_session_key_for_esid(es_id: str, key: str):
+    """ Clear a session key of a specific ESDL"""
+    res = get_session(key)
+    if res is not None:
+        if es_id in res:
+            del res[es_id]
+            return
+    logger.warning(f"Could not clear session key {key} for es_id {es_id} and client_id {session['client_id']}")
+
+
 
 def delete_sessions_on_disk(path: str):
     logger.info("Cleaning up old sessions on disk...")
