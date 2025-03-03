@@ -14,12 +14,12 @@
 import base64
 import io
 
-from flask import Flask, request
+from flask import Flask, request, session
 from flask_socketio import SocketIO, emit
 from flask_executor import Executor
 
 from esdl.esdl_handler import EnergySystemHandler
-from extensions.session_manager import set_session, set_handler, get_handler
+from extensions.session_manager import set_session, set_handler, get_handler, del_session, managed_sessions
 import src.log as log
 from src.process_es_area_bld import process_energy_system
 
@@ -72,10 +72,20 @@ class ESDLFileIO:
         # emit('alert', message, namespace='/esdl')
 
     def clear_mapeditor_ui(self):
+        # clear these completely, but not when importing!
+        del_session("shape_dictionary")
+        del_session("conn_list")
+        del_session("asset_list")
+        del_session("area_bld_list")
+
         es_info_list = {}
         set_session("es_info_list", es_info_list)
         emit('clear_ui')
         emit('clear_esdl_layer_list')
+        # client_id = session["client_id"]
+        # print("Left over state:")
+        # for key in managed_sessions[client_id]:
+        #     print(f"key: {key}-->{managed_sessions[client_id][key]}")
 
     def load_esdl_in_esh(self, filename, file):
         esh = get_handler()

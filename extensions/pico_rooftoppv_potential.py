@@ -14,7 +14,7 @@
 
 from flask import Flask
 from flask_socketio import SocketIO, emit
-from extensions.session_manager import get_handler, get_session
+from extensions.session_manager import get_handler, get_session, get_session_for_esid
 from extensions.boundary_service import is_valid_boundary_id
 from esdl import esdl
 from esdl.processing import ESDLAsset
@@ -167,7 +167,7 @@ class PICORooftopPVPotential:
                 esh = get_handler()
                 active_es_id = get_session('active_es_id')
 
-                shape_dictionary = get_session('shape_dictionary')
+                shape_dictionary = get_session_for_esid(active_es_id, 'shape_dictionary')
                 if not shape_dictionary:
                     shape_dictionary = {}
 

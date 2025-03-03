@@ -1,7 +1,7 @@
 <template>
   <a-row>
-    <a-col :span="24" class="width:100%">
-      <b>{{ tooltipTitle }}</b>
+    <a-col :span="24" style="width:100%">
+      <b class="tooltip-title">{{ tooltipTitle }}</b>
     </a-col>
   </a-row>
   <template
@@ -136,3 +136,9 @@ function editProfile(port_id) {
 }
 
 </script>
+<style scoped>
+.tooltip-title {
+    min-width: 150px;
+    display: inline-block;
+}
+</style>

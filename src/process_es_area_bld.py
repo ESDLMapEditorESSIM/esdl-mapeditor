@@ -26,7 +26,8 @@ from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEnergySystem, ESDLQuant
 from esdl.processing.ESDLEnergySystem import get_notes_list
 from extensions.boundary_service import BoundaryService, is_valid_boundary_id
 from extensions.mapeditor_settings import MapEditorSettings
-from extensions.session_manager import set_handler, get_handler, get_session, set_session_for_esid, set_session
+from extensions.session_manager import set_handler, get_handler, get_session, set_session_for_esid, set_session, \
+    get_session_for_esid
 from src.esdl_helper import get_asset_and_coord_from_port_id, asset_state_to_ui, \
     get_tooltip_asset_attrs, add_spatial_attributes
 from src.log import get_logger
@@ -467,7 +468,10 @@ def create_area_info_geojson(area):
     area_list = []
     pot_list = []
 
-    shape_dictionary = get_session('shape_dictionary')
+
+    #active_es_id = get_session('active_es_id')
+    es_id = area.eRoot().id  # root XML object == EnergySystem
+    shape_dictionary = get_session_for_esid(es_id, 'shape_dictionary')
     if not shape_dictionary:
         shape_dictionary = {}
 
@@ -483,7 +487,7 @@ def create_area_info_geojson(area):
     find_area_info_geojson(area_list, pot_list, area, shape_dictionary, show_assets_without_location)
     print("- Done")
 
-    set_session('shape_dictionary', shape_dictionary)
+    set_session_for_esid(es_id, 'shape_dictionary', shape_dictionary)
     return area_list, pot_list
 
 
@@ -828,7 +832,7 @@ def recalculate_area_bld_list_area(area, area_bld_list, level):
 
 
 def find_area_location_based(esh, active_es_id, geometry):
-    shape_dictionary = get_session('shape_dictionary')
+    shape_dictionary = get_session_for_esid(active_es_id, 'shape_dictionary')
     logger.info(f"active_es_id = {active_es_id}, shape_dictionary contains {len(shape_dictionary.keys())} elements")
 
     obj_geometry_shape = Shape.create(geometry)
