@@ -32,6 +32,7 @@ from flask_oidc.model import User
 from flask_session import Session
 from flask_socketio import SocketIO, emit
 from pyecore.ecore import EDate
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 import src.esdl_config as esdl_config
 import src.settings as settings
@@ -155,6 +156,8 @@ def is_running_in_uwsgi():
 #  Application definition, configuration and setup of simple file server
 # ---------------------------------------------------------------------------------------------------------------------
 app = Flask(__name__)
+# Tell Flask we are running behind a proxy
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 app.config['SECRET_KEY'] = b'\xc3g\x19\xbf\x8e\xa0\xe7\xc8\x9a/\xae%\x04g\xbe\x9f\xaex\xb5\x8c\x81f\xaf`' #os.urandom(24)   #'secret!'
 app.config['SESSION_COOKIE_NAME'] = 'ESDL-WebEditor-session'
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
@@ -175,6 +178,7 @@ socketio = SocketIO(
     path='/socket.io',
     logger=settings.FLASK_DEBUG,
     engineio_logger=settings.FLASK_DEBUG,
+    cors_allowed_origins=settings.ALLOWED_ORIGINS,
 )
 # logging.getLogger('engineio').setLevel(logging.WARNING)  # don't print all the messages
 
