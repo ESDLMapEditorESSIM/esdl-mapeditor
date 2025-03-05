@@ -11,6 +11,7 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+import sys
 
 from flask import session
 from esdl.esdl_handler import EnergySystemHandler
@@ -94,6 +95,8 @@ def get_session(key=None):
     client_id = session["client_id"]
     if client_id not in managed_sessions:
         logger.warning("No client id in the managed_sessions is available, cannot return value for key {}".format(key))
+        print("====================================================")
+        print("No client id in the managed_sessions is available, cannot return value for key {}".format(key))
         print(f"Session information for client_id: {client_id}:")
         for key in session:
             print(f"{key}: {session[key]}")
@@ -102,7 +105,8 @@ def get_session(key=None):
             print(f"{key}: {managed_sessions[key]}")
         print("Stacktrace for get_session():")
         import traceback
-        traceback.print_stack()
+        traceback.print_stack(file=sys.stdout)
+        print("-----------------------------------------------------")
         return None
     else:
         if key is None:
