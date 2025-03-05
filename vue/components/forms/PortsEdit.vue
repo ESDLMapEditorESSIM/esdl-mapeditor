@@ -1,28 +1,31 @@
 <template>
-  <a-table :columns="portColumns" :data-source="ports" :row-key="(record, index) => {return record.pid;}" size="middle" :pagination="paginationConfig">
+  <a-table :columns="portColumns" :data-source="ports" :row-key="(record) => {return record.pid;}" size="middle" :pagination="paginationConfig">
+    <template #bodyCell="{column, record }">
+      <template v-if="column.key === 'operation'">
+        <div class="editable-row-operations">
+          <span>
+            <a @click="deletePort(record.pid)">
+              <i class="fa fa-trash" />
+            </a>
+          </span>
+        </div>      
+      </template>
+    </template>
     <template #expandedRowRender="{ record }">
       <a-divider id="table-divider" orientation="left">Connected To:</a-divider>
-      <a-table :columns="connectedToColumns" :data-source="record.ct_list" :row-key="(record, index) => {return record.pid;}" size="small" :pagination="paginationConfig">
-        <template #operation="{ record }">
-          <div class="editable-row-operations">
-            <span>
-              <a @click="deleteConnection(record.opid+'&&'+record.pid)">
-                <i class="fa fa-trash" />
-              </a>
-            </span>
-          </div>
-        </template>  
+      <a-table :columns="connectedToColumns" :data-source="record.ct_list" :row-key="(record) => {return record.pid;}" size="small" :pagination="paginationConfig">
+        <template #bodyCell="{column, record }">
+          <template v-if="column.key === 'operation'">
+            <div class="editable-row-operations">
+              <span>
+               <a @click="deleteConnection(record.opid+'&&'+record.pid)">
+                  <i class="fa fa-trash" />
+                </a>
+              </span>
+            </div> 
+          </template>
+        </template>
       </a-table>  
-      <!-- <a-divider id="table-divider"/> -->
-    </template>
-    <template #operation="{ record }">
-      <div class="editable-row-operations">
-        <span>
-          <a @click="deletePort(record.pid)">
-            <i class="fa fa-trash" />
-          </a>
-        </span>
-      </div>      
     </template>
   </a-table>
   <div>
@@ -56,13 +59,15 @@ const portColumns = [
   { title: 'Name', dataIndex: 'pname', key: 'pname' },
   { title: 'Type', dataIndex: 'ptype', key: 'ptype' },
   { title: 'Carrier', dataIndex: 'pcarr', key: 'pcarr' },
-  { title: '', slots: { customRender: 'operation' }},
+  //{ title: '', slots: { customRender: 'operation' }},
+  { title: '', dataIndex: 'poperation', key: 'operation'},
 ];
 
 const connectedToColumns = [
   { title: 'Name', dataIndex: 'aname', key: 'aname' },
   { title: 'Type', dataIndex: 'atype', key: 'atype' },
-  { title: '', slots: { customRender: 'operation' }},
+  { title: '', dataIndex: 'poperation', key: 'operation'},
+  //{ title: '', slots: { customRender: 'operation' }},
 ];
 
 const portTypes = [
