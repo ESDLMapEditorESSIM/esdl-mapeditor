@@ -69,7 +69,7 @@ onMounted(() => {
 		resizeObserver = new ResizeObserver(resizePlot);
 		resizeObserver.observe(plotDiv.value);
 	}
-
+	config.toImageButtonOptions['filename'] = props.layout?.title?.text || "Untitled chart";
 	Plotly.newPlot(plotDiv.value, props.trace, props.layout, config);
 });
 
