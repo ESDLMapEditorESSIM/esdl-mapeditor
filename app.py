@@ -3184,6 +3184,12 @@ def browser_initialize():
         # no valid login credentials
         emit('alert', "Invalid credentials, please reload the page", namespace='/esdl')
         return
+
+    structlog.contextvars.clear_contextvars()
+    structlog.contextvars.bind_contextvars(
+        user=user_email
+    )
+
     role = get_session('user-role')
 
     model_contexts = ModelContexts.get_instance()

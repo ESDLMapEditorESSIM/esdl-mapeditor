@@ -94,6 +94,12 @@ def get_session(key=None):
     client_id = session["client_id"]
     if client_id not in managed_sessions:
         logger.warning("No client id in the managed_sessions is available, cannot return value for key {}".format(key))
+        print(f"Managed sessions for client_id: {client_id}:")
+        for key in managed_sessions:
+            print(f"{key}: {managed_sessions[key]}")
+        print("Stacktrace for get_session():")
+        import traceback
+        traceback.print_stack()
         return None
     else:
         if key is None:
