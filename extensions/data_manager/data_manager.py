@@ -935,13 +935,21 @@ class DataManager:
         traces = []
         profile_query = query.all()
         for result in profile_query:
-            es_id = result.energy_system_id
-            profile_id = result.profile_id
-            profile: esdl.InfluxDBProfile = esh.get_by_id(es_id, profile_id)
-            influxdb_settings = get_profile_influxdb_settings(profile, profiles_settings)
-
             dataset_name = result.name
             profile_label = f"{result.attached_node} ({result.flow_direction}Port)"
+            es_id = result.energy_system_id
+            profile_id = result.profile_id
+
+            try:
+                profile: esdl.InfluxDBProfile = esh.get_by_id(es_id, profile_id)
+                if not profile:
+                    raise ValueError(f"Profile with ID {profile_id} (ESDL ID {es_id}) not found.")
+                influxdb_settings = get_profile_influxdb_settings(profile, profiles_settings)
+            except Exception as e:
+                err = f"Error retrieving ESDL profile {profile_id} and associated influxdb settings: {e}"
+                logger.error(err)
+                resp['errors'].append(err)
+                continue
 
             if not influxdb_settings:
                 err = f"Error connecting to {profile.host}:{profile.port} to query {profile_label} profile."
