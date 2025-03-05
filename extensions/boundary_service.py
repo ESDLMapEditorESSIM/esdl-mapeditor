@@ -24,7 +24,7 @@ import os
 
 from esdl import esdl
 from esdl.processing import ESDLGeometry
-from extensions.session_manager import get_handler, get_session, set_session
+from extensions.session_manager import get_handler, get_session, set_session, get_session_for_esid, set_session_for_esid
 from extensions.settings_storage import SettingsStorage
 
 from src.shape import Shape
@@ -174,7 +174,8 @@ class BoundaryService:
             user_settings = self.get_user_settings(user)
             boundaries_year = user_settings['boundaries_year']
 
-            shape_dictionary = get_session('shape_dictionary')
+            active_es_id = get_session('active_es_id')
+            shape_dictionary = get_session_for_esid(active_es_id,'shape_dictionary')
             if not shape_dictionary:
                 shape_dictionary = {}
 
@@ -403,7 +404,7 @@ class BoundaryService:
                                 }
                             })
 
-            set_session('shape_dictionary', shape_dictionary)
+            set_session_for_esid(active_es_id, 'shape_dictionary', shape_dictionary)
             # By returning True the frontend requests a full refresh of the ESDL. So the geojson doesn't need to be
             # sent right here.
             # emit('geojson', {"layer": "area_layer", "geojson": area_list})

@@ -291,8 +291,11 @@ h6 {
 }
 
 .InteractiveTooltip {
-    background: #eeeeee;
+    /*background: #eeeeee;*/
+    background: white;
     border: 1px solid #505050;
+    border-radius: 5px;
+    box-shadow: 3px 5px 5px 0px #757575;
     padding: 4px 4px;
     font-size: 10px;
 }

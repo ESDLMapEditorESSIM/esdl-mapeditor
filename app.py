@@ -67,7 +67,8 @@ from extensions.toast_notifications import ToastNotifications
 from src.edr_client import EDRClient
 from extensions.profiles import Profiles
 from extensions.session_manager import del_session, delete_sessions_on_disk, get_handler, get_session, \
-    get_session_for_esid, schedule_session_clean_up, set_handler, set_session, set_session_for_esid, valid_session
+    get_session_for_esid, schedule_session_clean_up, set_handler, set_session, set_session_for_esid, valid_session, \
+    clear_session_key_for_esid
 from extensions.settings_storage import SettingsStorage
 from extensions.shapefile_converter import ShapefileConverter
 from extensions.spatial_operations import SpatialOperations
@@ -1480,9 +1481,9 @@ def process_command(message):
                     new_area.geometry = geometry
 
                     # Update shape dictionary
-                    shape_dictionary = get_session('shape_dictionary')
+                    shape_dictionary = get_session_for_esid(active_es_id, 'shape_dictionary')
                     shape_dictionary[new_area.id] = Shape.create(geometry)
-                    set_session('shape_dictionary', shape_dictionary)
+                    set_session_for_esid(active_es_id, 'shape_dictionary', shape_dictionary)
 
                     # Update drop down list with areas and buildings
                     add_area_to_area_bld_list(new_area, area_bld_id, area_bld_list)
@@ -1947,7 +1948,7 @@ def process_command(message):
                         send_alert('Area could not be removed')
                     else:
                         # If the user removes an area with assets and connection, redraw everything
-                        shape_dictionary = get_session('shape_dictionary')
+                        shape_dictionary = get_session_for_esid(active_es_id, 'shape_dictionary')
                         try:
                             del shape_dictionary[area_id]  # delete area from shape dictionary
                         except KeyError:
@@ -2959,6 +2960,10 @@ def process_command(message):
         remove_es_id = message['remove_es_id']
         es_info_list = get_session("es_info_list")
         del es_info_list[remove_es_id]  # update es info list too
+        clear_session_key_for_esid(remove_es_id, 'shape_dictionary')
+        clear_session_key_for_esid(remove_es_id, 'conn_list')
+        clear_session_key_for_esid(remove_es_id, 'asset_list')
+        clear_session_key_for_esid(remove_es_id, 'area_bld_list')
         esh.remove_energy_system(es_id=remove_es_id)
 
     if message['cmd'] == 'refresh_esdl':
@@ -3036,6 +3041,10 @@ def process_file_command(message):
         set_session("es_info_list", es_info_list)
         emit('clear_ui')
         emit('clear_esdl_layer_list')
+        del_session("shape_dictionary")
+        del_session("conn_list")
+        del_session("asset_list")
+        del_session("area_bld_list")
         call_process_energy_system.submit(esh, filename)
 
         del_session('store_item_metadata')
