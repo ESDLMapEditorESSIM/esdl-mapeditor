@@ -1,5 +1,6 @@
 gunicorn==23.0.0
 gevent-websocket
+simple-websocket==1.1.0 # is this needed?
 
 # Pinned to prevent conflicts with requirements.txt.
 greenlet==3.0.3
