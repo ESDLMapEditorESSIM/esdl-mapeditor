@@ -100,9 +100,9 @@ def get_session(key=None):
         print(f"Session information for client_id: {client_id}:")
         for key in session:
             print(f"{key}: {session[key]}")
-        print(f"Managed sessions for client_id: {client_id}:")
+        print(f"Managed session keys and their lengths for all registered clients: ({client_id}):")
         for key in managed_sessions:
-            print(f"{key}: {managed_sessions[key]}")
+            print(f"{key}: {len(managed_sessions[key])}")
         print("Stacktrace for get_session():")
         import traceback
         traceback.print_stack(file=sys.stdout)
