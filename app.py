@@ -69,7 +69,7 @@ from src.edr_client import EDRClient
 from extensions.profiles import Profiles
 from extensions.session_manager import del_session, delete_sessions_on_disk, get_handler, get_session, \
     get_session_for_esid, schedule_session_clean_up, set_handler, set_session, set_session_for_esid, valid_session, \
-    clear_session_key_for_esid
+    clear_session_key_for_esid, has_session_key
 from extensions.settings_storage import SettingsStorage
 from extensions.shapefile_converter import ShapefileConverter
 from extensions.spatial_operations import SpatialOperations
@@ -285,13 +285,18 @@ def before_request():
     # store session id
     session['client_id'] = request.cookies.get(app.config['SESSION_COOKIE_NAME'])  # get cookie id
 
+    # make access to session variables only available when they are
+    if request.endpoint in ['index', 'oidc_auth.authorize', 'oidc_auth.login']:
+        # don't add user to the structlog request context at all (this is not available)
+        return
+    if request.endpoint in ['serve_static', 'auth_status']:
+        if not has_session_key('user-email'):
+            # only add user to the structlog request context when logged in
+            return
+
     user_email = get_session("user-email")
-
     structlog.contextvars.clear_contextvars()
-    structlog.contextvars.bind_contextvars(
-        user=user_email
-    )
-
+    structlog.contextvars.bind_contextvars(user=user_email)
 
 @app.route('/')
 def index():
@@ -364,6 +369,12 @@ def editor():
         user_fullname = openid.get_user_profile().get('name')
         set_session('user-fullname', user_fullname)
 
+        # configure logger to use user_email in requests
+        #structlog.contextvars.clear_contextvars()
+        structlog.contextvars.bind_contextvars(
+            user=user_email
+        )
+
         esdl_drive_enabled = not(settings.esdl_drive_config["hostname"] is None or settings.esdl_drive_config["hostname"] == "")
         edr_enabled = not(settings.edr_config["host"] is None or settings.edr_config["host"] == "")
         essim_enabled = not(settings.essim_config["ESSIM_host"] is None or settings.essim_config["ESSIM_host"] == "")
@@ -411,7 +422,9 @@ And refreshes if necessary
 def auth_status():
     if openid.user_loggedin:
         user: User = openid.get_user()
-        curr_token = get_session('jwt-token')
+        curr_token = None
+        if has_session_key('jwt-token'):
+            curr_token = get_session('jwt-token')
         if openid.get_access_token() is not None:
             if curr_token is not None and curr_token == openid.get_access_token():
                 return {'valid': True, 'reason': "Unchanged"}
