@@ -64,9 +64,11 @@ class SelectAssets {
         this.selected_assets = this.selected_assets.filter((v, i, a) => a.indexOf(v) === i);
         //this.disable_context_menu_items(asset_leaflet_obj);
 
-        // only disable contect menu when more than 1 is selected
+        // only disable context menu when more than 1 is selected
         if (this.selected_assets.length == 2) {
+            // when the second is selected also disable the context menus of the first selected asset
             this.disable_context_menu_items(find_layer_by_id(active_layer_id, 'esdl_layer', this.selected_assets[0], 'marker'))
+            // disable context menus for second asset
             this.disable_context_menu_items(asset_leaflet_obj);
         } else if (this.selected_assets.length > 2) {
             this.disable_context_menu_items(asset_leaflet_obj);
@@ -142,7 +144,7 @@ class SelectAssets {
     disable_context_menu_items(asset_leaflet_obj) {
         for (let i=0; i<asset_leaflet_obj.options.contextmenuItems.length; i++) {
             let option = asset_leaflet_obj.options.contextmenuItems[i];
-            if ((option != '-') && (option.text != 'Port profile viewer') && ((option.text != 'Delete') ||
+            if ((option != '-') && (option.text != 'Port profile viewer') && ((option.text != 'Delete') && ((option.text != 'Replace with asset from EDR')) ||
                     // Buildings cannot be deleted yet in multi select mode
                     (asset_leaflet_obj.type == 'Building'))) {
                 option['disabled'] = true;

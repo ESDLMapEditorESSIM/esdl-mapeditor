@@ -1,13 +1,32 @@
 <template>
-  <div>
-    <h3 class="panel_title">
-      {{ options.title }}
-    </h3>
-    <span class="settings" @click="showTextSettings"><i class="fas fa-edit" /></span>
-  </div>
-  <div class="text-panel-text">
+  <a-row style="justify-content: space-between;">
+    <a-col :span="20">
+      <a-typography-title :level="5" style="padding-left: 12px;">
+        {{ options.title }}
+      </a-typography-title>
+    </a-col>
+    <a-col>
+      <a-button 
+        type="text" 
+        @click="showTextSettings"
+      >
+        <template #icon>
+          <FormOutlined />
+        </template>
+      </a-button>
+      <a-button 
+        type="text" 
+        @click="emit('onRemove')"
+      >
+        <template #icon>
+          <CloseOutlined />
+        </template>
+      </a-button>
+    </a-col>
+  </a-row>
+  <a-row class="text-panel-text">
     {{ options.text }}
-  </div>
+  </a-row>
 
   <a-modal v-model:open="text_settings_visible" title="Edit text" width="750px" @ok="handleOk">
     <a-row>
@@ -30,7 +49,8 @@
 </template>
 
 <script setup>
-import {ref} from 'vue'
+import { ref } from 'vue';
+import { CloseOutlined, FormOutlined } from "@ant-design/icons-vue";
 
 const text_settings_visible = ref(false);
 
@@ -43,41 +63,24 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(['updateTextSettings']);
+const emit = defineEmits(['updateTextSettings', 'onRemove']);
 
 // eslint-disable-next-line no-unused-vars
 const showTextSettings = () => {
   text_settings_visible.value = true;
-}
+};
 
 // eslint-disable-next-line no-unused-vars
 const handleOk = () => {
   text_settings_visible.value = false;
   emit('updateTextSettings', props.options);
-}
+};
 
 </script>
 
-<style>
-
-.panel_title {
-    font-weight: bold;
-    color: darkblue;
-}
-
-.settings {
-  cursor: default;
-  position: absolute;
-  top: 3px;
-  right: 20px;
-}
-
-.settings i {
-  color: lightgrey;
-}
-
+<style scoped>
 .text-panel-text {
+  padding-left: 12px;
   overflow: auto
 }
-
 </style>

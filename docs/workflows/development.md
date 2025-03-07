@@ -1,6 +1,6 @@
 # How to develop a Workflow
 
-As described in the introduction, a Workflow is a ESDL Service of type "workflow". This means that the workflow is
+As described in the introduction, a Workflow is an ESDL Service of type "workflow". This means that the workflow is
 defined through a JSON spec.
 
 At the time of writing we unfortunately do not have a JSON schema for this spec. However, the `demo_workflow.json`

@@ -176,7 +176,8 @@ function create_new_esdl_layer(es_id, title) {
         sector_list: null,
         carrier_list: null,
         area_bld_list: null,
-        kpi_info: null
+        kpi_info: null,
+        area_kpi_list: null,
     };
 
     esdl_list[es_id] = esdl_list_item;
@@ -329,6 +330,14 @@ function get_sector_list(es_id) {
     return esdl_list[es_id].sector_list;
 }
 
+function set_area_kpi_list(es_id, kpi_list) {
+    esdl_list[es_id].area_kpi_list = kpi_list;
+}
+
+function get_area_kpi_list(es_id) {
+    return esdl_list[es_id].area_kpi_list;
+}
+
 function get_carrier_style_class_name(carrier_mapping) {
     return 'car_' + carrier_mapping.name.replace(/[^a-z]/ig, ''); // only a-z in class name, no spaces
 }
@@ -423,6 +432,10 @@ function get_area_bld_list(es_id) {
 
 function set_kpi_info(es_id, kpi_info) {
     esdl_list[es_id].kpi_info = kpi_info;
+}
+
+function get_es_title(es_id) {
+    return esdl_list[es_id].title;
 }
 
 function get_kpi_info(es_id) {

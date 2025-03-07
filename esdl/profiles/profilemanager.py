@@ -273,8 +273,6 @@ class ProfileManager:
         profile_name_index = self.get_profile_name_index(profile_name)
 
         esdl_ts_profile = esdl.TimeSeriesProfile(id=str(uuid4()), name=profile_name)
-        if profile_name:
-            esdl_ts_profile.name = profile_name
         esdl_ts_profile.startDateTime = EDate.from_string(str(self.start_datetime))
 
         if self.num_profile_items > 1:

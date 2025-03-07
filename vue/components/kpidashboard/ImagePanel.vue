@@ -1,29 +1,58 @@
 <template>
-  <div>
-    <h3 class="panel_title">
-      {{ options.title }}
-    </h3>
-    <span class="settings" @click="showImageSettings"><i class="fa fa-edit" /></span>
-  </div>
+  <a-row style="justify-content: space-between;">
+    <a-col :span="20">
+      <a-typography-title :level="5" style="padding-left: 12px;">
+        {{ props.options.title }}
+      </a-typography-title>
+    </a-col>
+    <a-col>
+      <a-button
+        type="text"
+        @click="showImageSettings"
+      >
+        <template #icon>
+          <FormOutlined />
+        </template>
+      </a-button>
+      <a-button
+        type="text"
+        @click="emit('onRemove')"
+      >
+        <template #icon>
+          <CloseOutlined />
+        </template>
+      </a-button>
+    </a-col>
+  </a-row>
   <img
-    v-if="options.base64_image_data"
-    :src="options.base64_image_data"
+    v-if="props.options.base64_image_data"
+    :src="props.options.base64_image_data"
     class="panel_image"
   >
 
-  <a-modal v-model:open="image_settings_visible" title="Edit image" width="750px" @ok="handleOk">
+  <a-modal
+    v-model:open="image_settings_visible"
+    title="Edit image"
+    :destroy-on-close="true"
+    width="750px"
+    @ok="handleOk"
+    @cancel="onCancel"
+  >
     <a-row>
       <a-col :span="4">
         <span>Title:</span>
       </a-col>
       <a-col :span="20">
-        <a-input v-model:value="options.title" />
+        <a-input v-model:value="panelTitle" />
       </a-col>
     </a-row>
     <a-row>
       <a-card style="width: 100%">
         <h1>DropZone</h1>
-        <DropZone @drop.prevent="drop" @change="selectedFile" />
+        <DropZone
+          @drop.prevent="drop"
+          @change="selectedFile"
+        />
         <span class="file-info">File: {{ dropzoneFile.name }}</span>
       </a-card>
     </a-row>
@@ -31,9 +60,10 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-// eslint-disable-next-line no-unused-vars
-import DropZone from './Dropzone.vue'
+import { defineProps, ref } from 'vue';
+import { CloseOutlined, FormOutlined } from "@ant-design/icons-vue";
+import DropZone from './Dropzone.vue';
+
 
 const image_settings_visible = ref(false);
 
@@ -46,30 +76,39 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(['updateImageSettings']);
+const panelTitle = ref(props.options.title);
+const panelImg = ref(props.options.base64_image_data);
 
-// eslint-disable-next-line no-unused-vars
+const emit = defineEmits(['onEditSave', 'onRemove']);
+
 const showImageSettings = () => {
   image_settings_visible.value = true;
-}
+};
 
 const fileToBase64String = (file) => {
-  let reader = new FileReader();
+  const reader = new FileReader();
   reader.readAsDataURL(file);
-  reader.onload = readerEvent => {
-    props.options.base64_image_data = readerEvent.target.result;
-  }
-}
+  reader.onload = (readerEvent) => {
+    panelImg.value = readerEvent.target.result;
+  };
+};
 
-// eslint-disable-next-line no-unused-vars
 const handleOk = () => {
   image_settings_visible.value = false;
-  emit('updateImageSettings', props.options);
-}
+  emit('onEditSave', {
+    title: panelTitle.value,
+    base64_image_data: panelImg.value
+  });
+};
+
+const onCancel = () => {
+  panelTitle.value = props.options.title;
+  panelImg.value = props.options.base64_image_data;
+  image_settings_visible.value = false;
+};
 
 const dropzoneFile = ref("");
 
-// eslint-disable-next-line no-unused-vars
 const drop = (e) => {
   dropzoneFile.value = e.dataTransfer.files[0];
   if (dropzoneFile.value.size > 100000) {
@@ -79,7 +118,6 @@ const drop = (e) => {
   }
 };
 
-// eslint-disable-next-line no-unused-vars
 const selectedFile = () => {
   dropzoneFile.value = document.querySelector(".dropzoneFile").files[0];
   if (dropzoneFile.value.size > 100000) {
@@ -91,26 +129,11 @@ const selectedFile = () => {
 
 </script>
 
-<style>
+<style scoped>
 
-.panel_title {
-    font-weight: bold;
-    color: darkblue;
-}
-
-.settings {
-  cursor: default;
-  position: absolute;
-  top: 3px;
-  right: 20px;
-}
-
-.settings i {
-  color: lightgrey;
-}
 
 .panel_image {
-  border_radius: 8px;
+  border-radius: 8px;
   overflow: hidden;
   object-fit: contain;
 }

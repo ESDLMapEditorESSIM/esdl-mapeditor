@@ -53,6 +53,9 @@
     <link rel="stylesheet" href="./vendor/jjimenezshaw/L.Control.Layers.Tree.css" type="text/css"/>
     <script type="text/javascript" src="./vendor/jjimenezshaw/L.Control.Layers.Tree.js"></script>
 
+    <!-- Downloaded from https://github.com/google/palette.js -->
+    <script type="text/javascript" src="./plugins/palette.js"></script>
+
     <!-- downloaded from https://github.com/kartena/Proj4Leaflet -->
     <script type="text/javascript" src="./plugins/proj4.js"></script>
     <!--script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.5.0/proj4.js"></script-->
@@ -218,6 +221,8 @@
     <script type="text/javascript" src="./utils/admin_dialog.js"></script>
 
     <script type="text/javascript" src="./utils/KPIDashboard.js"></script>
+    <script type="text/javascript" src="./utils/esdl_analytics.js"></script>
+    <script type="text/javascript" src="./utils/ownership.js"></script>
 
     <script type="text/javascript" src="./utils/esdl_file_io.js"></script>
     <script type="text/javascript" src="./utils/custom_icons.js"></script>
@@ -263,7 +268,6 @@
 
         var services_enabled = {
             'edr': {% if edr_enabled %}true{% else %}false{% endif %},
-            'store': {% if store_enabled %}true{% else %}false{% endif %},
             'boundary_service': {% if boundary_service_enabled %}true{% else %}false{% endif %},
             'bag_service': {% if bag_service_enabled %}true{% else %}false{% endif %},
             'ibis_service': {% if ibis_service_enabled %}true{% else %}false{% endif %},
@@ -555,7 +559,22 @@
         // ------------------------------------------------------------------------------------------------------------
         $(document).ready(function() {
             namespace = '/esdl';
-            socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace, {'timeout':50000, 'connect timeout': 15000, path: "/socket.io"});
+            socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace, {
+                'timeout': 50000,
+                'connect timeout': 15000,
+                path: "/socket.io"
+            });
+
+            function handleErrors(err) {
+                console.error("SocketIO error!", err)
+            }
+
+            socket.on('connect_error', err => handleErrors(err))
+            socket.on('connect_failed', err => handleErrors(err))
+            socket.on('disconnect', err => handleErrors(err))
+
+            socket.onerror = (err) => handleErrors(err)
+            socket.onclose = () => console.log("WebSocket closed");
 
             // add_handler();
             add_geojson_listener(socket, map);
@@ -581,6 +600,10 @@
                 }
                 window.PubSubManager.broadcast('SOCKET_CONNECTED', socket);
                 auth_status(true); // Check immediately if we have an autorized session
+            });
+
+            socket.on('hide_loader', function() {
+               hide_loader();
             });
 
             socket.on('user_info', function(ui) {
@@ -1525,20 +1548,6 @@
                                     <li><a class="dropdown-item" href="#" onclick="save_ESDL(this, '.');">
                                         <div class="menu-icon ui-icon ui-icon-disk"></div>
                                         Save ESDL...</a></li>
-{% if store_enabled %}
-{% if 'mondaine' in role %}
-                                    <li><a class="dropdown-item" href="#" onclick="send_cmd_load_ESDL();">
-                                        <div class="menu-icon ui-icon ui-icon-folder-open"></div>
-                                        Load ESDL from Mondaine Hub...</a></li>
-                                    <li><a class="dropdown-item" href="#" onclick="send_cmd_store_ESDL();">
-                                        <div class="menu-icon ui-icon ui-icon-disk">&nbsp;</div>
-                                        Save ESDL to Mondaine Hub...</a></li>
-{% else %}
-                                    <li><a class="dropdown-item" href="#" onclick="send_cmd_load_ESDL();">
-                                        <div class="menu-icon ui-icon ui-icon-folder-open">&nbsp;</div>
-                                        Load ESDL from ESDL Store...</a></li>
-{% endif %}
-{% endif %}
 {% if esdl_drive_enabled %}
                                     <li><a class="dropdown-item" href="#" onclick="esdlDrive.file_open_dialog();">
                                         <div class="menu-icon ui-icon ui-icon-folder-open"></div>
@@ -1550,6 +1559,9 @@
                                     <li><a class="dropdown-item" href="#" onclick="export_as_shapefiles(this, '.');">
                                         <div class="menu-icon ui-icon ui-icon-folder-open"></div>
                                         Export as shapefiles</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="export_as_inline_profile(this, '.');">
+                                        <div class="menu-icon ui-icon ui-icon-folder-open"></div>
+                                        Export with in-line profiles</a></li>
 
                                 </ul>
                             </li>
@@ -1561,6 +1573,7 @@
                                     <li><a class="dropdown-item" href="#" onclick="carriers_window();"><div class="menu-icon">&nbsp;</div>Energy carriers...</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="sectors_window();"><div class="menu-icon">&nbsp;</div>Sectors...</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="environmental_profiles();"><div class="menu-icon ui-icon ui-icon-star">&nbsp;</div>Environmental profiles...</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="ownership_dialog.open();"><div class="menu-icon" id="menu_ownership">&nbsp;</div>Ownership</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="shapefile_converter_window.open_window();"><div class="menu-icon ui-icon ui-icon-image">&nbsp;</div>Shapefile converter...</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="search_assets_window();"><div class="menu-icon ui-icon ui-icon-search">&nbsp;</div>Search assets...</a></li>
                                 </ul>
@@ -1592,24 +1605,24 @@
                                     <li class="dropdown"><a class="dropdown-item dropdown-toggle" href="#"><div class="menu-icon"></div>Load animation</a>
                                         <ul class="dropdown-menu">
 {% if 'ielgas' in role %}
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas', 'start_test_run', [], 'allocationEnergy');"><div class="menu-icon" id="menu_td_ielgas">&nbsp;</div>I-ELGAS model NL - all</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas', 'start_test_run', ['electricity_network'], 'allocationEnergy');"><div class="menu-icon" id="menu_td_ielgas-e">&nbsp;</div>I-ELGAS model NL - electricity</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas', 'start_test_run', ['gas_network'], 'allocationEnergy');"><div class="menu-icon" id="menu_td_ielgas-g">&nbsp;</div>I-ELGAS model NL - methane</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas', 'start_test_run', ['hydrogen_network'], 'allocationEnergy');"><div class="menu-icon" id="menu_td_ielgas-h">&nbsp;</div>I-ELGAS model NL - hydrogen</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas-eu', 'start_test_run', [], 'allocationEnergy');"><div class="menu-icon" id="menu_td_ielgaseu">&nbsp;</div>I-ELGAS model EU - all</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas-eu', 'start_test_run', ['electricity_network'], 'allocationEnergy');"><div class="menu-icon" id="menu_td_ielgaseu-e">&nbsp;</div>I-ELGAS model EU - electricity</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas-eu', 'start_test_run', ['gas_network'], 'allocationEnergy');"><div class="menu-icon" id="menu_td_ielgaseu-g">&nbsp;</div>I-ELGAS model EU - methane</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas-eu', 'start_test_run', ['hydrogen_network'], 'allocationEnergy');"><div class="menu-icon" id="menu_td_ielgaseu-h">&nbsp;</div>I-ELGAS model EU - hydrogen</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas', '', '', [], 'allocationEnergy');"><div class="menu-icon" id="menu_td_ielgas">&nbsp;</div>I-ELGAS model NL - all</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas', '', '', ['electricity_network'], 'allocationEnergy');"><div class="menu-icon" id="menu_td_ielgas-e">&nbsp;</div>I-ELGAS model NL - electricity</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas', '', '', ['gas_network'], 'allocationEnergy');"><div class="menu-icon" id="menu_td_ielgas-g">&nbsp;</div>I-ELGAS model NL - methane</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas', '', '', ['hydrogen_network'], 'allocationEnergy');"><div class="menu-icon" id="menu_td_ielgas-h">&nbsp;</div>I-ELGAS model NL - hydrogen</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas-eu', '', '', [], 'allocationEnergy');"><div class="menu-icon" id="menu_td_ielgaseu">&nbsp;</div>I-ELGAS model EU - all</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas-eu', '', '', ['electricity_network'], 'allocationEnergy');"><div class="menu-icon" id="menu_td_ielgaseu-e">&nbsp;</div>I-ELGAS model EU - electricity</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas-eu', '', '', ['gas_network'], 'allocationEnergy');"><div class="menu-icon" id="menu_td_ielgaseu-g">&nbsp;</div>I-ELGAS model EU - methane</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas-eu', '', '', ['hydrogen_network'], 'allocationEnergy');"><div class="menu-icon" id="menu_td_ielgaseu-h">&nbsp;</div>I-ELGAS model EU - hydrogen</a></li>
 {% endif %}
 {% if 'opera' in role %}
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', 'opera_test_run', []);"><div class="menu-icon" id="menu_td_opera">&nbsp;</div>Opera model - all</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', 'opera_test_run', ['electricity_network']);"><div class="menu-icon" id="menu_td_opera-e">&nbsp;</div>Opera model - electricity</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', 'opera_test_run', ['gas_network']);"><div class="menu-icon" id="menu_td_opera-g">&nbsp;</div>Opera model - methane</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', 'opera_test_run', ['hydrogen_network']);"><div class="menu-icon" id="menu_td_opera-h">&nbsp;</div>Opera model - hydrogen</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', 'opera_test_run2', []);"><div class="menu-icon" id="menu_td_opera2">&nbsp;</div>Opera model - 2 - all</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', 'opera_test_run2', ['electricity_network']);"><div class="menu-icon" id="menu_td_opera2-e">&nbsp;</div>Opera model -2  - electricity</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', 'opera_test_run2', ['gas_network']);"><div class="menu-icon" id="menu_td_opera2-g">&nbsp;</div>Opera model - 2 - methane</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', 'opera_test_run2', ['hydrogen_network']);"><div class="menu-icon" id="menu_td_opera2-h">&nbsp;</div>Opera model - 2 - hydrogen</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', '', '', []);"><div class="menu-icon" id="menu_td_opera">&nbsp;</div>Opera model - all</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', '', '', ['electricity_network']);"><div class="menu-icon" id="menu_td_opera-e">&nbsp;</div>Opera model - electricity</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', '', '', ['gas_network']);"><div class="menu-icon" id="menu_td_opera-g">&nbsp;</div>Opera model - methane</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', '', '', ['hydrogen_network']);"><div class="menu-icon" id="menu_td_opera-h">&nbsp;</div>Opera model - hydrogen</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', '', '', []);"><div class="menu-icon" id="menu_td_opera2">&nbsp;</div>Opera model - 2 - all</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', '', '', ['electricity_network']);"><div class="menu-icon" id="menu_td_opera2-e">&nbsp;</div>Opera model -2  - electricity</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', '', '', ['gas_network']);"><div class="menu-icon" id="menu_td_opera2-g">&nbsp;</div>Opera model - 2 - methane</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', '', '', ['hydrogen_network']);"><div class="menu-icon" id="menu_td_opera2-h">&nbsp;</div>Opera model - 2 - hydrogen</a></li>
 {% endif %}
                                         </ul>
                                     </li>
@@ -1652,15 +1665,30 @@
                                             Clear simulation results
                                         </a>
                                     </li>
-
-<!--                                    <li><a class="dropdown-item" href="#" onclick="show_kpis();"><div class="menu-icon">&nbsp;</div>KPIs</a></li>-->
-                                    <li><a class="dropdown-item" href="#" onclick="kpi_dashboard.open();"><div class="menu-icon" id="menu_kpi_dashboard">&nbsp;</div>KPI Dashboard</a></li>
-                                    <li><a class="dropdown-item" href="#" onclick="app_settings.open_window();"><div id="menu_settings" class="menu-icon" style="margin-top:0px"><i class="fa fa-cog" aria-hidden="true"></i></div>Settings</a></li>
+                                    <li>
+                                        <a class="dropdown-item" href="#" onclick="kpi_dashboard.open();">
+                                            <div class="menu-icon" id="menu_kpi_dashboard">&nbsp;</div>
+                                            KPI Dashboard
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="#" onclick="esdl_analytics.open();">
+                                            <div class="menu-icon" id="menu_esdl_analytics">&nbsp;</div>
+                                            ESDL Analytics
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="#" onclick="app_settings.open_window();">
+                                            <div id="menu_settings" class="menu-icon" style="margin-top:0px">
+                                                <i class="fa fa-cog"></i>
+                                            </div>Settings
+                                        </a>
+                                    </li>
                                 </ul>
                             </li>
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">Help</a>
                                 <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" href="https://esdl-mapeditor-documentation.readthedocs.io/" target="#"><div class="menu-icon" id="menu_doc" style="margin-top:0px"><i class="fa fa-book" aria-hidden="true"></i></div>Documentation</a></li>
+                                    <li><a class="dropdown-item" href="https://esdl-mapeditor-documentation.readthedocs.io/" target="#"><div class="menu-icon" id="menu_doc" style="margin-top:0px"><i class="fa fa-book"></i></div>Documentation</a></li>
 {% if user_feedback_url %}
                                     <li><a class="dropdown-item" href="{{ user_feedback_url }}" target="#"><div class="menu-icon ui-icon ui-icon-comment" id="menu_user_feedback">&nbsp;</div>Give feedback or report issues</a></li>
 {% endif %}
@@ -1679,7 +1707,6 @@
         </div>
 
         <div id="ctrl" style="float: right; position: relative; padding:3px;">
-<!--            <input class="inputFile" type="file" style="display: none;" onchange="open_ESDL(event);"> -->
             <input class="inputFile" type="file" style="display: none;" onchange="load_esdl_files(event);" onclick="this.value=null;" multiple>
             <input class="inputImportFile" type="file" style="display: none;" onchange="import_ESDL(event);" onclick="this.value=null;">
 
@@ -1711,6 +1738,7 @@
     <div id="tdmonitorcontrol"></div>
     <div id="essim_kpis_control"></div>
     <div id="vuemodal"></div>
+    <div id="toast_notifications"></div>
 
     <div id="userMessages" class="userMessages userMessages-hidden"><p id="userMessage">There is a message</p></div>
 
@@ -1907,6 +1935,30 @@
     };
     var kpi_dashboard = new KPIDashboard(kpi_dashboard_dialog_options);
     map.addControl(kpi_dashboard);
+
+    const esdl_analytics_dialog_options = {
+        size: [ 1100, 700 ],
+        minSize: [ 100, 100 ],
+        maxSize: [ 4000, 2000 ],
+        anchor: [ 10, 50 ],
+        initOpen: false,
+        state: 'maximized',
+        allowable_states: ['custom', 'maximized', 'minimized']
+    }
+    const esdl_analytics = new ESDLAnalytics(esdl_analytics_dialog_options);
+    map.addControl(esdl_analytics);
+
+    const ownership_dialog_options = {
+        size: [ 1100, 700 ],
+        minSize: [ 100, 100 ],
+        maxSize: [ 4000, 2000 ],
+        anchor: [ 10, 50 ],
+        initOpen: false,
+        state: 'maximized',
+        allowable_states: ['custom', 'maximized', 'minimized']
+    }
+    const ownership_dialog = new OwnershipDialog(ownership_dialog_options);
+    map.addControl(ownership_dialog);
 
 {% if essim_enabled and 'essim' in role %}
     L.control.essim_control().addTo(map);

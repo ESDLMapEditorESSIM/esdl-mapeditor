@@ -743,7 +743,7 @@ class Profiles:
 
 
     @staticmethod
-    def connect_to_animation_profiles_database(es_id: str, database: str):
+    def connect_to_animation_profiles_database(es_id: str, database: str, host_override: str = None):
         # get influxdb host and port from first pipe/cable
         anim_profile_info_from_esdl = Profiles.get_profiles_for_asset_type(
             es_id, [esdl.ElectricityCable, esdl.Pipe]
@@ -756,13 +756,15 @@ class Profiles:
             )
         elif Profiles.check_if_profiles_have_same_host_port_database(anim_profile_info_from_esdl):
             profile = anim_profile_info_from_esdl[0]
+            influxdb_host = profile.host
+            if host_override:
+                influxdb_host = host_override
             credentials = Profiles.get_instance().determine_database_credentials(
-                profile.host, profile.port, profile.database
+                influxdb_host, profile.port, profile.database
             )
             if credentials:
                 influxdb_client = InfluxDBClient(
-                    host=profile.host,
-                    # host=profile.host,
+                    host=influxdb_host,
                     port=profile.port,
                     database=database,
                     username=credentials['username'],
@@ -770,15 +772,17 @@ class Profiles:
                 )
             else:
                 influxdb_client = InfluxDBClient(
-                    host=profile.host,
+                    host=influxdb_host,
                     port=profile.port,
                     database=database
                 )
+            if not influxdb_client:
+                raise ConnectionError(f"Could not connect to influxdb '{influxdb_host}' to database '{database}'")
 
             return influxdb_client
         else:
             logger.info("Not all profiles use same host, port, database")
-            return None
+            raise ConnectionError("Could not connect to influxdb")
 
     @staticmethod
     def check_if_profiles_have_same_host_port_database(profile_list):
@@ -786,19 +790,29 @@ class Profiles:
         used_port = None
         used_database = None
 
+        general_error_message = "profiles should be in the same host, port and database."
         for p in profile_list:
-            if used_host and p.host != used_host:
-                return False
+            edited_host = p.host.lower().replace("http://", "").replace("https://", "")
+            if used_host and edited_host != used_host:
+                raise IOError(
+                    f"{general_error_message}"
+                    f"\nDifferent host:port found: '{used_host}:{used_port}' and '{edited_host}:{p.port}'."
+                )
             else:
-                used_host = p.host
+                used_host = edited_host
 
-            if used_port and p.port != used_port:
-                return False
+            if used_port and p.port != used_port and p.port != 0:
+                raise IOError(
+                    f"{general_error_message}"
+                    f"\nDifferent host:port found: '{used_host}:{used_port}' and '{edited_host}:{p.port}'."
+                )
             else:
                 used_port = p.port
 
             if used_database and p.database != used_database:
-                return False
+                raise IOError(
+                    f"{general_error_message}\nDifferent databases found: '{used_database}' and '{p.database}'."
+                )
             else:
                 used_database = p.database
 

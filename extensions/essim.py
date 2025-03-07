@@ -11,6 +11,7 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+from itertools import islice
 from typing import TypedDict
 
 import base64
@@ -366,7 +367,7 @@ class ESSIM:
                                 esdlstr_urlenc = result['esdlContents']
                                 esdlstr = urllib.parse.unquote(esdlstr_urlenc)
 
-                            res_es, parse_info = esh.add_from_string(name=str(uuid.uuid4()), esdl_string=esdlstr)
+                            res_es, parse_info = esh.load_external_string(name=str(uuid.uuid4()), esdl_string=esdlstr)
                     except Exception as e:
                         # print('Exception: ')
                         # print(e)
@@ -417,6 +418,9 @@ class ESSIM:
 
                             for sheet_name in pp_results.keys():
                                 pp_result = pp_results[sheet_name]
+
+                                if not pp_result:
+                                    continue
 
                                 field_map = collections.OrderedDict()
                                 first_row = pp_result[0]
@@ -775,10 +779,14 @@ class ESSIM:
         # The results are ordered using a key consisting of "ESDL energy system name + network name + index"
         # The ESDL energy system name is the same for all results. Excel only allows tabs of max 31 characters, so
         # we find out what the common name is of all simulation results and remove that part of the name
-        common_name = list(essim_results.keys())[0][0]
+        common_name = None
         for result_key in essim_results.keys():
-            result_key_name = result_key[0]
-            common_name = os.path.commonprefix([common_name, result_key_name])
+            if len(list(islice(essim_results[result_key], 2))) > 1:
+                result_key_name = result_key[0]
+                if common_name:
+                    common_name = os.path.commonprefix([common_name, result_key_name])
+                else:
+                    common_name = result_key_name
 
         post_processed_results = dict()
 

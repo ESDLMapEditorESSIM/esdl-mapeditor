@@ -1,6 +1,7 @@
 Flask==3.0.3
 Flask-Executor==1.0.0
-Flask-SocketIO==5.3.7
+Flask-SocketIO==5.5.1
+simple-websocket==1.1.0
 Flask-Session==0.8.0
 flask-oidc==2.2.0
 #werkzeug==2.3.6
@@ -34,5 +35,10 @@ pip-tools
 
 
 # DataManager
-#Flask-SQLAlchemy==2.5.1
-#sqlalchemy==2.0.16
+Flask-SQLAlchemy
+sqlalchemy
+sqlalchemy_utils
+
+# Pinned to prevent conflicts with requirements-gunicorn.txt.
+greenlet==3.0.3
+packaging==24.1
