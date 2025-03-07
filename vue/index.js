@@ -22,6 +22,7 @@ import AssetTableEditor from '@/apps/AssetTableEditor.vue';
 import CustomIconsSettings from "@/apps/CustomIconsSettings.vue";
 import KPIDashboard from '@/apps/KPIDashboard.vue';
 import ESDLAnalytics from '@/apps/ESDLAnalytics.vue';
+import OwnershipDialog from '@/apps/OwnershipDialog.vue';
 import {
     createVueLControl,
     mountApp,
@@ -54,6 +55,7 @@ import HeatTransition from "@/apps/HeatTransition.vue";
 import './utils/startDrawAsset';
 import ResultVisualizationsToolbar from "@/components/toolbars/ResultVisualizationsToolbar.vue";
 import {useReplaceEDRAsset} from "@/composables/replaceEDRAsset";
+import ToastNotifications from "@/apps/ToastNotifications.vue";
 
 // Vue.config.productionTip = false
 
@@ -172,9 +174,14 @@ createApp(ToggleShowAssetDrawToolbar).mount('#vue_toggle_show_asset_draw_toolbar
 mountApp(SidePane, '#vue_side_pane_root')
 createApp(ActivityContextSelector).mount('#vue_activity_context_selector')
 
+const [,toastNotificationInstance] = mountApp(ToastNotifications, '#toast_notifications');
+import {useToastNotifications} from "@/composables/toastNotifications";
+const {setToastNotificationsInstance } = useToastNotifications();
+setToastNotificationsInstance(toastNotificationInstance);
+
 createVueLControl(AssetsToBeAddedToolbar, {
         position: 'bottomright',
-    });
+});
 
 window.activate_table_editor_window = () => {
     mountApp(AssetTableEditor, '#table_editor_window');
@@ -186,6 +193,10 @@ window.activate_kpi_dashboard_window = () => {
 
 window.activate_esdl_analytics_window = () => {
     mountApp(ESDLAnalytics, '#esdl_analytics_window');
+}
+
+window.activate_ownership_window = () => {
+    mountApp(OwnershipDialog, '#ownership_window');
 }
 
 createVueLControl(ResultVisualizationsToolbar, {

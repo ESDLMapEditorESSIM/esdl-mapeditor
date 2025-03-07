@@ -26,7 +26,7 @@
                 v-model:value="datasetSelected"
                 :options="datasetOptions"
                 :disabled="datasetOptions.length === 0"
-                :placeholder="datasetSelectPlaceholder"
+                :placeholder="datasetOptions.length === 0 ? 'No datasets available' : 'Select a dataset'"
                 mode="multiple"
                 style="width: 100%"
                 @change="onSelectDataset"
@@ -244,7 +244,7 @@
 </template>
 
 <script setup>
-import { ref, h, onMounted, onUnmounted } from 'vue';
+import { defineProps, ref, h, onMounted, onUnmounted } from 'vue';
 import { notification } from 'ant-design-vue';
 import {
   BarChartOutlined,
@@ -261,8 +261,6 @@ import {
 from "@ant-design/icons-vue";
 import AnalyticsPlot from '../components/esdlanalytics/AnalyticsPlot.vue';
 
-const collapsed = ref(false);
-
 const loadingIcon = h(LoadingOutlined, {
   style: { fontSize: '5rem' }, spin: true
 });
@@ -270,62 +268,21 @@ const loadingIcon = h(LoadingOutlined, {
 // to prevent stuck popup on UI
 const removeTooltipPopup = () => { window.jquery(".ui-tooltip-content").parents('div').remove();};
 
-// ------------------------------------- //
-// ------------ Graph Header ----------- //
-// ------------------------------------- //
+const props = defineProps({
+  options: {
+    type: Object,
+    default: null // If null, the component is instantiated with the default initOptions settings.
+  }
+});
 
-const title = ref('');
-const editingTitle = ref(false);
-
-const minWidth = 180;
-const inputWidth = ref(minWidth);
-
-const updateTitleInputWidth = (value) => {
-	const newWidth = value.target.value.length * 11;
-	inputWidth.value = newWidth >= minWidth ? newWidth : minWidth;
-};
+// ---------------------------------------- //
+// ---------- Component options ----------- //
+// ---------------------------------------- //
 
 const chartTypes = [
   {value: "bar", icon: BarChartOutlined},
   {value: "table", icon: TableOutlined},
 ];
-const chartType = ref(chartTypes[0].value);
-
-const onChartTypeBtnClick = (event) => {
-  chartType.value = event.target.value;
-  updateTrace();
-};
-
-// ------------------------------------- //
-// -------- Graph Configuration -------- //
-// ------------------------------------- //
-
-const isSyncingMetaData = ref(false);
-const isDeletingMetaData = ref(false);
-
-const currentTrace = ref([]);
-const currentLayout =  ref({});
-const datasetOptions = ref([]);
-const datasetSelected = ref([]);
-const datasetSelectPlaceholder = ref('Select a dataset');
-const variableOptions = ref([]);
-const variableSelected = ref(null);
-const variableWarningMsg = ref("");
-// TODO & WIP: Profile data visualization is not supported yet.
-const isProfileVariable = ref(false);
-const groupbyOptions = ref([]);
-const groupbySelected = ref([]);
-const maxGroupbySelectedCount = 2;
-const filterOptions = ref([]);
-const filterSelected = ref([]);
-
-const groupStackOptions = [
-	{ label: 'Group data', value: 0 },
-	{ label: 'Stack data (totals)', value: 1 },
-	{ label: 'Stack data (percentage)', value: 2 },
-];
-const dataGrouping = ref(1);
-const showBarNumbers = ref(false);
 
 const sampleColorCount = 12;
 const colorPalettes = [
@@ -336,7 +293,111 @@ const colorPalettes = [
   { label: 'Sequential', value: 'Sequential', sample: window.palette('tol-sq', sampleColorCount) },
   { label: 'Rainbow', value: 'Rainbow', sample: window.palette('tol-rainbow', sampleColorCount) }
 ];
-const paletteSelected = ref(colorPalettes[0]);
+
+const groupStackOptions = [
+	{ label: 'Group data', value: 0 },
+	{ label: 'Stack data (totals)', value: 1 },
+	{ label: 'Stack data (percentage)', value: 2 },
+];
+
+const maxGroupbySelectedCount = 2;
+
+// The initial (default) option settings of the component
+const initOptions = {
+  title: '',
+  chartType: chartTypes[0].value,
+  currentTrace: [],
+  currentLayout: {},
+  datasetOptions: [],
+  datasetSelected: [],
+  variableOptions: [],
+  variableSelected: null,
+  variableWarningMsg: '',
+  isProfileVariable: false,
+  groupbyOptions: [],
+  groupbySelected: [],
+  filterOptions: [],
+  filterSelected: [],
+  dataGrouping: 1,
+  showBarNumbers: false,
+  paletteSelected: colorPalettes[0]
+};
+
+const appliedOptions = props.options === null ? initOptions : props.options;
+
+// ----------------------------------------- //
+// ------------ Component states ----------- //
+// ----------------------------------------- //
+
+const collapsed = ref(false);
+
+const title = ref(appliedOptions.title);
+const editingTitle = ref(false);
+
+const minWidth = 180;
+const inputWidth = ref(minWidth);
+
+const updateTitleInputWidth = (value) => {
+	const newWidth = value.target.value.length * 11;
+	inputWidth.value = newWidth >= minWidth ? newWidth : minWidth;
+};
+
+const chartType = ref(appliedOptions.chartType);
+
+const onChartTypeBtnClick = (event) => {
+  chartType.value = event.target.value;
+  updateTrace();
+};
+
+const isSyncingMetaData = ref(false);
+const isDeletingMetaData = ref(false);
+
+const currentTrace = ref(appliedOptions.currentTrace);
+const currentLayout =  ref(appliedOptions.currentLayout);
+const datasetOptions = ref(appliedOptions.datasetOptions);
+const datasetSelected = ref(appliedOptions.datasetSelected);
+const variableOptions = ref(appliedOptions.variableOptions);
+const variableSelected = ref(appliedOptions.variableSelected);
+const variableWarningMsg = ref(appliedOptions.variableWarningMsg);
+// TODO & WIP: Profile data visualization is not supported yet.
+const isProfileVariable = ref(appliedOptions.isProfileVariable);
+const groupbyOptions = ref(appliedOptions.groupbyOptions);
+const groupbySelected = ref(appliedOptions.groupbySelected);
+const filterOptions = ref(appliedOptions.filterOptions);
+const filterSelected = ref(appliedOptions.filterSelected);
+const dataGrouping = ref(appliedOptions.dataGrouping);
+const showBarNumbers = ref(appliedOptions.showBarNumbers);
+const paletteSelected = ref(appliedOptions.paletteSelected);
+
+/**
+ * Return an object of reactive states of the component options. 
+ * This can be used, together with defineExpose(), when other Vue components need to access the states of the component instance.
+ */
+const getOptions = () => {
+  return {
+    title: title.value,
+    chartType: chartType.value,
+    currentTrace: currentTrace.value,
+    currentLayout: currentLayout.value,
+    datasetOptions: datasetOptions.value,
+    datasetSelected: datasetSelected.value,
+    variableOptions: variableOptions.value,
+    variableSelected: variableSelected.value,
+    variableWarningMsg: variableWarningMsg.value,
+    isProfileVariable: isProfileVariable.value,
+    groupbyOptions: groupbyOptions.value,
+    groupbySelected: groupbySelected.value,
+    filterOptions: filterOptions.value,
+    filterSelected: filterSelected.value,
+    dataGrouping: dataGrouping.value,
+    showBarNumbers: showBarNumbers.value,
+    paletteSelected: paletteSelected.value
+  };
+};
+
+defineExpose({
+  getOptions
+});
 
 const onSelectPalette = () => {
   updateTrace();
@@ -555,10 +616,8 @@ const updateDatasets = async() => {
         value: d.id,
         label: `${d.name}`
       }));
-      datasetSelectPlaceholder.value = "Select a dataset";
     } else {
       datasetOptions.value = [];
-      datasetSelectPlaceholder.value = "No datasets available";
     }
   } catch (error) {
     console.error(error);

@@ -73,7 +73,7 @@ const uischema = {
   ],
 };
 
-const { goToNextStep } = useWorkflow();
+const { goToStep } = useWorkflow();
 
 const isLoading = ref(true);
 const schema = ref({});
@@ -120,7 +120,7 @@ const onSubmit = async () => {
         icon: "success",
         confirmButtonText: "OK",
       });
-      goToNextStep();
+      goToStep(workflowStep.next_step);
     } else {
       const jsonResponse = await response.json();
       let message = "An error occurred when creating the EPS project. Please try again later. Please contact us if the problem persists.";

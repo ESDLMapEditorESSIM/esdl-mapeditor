@@ -47,7 +47,7 @@ const formData = {};
 const dataToSubmit = {};
 const isLoading = ref(true);
 
-const { goToNextStep, getState } = useWorkflow();
+const { goToStep, getState } = useWorkflow();
 
 const doGetData = async () => {
   schema.value = await workflowGetJsonForm(workflowStep.url, workflowStep.data.schema_name)
@@ -80,13 +80,13 @@ const onSubmit = async () => {
     try {
       const response = await workflowPostData(workflowStep.url, dataToSubmit);
       if (response != null && response.ok && workflowStep.auto) {
-        goToNextStep();
+        goToStep(workflowStep.next_step);
       }
     } finally {
       isLoading.value = false;
     }
   } else {
-    goToNextStep();
+    goToStep(workflowStep.next_step);
   }
 };
 </script>
