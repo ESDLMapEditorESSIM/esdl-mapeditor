@@ -1557,12 +1557,9 @@
                                         Save to ESDL Drive...</a></li>
 {% endif %}
                                     <li><a class="dropdown-item" href="#" onclick="export_as_shapefiles(this, '.');">
-                                        <div class="menu-icon ui-icon ui-icon-folder-open"></div>
-                                        Export as shapefiles</a></li>
+                                        <div class="menu-icon" style="font-size: 12px;"><i class="fa fa-file-export"></i></div>Export as shapefiles</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="export_as_inline_profile(this, '.');">
-                                        <div class="menu-icon ui-icon ui-icon-folder-open"></div>
-                                        Export with in-line profiles</a></li>
-
+                                        <div class="menu-icon" style="font-size: 12px;"><i class="fa fa-cloud-download-alt"></i></div>Export with in-line profiles</a></li>
                                 </ul>
                             </li>
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">Edit</a>
@@ -1573,7 +1570,7 @@
                                     <li><a class="dropdown-item" href="#" onclick="carriers_window();"><div class="menu-icon">&nbsp;</div>Energy carriers...</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="sectors_window();"><div class="menu-icon">&nbsp;</div>Sectors...</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="environmental_profiles();"><div class="menu-icon ui-icon ui-icon-star">&nbsp;</div>Environmental profiles...</a></li>
-                                    <li><a class="dropdown-item" href="#" onclick="ownership_dialog.open();"><div class="menu-icon" id="menu_ownership">&nbsp;</div>Ownership</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="ownership_dialog.open();"><div class="menu-icon" style="margin-top:0px" id="menu_ownership" title="View ownership of assets"><i class="fas fa-user-edit"></i></div>Ownership...</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="shapefile_converter_window.open_window();"><div class="menu-icon ui-icon ui-icon-image">&nbsp;</div>Shapefile converter...</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="search_assets_window();"><div class="menu-icon ui-icon ui-icon-search">&nbsp;</div>Search assets...</a></li>
                                 </ul>
@@ -1638,7 +1635,7 @@
                                 <ul class="dropdown-menu">
                                     <li>
                                         <a class="dropdown-item" href="#" onclick="refresh_esdl();">
-                                            <div id="menu_option_refresh_esdl" class="menu-icon" style="margin-top:0px" title="Refresh the view of the ESDL (Ctrl+R)"><i class="fa fa-refresh fa-fw"></i></div>
+                                            <div id="menu_option_refresh_esdl" class="menu-icon" style="font-size: 12px; margin-top:0px" title="Refresh the view of the ESDL (Ctrl+R)"><i class="fa fa-refresh fa-fw"></i></div>
                                             Refresh view (Ctrl+R)
                                         </a>
                                     </li>
