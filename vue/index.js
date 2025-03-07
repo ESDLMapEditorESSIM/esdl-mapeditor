@@ -53,6 +53,7 @@ import ResidentialArea from "@/apps/ResidentialArea.vue";
 import HeatTransition from "@/apps/HeatTransition.vue";
 import './utils/startDrawAsset';
 import ResultVisualizationsToolbar from "@/components/toolbars/ResultVisualizationsToolbar.vue";
+import {useReplaceEDRAsset} from "@/composables/replaceEDRAsset";
 
 // Vue.config.productionTip = false
 
@@ -201,4 +202,10 @@ window.heat_transition_window = (area_id) => {
     const { newObject } = useObject();
     newObject(area_id);
     mountSidebarComponent(HeatTransition);
+}
+
+window.replace_with_edr_asset = (object_id_list, object_class) => {
+    const { newAssetInfo } = useReplaceEDRAsset();
+    newAssetInfo(object_id_list, object_class);
+    mountSidebarComponent(EDRAssets)
 }

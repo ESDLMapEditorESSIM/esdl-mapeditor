@@ -31,7 +31,7 @@ from flask_oidc import OpenIDConnect
 from flask_oidc.model import User
 from flask_session import Session
 from flask_socketio import SocketIO, emit
-from pyecore.ecore import EDate
+from pyecore.ecore import EDate, EObject
 
 import src.esdl_config as esdl_config
 import src.settings as settings
@@ -1860,9 +1860,6 @@ def process_command(message):
             conn_list = get_session_for_esid(active_es_id, 'conn_list')
             conn_list[:] = [c for c in conn_list
                             if not ((c['from-asset-id'] == obj_id) or (c['to-asset-id'] == obj_id))]  # xor: filter list in place
-
-
-
         else:
             send_alert('Asset or potential without an id cannot be removed')
 
@@ -2834,6 +2831,28 @@ def process_command(message):
                 set_session('recently_used_edr_assets', recently_used_edr_assets)
 
             emit('recently_used_edr_assets', recently_used_edr_assets)
+        else:
+            send_alert('Error getting ESDL model from EDR')
+
+    if message['cmd'] == 'replace_edr_asset':
+        edr_asset_id = message['edr_asset_id']
+        original_asset_id = message['original_asset_id']
+
+        edr_asset_str = edr_client.get_object_from_EDR(edr_asset_id)
+        if edr_asset_str:
+            edr_asset = ESDLAsset.load_asset_from_string(edr_asset_str)
+            asset_to_be_replaced = esh.get_by_id(active_es_id, original_asset_id)
+            asset_container: EObject = asset_to_be_replaced.eContainer()
+
+            index_in_asset_list = asset_container.asset.index(asset_to_be_replaced)
+            asset_container.asset.remove(asset_to_be_replaced)
+            asset_container.asset.insert(index_in_asset_list, edr_asset)
+
+            edr_asset.id = asset_to_be_replaced.id
+            edr_asset.port = asset_to_be_replaced.port
+            edr_asset.geometry = asset_to_be_replaced.geometry
+
+            esh.add_object_to_dict(active_es_id, edr_asset, recursive=True)
         else:
             send_alert('Error getting ESDL model from EDR')
 
