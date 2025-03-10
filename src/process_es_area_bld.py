@@ -29,6 +29,7 @@ from extensions.mapeditor_settings import MapEditorSettings
 from extensions.session_manager import set_handler, get_handler, get_session, set_session_for_esid, set_session
 from src.esdl_helper import get_asset_and_coord_from_port_id, asset_state_to_ui, \
     get_tooltip_asset_attrs, add_spatial_attributes
+from src.incremental_ui import create_asset_port_message
 from src.log import get_logger
 from src.shape import Shape, ShapePoint
 from src.assets_to_be_added import AssetsToBeAdded
@@ -538,20 +539,7 @@ def add_missing_coordinates(area):
 
 
 def add_asset_to_asset_list(asset_list, asset):
-    port_list = []
-    ports = asset.port
-    for p in ports:
-        conn_to_ids = [cp.id for cp in p.connectedTo]
-        profile = p.profile
-        profile_info_list = []
-        p_carr_id = None
-        if p.carrier:
-            p_carr_id = p.carrier.id
-        if profile:
-            profile_info_list = []  # generate_profile_info(profile)
-        port_list.append(
-            {'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': conn_to_ids, 'profile': profile_info_list,
-             'carrier': p_carr_id})
+    port_list = create_asset_port_message(asset)
 
     # Collect extra attributes that might be required to draw specific icons, ...
     extra_attributes = dict()
@@ -605,6 +593,10 @@ def process_building(esh, es_id, asset_list, building_list, area_bld_list, conn_
                 building_has_assets = True
                 break
 
+    port_list = []
+    if isinstance(building, esdl.ExposedPortsAsset):
+        port_list.extend(create_asset_port_message(building))
+
     # Generate information for drawing building (as a point or a polygon)
     if isinstance(building, esdl.Building) or isinstance(building, esdl.AggregatedBuilding):
         geometry = building.geometry
@@ -614,20 +606,18 @@ def process_building(esh, es_id, asset_list, building_list, area_bld_list, conn_
         extra_attributes = dict()
         extra_attributes['assetType'] = building.assetType
 
+
+
         if geometry:
             if isinstance(geometry, esdl.Point):
                 building_list.append(
                     ['point', building.name, building.id, type(building).__name__, [geometry.lat, geometry.lon],
-                     building_has_assets, bld_KPIs, extra_attributes])
+                     building_has_assets, bld_KPIs, extra_attributes, port_list])
                 bld_coord = (geometry.lat, geometry.lon)
             elif isinstance(geometry, esdl.Polygon):
-                coords = ESDLGeometry.parse_esdl_subpolygon(building.geometry.exterior, False)  # [lon, lat]
-                coords = ESDLGeometry.exchange_coordinates(coords)  # --> [lat, lon]
-                # building_list.append(['polygon', building.name, building.id, type(building).__name__, coords, building_has_assets])
                 boundary = ESDLGeometry.create_boundary_from_geometry(geometry)
                 building_list.append(['polygon', building.name, building.id, type(building).__name__,
-                                      boundary['coordinates'], building_has_assets, bld_KPIs, extra_attributes])
-                # bld_coord = coords
+                                      boundary['coordinates'], building_has_assets, bld_KPIs, extra_attributes, port_list])
                 bld_coord = ESDLGeometry.calculate_polygon_center(geometry)
     elif building.containingBuilding:       # BuildingUnit
         bld_geom = building.containingBuilding.geometry
@@ -643,14 +633,7 @@ def process_building(esh, es_id, asset_list, building_list, area_bld_list, conn_
             process_building(esh, es_id, asset_list, building_list, area_bld_list, conn_list, basset, bld_editor, level + 1)
         else:
             # Create a list of ports for this asset
-            port_list = []
-            ports = basset.port
-            for p in ports:
-                conn_to = p.connectedTo
-                conn_to_id_list = [ct.id for ct in conn_to]
-                carrier_id = p.carrier.id if p.carrier else None
-                # TODO: add profile_info
-                port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': conn_to_id_list, 'carrier': carrier_id})
+            port_list = create_asset_port_message(basset)
 
             geom = basset.geometry
             coord = ()

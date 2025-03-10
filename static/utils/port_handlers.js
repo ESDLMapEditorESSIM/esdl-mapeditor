@@ -21,6 +21,7 @@ var port_drawing_conductor = false;
 
 
 
+
 function set_port_size_and_position(mp) { // map as optional parameter
     let active_map = map;
     if (mp !== undefined) {
@@ -65,6 +66,7 @@ function set_port_size_and_position(mp) { // map as optional parameter
 }
 
 function set_marker_port_handlers(marker) {
+    console.log('set_marker_port_handlers', marker.name)
     marker.on('mouseover', function(e) {
         marker.mouseactive = true;
         if (!editing_objects && !deleting_objects) {
@@ -104,6 +106,11 @@ function set_marker_port_handlers(marker) {
                     }
                 }
 
+                if (ports[p].exposed) {
+                    class_name = class_name + " " + "Exposed"
+                    port_name = port_name + " {exposed}"
+                }
+
                 let divicon = L.divIcon({
                     className: class_name,
                     iconSize: null
@@ -127,41 +134,108 @@ function set_marker_port_handlers(marker) {
                     });
                     port_marker.on('mouseout', function(e) {
                         let layer = e.target;
-                        setTimeout(function() {
-                            layer.port_parent.active = false;
-                            if (!layer.parent.mouseactive) {
-                                layer.removeFrom(get_layers(active_layer_id, 'connection_layer'));
-                                remove_tooltip();
-                                unhighlight_connection(layer.port_parent)
-                            }
-                        }, 300);
-    //                    layer.removeFrom(map);
+                        if (!e.target._map.contextmenu.isVisible()) {
+                            // if context menu visible, don't hide marker
+                            setTimeout(function() {
+                                layer.port_parent.active = false;
+                                if (!layer.parent.mouseactive) {
+                                    layer.removeFrom(get_layers(active_layer_id, 'connection_layer'));
+                                    remove_tooltip();
+                                    unhighlight_connection(layer.port_parent)
+                                }
+                            }, 300);
+                        } else {
+                            // remember that we keep this port marker active, because context menu is visible
+                            // see editor.html:1752 map.on('contextmenu.*') events handling
+                            e.target._map.contextmenu.active_port_marker = port_marker;
+                        }
                     });
                     port_marker.on('click', function(e) {
                         remove_tooltip();
                         handle_connect(port_marker, e);
                     });
 
-// Following code to add context menu to port does not work, as the port is removed from the map when
-// a contextmenu item is shown and we get all kinds of errors when clicking, because map variable is not available
-//                    port_marker.bindContextMenu({
-//                        contextmenu: true,
-//                        contextmenuWidth: 140,
-//                        contextmenuItems: [],
-//                        contextmenuInheritItems: false
-//                    });
-//                    console.log(ports[p]);
-//                    for (let cn=0; cn<ports[p].conn_to.length;cn++) {
-//                        let conn_id = ports[p].id + ports[p].conn_to[cn];
-//                        let conn = find_layer_by_id(es_id, 'connection_layer', conn_id);
-//                        console.log(conn);
-//                        port_marker.options.contextmenuItems.push({
-//                            icon: 'icons/Delete.png',
-//                            text: 'Delete connection to ' + ports[p].conn_to[cn],
-//                            callback: function(e) { console.log(e) },
-//                            hideOnSelect: true
-//                        });
-//                    }
+                    port_marker.bindContextMenu({
+                        contextmenu: true,
+                        contextmenuWidth: 140,
+                        contextmenuItems: [],
+                        contextmenuInheritItems: false
+                    });
+
+                    //port_marker.options.contextmenuItems = []
+                    for (let cn=0; cn<ports[p].conn_to.length;cn++) {
+                        port_marker.options.contextmenuItems.push({
+                            icon: 'icons/Delete.png',
+                            text: 'Delete connection to ' + ports[p].conn_to[cn].a_name,
+                            //context: map,
+                            callback: function(e) { 
+                                socket.emit('command', {'cmd': 'remove_connection_portids',
+                                    'from_port_id': ports[p].id, 'to_port_id': ports[p].conn_to[cn].id,
+                                    'building_id': bld_edit_id});
+                                    // building_id defines if the building editor is open or not.
+                                
+                                // remove port marker after select manually, as the mouseout is disabled
+                                let layer = e.relatedTarget;
+                                layer.port_parent.active = false;
+                                if (!layer.parent.mouseactive) {
+                                    layer.removeFrom(get_layers(active_layer_id, 'connection_layer'));
+                                    remove_tooltip();
+                                    unhighlight_connection(layer.port_parent)
+                                }
+                            },
+                            hideOnSelect: true
+                        });
+                    
+                        // add set carrier, set profile?
+                    }
+                    port_marker.options.contextmenuItems.push({
+                        text: 'Set carrier...',
+                        icon: 'icons/SetCarrier.png',
+                        callback: function (e) {
+                            // don't send asset id, only port_id to allow 
+                            // setting carrier on assets with multiple ports
+                            select_carrier_menu("", ports[p].id);
+                        },
+                        hideOnSelect: true
+                    });
+                    if (bld_edit_id) { // in building editor
+                        let menu_text = 'Expose port';
+                        if (ports[p].exposed) {
+                            menu_text = 'Unexpose port';
+                        }
+                        port_marker.options.contextmenuItems.push({
+                            iconCls: 'fas fa-share-square',
+                            text: menu_text,
+                            //context: map,
+                            callback: function(e) { 
+                                console.log("Toggle Exposed port", e); 
+                                socket.emit('command', {'cmd': 'expose_port',
+                                    'port_id': ports[p].id,
+                                    'building_id': bld_edit_id,
+                                })
+                                    // building_id defines if the building editor is open or not.
+                                
+                                // remove port marker after select manually, as the mouseout is disabled
+                                let layer = e.relatedTarget;
+                                layer.port_parent.active = false;
+                                if (!layer.parent.mouseactive) {
+                                    layer.removeFrom(get_layers(active_layer_id, 'connection_layer'));
+                                    remove_tooltip();
+                                    unhighlight_connection(layer.port_parent)
+                                }
+                            },
+                            hideOnSelect: true
+                        });
+                    }
+                    
+
+                    // port_marker.on('mousedown', function(e) {     
+                    //     if (e.originalEvent && e.originalEvent.button == 2) {
+                    //         console.log("Context menu right click", e);
+                    //         remove_tooltip();
+                    //         //port_marker.contextmenu_active = true;
+                    //     }
+                    // });
 
                 } else {
                     // show already created marker
@@ -187,13 +261,15 @@ function set_marker_port_handlers(marker) {
             }, 300);
         }
     });
+
+    
 }
 
 
 function highlight_connection(port) {
     for (let i=0; i<port.conn_to.length;i++) {
-        let conn_id = port.id + port.conn_to[i];
-        let conn_rev_id = port.conn_to[i] + port.id;
+        let conn_id = port.id + port.conn_to[i].id;
+        let conn_rev_id = port.conn_to[i].id + port.id;
         let conn = find_layer_by_id(active_layer_id, 'connection_layer', conn_id);
         if (conn === undefined) {
             conn = find_layer_by_id(active_layer_id, 'connection_layer', conn_rev_id);
@@ -209,8 +285,8 @@ function highlight_connection(port) {
 
 function unhighlight_connection(port) {
     for (let i=0; i<port.conn_to.length;i++) {
-        let conn_id = port.id + port.conn_to[i];
-        let conn_rev_id = port.conn_to[i] + port.id;
+        let conn_id = port.id + port.conn_to[i].id;
+        let conn_rev_id = port.conn_to[i].id + port.id;
         let conn = find_layer_by_id(active_layer_id, 'connection_layer', conn_id);
         if (conn === undefined) {
             conn = find_layer_by_id(active_layer_id, 'connection_layer', conn_rev_id);

@@ -259,15 +259,17 @@ function energy_carrier_info() {
     sidebar.show();
 }
 
-function select_carrier(asset_id) {
+function select_carrier(asset_id, port_id) {
     var select_box = document.getElementById("carrier_select");
     var selected_value = select_box.options[select_box.selectedIndex].value;
     sidebar.hide();
     //alert(selected_value);
-    socket.emit('command', {cmd: 'set_carrier', asset_id: asset_id, carrier_id: selected_value});
+    console.log('set_carrier', asset_id, port_id);
+    socket.emit('command', {cmd: 'set_carrier', asset_id: asset_id, port_id: port_id, carrier_id: selected_value});
 }
 
-function select_carrier_menu(asset_id) {
+function select_carrier_menu(asset_id, port_id) {
+    // use asset_id or port_id
     sidebar_ctr = sidebar.getContainer();
 
     sidebar_ctr.innerHTML = '<h1>Carriers:</h1>';
@@ -276,7 +278,7 @@ function select_carrier_menu(asset_id) {
     if (carrier_list) {
         var size;
         if (carrier_list.length < 4) { size = 4; } else { size = carrier_list.length; }
-        select = '<select id="carrier_select" size="'+size+'" onchange="select_carrier(\''+asset_id+'\');" style="width: 300px;">';
+        select = '<select id="carrier_select" size="'+size+'" onchange="select_carrier(\''+asset_id+'\', \''+port_id+'\');" style="width: 300px;">';
         for (i=0; i<carrier_list.length; i++) {
             // id, name
             select += '<option value="' + carrier_list[i]['id'] +

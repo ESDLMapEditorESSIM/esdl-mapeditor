@@ -40,7 +40,7 @@ const props = defineProps({
 // Randomly create an id, so that multiple panels can be used.
 const chart_id = ref('chart' + window.uuidv4().substring(0,4));
 
-const emit = defineEmit(['updateSankeySettings']);
+const emit = defineEmits(['updateSankeySettings']);
 
 // eslint-disable-next-line no-unused-vars
 const showSankeySettings = () => {

@@ -6,16 +6,16 @@
       </a-typography-title>
     </a-col>
     <a-col>
-      <a-button 
-        type="text" 
+      <a-button
+        type="text"
         @click="showImageSettings"
       >
         <template #icon>
           <FormOutlined />
         </template>
       </a-button>
-      <a-button 
-        type="text" 
+      <a-button
+        type="text"
         @click="emit('onRemove')"
       >
         <template #icon>

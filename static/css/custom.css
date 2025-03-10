@@ -331,6 +331,12 @@ h6 {
     border: 3px solid black;
 }
 
+.Exposed {
+    border-style: double;
+    border-width: 5px;
+}
+
+
 .notselectedline {
     opacity: 0.65;
 }
@@ -366,6 +372,16 @@ h6 {
 }
 
 #asset_menu-menu .ui-selectmenu-optgroup {
+    font-size: 1.2em !important;
+}
+/*
+    Building editor Asset menu
+*/
+#bld_asset_menu-menu .ui-menu-item {
+    margin-left: 0.5em;
+}
+
+#bld_asset_menu-menu .ui-selectmenu-optgroup {
     font-size: 1.2em !important;
 }
 

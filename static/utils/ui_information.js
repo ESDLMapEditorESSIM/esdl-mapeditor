@@ -85,6 +85,8 @@ function update_asset_tooltip(asset_id, attribute_name, value) {
 
     if (attribute_name == 'name') {
         asset_leaflet_obj.name = value;
+        // also update title
+        asset_leaflet_obj.title = asset_leaflet_obj.type + ": " + value;
     }
 
     let tt_format = get_tooltip_format();
@@ -117,6 +119,7 @@ function update_asset_state(asset_id_or_list, new_state) {
         let asset_id = asset_list[i];
         let asset_leaflet_obj = find_layer_by_id(active_layer_id, 'esdl_layer', asset_id);
         // if it's a joint, don't change appearance
+
         if (asset_leaflet_obj.type == 'Joint') continue;
 
         if (asset_leaflet_obj instanceof L.Marker || asset_leaflet_obj.marker) {
@@ -162,7 +165,8 @@ $(document).ready(function() {
     if (window.PubSubManager) {
         window.PubSubManager.subscribe('ASSET_PROPERTIES', (name, message) => {
             // window.PubSubManager.broadcast('ASSET_PROPERTIES', { id: currentObjectID.value, name: name, value: new_value });
-            if (user_settings.ui_settings.tooltips.show_asset_information_on_map) {
+            if (user_settings.ui_settings.tooltips.show_asset_information_on_map || message.name === 'name') {
+                console.log("Update name")
                 update_asset_tooltip(message.id, message.name, message.value);
             }
             if (message.name === 'state') {
