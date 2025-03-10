@@ -44,6 +44,10 @@ class UpdateAssetMessage(TypedDict):
     """
     UUID of the asset
     """
+    name: str
+    """
+    Name of the asset
+    """
     ports: List[PortMessage]
     """
     List of PortMessage data
@@ -70,7 +74,7 @@ def create_update_asset_message(
     if port_list is None:
         port_list = create_asset_port_message(asset)
     return UpdateAssetMessage(
-        asset_id=asset.id, ports=port_list, exposed_port_asset=isinstance(asset, esdl.ExposedPortsAsset)
+        asset_id=asset.id, name=asset.name, ports=port_list, exposed_port_asset=isinstance(asset, esdl.ExposedPortsAsset)
     )
 
 

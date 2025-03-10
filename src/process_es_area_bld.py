@@ -606,8 +606,6 @@ def process_building(esh, es_id, asset_list, building_list, area_bld_list, conn_
         extra_attributes = dict()
         extra_attributes['assetType'] = building.assetType
 
-
-
         if geometry:
             if isinstance(geometry, esdl.Point):
                 building_list.append(

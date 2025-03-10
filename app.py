@@ -2890,6 +2890,7 @@ def process_command(message):
             edr_asset.geometry = asset_to_be_replaced.geometry
 
             esh.add_object_to_dict(active_es_id, edr_asset, recursive=True)
+            emit('update_asset', create_update_asset_message(edr_asset))
         else:
             send_alert('Error getting ESDL model from EDR')
 

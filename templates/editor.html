@@ -1229,16 +1229,19 @@
             // update an asset - called after adding and removing ports
             // currently only updates the ports for the context menu
             socket.on('update_asset', function(asset_update) {
-                console.log("update_asset", asset_update);
-                asset_id = asset_update['asset_id'];
-                ports = asset_update['ports'];
-                layer = find_layer_by_id(active_layer_id, 'esdl_layer', asset_id);
+                let asset_id = asset_update['asset_id'];
+                let name = asset_update['name'];
+                let ports = asset_update['ports'];
+                let layer = find_layer_by_id(active_layer_id, 'esdl_layer', asset_id);
                 if (layer === undefined && bld_edit_id) {
                     // try on main map as building editor is open
                     layer = find_layer_by_id(es_id, 'esdl_layer', asset_id);
                 }
                 if (layer !== undefined) {
                     // layer could be undefined if asset is in building/compound asset
+
+                    // Update the name of the asset, but assume the ESDL class (layer.type) has not changed
+                    layer.title = layer.type + ': ' + name;
                     layer.ports = ports;
                     if (layer instanceof L.Marker) {
                         
@@ -1253,7 +1256,6 @@
                     }
                     if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
                         // polygon is a subclass of polyline in Leaflet.
-                        console.log('update_asset', layer);
                         set_line_handlers(layer);
                         update_line_color(layer);
                     }
