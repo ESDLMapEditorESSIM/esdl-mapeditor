@@ -44,5 +44,4 @@ ENV PYTHONPATH=.:/usr/src/app
 
 EXPOSE 8111
 
-CMD gunicorn --log-level debug --name mapeditor -k geventwebsocket.gunicorn.workers.GeventWebSocketWorker -t 180 -w 1 --threads 64 app:app -b :8111
-#CMD gunicorn --log-level debug --name mapeditor -t 180 -w 1 --threads 4 app:app -b :8111
+CMD gunicorn --log-level debug --name mapeditor -t 180 -w 1 --threads 4 app:app -b :8111
