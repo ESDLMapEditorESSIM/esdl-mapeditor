@@ -19,7 +19,7 @@ class SerializedESDLProject(TypedDict):
     name: str
     description: str
     variants: list[SerializedVariant]
-    active_variant_id: str
+    active_variant_id: str | None
     active_es_id: str
 
 
@@ -31,7 +31,7 @@ def serialize_esdl_project(pm: ProjectManager, project: ESDLProject) -> Serializ
         name=project.name,
         description=project.description,
         variants=[serialize_variant(pm, collection.variant) for collection in project.variantCollection],
-        active_variant_id=pm.active_variant.id,
+        active_variant_id=pm.active_variant.id if pm.active_variant else None,
         active_es_id=pm.get_active_energy_system().id,
     )
 
