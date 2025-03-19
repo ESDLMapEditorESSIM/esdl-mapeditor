@@ -12,10 +12,12 @@
 #  Manager:
 #      TNO
 import logging
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from enum import Enum
-from typing import Any, TypedDict, List, Dict, Optional, Sequence, Iterable
+from typing import Any, TypedDict, List, Dict, Optional, Sequence, Iterable, Tuple
 import json
+import re
+from urllib.parse import urlparse
 
 from flask import Flask
 from flask_socketio import SocketIO
@@ -25,10 +27,13 @@ from sqlalchemy.sql import text, func
 from sqlalchemy.exc import IntegrityError
 import pandas as pd
 from pandas import DataFrame
+from influxdb import InfluxDBClient
 
 import esdl
 from esdl.processing.ESDLAsset import get_asset_capability_type
-from esdl.processing.ESDLQuantityAndUnits import unit_to_string, build_qau_from_unit_string, qau_to_string
+from esdl.processing.ESDLQuantityAndUnits import unit_to_string
+from esdl.profiles.influxdbprofilemanager import InfluxDBProfileManager, ConnectionSettings
+from extensions.profiles import Profiles
 from extensions.data_manager import db
 from extensions.data_manager.data_manager_message import (ChartType,
                                                           MetadataUpdateRequestBody,
@@ -36,7 +41,9 @@ from extensions.data_manager.data_manager_message import (ChartType,
                                                           MetadataOperationResp,
                                                           GetVariablesRequestBody,
                                                           GetColumnsRequestBody,
-                                                          QueryRequestBody)
+                                                          QueryRequestBody,
+                                                          ProfileVizType,
+                                                          ProfileAggInterval)
 from extensions.data_manager.db_interaction import create_db, drop_db
 from extensions.data_manager.db_model import DataSet, Variable, DataType, Data, BaseModel
 from extensions.session_manager import get_handler, get_session
@@ -46,11 +53,6 @@ import statistics
 
 logger = get_logger(__name__)
 
-
-class ESDLScope(Enum):
-    ALL = 0
-    PROFILE = 1
-    KPI = 2
 
 class MetadataCRUDStatus(Enum):
     SUCCESS = "SUCCESS"
@@ -70,6 +72,7 @@ class Label(TypedDict):
     name: str
     value: str
 
+dt_str_format = '%Y-%m-%d %H:%M:%S'
 
 def physical_q_to_str(qau: esdl.QuantityAndUnitType):
     if qau.physicalQuantity:
@@ -140,9 +143,67 @@ def check_qau(qau: esdl.AbstractQuantityAndUnit) -> esdl.QuantityAndUnitType:
         qau = esdl.QuantityAndUnitType()  # empty/unknown unit
     return qau
 
-def handle_profile(profile: esdl.GenericProfile, ds: DataSet, variable_name: str = None) -> [Data, esdl.QuantityAndUnitType, str]:
+def handle_influxdb_profile(profile: esdl.InfluxDBProfile, ds: DataSet):
     """
-    Process an esdl GenericProfile
+    Process an esdl InfluxDBProfile
+
+    :param profile: InfluxDBProfile to process
+    :param ds: Data set this data belongs to
+    :return: Data point, its unit and variable_name of this data point
+    """
+    container = profile.eContainer()
+
+    d = Data(dataset=ds, value=None) # Default value to None
+    qau = check_qau(profile.profileQuantityAndUnit)
+    variable_name = f"{profile.field} [{unit_to_string(qau)}]"
+
+    labels = {}
+    # Label profile id, so it can be retrieved when the query_influxdb_profile() method is called.
+    labels['profile_id'] = profile.id
+    labels['Measurement'] = profile.measurement
+
+    # TODO: extract below code to avoid duplication in handle_static_profile()
+    if isinstance(container, esdl.Port):
+        port: esdl.Port = container
+        asset: esdl.EnergyAsset = port.energyasset
+        capability = get_asset_capability_type(asset)
+        labels['Capability'] = capability
+        area = asset.area
+        if asset.containingBuilding or asset.containingAsset:
+            container_asset = asset.eContainer()
+            area = container_asset.area
+            labels['Parent asset'] = container_asset.name
+        d.sector = asset.sector.name if asset.sector else None
+        d.node = asset.name or asset.id
+        d.region = area.name
+        d.technology = asset.eClass.name
+        
+        if isinstance(port, esdl.InPort):
+            d.input = port.carrier.name if port.carrier else None
+            labels["Flow direction"] = 'In'
+        else:
+            port: esdl.OutPort
+            d.output = port.carrier.name if port.carrier else None
+            labels["Flow direction"] = 'Out'
+            if len(port.connectedTo) > 0:
+                target_asset = port.connectedTo[0].energyasset
+                d.to_node = target_asset.name or target_asset.id
+        other_ports = asset.port.select(lambda p: p != port)
+        if len(other_ports) > 0:
+            labels['Graph position'] = "Interior"
+        else:
+            labels['Graph position'] = "Edge"
+    elif isinstance(container, esdl.CostInformation):
+        # TODO?
+        logger.warn("Profile with CostInformation as a container is not yet supported")
+
+    d.labels = labels
+    
+    return d, qau, variable_name
+
+def handle_static_profile(profile: esdl.StaticProfile, ds: DataSet, variable_name: str = None) -> [Data, esdl.QuantityAndUnitType, str]:
+    """
+    Process an esdl StaticProfile
 
     :param profile: Profile to process
     :param ds: Data set this data belongs to
@@ -157,6 +218,7 @@ def handle_profile(profile: esdl.GenericProfile, ds: DataSet, variable_name: str
         profile = profile.reference
     qau = check_qau(profile.profileQuantityAndUnit)
     d = Data(dataset=ds, value=None) # Default value to None
+    # TODO: is this needed?
     if isinstance(profile, esdl.TimeSeriesProfile):
         ts_profile: esdl.TimeSeriesProfile = profile
         aggregate = aggreate_based_on_unit(qau, ts_profile.values) * multiplier
@@ -167,8 +229,8 @@ def handle_profile(profile: esdl.GenericProfile, ds: DataSet, variable_name: str
         logger.warn("DateTimeSeriesProfile not yet supported")
     elif isinstance(profile, esdl.InfluxDBProfile):
         logger.warn("DateTimeSeriesProfile not yet supported")
-    if isinstance(container, esdl.Port):  # usually a port
 
+    if isinstance(container, esdl.Port):  # usually a port
         port: esdl.Port = container
         asset: esdl.EnergyAsset = port.energyasset
         capability = get_asset_capability_type(asset)
@@ -182,7 +244,6 @@ def handle_profile(profile: esdl.GenericProfile, ds: DataSet, variable_name: str
         d.node = asset.name or asset.id
         d.region = area.name
         d.technology = asset.eClass.name
-
 
         variable_name = f'{physical_q_to_str(qau)} [{unit_to_string(qau)}]'
         if isinstance(port, esdl.InPort):
@@ -240,6 +301,91 @@ def preprocess_column(column_name: str, db_engine_driver: str = "sqlite") -> Any
             return Data.labels[key_name].astext.label(column_name)
     else:
         return column(column_name)
+    
+def get_profile_influxdb_settings(profile: esdl.InfluxDBProfile, profiles_settings: dict) -> ConnectionSettings | None:
+    """
+    Retrieves InfluxDB connection settings for a given profile.
+
+    If the profile is hosted on a publicly accessible server, 
+    it additionally checks the InfluxDB connectivity and constructs the connection settings.
+    """
+    # Find profile server information for the InfluxDBProfile
+    for prof_server in profiles_settings["profiles_servers"]:
+        if prof_server["host"] in profile.host and prof_server["port"] == str(profile.port):
+            return ConnectionSettings(
+                host=prof_server["host"],
+                port=profile.port,
+                database=profile.database,
+                username=prof_server["username"],
+                password=prof_server["password"],
+                ssl=prof_server.get("ssl_enabled", False),
+                verify_ssl=prof_server.get("ssl_enabled", False),
+            )
+
+    # Check additionally if the profile is hosted on a public accessible server
+    # Ensure host part only (without http:// or https://) 
+    host = urlparse(profile.host).netloc if profile.host.startswith(('http://', 'https://')) else profile.host
+    try:
+        influxdb_client = InfluxDBClient(host=host, port=profile.port, ssl=True, verify_ssl=True)
+        db = influxdb_client.get_list_database()
+        if db:
+            return ConnectionSettings(
+                host=host,
+                port=profile.port,
+                database=profile.database,
+                username="",
+                password="",
+                ssl=True,
+                verify_ssl=True,
+            )
+    except Exception as e:
+        logger.warn(e)
+    finally:
+        if influxdb_client:
+            influxdb_client.close()
+
+    return None
+
+def aggregate_profile_data(data: List[Tuple[datetime, float]], interval: str, agg_func: str) -> list:
+    """
+    Aggregate profile data into specified time intervals and apply the given aggregation function.
+
+    :param data: A list of tuples, each containing a datetime object and a float value.
+    :param interval: The time interval for aggregation.
+    :param agg_func: The aggregation function to apply.
+
+    :return: A list containing two lists (interval label strings and aggregated values corresponding to each interval)
+    """
+
+    df = pd.DataFrame(data, columns=["time", "value"])
+    df.set_index("time", inplace=True)
+
+    if interval == ProfileAggInterval.YEAR.value:
+        resample_interval = "YE"
+        label_format = '%Y'
+    elif interval == ProfileAggInterval.QUARTER.value:
+        resample_interval = "QE"
+    elif interval == ProfileAggInterval.MONTH.value:
+        resample_interval = "ME"
+        label_format = '%B-%Y'
+    elif interval == ProfileAggInterval.WEEK.value:
+        resample_interval = "W"
+        label_format = 'Week-%U-%Y'
+    else:
+        raise ValueError(f"Unsupported interval: {interval}")
+    
+    aggregated_data = df.resample(resample_interval).agg({'value': agg_func.lower()})
+
+    # Handle quarter-year label formatting separately
+    if interval == ProfileAggInterval.QUARTER.value:
+        aggregated_data['label'] = aggregated_data.index.map(lambda x: f"Q{x.quarter}-{x.year}")
+    else:
+        aggregated_data['label'] = aggregated_data.index.strftime(label_format)
+
+    result = [aggregated_data['label'].values.tolist(),
+              aggregated_data['value'].values.tolist()]
+
+    return result
 
 class DataManager:
     def __init__(self, flask_app: Flask, socket: SocketIO):
@@ -289,17 +435,17 @@ class DataManager:
         def _get_columns(params: Dict) -> dict:
             req_body = GetColumnsRequestBody(**params)
             return self.get_columns(db.session, dataset_ids=req_body.dataset_ids, variable_name=req_body.variable_name)
-        
+                
         @self.socketio.on("datamanager/query", namespace="/esdl")
-        def _query(params: Dict) -> list:
+        def _query(params: Dict) -> dict:
             params['chart_type'] = ChartType(params['chart_type'])
             req_body = QueryRequestBody(**params)
-            return self.query(db.session,
-                              dataset_ids=req_body.dataset_ids,
-                              variable_name=req_body.variable_name,
-                              group_by=req_body.group_by,
-                              filters=req_body.filters,
-                              chart_type=req_body.chart_type)
+
+            # TODO: return rounded query values
+            if req_body.profile:
+                return self.query_influxdb_profile(db.session, options=req_body) 
+            else:
+                return self.query(db.session, options=req_body)
 
     def process_esdl(self, es: esdl.EnergySystem, owner: str) -> List[BaseModel]:
         """
@@ -324,17 +470,20 @@ class DataManager:
         ds = DataSet(name=es.name, energy_system_id=es.id, created_by=owner, description=es.description, model="Unknown")
 
         for eobj in es.eAllContents():
-            #variable_name = eobj.name if hasattr(eobj, 'name') else None
             variable_name = None
+            is_profile_variable = None
+
             if isinstance(eobj, esdl.SingleValue) or isinstance(eobj, esdl.TimeSeriesProfile):
                 logger.debug(f"Handling {eobj.eClass.name}/{eobj.name}")
                 # single value profile
                 # profile: esdl.SingleValue = eobj
-                d, qau, variable_name = handle_profile(eobj, ds, variable_name)
-
+                d, qau, variable_name = handle_static_profile(eobj, ds, variable_name)
             elif isinstance(eobj, esdl.ProfileReference):
                 # handle reference too, as we need a reference to the asset
-                d, qau, variable_name = handle_profile(eobj, ds, variable_name)
+                d, qau, variable_name = handle_static_profile(eobj, ds, variable_name)
+            elif isinstance(eobj, esdl.InfluxDBProfile):
+                is_profile_variable = True
+                d, qau, variable_name = handle_influxdb_profile(eobj, ds)
             elif isinstance(eobj, esdl.DoubleKPI):
                 d = Data(dataset=ds)
                 d.labels = d.labels if d.labels is not None else {}
@@ -427,16 +576,21 @@ class DataManager:
                 #variable_name = eobj.name if hasattr(eobj, 'name') else None
                 #logger.debug(f"Ignoring {eobj.eClass.name}")
                 continue
+
             variable: Variable = variables.get(variable_name, None)
             if variable is None:
                 if variable_name is None:
                     logger.warn(f"Variable name is empty for {eobj}, ignoring")
                     continue
+
+                # Distinguish variable data type (Profile or Single Value).
+                data_type = DataType.PROFILE if is_profile_variable else DataType.SINGLE_VALUE
+
                 variable = Variable(
                     name=variable_name,
                     unit=unit_to_string(qau),
                     quantity=qau.physicalQuantity.name if qau.physicalQuantity else None,
-                    datatype=DataType.SINGLE_VALUE,
+                    datatype=data_type
                 )
                 variables[variable.name] = variable
                 data_list.append(variable)
@@ -668,7 +822,7 @@ class DataManager:
                 'name': dataset.name,
                 'id': dataset.id,
                 'description': dataset.description,
-                'run_timestamp': timestamp.strftime('%Y-%m-%d %H:%M:%S')
+                'run_timestamp': timestamp.strftime(dt_str_format)
             })
         return response
 
@@ -731,20 +885,167 @@ class DataManager:
                 sorted_value['options'] = sorted(value['options'], key=lambda x: str(x))
             sorted_resp[key] = sorted_value
 
+        # Remove profile_id, as it is not used as a filter option in the frontend,
+        # but only as a reference to be used by query_influxdb_profile() in the backend. 
+        if "profile_id" in sorted_resp:
+            del sorted_resp["profile_id"]
+
         return sorted_resp
     
-    def query(self,
-              session: Session,
-              dataset_ids: List[int],
-              variable_name: str,
-              group_by: List[str],
-              filters: Dict[str, List[str]],
-              chart_type: ChartType) -> list:
+    def query_influxdb_profile(self, session: Session, options: QueryRequestBody) -> dict:
         """
-        Queries and returns traces of data based on the specified dataset IDs, variable name, grouping, and filters.
+        Query influxdb profile data and perform data aggregation if specified. 
+        Return a dict of data traces, data range, and error messages.
+
+        TODO: 
+        - To support groupby
+        """
+        dataset_ids = options.dataset_ids
+        variable_name = options.variable_name
+        # group_by = options.group_by
+        filters = options.filters
+        chart_type = options.chart_type
+        viz_type = options.profile['viz_type']
+        data_range = options.profile['data_range']
+        
+        resp = { "data_range": [], "traces": [], "errors": [], "error_msg": "" }
+
+        profiles_settings = Profiles.get_instance().get_profiles_settings()
+        esh = get_handler()
+
+        # group_by_param = [DataSet.name] + [preprocess_column(group) for group in group_by]
+
+        # energy_system_id and profile_id are required to derive the profile using esh.get_by_id()
+        query = session.query(Data,
+                              Data.node.label('attached_node'),
+                              DataSet.name,
+                              DataSet.energy_system_id,
+                              func.json_extract(Data.labels, '$.profile_id').label('profile_id'),
+                              func.json_extract(Data.labels, '$.Flow direction').label('flow_direction'))\
+            .join(Variable, Variable.id == Data.variable_id).join(DataSet, Data.dataset_id == DataSet.id)\
+            .where(Variable.name == variable_name)\
+            .where(Variable.dataset_id.in_(dataset_ids))\
+            
+        for col, values in filters.items():
+            values = [x for x in values if x is not None]   # if all options of a filter are selected, values is null
+            if len(values) > 0:  # only filter when some of the values are selected, but not all.
+                query = query.where(preprocess_column(col).in_(values))
+        
+        profiles_datetimes = []
+        traces = []
+        profile_query = query.all()
+        for result in profile_query:
+            dataset_name = result.name
+            profile_label = f"{result.attached_node} ({result.flow_direction}Port)"
+            es_id = result.energy_system_id
+            profile_id = result.profile_id
+
+            try:
+                profile: esdl.InfluxDBProfile = esh.get_by_id(es_id, profile_id)
+                if not profile:
+                    raise ValueError(f"Profile with ID {profile_id} (ESDL ID {es_id}) not found.")
+                influxdb_settings = get_profile_influxdb_settings(profile, profiles_settings)
+            except Exception as e:
+                err = f"Error retrieving ESDL profile {profile_id} and associated influxdb settings: {e}"
+                logger.error(err)
+                resp['errors'].append(err)
+                continue
+
+            if not influxdb_settings:
+                err = f"Error connecting to {profile.host}:{profile.port} to query {profile_label} profile."
+                resp['errors'].append(err)
+            else:
+                profiles_datetimes.extend([profile.startDate, profile.endDate])
+
+                query_filters = []
+                if profile.filters:
+                    # Parse filter string with regex
+                    if "AND" in profile.filters:
+                        matches = re.findall(r"(\w+)='([^']*)'", profile.filters)
+                    else:
+                        matches = re.findall(r'"(\w+)"=\'([^\']+)\'', profile.filters)                        
+                    if len(matches):
+                        query_filters = [{"tag": key, "value": value} for key, value in matches]
+
+                # If the data range is presented in the request, select a subset of data.
+                if len(data_range) > 0:
+                    range = data_range
+                    start_date = datetime.strptime(range[0], dt_str_format).replace(tzinfo=timezone.utc)
+                    end_date = datetime.strptime(range[1], dt_str_format).replace(tzinfo=timezone.utc)
+                else:
+                    start_date = profile.startDate
+                    end_date = profile.endDate
+
+                try:
+                    prof_manager = InfluxDBProfileManager(influxdb_settings)
+                    prof_manager.load_influxdb(
+                        measurement=profile.measurement,
+                        fields=[profile.field],
+                        from_datetime=start_date,
+                        to_datetime=end_date,
+                        filters=query_filters,
+                    )
+                    datetime_profile = prof_manager.get_esdl_datetime_profile(profile_name=profile.name)
+                except Exception as e:
+                    err = f"Error retrieving {profile.host}:{profile.port} {profile_label} profile: {e}"
+                    resp['errors'].append(err)
+                    logger.error(err)
+                    continue
+
+                data = []
+                for d in datetime_profile.element.items:
+                    d: esdl.ProfileElement
+                    date: datetime = d.from_
+                    value = d.value * profile.multiplier
+                    data.append((date, value))
+
+                if viz_type == ProfileVizType.AGGREGATED.value:
+                    viz_data = aggregate_profile_data(data, options.profile['agg_interval'], options.profile['agg_func'])
+                else:
+                    datetimes = [date.strftime(dt_str_format) for date, _ in data]
+                    values = [value for _, value in data]
+                    viz_data = [datetimes, values]
+
+                trace = {
+                    "name": profile_label,
+                    "x": viz_data[0],
+                    "y": viz_data[1],
+                    "legendgroup": dataset_name,
+                    "legendgrouptitle": { "text": dataset_name }
+                }
+                traces.append(trace)
+        
+        if len(profiles_datetimes):
+            min_dt = (min(profiles_datetimes) - timedelta(days=1)).strftime(dt_str_format)
+            max_dt = (max(profiles_datetimes) + timedelta(days=1)).strftime(dt_str_format)
+            resp['data_range'] = [min_dt, max_dt]
+
+        if len(resp['errors']):
+            logger.error(resp['errors'])
+            error_msg = f"{len(resp['errors'])} out of {len(profile_query)} requested profiles can not be retrieved due to connection errors."
+            resp['error_msg'] = error_msg
+
+        if chart_type == ChartType.TABLE:
+            resp['traces'] = self.process_profile_table_trace(traces)
+        else:
+            resp['traces'] = traces
+
+        return resp
+
+    def query(self, session: Session, options: QueryRequestBody) -> dict:
+        """
+        Queries and returns a dictionary with data traces filtered by dataset IDs, variable name, grouping, and filters.
 
         Note that group_by is ordered: the first element goes on the X axis, the rest goes in the grouping.
         """
+        dataset_ids = options.dataset_ids
+        variable_name = options.variable_name
+        group_by = options.group_by
+        filters = options.filters
+        chart_type = options.chart_type
+
+        traces = []
+        
         logger.info(f"Querying {chart_type.value} chart traces with dataset_ids: \
                     {dataset_ids}, variable: {variable_name}, group_by: {group_by}, and filters: {filters}")
                 
@@ -775,9 +1076,40 @@ class DataManager:
         df = pd.read_sql_query(query.statement, session.get_bind())
 
         if chart_type == ChartType.TABLE:
-            return self.process_table_trace(df)
+            traces = self.process_table_trace(df)
         else:
-            return self.process_bar_chart_trace(df, dataset_ids, variable_name, group_by)
+            traces = self.process_bar_chart_trace(df, dataset_ids, variable_name, group_by)
+
+        return { "traces": traces }
+    
+    @staticmethod
+    def process_profile_table_trace(traces: list[dict]) -> list:
+        """
+        Processes profile traces and formats them into a table trace structure.
+        """
+        headerValues = [['dataset'], ['asset'], ['timeperiod'], ['value']]
+        cellValues = []
+        datasets, asset_names, timeperiods, values = [], [], [], []
+
+        for trace in traces:
+            data_counts = len(trace['x'])
+            datasets.extend([trace['legendgroup'] for _ in range(data_counts)])
+            asset_names.extend([trace['name'] for _ in range(data_counts)])
+            timeperiods.extend([d for d in trace['x']])
+            values.extend([d for d in trace['y']])
+
+        cellValues = [datasets, asset_names, timeperiods, values]
+
+        trace = [{
+            'header': {
+                'values': headerValues
+            },
+            'cells': {
+                'values': cellValues
+            }
+        }]
+
+        return trace
     
     @staticmethod
     def process_table_trace(df: DataFrame) -> list:

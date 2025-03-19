@@ -64,6 +64,11 @@ logging.config.dictConfig(
                 "level": "DEBUG" if FLASK_DEBUG else "INFO",
                 "propagate": False,
             },
+            "geventwebsocket": {
+                "handlers": ["default"],
+                "level": "INFO",
+                "propagate": False,
+            },
         },
     }
 )

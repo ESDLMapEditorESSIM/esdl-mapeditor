@@ -740,6 +740,7 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
         for (let p=0; p<port_list.length; p++) {
             let port_carrier_id = port_list[p]['carrier'];
             if (port_carrier_id) {
+                let carrier_info_mapping = window.get_carrier_info_mapping(es_bld_id);
                 line_color = carrier_info_mapping[port_carrier_id]['color'];
             }
         }
@@ -814,6 +815,7 @@ var ui_counter = 0;
 function update_line_color(line_layer) {
     ui_counter++;
     debug_layer = line_layer;
+    let es_id = line_layer.esid;
     var line_color = colors[line_layer.type];
     let port_list = line_layer.ports;
     let carrier_info_mapping = get_carrier_info_mapping(line_layer.esid);
@@ -821,6 +823,7 @@ function update_line_color(line_layer) {
         for (let p=0; p<port_list.length; p++) {
             let port_carrier_id = port_list[p]['carrier'];
             if (port_carrier_id) {
+                let carrier_info_mapping = window.get_carrier_info_mapping(es_id);
                 line_color = carrier_info_mapping[port_carrier_id]['color'];
                 break;
             }

@@ -33,6 +33,7 @@ import {
     Radio,
     Row,
     Select,
+    Segmented,
     Slider,
     Space,
     Spin,
@@ -101,6 +102,7 @@ export function mountApp(component, elementSelector) {
     app.use(Radio);
     app.use(Row);
     app.use(Select);
+    app.use(Segmented);
     app.use(Slider);
     app.use(Space);
     app.use(Spin);

@@ -37,7 +37,7 @@ const config = {
 	maintainAspectRatio: true,
 	automargin: true,
 	toImageButtonOptions: {
-		format: 'png', // one of png, svg, jpeg, webp
+		format: 'svg', // one of png, svg, jpeg, webp
 		// height: 500,
 		width: 900,
 		scale: 1 // Multiply title/legend/axis/canvas sizes by this factor
@@ -69,7 +69,7 @@ onMounted(() => {
 		resizeObserver = new ResizeObserver(resizePlot);
 		resizeObserver.observe(plotDiv.value);
 	}
-
+	config.toImageButtonOptions['filename'] = props.layout?.title?.text || "Untitled chart";
 	Plotly.newPlot(plotDiv.value, props.trace, props.layout, config);
 });
 

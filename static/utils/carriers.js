@@ -126,8 +126,8 @@ function add_carrier() {
 function remove_carrier(event, id) {
     // delete table row of this carrier
     event.target.parentNode.parentNode.remove()
-    carrier_list = get_carrier_list(active_layer_id);
-    carrier_info_mapping = get_carrier_info_mapping(active_layer_id);
+    let carrier_list = get_carrier_list(active_layer_id);
+    let carrier_info_mapping = get_carrier_info_mapping(active_layer_id);
 
     for (let i=0; i<carrier_list.length; i++) {
         if (carrier_list[i]['id'] == id) {
@@ -194,8 +194,8 @@ function create_carrier_info_html() {
     var html = "";
     html = '<h1>Energy Carriers and Commodities:</h1>';
 
-    carrier_list = get_carrier_list(active_layer_id);
-    carrier_info_mapping = get_carrier_info_mapping(active_layer_id);
+    let carrier_list = get_carrier_list(active_layer_id);
+    let carrier_info_mapping = get_carrier_info_mapping(active_layer_id);
 
     if (carrier_list && carrier_list.length > 0) {
         table = '<table>';

@@ -46,19 +46,19 @@
                   <i
                     v-else-if="actionEnabled(action, record)"
                     :class="action.icon"
-                    class="pointer"
+                    class="action-pointer"
                     :title="action.title"
                     @mouseleave="hide_jquery_ui_popup"
                     @click="doAction(record, action)"
                   />
-                  <i v-else :class="action.icon" class="disabled" />
+                  <i v-else :class="action.icon" class="action-disabled" />
                 </div>
                 <div v-else>
                   <li>
                     <a v-if="actionEnabled(action, record)" href="#" @click="doAction(record, action)">{{
                       action.title
                     }}</a>
-                    <div v-else class="disabled">{{ action.title }}</div>
+                    <div v-else class="action-disabled">{{ action.title }}</div>
                   </li>
                 </div>
               </a-col>
@@ -83,7 +83,7 @@
     :ok-text="activeAction.title === EDIT? 'Save' : activeAction.title === DELETE? 'Delete' : 'Ok'"
     :ok-button-props="{danger: activeAction.title === DELETE}"
     width="80%"
-    :body-style="{'max-height': '800px', 'overflow': 'auto'}"
+    :body-style="{'max-height': 'calc(100% - 80px)', 'overflow': 'auto'}"
     @ok="handleModalOk"
   >
     <json-forms
@@ -536,17 +536,21 @@ const setActions = () => {
 
 </script>
 
-<style scoped>
+<style>
 .ant-table table {
   font-size: 10px !important;
   line-height: 1.2 !important;
 }
 
-.pointer {
+div.ant-modal-content {
+  height: calc(100vh - 200px);
+}
+
+.action-pointer {
   cursor: pointer;
 }
 
-.disabled {
+.action-disabled {
   color: lightgray;
 }
 </style>

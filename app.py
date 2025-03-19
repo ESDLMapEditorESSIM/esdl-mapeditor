@@ -33,6 +33,7 @@ from flask_oidc.model import User
 from flask_session import Session
 from flask_socketio import SocketIO, emit
 from pyecore.ecore import EDate, EObject
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 import src.esdl_config as esdl_config
 import src.settings as settings
@@ -68,7 +69,8 @@ from extensions.toast_notifications import ToastNotifications
 from src.edr_client import EDRClient
 from extensions.profiles import Profiles
 from extensions.session_manager import del_session, delete_sessions_on_disk, get_handler, get_session, \
-    get_session_for_esid, schedule_session_clean_up, set_handler, set_session, set_session_for_esid, valid_session
+    get_session_for_esid, schedule_session_clean_up, set_handler, set_session, set_session_for_esid, valid_session, \
+    clear_session_key_for_esid, has_session_key
 from extensions.settings_storage import SettingsStorage
 from extensions.shapefile_converter import ShapefileConverter
 from extensions.spatial_operations import SpatialOperations
@@ -156,6 +158,8 @@ def is_running_in_uwsgi():
 #  Application definition, configuration and setup of simple file server
 # ---------------------------------------------------------------------------------------------------------------------
 app = Flask(__name__)
+# Tell Flask we are running behind a proxy
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 app.config['SECRET_KEY'] = b'\xc3g\x19\xbf\x8e\xa0\xe7\xc8\x9a/\xae%\x04g\xbe\x9f\xaex\xb5\x8c\x81f\xaf`' #os.urandom(24)   #'secret!'
 app.config['SESSION_COOKIE_NAME'] = 'ESDL-WebEditor-session'
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
@@ -176,6 +180,7 @@ socketio = SocketIO(
     path='/socket.io',
     logger=settings.FLASK_DEBUG,
     engineio_logger=settings.FLASK_DEBUG,
+    cors_allowed_origins=settings.ALLOWED_ORIGINS,
 )
 # logging.getLogger('engineio').setLevel(logging.WARNING)  # don't print all the messages
 
@@ -282,13 +287,18 @@ def before_request():
     # store session id
     session['client_id'] = request.cookies.get(app.config['SESSION_COOKIE_NAME'])  # get cookie id
 
+    # make access to session variables only available when they are
+    if request.endpoint in ['index', 'oidc_auth.authorize', 'oidc_auth.login']:
+        # don't add user to the structlog request context at all (this is not available)
+        return
+    if request.endpoint in ['serve_static', 'auth_status']:
+        if not has_session_key('user-email'):
+            # only add user to the structlog request context when logged in
+            return
+
     user_email = get_session("user-email")
-
     structlog.contextvars.clear_contextvars()
-    structlog.contextvars.bind_contextvars(
-        user=user_email
-    )
-
+    structlog.contextvars.bind_contextvars(user=user_email)
 
 @app.route('/')
 def index():
@@ -361,6 +371,12 @@ def editor():
         user_fullname = openid.get_user_profile().get('name')
         set_session('user-fullname', user_fullname)
 
+        # configure logger to use user_email in requests
+        #structlog.contextvars.clear_contextvars()
+        structlog.contextvars.bind_contextvars(
+            user=user_email
+        )
+
         esdl_drive_enabled = not(settings.esdl_drive_config["hostname"] is None or settings.esdl_drive_config["hostname"] == "")
         edr_enabled = not(settings.edr_config["host"] is None or settings.edr_config["host"] == "")
         essim_enabled = not(settings.essim_config["ESSIM_host"] is None or settings.essim_config["ESSIM_host"] == "")
@@ -408,7 +424,9 @@ And refreshes if necessary
 def auth_status():
     if openid.user_loggedin:
         user: User = openid.get_user()
-        curr_token = get_session('jwt-token')
+        curr_token = None
+        if has_session_key('jwt-token'):
+            curr_token = get_session('jwt-token')
         if openid.get_access_token() is not None:
             if curr_token is not None and curr_token == openid.get_access_token():
                 return {'valid': True, 'reason': "Unchanged"}
@@ -1482,6 +1500,7 @@ def process_command(message):
 
         if area_bld_id == 'find_area_location_based':
             area_bld_id = find_area_location_based(esh, active_es_id, geometry)
+            logger.info(f"Find area_location_based found area {area_bld_id}")
 
         if object_type == 'Area':
             if not isinstance(geometry, esdl.Polygon):
@@ -1492,9 +1511,9 @@ def process_command(message):
                     new_area.geometry = geometry
 
                     # Update shape dictionary
-                    shape_dictionary = get_session('shape_dictionary')
+                    shape_dictionary = get_session_for_esid(active_es_id, 'shape_dictionary')
                     shape_dictionary[new_area.id] = Shape.create(geometry)
-                    set_session('shape_dictionary', shape_dictionary)
+                    set_session_for_esid(active_es_id, 'shape_dictionary', shape_dictionary)
 
                     # Update drop down list with areas and buildings
                     add_area_to_area_bld_list(new_area, area_bld_id, area_bld_list)
@@ -1805,6 +1824,7 @@ def process_command(message):
 
                 add_to_building = False
                 if not ESDLAsset.add_object_to_area(es_edit, asset, area_bld_id):
+                    logger.info(f"Cannot add {asset.name} to area_bld_id {area_bld_id}. Setting add_to_building to True")
                     ESDLAsset.add_object_to_building(es_edit, asset, area_bld_id)
                     add_to_building = True
 
@@ -1937,7 +1957,7 @@ def process_command(message):
                         send_alert('Area could not be removed')
                     else:
                         # If the user removes an area with assets and connection, redraw everything
-                        shape_dictionary = get_session('shape_dictionary')
+                        shape_dictionary = get_session_for_esid(active_es_id, 'shape_dictionary')
                         try:
                             del shape_dictionary[area_id]  # delete area from shape dictionary
                         except KeyError:
@@ -2977,6 +2997,10 @@ def process_command(message):
         remove_es_id = message['remove_es_id']
         es_info_list = get_session("es_info_list")
         del es_info_list[remove_es_id]  # update es info list too
+        clear_session_key_for_esid(remove_es_id, 'shape_dictionary')
+        clear_session_key_for_esid(remove_es_id, 'conn_list')
+        clear_session_key_for_esid(remove_es_id, 'asset_list')
+        clear_session_key_for_esid(remove_es_id, 'area_bld_list')
         esh.remove_energy_system(es_id=remove_es_id)
 
     if message['cmd'] == 'refresh_esdl':
@@ -3069,6 +3093,10 @@ def process_file_command(message):
         set_session("es_info_list", es_info_list)
         emit('clear_ui')
         emit('clear_esdl_layer_list')
+        del_session("shape_dictionary")
+        del_session("conn_list")
+        del_session("asset_list")
+        del_session("area_bld_list")
         call_process_energy_system.submit(esh, filename)
 
         del_session('store_item_metadata')
@@ -3204,6 +3232,12 @@ def browser_initialize():
         # no valid login credentials
         emit('alert', "Invalid credentials, please reload the page", namespace='/esdl')
         return
+
+    structlog.contextvars.clear_contextvars()
+    structlog.contextvars.bind_contextvars(
+        user=user_email
+    )
+
     role = get_session('user-role')
 
     model_contexts = ModelContexts.get_instance()
@@ -3229,8 +3263,8 @@ def browser_initialize():
 #  Disconnect
 # ---------------------------------------------------------------------------------------------------------------------
 @socketio.on('disconnect', namespace='/esdl')
-def on_disconnect():
-    logger.info('Client disconnected: {}'.format(request.sid))
+def on_disconnect(msg):
+    logger.info('SocketIO: Client disconnected', request_sid=request.sid, msg=msg)
 
 
 # ---------------------------------------------------------------------------------------------------------------------

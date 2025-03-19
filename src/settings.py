@@ -28,6 +28,10 @@ USER_LOGGING_ENABLED = True
 # ASYNC_MODE = 'gevent_uwsgi'
 ASYNC_MODE = None  # default for non uWGSI deployments
 
+# Use the domain name of the server where the application is running. Example: 'https://mapeditor.esdl.hesi.energy'
+ALLOWED_ORIGINS = os.environ.get('ALLOWED_ORIGINS', '*')
+
+
 OIDC_CLIENT_SECRETS = os.environ.get('OIDC_CLIENT_SECRETS', None) # 'credentials/client_secrets_opensource.json'
 _use_gevent = os.environ.get('MAPEDITOR_USE_GEVENT', '')
 USE_GEVENT = (_use_gevent.upper() == 'TRUE' or _use_gevent == '1')

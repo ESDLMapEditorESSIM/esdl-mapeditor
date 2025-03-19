@@ -11,6 +11,7 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+import sys
 
 from flask import session
 from esdl.esdl_handler import EnergySystemHandler
@@ -94,6 +95,18 @@ def get_session(key=None):
     client_id = session["client_id"]
     if client_id not in managed_sessions:
         logger.warning("No client id in the managed_sessions is available, cannot return value for key {}".format(key))
+        print("====================================================")
+        print("No client id in the managed_sessions is available, cannot return value for key {}".format(key))
+        print(f"Session information for client_id: {client_id}:")
+        for key in session:
+            print(f"{key}: {session[key]}")
+        print(f"Managed session keys and their lengths for all registered clients: ({client_id}):")
+        for key in managed_sessions:
+            print(f"{key}: {len(managed_sessions[key])}")
+        print("Stacktrace for get_session():")
+        import traceback
+        traceback.print_stack(file=sys.stdout)
+        print("-----------------------------------------------------")
         return None
     else:
         if key is None:
@@ -114,6 +127,16 @@ def del_session(key):
     else:
         if key in managed_sessions[client_id]:
             del managed_sessions[client_id][key]
+
+def has_session_key(key):
+    """Check if a session key in managed sessions is available, returns None when not"""
+    global managed_sessions
+    client_id = session["client_id"]
+    if client_id not in managed_sessions:
+        #logger.warning("No client id for the session is available, cannot test if key '{}' is available".format(key))
+        return None
+    else:
+        return key in managed_sessions[client_id]
 
 
 def clean_up_sessions():
@@ -159,6 +182,16 @@ def set_session_for_esid(es_id, key, value):
         new_dict = {}
         new_dict[es_id] = value
         set_session(key, new_dict)
+
+def clear_session_key_for_esid(es_id: str, key: str):
+    """ Clear a session key of a specific ESDL"""
+    res = get_session(key)
+    if res is not None:
+        if es_id in res:
+            del res[es_id]
+            return
+    logger.warning(f"Could not clear session key {key} for es_id {es_id} and client_id {session['client_id']}")
+
 
 
 def delete_sessions_on_disk(path: str):

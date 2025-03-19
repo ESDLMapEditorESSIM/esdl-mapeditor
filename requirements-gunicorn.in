@@ -1,6 +1,6 @@
 gunicorn==23.0.0
-gevent-websocket
+#gevent-websocket
 
 # Pinned to prevent conflicts with requirements.txt.
-greenlet==3.0.3
+#greenlet==3.0.3
 packaging==24.1

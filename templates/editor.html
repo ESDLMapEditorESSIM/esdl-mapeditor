@@ -746,7 +746,7 @@
                 list = options['asset_pot_list'];
                 add_to_building = options['add_to_building'];
                 es_id = options['es_id'];
-                carrier_info_mapping = get_carrier_info_mapping(es_id);
+                let carrier_info_mapping = get_carrier_info_mapping(es_id);
 
                 tt_format = get_tooltip_format();
 
@@ -919,7 +919,7 @@
                    es_bld_id = bld_edit_id; // global variable indicating the currently edited building
                 }
 
-                carrier_info_mapping = get_carrier_info_mapping(es_id);
+                let carrier_info_mapping = get_carrier_info_mapping(es_id);
 
                 var linecolor = 0;
                 var linewidth = 2;

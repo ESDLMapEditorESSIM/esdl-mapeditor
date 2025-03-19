@@ -14,12 +14,12 @@
 import base64
 import io
 
-from flask import Flask, request
+from flask import Flask, request, session
 from flask_socketio import SocketIO, emit
 from flask_executor import Executor
 
 from esdl.esdl_handler import EnergySystemHandler
-from extensions.session_manager import set_session, set_handler, get_handler
+from extensions.session_manager import set_session, set_handler, get_handler, del_session, managed_sessions
 import src.log as log
 from src.process_es_area_bld import process_energy_system
 
@@ -72,6 +72,13 @@ class ESDLFileIO:
         # emit('alert', message, namespace='/esdl')
 
     def clear_mapeditor_ui(self):
+        # clear these completely, but not when importing, only loading.
+        # but importing is not using the REST API, but socket.io, so this works
+        del_session("shape_dictionary")
+        del_session("conn_list")
+        del_session("asset_list")
+        del_session("area_bld_list")
+
         es_info_list = {}
         set_session("es_info_list", es_info_list)
         emit('clear_ui')
