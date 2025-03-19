@@ -29,54 +29,56 @@ function get_edr_assets(url) {
     });
 }
 
-function select_edr_asset() {
-    var select_box = document.getElementById("edr_asset_select");
-    var selected_value = select_box.options[select_box.selectedIndex].value;
-    sidebar.hide();
-
-    socket.emit('command', {cmd: 'get_edr_asset', edr_asset_id: selected_value});
-}
-
-function select_edr_asset_window(url) {
-    sidebar_ctr = sidebar.getContainer();
-
-    sidebar_ctr.innerHTML = '<h1>EDR assets:</h1>';
-    sidebar_ctr.innerHTML += '<p>The EDR (Energy Data Repository) contains standard ESDL asset descriptions that can ' +
-        'be shared between models. Please visit the <a href="https://edr.hesi.energy" target="#">EDR website</a> for more ' +
-        'information and to browse the contents of the EDR</p>';
-
-    if (edr_asset_type_list) {
-        let filter_div = '<div>';
-        filter_div += '<h3>Filter EDR asset list on:</h3>'
-        let select= '<select id="edr_asset_type_list">';
-        select += '<option value="default" selected>No filter</option>';
-        for (i=0; i<edr_asset_type_list.length; i++) {
-            select += '<option value="' + edr_asset_type_list[i] + '">' + edr_asset_type_list[i] + '</option>';
-        }
-        select += '</select>';
-        filter_div += select;
-        filter_div += '</div>';
-        sidebar_ctr.innerHTML += filter_div;
+class ReplaceWithEDRAsset {
+    constructor() {
+        this.initSocketIO();
+        this.tmp = null;
     }
 
-    if (edr_asset_list) {
-        let asset_list_div = '<div>';
-        asset_list_div += '<h3>Select asset from EDR:</h3>'
-        var size;
-        if (edr_asset_list.length < 15) { size = 15; } else { size = edr_asset_list.length; }
-        let select = '<select id="edr_asset_select" size="'+size+'" onchange="select_edr_asset();" style="width: 300px;">';
-        for (i=0; i<edr_asset_list.length; i++) {
-            // id, name
-            select += '<option value="' + edr_asset_list[i]['id'] +
-                '">' + edr_asset_list[i]['title'] + '</option>';
-        }
-        select += '</select>';
-        asset_list_div += select;
-        asset_list_div += '</div>'
-        sidebar_ctr.innerHTML += asset_list_div;
-    } else {
-        sidebar_ctr.innerHTML += 'No assets found in EDR';
+    initSocketIO() {
+        console.log("Registering socket io bindings for ReplaceWithEDRAsset")
+        var self = this;
     }
 
-    sidebar.show();
+    on_replace_with_edr_asset(event, id) {
+        let asset_list = [id];
+        let clicked_asset = find_layer_by_id(active_layer_id, 'esdl_layer', id);
+        let asset_class = clicked_asset.type;
+
+        if (select_assets.is_select_mode()) {
+            // One or more assets have been selected
+            if (select_assets.is_selected(clicked_asset)) {
+                // the current asset is part of this selection
+                asset_list = select_assets.get_selected_assets();
+            }
+        }
+        replace_with_edr_asset(asset_list, asset_class);
+    }
+
+    static create(event) {
+        if (event.type === 'client_connected') {
+            replace_with_edr_plugin = new ReplaceWithEDRAsset();
+            console.log("ReplaceWithEDRAsset initiated!!")
+        }
+        if (event.type === 'add_contextmenu') {
+            let layer = event.layer;
+            let layer_type = event.layer_type;
+            let id = layer.id;
+            if (layer_type === 'marker' || layer_type === 'line') {
+                layer.options.contextmenuItems.push({
+                    text: 'Replace with asset from EDR',
+                    icon: resource_uri + 'icons/edr3.png',
+                    callback: function(e) {
+                        replace_with_edr_plugin.on_replace_with_edr_asset(e, id);
+                    }
+                });
+            }
+        }
+    }
 }
+
+var replace_with_edr_plugin;
+
+$(document).ready(function() {
+    extensions.push(function(event) { return ReplaceWithEDRAsset.create(event) });
+});
