@@ -113,6 +113,7 @@ from src.kpi_dashboard import KPIDashboard
 from utils.datetime_utils import parse_date
 from extensions.residential_area.residential_area import ResidentialArea
 from extensions.ownership.ownership import Ownership
+from extensions.spatial_visualization.spatial_visualization import SpatialVisualization
 
 print('MapEditor version {}'.format(mapeditor_version))
 print('MapEditor git describe {}'.format(mapeditor_long_version))
@@ -239,6 +240,7 @@ TooltipInfo(app, socketio)
 ActivityContextExtension(app, socketio, settings_storage)
 ResidentialArea(app, socketio, settings_storage)
 Ownership(app)
+SpatialVisualization(app)
 data_manager = DataManager(app, socketio)
 ExternalModels(app, socketio, models_storage, toast_notifications)
 WorkflowEngine(app, socketio, models_storage, esdl_services, toast_notifications)

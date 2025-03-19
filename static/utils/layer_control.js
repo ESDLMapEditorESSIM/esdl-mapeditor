@@ -387,6 +387,7 @@ function get_esdl_layer_control_tree_data() {
         }
 
         let esdl_sublayers = [
+            { text: 'Visualization', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'viz_layer'}},
             area_layer,
             { text: 'Assets', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'esdl_layer'}},
             { text: 'Connections', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'connection_layer'}},

@@ -164,6 +164,7 @@ function create_new_esdl_layer(es_id, title) {
         id: es_id,
         title: title,
         layers: {
+            viz_layer: L.featureGroup().addTo(map),
             esdl_layer: L.featureGroup().addTo(map),
             area_layer: L.featureGroup().addTo(map),
             bld_layer: L.featureGroup().addTo(map),
