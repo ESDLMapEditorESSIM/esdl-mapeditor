@@ -64,7 +64,7 @@ from extensions.port_profile_viewer import PortProfileViewer
 from extensions.profiles import Profiles
 from extensions.session_manager import del_session, get_project_manager, get_session, \
     get_session_for_esid, schedule_session_clean_up, set_project_manager, set_session, \
-    set_session_for_esid, valid_session
+    set_session_for_esid, valid_session, load_sessions_from_disk
 from extensions.settings_storage import SettingsStorage
 from extensions.shapefile_converter import ShapefileConverter
 from extensions.spatial_operations import SpatialOperations
@@ -215,7 +215,7 @@ app.config.update({
     'OIDC_OPENID_REALM': 'esdl-mapeditor',
     'OIDC_SCOPES': 'openid email profile groups microprofile-jwt',
     'OIDC_INTROSPECTION_AUTH_METHOD': 'client_secret_post',
-    'OIDC_CLIENT_SECRETS': settings.OIDC_CLIENT_SECRETS
+    'OIDC_CLIENT_SECRETS': settings.OIDC_CLIENT_SECRETS,
 })
 
 try:
@@ -3304,7 +3304,7 @@ def browser_initialize():
 #  Disconnect
 # ---------------------------------------------------------------------------------------------------------------------
 @socketio.on('disconnect', namespace='/esdl')
-def on_disconnect(msg):
+def on_disconnect(msg=None):
     logger.info('SocketIO: Client disconnected', request_sid=request.sid, msg=msg)
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -3319,12 +3319,12 @@ def default_error_handler(msg):
     traceback.print_exc()
 
 
+parse_esdl_config()
+
 # ---------------------------------------------------------------------------------------------------------------------
 #  Start application
 # ---------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
-    parse_esdl_config()
     logger.info("Starting ESDL MapEditor application")
     user_actions_logging.store_logging("System", "application start", "", "", "", {})
-    start_live_model_interface_thread(app)
     socketio.run(app, debug=settings.FLASK_DEBUG, host=settings.FLASK_SERVER_HOST, port=settings.FLASK_SERVER_PORT, use_reloader=False, allow_unsafe_werkzeug=True)

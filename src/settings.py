@@ -129,3 +129,13 @@ heatnetwork_dispatcher_config = {
 user_feedback_url_config = {
     "url": os.environ.get('USER_FEEDBACK_URL', None)
 }
+
+def is_prod():
+    return os.environ.get('ENVIRONMENT', 'dev') == 'prod'
+
+# Constants for session persistence. You can opt-in to this by setting the PERSIST_SESSIONS environment variable to
+# 'true'. The sessions will then be stored and restored on startup. This is useful for development, but not
+# recommended for production as the projects and ESDLs are not (yet) persisted.
+PERSIST_SESSIONS = os.environ.get('PERSIST_SESSIONS', 'false').upper() == 'TRUE'
+SESSION_PERSISTENCE_PATH = os.environ.get('SESSION_STORAGE_PATH', 'data/sessions')
+SESSION_PERSISTENCE_FILE = 'managed_sessions.pkl'

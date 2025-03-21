@@ -12,21 +12,18 @@
 #  Manager:
 #      TNO
 import glob
-import os
 import threading
 import time
-import uuid
-from datetime import datetime, timezone
+from datetime import datetime
+import pickle
+import os
+from pathlib import Path
 
 from flask import session
 
 import src.log as log
-from esdl.resources.json import JsonOptions
-from esdl.undo import ChangeSource, ChangeContext
-from esdlproject import HighLevelChange
-from esdlproject.ProjectManager import ProjectManager, eobject_to_string, ESDLFormat
-from src.tno.live_model_interface.shared.message_types import HighLevelChangeMessage
-from src.tno.live_model_interface.shared.publisher import send_rabbitmq_message
+from esdlproject.ProjectManager import ProjectManager
+from src.settings import PERSIST_SESSIONS, SESSION_PERSISTENCE_PATH, SESSION_PERSISTENCE_FILE
 
 SESSION_MANAGER_LISTENER_ID = "session_manager"
 
@@ -37,6 +34,19 @@ PM_KEY = "pm"
 LAST_ACCESSED_KEY = "last-accessed"
 SESSION_TIMEOUT = 60 * 60 * 24  # 1 day
 CLEANUP_INTERVAL = 60 * 60  # every hour
+
+# Do not persist these keys to disk.
+EXCLUDE_PERSISTENCE_SESSION_KEYS = [
+    PM_KEY,
+    'process_energysystem_lock',
+    'shape_dictionary',
+    'conn_list',
+    'asset_list',
+    'building_list',
+    'area_bld_list',
+    'es_info_list',
+    'active_es_id',
+]
 
 
 # def get_handler() -> EnergySystemHandler:
@@ -67,68 +77,19 @@ CLEANUP_INTERVAL = 60 * 60  # every hour
 #     set_session(ESH_KEY, esh)
 
 
-def on_change_recorded(change: HighLevelChange, change_context: ChangeContext):
-    """
-    This function is called when a change is recorded on the UndoRedoCommandStack by adding this function
-    as call back function to the ProjectManager's change listeners (see get_project_manager()).
-    It will serialize a high level change (see ESDLProject ecore model) to send to interested live models.
-
-    It will only react on change_sources type INTERNAL
-
-    Parameters
-    ----------
-    change A HighLevelChange to be send away
-
-    """
-    # only react on change_sources type INTERNAL
-    if change_context.source != ChangeSource.INTERNAL:
-        return
-
-    pm = get_project_manager()
-    # pm.rset.resource_factory['json'] = lambda uri: JsonResource(uri, indent=2)
-
-    # options = {'encoder': DateTimeEncoder, 'indent': 2}
-    options = {JsonOptions.INDENT: 2}
-    hlc_string = eobject_to_string(change, ESDLFormat.JSON, options=options)
-    logger.debug(f"Sending HighLevelChange: {hlc_string[:500]}")
-
-    # uri = StringURI("high_level_change.json")
-    # resource = pm.rset.create_resource(uri)
-    # resource.append(hlc)
-    # options = dict()
-    # options['encoder'] = DateTimeEncoder
-    # resource.save(options=options)
-    # hlc_string = uri.getvalue()
-
-    user_email = get_session("user-email")
-    client_id = session["client_id"]
-    message = HighLevelChangeMessage(
-        id=str(uuid.uuid4()),
-        timestamp=datetime.now(timezone.utc),
-        user_email=user_email,
-        client_id=client_id,
-        variant_id=pm.get_active_variant().id,
-        high_level_change=hlc_string,
-    )
-    # logger.debug("Sending high level change on topic events.esdl.high_level_change")
-    send_rabbitmq_message(message, "events.esdl.high_level_change")
-
-
 def get_project_manager() -> ProjectManager | None:
     """
     Retrieve the ProjectManager from the session for the currently logged in user, or create a brand new one.
     """
+    from src.tno.projects.core import create_new_project_manager
     global managed_sessions
     client_id = session["client_id"]
     if client_id in managed_sessions:
         if PM_KEY in managed_sessions[client_id]:
             pm = managed_sessions[client_id][PM_KEY]
-            #logger.debug("Retrieve pm client_id={}".format(client_id))
         else:
             logger.warning("No Project Manager in session. Returning empty project manager")
-            pm = ProjectManager()
-            pm.add_change_listener(SESSION_MANAGER_LISTENER_ID, on_change_recorded)
-            set_project_manager(pm)
+            pm = create_new_project_manager()
         return pm
     else:
         logger.warning("Session has timed-out. Returning None")
@@ -139,27 +100,27 @@ def get_project_manager_with_client_id(client_id: str) -> ProjectManager:
     """
     Retrieve the ProjectManager from the session using the client_id but outside the request context.
     """
+    # Import to prevent circular import.
+    from src.tno.projects.core import create_new_project_manager
     global managed_sessions
     if client_id in managed_sessions:
         if PM_KEY in managed_sessions[client_id]:
             pm = managed_sessions[client_id][PM_KEY]
-            #logger.debug("Retrieve pm client_id={}".format(client_id))
         else:
             logger.warning("No Project Manager in session. Returning empty project manager")
-            pm = ProjectManager()
-            pm.add_change_listener(SESSION_MANAGER_LISTENER_ID, on_change_recorded)
-            set_project_manager(pm)
+            pm = create_new_project_manager(emit_to_frontend=False)
         return pm
     else:
         logger.warning("Session has timed-out, no client_id available. ")
         raise KeyError("Session has timed-out, no client_id available. ")
-        # pm = ProjectManager()
-        # pm.add_change_listener("session_manager", on_change_recorded)
-        # set_project_manager(pm)
-        # return pm
 
 
 def set_project_manager(pm: ProjectManager):
+    """
+    Set the ProjectManager in the session for the currently logged in user.
+    """
+    # Import to prevent circular import.
+    from src.tno.projects.core import on_change_recorded
     global managed_sessions
     client_id = session["client_id"]
     if not pm.has_change_listener(SESSION_MANAGER_LISTENER_ID):
@@ -192,6 +153,7 @@ def set_session(key, value):
         managed_sessions[client_id] = dict()
     managed_sessions[client_id][LAST_ACCESSED_KEY] = datetime.now()
     managed_sessions[client_id][key] = value
+    save_sessions_to_disk()
 
 
 def get_session(key=None, client_id=None, default_value=None):
@@ -296,3 +258,59 @@ def delete_sessions_on_disk(path: str):
     files = glob.glob(path + "/*")
     for f in files:
         os.remove(f)
+
+
+def save_sessions_to_disk():
+    """Save all managed sessions to disk, excluding ProjectManager objects."""
+    if not PERSIST_SESSIONS:
+        return
+
+    global managed_sessions
+    try:
+        Path(SESSION_PERSISTENCE_PATH).mkdir(parents=True, exist_ok=True)
+        storage_path = os.path.join(SESSION_PERSISTENCE_PATH, SESSION_PERSISTENCE_FILE)
+
+        # Create a serializable version of managed_sessions.
+        serializable_sessions = {}
+
+        for client_id, client_session in managed_sessions.items():
+            serializable_sessions[client_id] = {}
+
+            # Copy all session data except the ProjectManager and locks.
+            for key, value in client_session.items():
+                if key not in EXCLUDE_PERSISTENCE_SESSION_KEYS:
+                    serializable_sessions[client_id][key] = value
+
+        with open(storage_path, 'wb') as f:
+            pickle.dump(serializable_sessions, f)
+
+        logger.debug(f"Successfully saved {len(managed_sessions)} sessions to disk")
+    except Exception as e:
+        logger.error(f"Error saving sessions to disk: {str(e)}")
+
+
+def load_sessions_from_disk():
+    """
+    Load session data from disk. Should be called at startup.
+    """
+    if not PERSIST_SESSIONS:
+        return
+    global managed_sessions
+    storage_path = os.path.join(SESSION_PERSISTENCE_PATH, SESSION_PERSISTENCE_FILE)
+
+    if os.path.exists(storage_path):
+        try:
+            with open(storage_path, 'rb') as f:
+                loaded_sessions = pickle.load(f)
+
+            # Initialize empty managed_sessions with the loaded data
+            managed_sessions = loaded_sessions
+
+            # Each client will get a new ProjectManager when they reconnect
+            logger.info(f"Successfully loaded {len(managed_sessions)} sessions from disk")
+        except Exception as e:
+            logger.error(f"Error loading sessions from disk: {str(e)}")
+            managed_sessions = dict()
+    else:
+        logger.info("No saved sessions found, starting with empty session store")
+        managed_sessions = dict()
