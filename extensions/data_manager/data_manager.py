@@ -82,7 +82,7 @@ def filter_none(input_list: Sequence) -> List:
     return [x for x in input_list if x is not None]
 
 def update_kpi_metadata(kpi: esdl.KPI, data: Data):
-    print('Handle KPI ', kpi.name)
+    logger.debug('Handle KPI ', kpi_name=kpi.name)
     labels = {}
     kpis_container = kpi.eContainer()
     level_cnt: int = 0
@@ -265,7 +265,7 @@ class DataManager:
         def _add_or_update_metadata(params: Dict) -> str:
             req_body = MetadataUpdateRequestBody(**params)
             session_owner = get_session("user-email")
-            resp = self.add_or_update_metadata(db.session, es_id=req_body.es_id, owner=session_owner)
+            resp = self.add_or_update_metadata(db.session, variant_id=req_body.es_id, owner=session_owner)
             return json.dumps(resp.__dict__)
         
         @self.socketio.on("datamanager/metadata/delete", namespace="/esdl")
@@ -274,6 +274,19 @@ class DataManager:
             session_owner = get_session("user-email")
             resp = self.delete_dataset(db.session, dataset_name=req_body.dataset_name, owner=session_owner)
             return json.dumps(resp.__dict__)
+
+        @self.socketio.on("datamanager/variants", namespace="/esdl")
+        def _get_variants() -> list:
+            pm = get_project_manager()
+            variants = pm.get_variants()
+            response = []
+            for variant in variants:
+                response.append({
+                    'id': variant.id,
+                    'name': variant.name,
+                    'description': variant.description,
+                })
+            return response
 
         @self.socketio.on("datamanager/datasets", namespace="/esdl")
         def _get_datasets() -> list:
@@ -327,7 +340,7 @@ class DataManager:
             #variable_name = eobj.name if hasattr(eobj, 'name') else None
             variable_name = None
             if isinstance(eobj, esdl.SingleValue) or isinstance(eobj, esdl.TimeSeriesProfile):
-                logger.debug(f"Handling {eobj.eClass.name}/{eobj.name}")
+                # logger.debug(f"Handling {eobj.eClass.name}/{eobj.name}")
                 # single value profile
                 # profile: esdl.SingleValue = eobj
                 d, qau, variable_name = handle_profile(eobj, ds, variable_name)
@@ -479,7 +492,6 @@ class DataManager:
                 keys_list = session.scalars(select(literal_column("json_object_keys(labels)").label("keys")).distinct().select_from(Data).where(Data.variable_id == v.id)).all()
         
             for key in keys_list:
-                print("-", key)
                 #options_per_label_key = session.scalars(select(literal_column("labels->>'"+key+"'").label("options")).distinct().select_from(Data).where(Data.variable_id == v.id)).all()
                 options_per_label_key = filter_none(session.scalars(select(Data.labels[key].as_string().label("options")).distinct().select_from(Data).where(Data.variable_id == v.id)).all())
                 filter_options[key] = FilterOptions(options=options_per_label_key, column="labels", key=key)
@@ -513,49 +525,53 @@ class DataManager:
             session.add(v)
             session.commit()
 
-    def add_or_update_metadata(self, session: Session, es_id: str, owner: str) -> MetadataOperationResp:
+    def add_or_update_metadata(self, session: Session, variant_id: str, owner: str) -> MetadataOperationResp:
         """
         Adds or updates DataManager metadata for a given energy system.
         
         :param session: SQLAlchemy session object for database operations.
-        :param es_id: The ID of the energy system to be added or updated.
+        :param variant_id: The ID of the variant of the energy system to be added or updated.
         :param owner: Session owner (email)
 
         :return: MetadataOperationResp contains status and message strings
         """
-        logger.info(f"Adding or updating an energy system {es_id} to metadata.")
+        log = logger.bind(variant_id=variant_id, owner=owner)
+        log.info(f"Adding or updating variant to metadata.")
         
         pm = get_project_manager()
-        es = pm.get_energy_system_by_id(es_id)
+        variant = pm.get_variant_by_id(variant_id)
+        log.info("Getting or creating variant snapshot")
+        es = pm.get_or_create_variant_snapshot(variant)
+        log.info("Retrieved variant snapshot", es_id=es.id)
 
-        if es is None:
-            msg = f"Energy system with ID {es_id} not found."
-            logger.error(msg)
+        if variant is None:
+            msg = f"Variant with ID {variant_id} not found."
+            log.error(msg)
             return MetadataOperationResp(MetadataCRUDStatus.ERROR.value, msg)
                 
-        ds_exists = self.same_ds_exists(session, es_id=es_id, dataset_name=es.name, owner=owner)
+        ds_exists = self.same_ds_exists(session, es_id=es.id, dataset_name=es.name, owner=owner)
 
         warning_msg = ""
         to_overwrite = False
         to_append = False # True if the new dataset has the same es_id but with a different name
         if ds_exists:
             # The same dataset is found, overwrites the existing one.
-            warning_msg = f"Dataset {es.name} [{es_id}] created by {owner} already exists. "
+            warning_msg = f"Dataset {es.name} [{variant_id}] created by {owner} already exists. "
             resp = self.delete_dataset(session, dataset_name=es.name, owner=owner)
             if resp.status == MetadataCRUDStatus.SUCCESS.value:
                 to_overwrite = True
             else:
                 error_msg = f"{warning_msg} Failed to delete existing dataset: {resp.message}"
-                logger.error(error_msg)
+                log.error(error_msg)
                 return MetadataOperationResp(MetadataCRUDStatus.ERROR.value, error_msg)
         else:
             # Checks if the new record is unique in 'name' + 'owner' (to fulfill data model unique constraint)
             # If not, aborts the operation and returns an error message.
             if self.ds_name_and_owner_is_not_unique(session, dataset_name=es.name, owner=owner):
-                error_msg = f"Failed to add dataset {es.name} [{es_id}]. The name must be unique. Please rename ESDL and try again."
-                logger.error(error_msg)
+                error_msg = f"Failed to add dataset {es.name} [{variant_id}]. The name must be unique. Please rename ESDL and try again."
+                log.error(error_msg)
                 return MetadataOperationResp(MetadataCRUDStatus.ERROR.value, error_msg)
-            elif self.ds_with_same_id_but_different_name_exists(session, es_id=es_id, dataset_name=es.name, owner=owner):
+            elif self.ds_with_same_id_but_different_name_exists(session, es_id=variant_id, dataset_name=es.name, owner=owner):
                 to_append = True
 
         try:
@@ -568,23 +584,23 @@ class DataManager:
             
             if to_overwrite:
                 warning_msg += "The dataset is now overwritten with the latest changes."
-                logger.warning(warning_msg)
+                log.warning(warning_msg)
                 return MetadataOperationResp(MetadataCRUDStatus.WARNING.value, warning_msg)
             elif to_append:
-                append_msg = f"Dataset with the same id [{es_id}] already exists. Successfully appended as a new dataset {es.name}."
-                logger.warning(append_msg)
+                append_msg = f"Dataset with the same id [{variant_id}] already exists. Successfully appended as a new dataset {es.name}."
+                log.warning(append_msg)
                 return MetadataOperationResp(MetadataCRUDStatus.WARNING.value, append_msg)
             else:
-                success_msg = f"Dataset {es.name} [{es_id}] has been successfully added."
-                logger.info(success_msg)
+                success_msg = f"Dataset {es.name} [{variant_id}] has been successfully added."
+                log.info(success_msg)
                 return MetadataOperationResp(MetadataCRUDStatus.SUCCESS.value, success_msg)
         except Exception as e:
             session.rollback()
             if isinstance(e, IntegrityError):
-                msg = f"Failed to add dataset {es.name} [{es_id}]. The name must be unique. Please rename ESDL and try again."
+                msg = f"Failed to add dataset {es.name} [{variant_id}]. The name must be unique. Please rename ESDL and try again."
             else:
                 msg = f"An error occurred while adding or updating metadata: {e}"
-            logger.error(msg)
+            log.exception(msg)
             return MetadataOperationResp(MetadataCRUDStatus.ERROR.value, msg)
 
     @staticmethod

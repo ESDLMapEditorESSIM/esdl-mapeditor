@@ -21,6 +21,19 @@
           <a-col>
             <a-typography-title :level="4">Graph configuration</a-typography-title>
             <a-row>
+              <a-typography-title :level="5">Available variants</a-typography-title>
+              <a-select
+                v-model:value="variantIdsSelected"
+                :options="variantOptions"
+                :disabled="variantOptions.length === 0 || datasetOptions.length !== 0"
+                placeholder="Placeholder"
+                mode="multiple"
+                style="width: 100%"
+                @change="onSelectVariant"
+                @mouseleave="removeTooltipPopup"
+              />
+            </a-row>
+            <a-row>
               <a-typography-title :level="5">Dataset</a-typography-title>
               <a-select
                 v-model:value="datasetSelected"
@@ -146,20 +159,20 @@
             <a-col style="padding-top: 24px; padding-bottom: 16px;">
               <a-row style="padding-bottom: 8px;">
                 <a-button
-                  :disabled="isSyncingMetaData"
+                  :disabled="variantIdsSelected.length === 0 || isSyncingMetaData"
                   block
                   @click="onSyncBtnClick"
                 >
                   <a-tooltip 
                     :title="datasetOptions.length ? 
                       'Update ESDL Analytics metadata with the current ESDL(s)' : 
-                      'Add the current ESDL(s) to ESDL Analytics metadata'"
+                      'Add the select ESDL(s) to ESDL Analytics metadata'"
                   >
                     <component
                       :is="datasetOptions.length ? SyncOutlined : UploadOutlined"
                       style="vertical-align: 0.1rem"
                     />
-                    {{ datasetOptions.length ? 'Update dataset' : 'Add dataset' }}
+                    {{ getAddDatasetLabel() }}
                   </a-tooltip>
                 </a-button>
               </a-row>
@@ -305,6 +318,10 @@ const isDeletingMetaData = ref(false);
 
 const currentTrace = ref([]);
 const currentLayout =  ref({});
+// A list of each possible variant to select.
+const variantOptions = ref([]);
+// A list of selected variant IDs.
+const variantIdsSelected = ref([]);
 const datasetOptions = ref([]);
 const datasetSelected = ref([]);
 const datasetSelectPlaceholder = ref('Select a dataset');
@@ -340,6 +357,11 @@ const paletteSelected = ref(colorPalettes[0]);
 
 const onSelectPalette = () => {
   updateTrace();
+};
+
+const onSelectVariant = () => {
+  // Resets selected variable, groupby, and filter to the default state.
+  console.log("Selected variants: ", variantIdsSelected.value);
 };
 
 const onSelectDataset = () => {
@@ -407,6 +429,7 @@ const onSelectDisplayOptions = () => {
 
 onMounted(() => {
   console.info("Initializing ESDL Analytics");
+  updateEsdls();
   updateDatasets();
 });
 
@@ -480,16 +503,30 @@ const displayNotification = (level, description) => {
   });
 };
 
+const getAddDatasetLabel = () => {
+  if (datasetOptions.value.length) {
+    return "Update dataset"
+  } else if (variantIdsSelected.value.length) {
+    return "Add dataset from selected ESDLs";
+  } else {
+    return "Please select ESDLs";
+  }
+};
+
 /**
  * Adds or updates ESDLs into metadata by iterating over the list of energy systems.
  */
 const onSyncBtnClick = async() => {
   console.debug("Synchronizing ESDLs into metadata");
   isSyncingMetaData.value = true;
+  console.log(variantIdsSelected)
 
-  const esObjects = window.esdl_list;
-  const promises = Object.keys(esObjects).map(async(esId) => {
-    const esTitle = esObjects[esId].title;
+  const selectedVariants = variantOptions.value.filter((v) => variantIdsSelected.value.includes(v.value));
+  console.debug("Selected variants", selectedVariants);
+
+  const promises = selectedVariants.map(async(variant) => {
+    const esId = variant.value;
+    const esTitle = variant.label;
     try {
       displayNotification("info", `Adding ${esTitle} [${esId}] into the database.`);
       const reqBody = { es_id: esId };
@@ -538,6 +575,31 @@ const onDeleteBtnClick = async() => {
     currentLayout.value = {};
 
     isDeletingMetaData.value = false;
+  }
+};
+
+/**
+ * Asynchronously fetches the possible ESDLs that could be loaded into the dataset.
+ *
+ * @returns {Promise<void>} A promise that resolves when the datasets have been fetched and the options updated.
+ */
+const updateEsdls = async() => {
+  console.debug("Fetching DataManager esdl options");
+  try {
+    const variants = await fetchMetadata('variants');
+    console.debug("Fetched variants: ", variants);
+    if (variants.length) {
+      variantOptions.value = variants.map((d) => ({
+        value: d.id,
+        label: `${d.name}`
+      }));
+      // datasetSelectPlaceholder.value = "Select a dataset";
+    } else {
+      variantOptions.value = [];
+      // datasetSelectPlaceholder.value = "No datasets available";
+    }
+  } catch (error) {
+    console.error(error);
   }
 };
 
