@@ -577,8 +577,8 @@ class DataManager:
         try:
             tables = self.process_esdl(es=es, owner=owner)
             session.add_all(tables)
-            session.commit()
-            # Extracts the DataSet instance from the tables list for postprocessing. 
+            safe_commit(session)
+            # Extracts the DataSet instance from the tables list for postprocessing.
             ds = [d for d in tables if isinstance(d, DataSet)][0]
             self.update_filter_options(session, ds)
             
@@ -866,3 +866,83 @@ class DataManager:
                 })
 
         return traces
+
+def is_database_locked(session):
+    """
+    Checks if the SQLite database is currently locked.
+
+    :param session: SQLAlchemy session object
+    :return: True if locked, False otherwise
+    """
+    try:
+        # Try to execute a simple query with a timeout
+        connection = session.connection()
+        # Set timeout to 0 to make it non-blocking
+        connection.execute(text("PRAGMA busy_timeout = 0"))
+        # Try to begin a transaction
+        connection.execute(text("BEGIN IMMEDIATE TRANSACTION"))
+        # If we got here, the database is not locked
+        connection.execute(text("ROLLBACK"))
+        return False
+    except Exception as e:
+        error_message = str(e).lower()
+        if "database is locked" in error_message or "busy" in error_message:
+            return True
+        # Log unexpected errors
+        logger.warning(f"Unexpected error checking database lock: {e}")
+        return True
+
+
+def safe_commit(session, max_retries=5, retry_delay=0.2):
+    """
+    Safely commits changes to the database with retry logic for handling locks.
+
+    :param session: SQLAlchemy session object
+    :param max_retries: Maximum number of retries before giving up
+    :param retry_delay: Initial delay between retries in seconds (will increase with backoff)
+    :return: True if committed successfully, False otherwise
+    """
+    import time
+
+    for attempt in range(max_retries):
+        if attempt > 0:
+            # Log retry attempt
+            logger.info(f"Retrying database commit (attempt {attempt + 1}/{max_retries})")
+
+        # Check if database is locked
+        if is_database_locked(session):
+            if attempt == max_retries - 1:
+                logger.warning(f"Database is still locked after {max_retries} attempts, cannot commit changes")
+                return False
+
+            # Wait with exponential backoff before retrying
+            wait_time = retry_delay * (2 ** attempt)
+            logger.debug(f"Database is locked, waiting {wait_time:.2f}s before retry")
+            time.sleep(wait_time)
+            continue
+
+        # Try to commit if we got here
+        try:
+            session.commit()
+            if attempt > 0:
+                logger.info(f"Successfully committed after {attempt + 1} attempts")
+            return True
+        except Exception as e:
+            error_message = str(e).lower()
+            if "database is locked" in error_message or "busy" in error_message:
+                if attempt == max_retries - 1:
+                    logger.error(f"Database lock error persisted after {max_retries} attempts: {e}")
+                    session.rollback()
+                    return False
+
+                # Wait with exponential backoff before retrying
+                wait_time = retry_delay * (2 ** attempt)
+                logger.debug(f"Database lock error, waiting {wait_time:.2f}s before retry")
+                time.sleep(wait_time)
+            else:
+                # Non-lock related error
+                logger.error(f"Error committing to database: {e}")
+                session.rollback()
+                return False
+
+    return False  # Should not reach here, but just in case

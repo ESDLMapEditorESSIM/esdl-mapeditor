@@ -22,16 +22,20 @@
             <a-typography-title :level="4">Graph configuration</a-typography-title>
             <a-row>
               <a-typography-title :level="5">Available variants</a-typography-title>
-              <a-select
-                v-model:value="variantIdsSelected"
-                :options="variantOptions"
-                :disabled="variantOptions.length === 0 || datasetOptions.length !== 0"
-                placeholder="Placeholder"
-                mode="multiple"
-                style="width: 100%"
-                @change="onSelectVariant"
-                @mouseleave="removeTooltipPopup"
-              />
+              <div class="variant-tree-container">
+                <vue-js-tree
+                  v-if="treeData != null"
+                  tree-id="analytics_variant_tree"
+                  :plugins="['types', 'checkbox']"
+                  :data="treeData"
+                  :events="treeEventHandlers"
+                  :tree-type-specs="treeTypeSpecs"
+                  :checkbox="{'three_state': false, 'whole_node': false, 'tie_selection': false}"
+                />
+                <div v-else class="text-only">
+                  <p>No variants available.</p>
+                </div>
+              </div>
             </a-row>
             <a-row>
               <a-typography-title :level="5">Dataset</a-typography-title>
@@ -257,7 +261,7 @@
 </template>
 
 <script setup>
-import { ref, h, onMounted, onUnmounted } from 'vue';
+import {ref, h, onMounted, onUnmounted, computed, watch} from 'vue';
 import { notification } from 'ant-design-vue';
 import {
   BarChartOutlined,
@@ -273,6 +277,10 @@ import {
 	TableOutlined }
 from "@ant-design/icons-vue";
 import AnalyticsPlot from '../components/esdlanalytics/AnalyticsPlot.vue';
+import VueJsTree from '../components/jstree/VueJsTree.vue';
+import { useESDLProjects } from "@/composables/esdlProjects";
+
+const { esdlProject, getESDLProject } = useESDLProjects();
 
 const collapsed = ref(false);
 
@@ -359,11 +367,6 @@ const onSelectPalette = () => {
   updateTrace();
 };
 
-const onSelectVariant = () => {
-  // Resets selected variable, groupby, and filter to the default state.
-  console.log("Selected variants: ", variantIdsSelected.value);
-};
-
 const onSelectDataset = () => {
   // Resets selected variable, groupby, and filter to the default state.
   variableSelected.value = null;
@@ -429,13 +432,143 @@ const onSelectDisplayOptions = () => {
 
 onMounted(() => {
   console.info("Initializing ESDL Analytics");
-  updateEsdls();
+  getESDLProject(); // Get project data with variant hierarchy
   updateDatasets();
 });
 
 onUnmounted(() => {
   console.info("Unmounting ESDL Analytics");
 });
+
+// ------------------------------------- //
+// ------- Variant Tree Setup ---------- //
+// ------------------------------------- //
+
+// Tree data for the variant selection
+const treeData = computed(() => {
+  if (esdlProject.value && esdlProject.value.variants.length > 0) {
+    const rootVariants = [];
+
+    // Process variants recursively to maintain the hierarchy
+    for (const variant of esdlProject.value.variants) {
+      rootVariants.push(variantToJstreeData(variant));
+    }
+
+    return rootVariants;
+  }
+  return null;
+});
+
+// Helper function to recursively convert variants to jstree data format
+function variantToJstreeData(variant) {
+  const children = [];
+
+  // Process child variants
+  for (const child of variant.children || []) {
+    children.push(variantToJstreeData(child));
+  }
+
+  return {
+    id: variant.id,
+    esId: variant.es_id,
+    text: variant.name,
+    children: children,
+    type: "variant",
+    state: {
+      "checked": variantIdsSelected.value.includes(variant.id),
+      "opened": children.length > 0
+    }
+  };
+}
+
+// Update selected variant IDs whenever tree data changes
+watch(treeData, () => {
+  // Clear existing selections if there's no tree data
+  if (!treeData.value) {
+    console.debug("Clearing selected variants");
+    variantIdsSelected.value = [];
+  }
+}, { immediate: true });
+
+// Tree type specifications
+class VariantTreeSpec {
+  constructor() {
+    this.type = "variant";
+    this.icon = 'fas fa-bezier-curve';
+  }
+}
+
+const treeTypeSpecs = [new VariantTreeSpec()];
+
+/**
+ * Recursively collects all child node IDs from a JSTree node
+ *
+ * @param {Object} node - The JSTree node to get children from
+ * @param {Object} treeInstance - The JSTree instance
+ * @returns {Array} Array of child node IDs
+ */
+const getAllChildIds = (node, treeInstance) => {
+  let childIds = [];
+  if (node.children && node.children.length > 0) {
+    // For each child, get its ID and recursively get its children's IDs
+    for (const childId of node.children) {
+      const childNode = treeInstance.get_node(childId);
+      childIds.push(childNode.id);
+      childIds = childIds.concat(getAllChildIds(childNode, treeInstance));
+    }
+  }
+  return childIds;
+};
+
+// Tree event handlers
+const treeEventHandlers = {
+  'check_node.jstree': function(e, data) {
+    if (data.node.type === 'variant') {
+      const variantId = data.node.id;
+      if (!variantIdsSelected.value.includes(variantId)) {
+        variantIdsSelected.value.push(variantId);
+      }
+
+      const isShiftPressed = data.event && data.event.shiftKey;
+      // If shift key is pressed, select all children
+      if (isShiftPressed) {
+        const childIds = getAllChildIds(data.node, data.instance);
+        console.log("Selected children", childIds);
+
+        for (const childId of childIds) {
+          if (!variantIdsSelected.value.includes(childId)) {
+            variantIdsSelected.value.push(childId);
+            data.instance.check_node(childId);
+          }
+        }
+      }
+    }
+  },
+  'uncheck_node.jstree': function(e, data) {
+    if (data.node.type === 'variant') {
+      const variantId = data.node.id;
+      const index = variantIdsSelected.value.indexOf(variantId);
+      if (index !== -1) {
+        variantIdsSelected.value.splice(index, 1);
+      }
+
+      const isShiftPressed = data.event && data.event.shiftKey;
+      // If shift key is pressed, unselect all children
+      if (isShiftPressed) {
+        const childIds = getAllChildIds(data.node, data.instance);
+
+        for (const childId of childIds) {
+          const childIndex = variantIdsSelected.value.indexOf(childId);
+          if (childIndex !== -1) {
+            variantIdsSelected.value.splice(childIndex, 1);
+            data.instance.uncheck_node(childId);
+          }
+        }
+      }
+    }
+  }
+};
+
 
 // ------------------------------------- //
 // --------- Component methods --------- //
@@ -512,6 +645,31 @@ const getAddDatasetLabel = () => {
     return "Please select ESDLs";
   }
 };
+/**
+ * Recursively finds selected variants in the variant hierarchy.
+ *
+ * @param {Array} variants - The array of variants to search through
+ * @param {Array} selectedVariantIds - Array of selected variant IDs
+ * @param {Array} result - Array to collect the selected variants
+ */
+const findSelectedVariants = (variants, selectedVariantIds, result = []) => {
+  for (const variant of variants) {
+    if (selectedVariantIds.includes(variant.id)) {
+      result.push({
+        value: variant.id,
+        label: variant.name,
+        esId: variant.es_id
+      });
+    }
+
+    // Process children recursively
+    if (variant.children && variant.children.length > 0) {
+      findSelectedVariants(variant.children, selectedVariantIds, result);
+    }
+  }
+
+  return result;
+};
 
 /**
  * Adds or updates ESDLs into metadata by iterating over the list of energy systems.
@@ -519,9 +677,11 @@ const getAddDatasetLabel = () => {
 const onSyncBtnClick = async() => {
   console.debug("Synchronizing ESDLs into metadata");
   isSyncingMetaData.value = true;
-  console.log(variantIdsSelected)
 
-  const selectedVariants = variantOptions.value.filter((v) => variantIdsSelected.value.includes(v.value));
+  const selectedVariants = [];
+  if (esdlProject.value && esdlProject.value.variants) {
+    findSelectedVariants(esdlProject.value.variants, variantIdsSelected.value, selectedVariants);
+  }
   console.debug("Selected variants", selectedVariants);
 
   const promises = selectedVariants.map(async(variant) => {
@@ -575,31 +735,6 @@ const onDeleteBtnClick = async() => {
     currentLayout.value = {};
 
     isDeletingMetaData.value = false;
-  }
-};
-
-/**
- * Asynchronously fetches the possible ESDLs that could be loaded into the dataset.
- *
- * @returns {Promise<void>} A promise that resolves when the datasets have been fetched and the options updated.
- */
-const updateEsdls = async() => {
-  console.debug("Fetching DataManager esdl options");
-  try {
-    const variants = await fetchMetadata('variants');
-    console.debug("Fetched variants: ", variants);
-    if (variants.length) {
-      variantOptions.value = variants.map((d) => ({
-        value: d.id,
-        label: `${d.name}`
-      }));
-      // datasetSelectPlaceholder.value = "Select a dataset";
-    } else {
-      variantOptions.value = [];
-      // datasetSelectPlaceholder.value = "No datasets available";
-    }
-  } catch (error) {
-    console.error(error);
   }
 };
 
@@ -964,6 +1099,21 @@ const tableTraceHandler = (traces) => {
   z-index: 100;
   background-color: rgba(0, 0, 0, 0.03);
   border-radius: 5px;
+}
+
+.variant-tree-container {
+  border: 1px solid #d9d9d9;
+  border-radius: 2px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 4px;
+  margin-bottom: 16px;
+  background-color: white;
+}
+
+.text-only {
+  padding: 8px;
+  color: rgba(0, 0, 0, 0.45);
 }
 
 </style>

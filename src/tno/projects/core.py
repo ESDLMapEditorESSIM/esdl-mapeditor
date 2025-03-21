@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from flask import session
+from flask import session, has_request_context, request
 from pyecore.resources.json import JsonOptions
 
 from esdl.undo import ChangeSource, ChangeContext
@@ -30,7 +30,9 @@ def create_new_project_manager(emit_to_frontend=True) -> ProjectManager:
     init_mapeditor_change_handlers(pm)
     set_session("es_info_list", {})
     send_project_manager_to_lmi_async(only_send_for_client_id=session['client_id'])
-    if emit_to_frontend:
+
+    can_emit = has_request_context() and hasattr(request, 'namespace')
+    if emit_to_frontend and can_emit:
         emit_clear_frontend_esdls()
         emit_clear_ui()
         call_process_energy_system.submit()

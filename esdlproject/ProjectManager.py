@@ -556,7 +556,7 @@ class ProjectManager:
 
     def get_variants(self) -> list[Variant]:
         """"
-        Creates a list of all the variants.
+        Creates a flat list of all the variants.
         """
         variants: list[Variant] = []
         for vc in self.project.variantCollection:
