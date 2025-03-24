@@ -18,186 +18,192 @@
         theme="light"
       >
         <a-col class="graph-options">
-          <a-col>
-            <a-typography-title :level="4">Graph configuration</a-typography-title>
-            <a-row>
-              <a-typography-title :level="5">Available variants</a-typography-title>
-              <div class="variant-tree-container">
-                <vue-js-tree
-                  v-if="treeData != null"
-                  tree-id="analytics_variant_tree"
-                  :plugins="['types', 'checkbox']"
-                  :data="treeData"
-                  :events="treeEventHandlers"
-                  :tree-type-specs="treeTypeSpecs"
-                  :checkbox="{'three_state': false, 'whole_node': false, 'tie_selection': false}"
-                />
-                <div v-else class="text-only">
-                  <p>No variants available.</p>
+          <a-tabs v-model:activeKey="activeTabKey">
+            <!-- Tab 1: Variant and dataset selection -->
+            <a-tab-pane key="data" tab="Data Selection">
+              <a-row>
+                <a-typography-title :level="5">Available variants</a-typography-title>
+                <div class="variant-tree-container">
+                  <vue-js-tree
+                    v-if="treeData != null"
+                    tree-id="analytics_variant_tree"
+                    :plugins="['types', 'checkbox']"
+                    :data="treeData"
+                    :events="treeEventHandlers"
+                    :tree-type-specs="treeTypeSpecs"
+                    :checkbox="{'three_state': false, 'whole_node': false, 'tie_selection': false}"
+                  />
+                  <div v-else class="text-only">
+                    <p>No variants available.</p>
+                  </div>
                 </div>
-              </div>
-            </a-row>
-            <a-row>
-              <a-typography-title :level="5">Dataset</a-typography-title>
-              <a-select
-                v-model:value="datasetSelected"
-                :options="datasetOptions"
-                :disabled="datasetOptions.length === 0"
-                :placeholder="datasetSelectPlaceholder"
-                mode="multiple"
-                style="width: 100%"
-                @change="onSelectDataset"
-                @mouseleave="removeTooltipPopup"
-              />
-            </a-row>
-            <a-row>
-              <a-typography-title :level="5">Variable</a-typography-title>
-              <a-select
-                v-model:value="variableSelected"
-                :options="Object.values(variableOptions)"
-                :disabled="datasetSelected.length === 0"
-                :placeholder="datasetSelected.length === 0 ? 'First select a dataset' : 'Select a variable'"
-                style="width: 100%"
-                @change="onSelectVariable"
-                @mouseleave="removeTooltipPopup"
-              />
-              <span
-                v-if="variableSelected !== null && variableWarningMsg !== ''"
-                style="color: #ffbb00; padding: 2px;"
-              >
-                {{ variableWarningMsg }}
-              </span>
-            </a-row>
-            <a-row>
-              <a-typography-title :level="5">Group by</a-typography-title>
-              <a-select
-                v-model:value="groupbySelected"
-                :options="groupbyOptions"
-                :disabled="datasetSelected.length === 0 || variableSelected === null" 
-                :placeholder="
-                  datasetSelected.length === 0 ? 'First select a dataset'
-                  : variableSelected === null ? 'First select a variable'
-                    : 'Select a category'"
-                :max-tag-count="maxGroupbySelectedCount"
-                :status="chartType === 'bar' && groupbySelected.length > maxGroupbySelectedCount ? 'warning' : ''"
-                allow-clear
-                mode="multiple"
-                style="width: 100%"
-                @change="onSelectGroupBy"
-                @mouseleave="removeTooltipPopup"
-              />
-              <span
-                v-if="chartType === 'bar' && groupbySelected.length > maxGroupbySelectedCount"
-                style="color: #ffbb00; padding: 2px;"
-              >
-                Grouping in a bar chart supports up to two selections only.
-              </span>
-            </a-row>
-            <a-row>
-              <a-row style="align-items: center;">
-                <a-typography-title :level="5">Filter</a-typography-title>
-                <a-tooltip title="Type to search filter options">
-                  <a-button size="small" type="text">
-                    <component :is="InfoCircleOutlined" style="vertical-align: 0.1rem" />
-                  </a-button>
-                </a-tooltip>
-              </a-row>
-              <a-cascader
-                v-model:value="filterSelected"
-                style="width: 100%"
-                :options="filterOptions"
-                :disabled="datasetSelected.length === 0 || variableSelected === null" 
-                :placeholder="
-                  datasetSelected.length === 0 ? 'First select a dataset'
-                  : variableSelected === null ? 'First select a variable'
-                    : 'Select a category'" 
-                :show-search="true"
-                allow-clear multiple
-                @change="onSelectFilters"
-                @mouseleave="removeTooltipPopup"
-              />
-            </a-row>
-            <br>
-            <!-- Bar chart configuration -->
-            <a-row v-if="datasetSelected.length && variableSelected !== null && chartType==='bar'">
-              <a-typography-title :level="4">Display options</a-typography-title>
-              <a-row style="width: 100%">
-                <a-typography-title :level="5">Color palette</a-typography-title>
-                <a-select
-                  v-model:value="paletteSelected"
-                  style="width: 100%"
-                  @change="onSelectPalette"
-                >
-                  <a-select-option
-                    v-for="option in colorPalettes"
-                    :key="option.value"
-                    :value="option.value"
-                  >
-                    {{ option.label }}
-                    <a-row>
-                      <a-col
-                        v-for="color in option.sample"
-                        :key="color"
-                        :span="2"
-                        :style="{ backgroundColor: color.startsWith('#') ? color : `#${color}`, height: '10px' }"
-                      />
-                    </a-row>
-                  </a-select-option>
-                </a-select>
-              </a-row>
-              <a-radio-group
-                v-model:value="dataGrouping" 
-                name="groupStackRadio"
-                :options="groupStackOptions"
-                style="display: flex; flex-direction: column; padding-top: 12px;"
-                @change="onSelectDisplayOptions"
-              />
-              <a-checkbox
-                v-model:checked="showBarNumbers"
-                style="padding-top: 12px;"
-                @click="onSelectDisplayOptions"
-              >
-                Show numbers on bar chart
-              </a-checkbox>
-            </a-row>
-            <a-col style="padding-top: 24px; padding-bottom: 16px;">
-              <a-row style="padding-bottom: 8px;">
-                <a-button
-                  :disabled="variantIdsSelected.length === 0 || isSyncingMetaData"
-                  block
-                  @click="onSyncBtnClick"
-                >
-                  <a-tooltip 
-                    :title="datasetOptions.length ? 
-                      'Update ESDL Analytics metadata with the current ESDL(s)' : 
-                      'Add the select ESDL(s) to ESDL Analytics metadata'"
-                  >
-                    <component
-                      :is="datasetOptions.length ? SyncOutlined : UploadOutlined"
-                      style="vertical-align: 0.1rem"
-                    />
-                    {{ getAddDatasetLabel() }}
-                  </a-tooltip>
-                </a-button>
               </a-row>
               <a-row>
-                <!-- TODO & NOTE: A temporary implementation to clean up dataset -->
-                <a-button
-                  :disabled="isDeletingMetaData || datasetOptions.length === 0"
-                  block
-                  @click="onDeleteBtnClick"
-                >
-                  <a-tooltip title="Delete ESDL Analytics metadata">
-                    <component 
-                      :is="DeleteOutlined"
-                      style="vertical-align: 0.1rem"
-                    />
-                    Delete dataset
-                  </a-tooltip>
-                </a-button>
+                <a-typography-title :level="5">Dataset</a-typography-title>
+                <a-select
+                  v-model:value="datasetSelected"
+                  :options="datasetOptions"
+                  :disabled="datasetOptions.length === 0"
+                  :placeholder="datasetSelectPlaceholder"
+                  mode="multiple"
+                  style="width: 100%"
+                  @change="onSelectDataset"
+                  @mouseleave="removeTooltipPopup"
+                />
               </a-row>
-            </a-col>
-          </a-col>
+
+              <a-col style="padding-top: 24px; padding-bottom: 16px;">
+                <a-row style="padding-bottom: 8px;">
+                  <a-button
+                    :disabled="variantIdsSelected.length === 0 || isSyncingMetaData"
+                    block
+                    @click="onSyncBtnClick"
+                  >
+                    <a-tooltip
+                      :title="datasetOptions.length ?
+                        'Update ESDL Analytics metadata with the current ESDL(s)' :
+                        'Add the select ESDL(s) to ESDL Analytics metadata'"
+                    >
+                      <component
+                        :is="datasetOptions.length ? SyncOutlined : UploadOutlined"
+                        style="vertical-align: 0.1rem"
+                      />
+                      {{ getAddDatasetLabel() }}
+                    </a-tooltip>
+                  </a-button>
+                </a-row>
+                <a-row>
+                  <a-button
+                    :disabled="isDeletingMetaData || datasetOptions.length === 0"
+                    block
+                    @click="onDeleteBtnClick"
+                  >
+                    <a-tooltip title="Delete ESDL Analytics metadata">
+                      <component
+                        :is="DeleteOutlined"
+                        style="vertical-align: 0.1rem"
+                      />
+                      Delete dataset
+                    </a-tooltip>
+                  </a-button>
+                </a-row>
+              </a-col>
+            </a-tab-pane>
+
+            <!-- Tab 2: Visualization Settings -->
+            <a-tab-pane key="visualization" tab="Visualization" :disabled="datasetSelected.length === 0">
+              <a-row>
+                <a-typography-title :level="5">Variable</a-typography-title>
+                <a-select
+                  v-model:value="variableSelected"
+                  :options="Object.values(variableOptions)"
+                  :disabled="datasetSelected.length === 0"
+                  :placeholder="datasetSelected.length === 0 ? 'First select a dataset' : 'Select a variable'"
+                  style="width: 100%"
+                  @change="onSelectVariable"
+                  @mouseleave="removeTooltipPopup"
+                />
+                <span
+                  v-if="variableSelected !== null && variableWarningMsg !== ''"
+                  style="color: #ffbb00; padding: 2px;"
+                >
+                  {{ variableWarningMsg }}
+                </span>
+              </a-row>
+              <a-row>
+                <a-typography-title :level="5">Group by</a-typography-title>
+                <a-select
+                  v-model:value="groupbySelected"
+                  :options="groupbyOptions"
+                  :disabled="datasetSelected.length === 0 || variableSelected === null"
+                  :placeholder="
+                    datasetSelected.length === 0 ? 'First select a dataset'
+                    : variableSelected === null ? 'First select a variable'
+                      : 'Select a category'"
+                  :max-tag-count="maxGroupbySelectedCount"
+                  :status="chartType === 'bar' && groupbySelected.length > maxGroupbySelectedCount ? 'warning' : ''"
+                  allow-clear
+                  mode="multiple"
+                  style="width: 100%"
+                  @change="onSelectGroupBy"
+                  @mouseleave="removeTooltipPopup"
+                />
+                <span
+                  v-if="chartType === 'bar' && groupbySelected.length > maxGroupbySelectedCount"
+                  style="color: #ffbb00; padding: 2px;"
+                >
+                  Grouping in a bar chart supports up to two selections only.
+                </span>
+              </a-row>
+              <a-row>
+                <a-row style="align-items: center;">
+                  <a-typography-title :level="5">Filter</a-typography-title>
+                  <a-tooltip title="Type to search filter options">
+                    <a-button size="small" type="text">
+                      <component :is="InfoCircleOutlined" style="vertical-align: 0.1rem" />
+                    </a-button>
+                  </a-tooltip>
+                </a-row>
+                <a-cascader
+                  v-model:value="filterSelected"
+                  style="width: 100%"
+                  :options="filterOptions"
+                  :disabled="datasetSelected.length === 0 || variableSelected === null"
+                  :placeholder="
+                    datasetSelected.length === 0 ? 'First select a dataset'
+                    : variableSelected === null ? 'First select a variable'
+                      : 'Select a category'"
+                  :show-search="true"
+                  allow-clear multiple
+                  @change="onSelectFilters"
+                  @mouseleave="removeTooltipPopup"
+                />
+              </a-row>
+              <br>
+              <!-- Bar chart configuration -->
+              <a-row v-if="datasetSelected.length && variableSelected !== null && chartType==='bar'">
+                <a-typography-title :level="4">Display options</a-typography-title>
+                <a-row style="width: 100%">
+                  <a-typography-title :level="5">Color palette</a-typography-title>
+                  <a-select
+                    v-model:value="paletteSelected"
+                    style="width: 100%"
+                    @change="onSelectPalette"
+                  >
+                    <a-select-option
+                      v-for="option in colorPalettes"
+                      :key="option.value"
+                      :value="option.value"
+                    >
+                      {{ option.label }}
+                      <a-row>
+                        <a-col
+                          v-for="color in option.sample"
+                          :key="color"
+                          :span="2"
+                          :style="{ backgroundColor: color.startsWith('#') ? color : `#${color}`, height: '10px' }"
+                        />
+                      </a-row>
+                    </a-select-option>
+                  </a-select>
+                </a-row>
+                <a-radio-group
+                  v-model:value="dataGrouping"
+                  name="groupStackRadio"
+                  :options="groupStackOptions"
+                  style="display: flex; flex-direction: column; padding-top: 12px;"
+                  @change="onSelectDisplayOptions"
+                />
+                <a-checkbox
+                  v-model:checked="showBarNumbers"
+                  style="padding-top: 12px;"
+                  @click="onSelectDisplayOptions"
+                >
+                  Show numbers on bar chart
+                </a-checkbox>
+              </a-row>
+            </a-tab-pane>
+          </a-tabs>
         </a-col>
       </a-layout-sider>
       <a-layout>
@@ -261,7 +267,7 @@
 </template>
 
 <script setup>
-import {ref, h, onMounted, onUnmounted, computed, watch} from 'vue';
+import {ref, h, onMounted, onUnmounted, computed} from 'vue';
 import { notification } from 'ant-design-vue';
 import {
   BarChartOutlined,
@@ -297,6 +303,7 @@ const removeTooltipPopup = () => { window.jquery(".ui-tooltip-content").parents(
 
 const title = ref('');
 const editingTitle = ref(false);
+const activeTabKey = ref('data');
 
 const minWidth = 180;
 const inputWidth = ref(minWidth);
@@ -476,19 +483,10 @@ function variantToJstreeData(variant) {
     type: "variant",
     state: {
       "checked": variantIdsSelected.value.includes(variant.id),
-      "opened": children.length > 0
+      "opened": children.length > 0,
     }
   };
 }
-
-// Update selected variant IDs whenever tree data changes
-watch(treeData, () => {
-  // Clear existing selections if there's no tree data
-  if (!treeData.value) {
-    console.debug("Clearing selected variants");
-    variantIdsSelected.value = [];
-  }
-}, { immediate: true });
 
 // Tree type specifications
 class VariantTreeSpec {
@@ -684,23 +682,23 @@ const onSyncBtnClick = async() => {
   }
   console.debug("Selected variants", selectedVariants);
 
-  const promises = selectedVariants.map(async(variant) => {
-    const esId = variant.value;
-    const esTitle = variant.label;
-    try {
-      displayNotification("info", `Adding ${esTitle} [${esId}] into the database.`);
-      const reqBody = { es_id: esId };
-      const resp = await modifyMetadata('add_update', reqBody);
-      displayNotification(resp.status, resp.message);
-    } catch (error) {
-      console.error(error);
-      displayNotification("error", `An unknown error occurred while adding ${esTitle} [${esId}] to the database`);
-    }
-  });
-
   try {
-    await Promise.all(promises);
-    updateDatasets();
+    // Process variants sequentially
+    for (const variant of selectedVariants) {
+      const esId = variant.value;
+      const esTitle = variant.label;
+
+      try {
+        displayNotification("info", `Adding ${esTitle} [${esId}] into the database.`);
+        const reqBody = { es_id: esId };
+        const resp = await modifyMetadata('add_update', reqBody);
+        displayNotification(resp.status, resp.message);
+      } catch (error) {
+        console.error(error);
+        displayNotification("error", `An unknown error occurred while adding ${esTitle} [${esId}] to the database`);
+      }
+    }
+    await updateDatasets();
   } catch (error) {
     console.error(error);
     displayNotification("error", `An error occurred while synchronizing metadata: ${error}`);
@@ -721,7 +719,7 @@ const onDeleteBtnClick = async() => {
     const reqBody = { dataset_name: null };
     const resp = await modifyMetadata('delete', reqBody);
     displayNotification(resp.status, resp.message);
-    updateDatasets();
+    await updateDatasets();
   } catch (error) {
     console.error(error);
     displayNotification("error", `An error occurred while deleting metadata: ${error}`);
