@@ -21,12 +21,13 @@ from flask_socketio import SocketIO
 from flask_executor import Executor
 from flask_session import Session
 
-from extensions.session_manager import delete_sessions_on_disk
+from extensions.session_manager import delete_sessions_on_disk, load_sessions_from_disk
 from src import settings
 from src.log import get_logger
 from flask import Flask
 from werkzeug.middleware.proxy_fix import ProxyFix
 
+from src.settings import is_prod, PERSIST_SESSIONS, DEFAULT_PROJECT_PATH
 
 logger = get_logger(__name__)
 
@@ -46,6 +47,8 @@ def create_app(name):
     app.config['PERMANENT_SESSION_LIFETIME'] = 60*60*24 # 1 day in seconds
     app.config['SESSION_FILE_DIR'] = '/tmp/flask_session'
     app.config['EXECUTOR_PROPAGATE_EXCEPTIONS'] = True # make sure errors are logged for tasks run in threads
+    # Set this to true to make sqlalchemy output all queries to the console.
+    app.config["SQLALCHEMY_ECHO"] = False
 
     socketio.init_app(
         app,
@@ -57,11 +60,12 @@ def create_app(name):
         cors_allowed_origins=settings.ALLOWED_ORIGINS,
     )
 
-    # logging.getLogger('engineio').setLevel(logging.WARNING)  # don't print all the messages
-
-    # remove existing sessions when restarting, existing sessions will give errors
-    # as associated ESDLs are not stored in the session and the OpenId connect info is wrong
-    delete_sessions_on_disk(app.config['SESSION_FILE_DIR'])
+    if PERSIST_SESSIONS:
+        load_sessions_from_disk()
+    else:
+        # remove existing sessions when restarting, existing sessions will give errors
+        # as associated ESDLs are not stored in the session and the OpenId connect info is wrong
+        delete_sessions_on_disk(app.config['SESSION_FILE_DIR'])
 
     # fix sessions with socketio.io. see: https://blog.miguelgrinberg.com/post/flask-socketio-and-the-user-session
     Session(app)

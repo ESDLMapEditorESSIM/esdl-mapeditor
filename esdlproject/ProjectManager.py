@@ -554,16 +554,23 @@ class ProjectManager:
     #         else:
     #             logger.warn(f"Fixme: ignoring DetailedChanges at this level")
 
+    def get_variants(self) -> list[Variant]:
+        """"
+        Creates a flat list of all the variants.
+        """
+        variants: list[Variant] = []
+        for vc in self.project.variantCollection:
+            vc: VariantCollection = vc
+            self.get_variant_list(vc.variant, variants)
+        return variants
+
     def get_energy_systems(self) -> list[esdl.EnergySystem]:
         """"
         Creates a list of all the variants associated energy systems (but not of the variantCollection energy system,
         as each variantCollection has its own main variant by convention). This only returns the snapshots of the
         variants that have a snapshot; it doesn't create new snapshots.
         """
-        variants: list[Variant] = []
-        for vc in self.project.variantCollection:
-            vc: VariantCollection = vc
-            self.get_variant_list(vc.variant, variants)
+        variants: list[Variant] = self.get_variants()
         energy_systems: list[EnergySystem] = []
         for v in variants:
             es = self.get_variant_snapshot(v)
@@ -577,10 +584,7 @@ class ProjectManager:
         :param es_id: the id of the energy system to remove
         :return: the removed variant or None if no variant was found with the given id
         """
-        variants: list[Variant] = []
-        for vc in self.project.variantCollection:
-            vc: VariantCollection = vc
-            self.get_variant_list(vc.variant, variants)
+        variants: list[Variant] = self.get_variants()
         for v in variants:
             es = self.get_or_create_variant_snapshot(v)
             if es.id == es_id:

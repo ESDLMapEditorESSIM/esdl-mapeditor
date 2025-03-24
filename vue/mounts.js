@@ -41,7 +41,8 @@ import {
     Tree,
     Typography,
     Timeline,
-    Upload
+    Upload,
+    Tabs,
 } from 'ant-design-vue';
 import MapEditorDialog from "../static/utils/MapEditorDialog";
 import Toast, {POSITION} from "vue-toastification";
@@ -105,6 +106,7 @@ export function mountApp(component, elementSelector) {
     app.use(Space);
     app.use(Spin);
     app.use(Switch);
+    app.use(Tabs);
     app.use(Table);
     app.use(Tag);
     app.use(Tooltip);

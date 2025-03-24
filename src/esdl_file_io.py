@@ -21,10 +21,10 @@ import src.log as log
 from esdl.processing.string_uri import StringURI
 from esdlproject import Variant
 from esdlproject.ProjectManager import ProjectManager
-from extensions.projects import init_mapeditor_change_handlers
 from extensions.session_manager import set_session, get_project_manager, set_project_manager
 from src.process_es_area_bld import call_process_energy_system
 from src.tno.live_model_interface.api import send_add_variant_and_esdl_message_to_lmi, send_project_manager_to_lmi_async
+from src.tno.projects.core import init_mapeditor_change_handlers
 from src.tno.projects.emits import emit_active_esdl_project
 
 logger = log.get_logger(__name__)
@@ -67,12 +67,12 @@ class ESDLFileIO:
                         added_variants.append(variant)
                         #emit_active_esdl_project() # cant do emit here, because it is not socket io request
 
+                client_id = session["client_id"]
                 if not is_import:
                     # Now overwrite the project manager. We do this at the end to prevent the project manager from being
                     # overwritten with an incomplete project manager in case of an error.
                     set_project_manager(pm)
-                    init_mapeditor_change_handlers(pm)
-                client_id = session["client_id"]
+                    init_mapeditor_change_handlers(pm, client_id)
                 send_project_manager_to_lmi_async(only_send_for_client_id=client_id)
                 last_variant = added_variants[-1]
                 if last_variant is not None:

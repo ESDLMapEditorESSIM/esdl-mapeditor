@@ -61,8 +61,6 @@
     <!--script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.5.0/proj4.js"></script-->
     <script type="text/javascript" src="./plugins/proj4leaflet.js"></script>
 
-    <!--script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.slim.js"></script-->
-    <!-- <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.7.4/socket.io.min.js"></script> -->
     <script type="text/javascript" src="./vendor/cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.4/socket.io.min.js"></script>
 <!--    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>-->
 
@@ -581,6 +579,7 @@
         //  Document is ready loading --> all functionality to react on incoming socketio messages
         // ------------------------------------------------------------------------------------------------------------
         $(document).ready(function() {
+
             namespace = '/esdl';
             socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace, {
                 'timeout': 50000,
@@ -608,7 +607,6 @@
 
             // request the list of assets in the EDR
             get_edr_assets('edr_assets');
-
             socket.on('results.asset.positioning', function(msg) {
                 console.log(msg);
                 if (!msg.wind_potential) {
@@ -1381,6 +1379,27 @@
                 }
             });
 
+            let clickCount = 0;
+            let clickTimer = null;
+
+            $('#loader-hider').on('click', function() {
+                console.debug("Hiding loader: " + clickCount);
+                clickCount++;
+
+                if (clickTimer) {
+                    clearTimeout(clickTimer);
+                }
+
+                clickTimer = setTimeout(function() {
+                    clickCount = 0;
+                }, 1000); // Reset after 1 second
+
+                if (clickCount === 3) {
+                    clickCount = 0;
+                    clearTimeout(clickTimer);
+                    hide_loader('all');
+                }
+            });
         });
     </script>
 
@@ -1778,7 +1797,11 @@
 
     <div id="sidebar"></div>
     <div id="sidebar_b"></div>
-    <div id="loader"></div>
+    <div id="loader">
+        {# Click 3 times in the top left corner to hide the loader. #}
+        <div id="loader-hider"></div>
+        <div class="spinner"></div>
+    </div>
     <div id="kpicharts"></div>
     <div id="ldccontrol"></div>
     <div id="tdmonitorcontrol"></div>

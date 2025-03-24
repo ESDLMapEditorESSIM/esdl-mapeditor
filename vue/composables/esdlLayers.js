@@ -10,9 +10,6 @@
 import {ref} from "vue";
 import {useVisibleLayers} from "@/composables/visibleLayers";
 import {MessageNames, PubSubManager} from "@/bridge";
-import {useToasts} from "@/composables/toasts";
-
-const {showToast} = useToasts();
 
 /** @type {import('vue').Ref<string[]>} */
 const enabledEsdlIdList = ref([]);

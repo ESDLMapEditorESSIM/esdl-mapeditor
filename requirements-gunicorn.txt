@@ -4,20 +4,7 @@
 #
 #    pip-compile requirements-gunicorn.in
 #
-gevent==24.11.1
-    # via gevent-websocket
-gevent-websocket==0.10.1
-    # via -r requirements-gunicorn.in
-greenlet==3.1.1
-    # via gevent
 gunicorn==23.0.0
     # via -r requirements-gunicorn.in
 packaging==24.0
     # via gunicorn
-zope-event==5.0
-    # via gevent
-zope-interface==7.2
-    # via gevent
-
-# The following packages are considered to be unsafe in a requirements file:
-# setuptools
