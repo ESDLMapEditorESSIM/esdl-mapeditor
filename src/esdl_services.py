@@ -195,7 +195,7 @@ class ESDLServices:
             return str(ar)
 
     @undo_record_changes("External service call")
-    def call_esdl_service(self, service_params, stack: UndoRedoCommandStack):
+    def call_esdl_service(self, service_params, stack: UndoRedoCommandStack) -> (bool, dict, dict):
         """Actually call an ESDL service."""
 
         pm = get_project_manager()
@@ -436,12 +436,12 @@ class ESDLServices:
                             return False, (
                                 f"\nCould not retrieve animation data, "
                                 f"problem querying InfluxDB on host: '{influxdb_client._host}'"
-                            )
+                            ), None
 
                     # TODO: Check if this is correct?!
-                    return True, {}, pm.get_energy_system(variant)
+                    return True, {}, {"es": pm.get_energy_system(variant)}
                 elif service["result"][0]["action"] == "print":
-                    return True, json.loads(r.text), es
+                    return True, json.loads(r.text), {"es": pm.get_energy_system(variant)}
                 elif service["result"][0]["action"] == "add_assets":
                     es_edit = pm.get_active_energy_system()
                     instance = es_edit.instance
@@ -461,7 +461,11 @@ class ESDLServices:
                                 add_assets_to_area[area.id] = [add_assets]
                             else:
                                 logger.error("add_assets service config not handled properly yet!")
-                                return False, "add_assets service config not handled properly yet!", None
+                                return (
+                                    False,
+                                    "add_assets service config not handled properly yet!",
+                                    None
+                                )
 
                     # If service returns an ESDL string that represents one asset, add it to the main area
                     if isinstance(add_assets_service_result, str):
@@ -534,7 +538,7 @@ class ESDLServices:
                         logger.warning("Exception occurred: " + str(e))
                         return False, None, None
 
-                    return True, {"send_message_to_UI_but_do_nothing": {}}, es
+                    return True, {"send_message_to_UI_but_do_nothing": {}}, {"es": es}
                 elif service["result"][0]["action"] == "add_potentials":
                     es_edit = pm.get_active_energy_system()
                     instance = es_edit.instance
@@ -580,7 +584,7 @@ class ESDLServices:
                         logger.warning("Exception occurred: " + str(e))
                         return False, None, None
 
-                    return True, {"send_message_to_UI_but_do_nothing": {}}, es
+                    return True, {"send_message_to_UI_but_do_nothing": {}}, {"es": es}
                 elif service["result"][0]["action"] == "add_profile":
                     rset = ResourceSet()
 
@@ -613,7 +617,7 @@ class ESDLServices:
 
                         first_outport.profile.append(profile)
                         pm.add_object_to_dict(active_es_id, profile, recursive=True)
-                        return True, {"send_message_to_UI_but_do_nothing": {}}, es
+                        return True, {"send_message_to_UI_but_do_nothing": {}}, {"es": es}
                     else:
                         logger.error("Service was expected to give back a profile")
                         return False, None, None
@@ -659,14 +663,14 @@ class ESDLServices:
                         )
                         return False, None, None
 
-                    return True, {"send_message_to_UI_but_do_nothing": {}}, es
+                    return True, {"send_message_to_UI_but_do_nothing": {}}, {"es": es}
                 elif service["result"][0]["action"] == "asset_feedback":
                     service_results = json.loads(r.text)
 
                     asset_results_dict = dict()
                     for sr in service_results:
                         asset_results_dict[sr["assetID"]] = sr["messages"]
-                    return True, {"asset_feedback": asset_results_dict}, es
+                    return True, {"asset_feedback": asset_results_dict}, {"es": es}
                 elif service["result"][0]["action"] == "show_message":
                     message = service["result"][0]["message"]
                     if "json_field" in service["result"][0]:
@@ -675,7 +679,7 @@ class ESDLServices:
 
                         message = html.escape(message)
                         message = message.replace("\n", "<br/>")
-                    return True, {"message": message}, es
+                    return True, {"message": message}, {"es": es}
             else:
                 logger.warning(
                     "Error running ESDL service - response " + str(r.status_code) + " with reason: " + str(r.reason)

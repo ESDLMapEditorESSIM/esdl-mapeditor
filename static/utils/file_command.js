@@ -47,36 +47,6 @@ function click_new_ESDL_button(obj) {
     window.PubSubManager.broadcast('NEW_ESDL', {});
 }
 
-function send_cmd_load_ESDL() {
-    socket.emit('file_command', {cmd: 'get_list_from_store'});
-}
-
-function send_cmd_import_ESDL() {
-    socket.emit('file_command', {cmd: 'get_list_from_store'});
-}
-
-function click_load_ESDL_button(obj) {
-    let select = document.getElementById('load_es_selection');
-    let es_id = select.options[select.selectedIndex].value;
-    // let es_title = select.options[select.selectedIndex].innerHTML;
-    // console.log(es_id);
-
-    // title_div = document.getElementById('es_title');
-    // title_div.innerHTML = '<h1>' + es_title + '</h1>';
-
-    socket.emit('file_command', {cmd: 'load_esdl_from_store', id: es_id});
-
-    // show loader
-    show_loader();
-}
-
-function click_import_ESDL_button(obj) {
-    let select = document.getElementById('load_es_selection');
-    let es_id = select.options[select.selectedIndex].value;
-    socket.emit('file_command', {cmd: 'import_esdl_from_store', id: es_id})
-    show_loader();
-}
-
 function save_ESDL(e, prefix) {
     let url = prefix+'/esdl';
     download_file(e, url);
@@ -84,6 +54,11 @@ function save_ESDL(e, prefix) {
 
 function export_as_shapefiles(e, prefix) {
     let url = prefix+'/esdl2shapefile';
+    download_file(e, url);
+}
+
+function export_as_inline_profile(e, prefix) {
+    let url = prefix+'/esdl2inlineprofile';
     download_file(e, url);
 }
 

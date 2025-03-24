@@ -234,3 +234,39 @@ function createChartOptions(kpi_info) {
         options: options
     };
 }
+
+/**
+ * Compares scopeKPIs with refKPIs and updates scopeKPIs if an inconsistent number of kpi labels of a KPI is found.
+ * This is to avoid when a logical group of an energy system contains multiple scopes (areas), 
+ * and the number of kpi labels per KPI in different scopes (areas) could differ,
+ * which leads to the same kpi item being assigned with a different chart legend color in the KPI dashboard.
+ * 
+ * @param {Object} scopeKPIs The scopeKPIs object to be updated. The scopeKPis is a subset of KPIs of the associated energy system.
+ * @param {Object} refKPIs The refKPIs object should contain the complete KPIs and be used as a reference for updating scopeKPIs.
+ */
+function syncScopeKPIsWithRefKPIs(scopeKPIs, refKPIs) {
+    if (Object.keys(refKPIs).length === 0) {
+        return scopeKPIs;
+    } else {
+        // Deepy copy scopeKPIs object
+        const updatedScopeKPIs = JSON.parse(JSON.stringify(scopeKPIs));
+        Object.keys(refKPIs).forEach((kpiName) => {
+            const syncIsRequired = 
+                refKPIs[kpiName] && 
+                updatedScopeKPIs[kpiName] && 
+                refKPIs[kpiName].type === "distributionKPI" &&
+                refKPIs[kpiName].names.length !== updatedScopeKPIs[kpiName][0].distribution.length;
+
+            if (syncIsRequired) {
+                const distKPILabels = updatedScopeKPIs[kpiName][0].distribution.map((k) => k.label);
+                refKPIs[kpiName].names.forEach((kpiLabel) => {
+                    // Append the missing kpi label with null value to the scopeKPIs.
+                    if (!distKPILabels.includes(kpiLabel)) {
+                        updatedScopeKPIs[kpiName][0].distribution.push({label: kpiLabel, value: null});
+                    }
+                });
+            }
+        });
+        return updatedScopeKPIs;
+    }
+}

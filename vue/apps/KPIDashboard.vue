@@ -42,9 +42,9 @@
                 <a-menu-item key="Title">
                   Add Title panel
                 </a-menu-item>
-<!--                <a-menu-item key="Sankey">-->
-<!--                  Add Sankey panel-->
-<!--                </a-menu-item>-->
+                <!-- <a-menu-item key="Sankey">
+                  Add Sankey panel
+                </a-menu-item> -->
               </a-menu>
             </template>
           </a-dropdown>
@@ -52,12 +52,36 @@
       </a-space>
     </a-col>
   </a-row>
+  <div v-if="selectorOptionsKpiScope.length">
+    <a-row>
+      <a-select
+        v-model:value="selectedKPIScope"
+        placeholder="Please select a KPI scope"
+        style="width: 50%"
+        @change="onSelectKPIScope"
+      >
+        <a-select-opt-group
+          v-for="optGroup in selectorOptionsKpiScope"
+          :key="optGroup.label"
+          :label="formatSelectorOptGroupLabel(optGroup.label)"
+        >
+          <a-select-option
+            v-for="option in optGroup.options"
+            :key="option.value"
+            :value="option.value"
+          >
+            {{ option.label }}
+          </a-select-option>
+        </a-select-opt-group>
+      </a-select>
+    </a-row>
+  </div>
   <div
     v-if="layout.length"
   >
     <grid-layout
       :key="dashboard_config.id.value"
-      v-model:layout="layout"
+      :layout="layout"
       :col-num="12"
       :row-height="30"
       is-draggable
@@ -65,7 +89,11 @@
       vertical-compact
       responsive
       use-css-transforms
+      @breakpoint-changed="onBreakpointChanged"
     >
+      <!-- drag-ignore-from is required to avoid dragging the grid item 
+       when the user is interacting with the PlotPanel Plot.
+       https://jbaysolutions.github.io/vue-grid-layout/guide/04-allow-ignore.html -->
       <grid-item
         v-for="item in layout"
         :key="item.i"
@@ -74,15 +102,9 @@
         :w="item.w"
         :h="item.h"
         :i="item.i"
+        drag-ignore-from=".no-drag"
       >
         <span class="remove" @click="removeItem(item.i)"><i class="fas fa-times" /></span>
-        <KPIChartOrTable
-          v-if="item.type == 'charttable'"
-          :key="item.kpi_type"
-          :chart-options-prop="item.options"
-          :kpi-name="item.kpi_name"
-          :kpi-type="item.kpi_type"
-        />
         <TextPanel
           v-if="item.type == 'textpanel'"
           :options="item.options"
@@ -95,10 +117,19 @@
           v-if="item.type == 'titlepanel'"
           :options="item.options"
         />
-<!--        <SankeyPanel-->
-<!--          v-if="item.type == 'sankeypanel'"-->
-<!--          :options="item.options"-->
-<!--        />-->
+        <!-- <SankeyPanel
+          v-if="item.type == 'sankeypanel'"
+          :options="item.options"
+        /> -->
+        <PlotPanel
+          v-if="item.type == 'charttable'"
+          :options="item.options"
+          :panel-dimension="{
+            x: item.x, 
+            y: item.y, 
+            w: item.w, 
+            h: item.h}"
+        />
       </grid-item>
     </grid-layout>
   </div>
@@ -112,8 +143,6 @@
 <script setup>
 import { ref, nextTick } from 'vue'
 // eslint-disable-next-line no-unused-vars
-import KPIChartOrTable from '../components/kpidashboard/KPIChartOrTable.vue'
-// eslint-disable-next-line no-unused-vars
 import TextPanel from '../components/kpidashboard/TextPanel.vue'
 // eslint-disable-next-line no-unused-vars
 import TitlePanel from '../components/kpidashboard/TitlePanel.vue'
@@ -125,9 +154,13 @@ import SankeyPanel from '../components/kpidashboard/SankeyPanel.vue'
 import LoadDashboard from '../components/kpidashboard/LoadDashboard.vue'
 // eslint-disable-next-line no-unused-vars
 import SaveDashboard from '../components/kpidashboard/SaveDashboard.vue'
+import PlotPanel from "../components/kpidashboard/PlotPanel.vue";
 
 const dashboards_info = ref([]);
 const layout = ref([]);     // this is the information used (and changed!) in the vue components
+
+// Change in breakpoint will update layout accordingly.
+const currentBreakpoint = ref("lg");
 
 var new_panel_id = 0;  // to store the id that new panels should use
 
@@ -137,6 +170,36 @@ const dashboard_config = {
   group: ref(''),
   layout: ref([]),     // this is the information stored as settings in the database
 };
+
+const esKPIs = window.get_all_kpi_info();
+const esIds = Object.keys(esKPIs);
+
+// Create the option group array for the UI Selector component.
+const selectorOptionsKpiScope = esIds.map((esId) => (
+  {
+    label: esId,
+    options: Object.keys(esKPIs[esId]).map((scope) => 
+      // Prefix value with esId to differentiate scope (in case the different ES has the same scope name).
+      ({value: `${esId}-${scope}`, label: scope}))
+  }
+));
+const selectedKPIScope = ref({});
+
+/**
+ * Initialize dashboard contents based on the first ES and the first KPI scope.
+ */
+const initDashboard = () => {
+  const initESId = selectorOptionsKpiScope[0].label;
+  const initSelectedKPIScope = selectorOptionsKpiScope[0].options[0];
+  selectedKPIScope.value = initSelectedKPIScope;
+
+  updateDashboard(initESId, initSelectedKPIScope.label);
+};
+
+if (Object.keys(esKPIs).length) {
+  console.info("Initializing KPI dashboard contents");
+  initDashboard();
+}
 
 const getDashboardList = async () => {
   const response = await fetch("kpi_dashboards");
@@ -149,20 +212,130 @@ const getDashboardList = async () => {
 };
 getDashboardList();
 
-const getAllKPIData = () => {
-  let all_kpi_data = window.get_all_kpi_info();
-  let kpi_data = window.kpis.preprocess_all_kpis(all_kpi_data);
-  console.log(kpi_data);
+/**
+ * Handler to call when the user selects a different KPI scope from the Selector component.
+ * 
+ * @param {string} value User selected option value. Be noted that the value has been formatted as {edId}-{option label}.
+ */
+const onSelectKPIScope = (value) => {
+  // Apply reverse search to return the corresponding ESId, and KPI Scope from the user selected value.
+  const selectedOptionGroup = selectorOptionsKpiScope.filter((optGroup) => (
+    optGroup.options.map((opt) => (opt.value)).includes(value)
+  ))[0];
+  const associatedESId = selectedOptionGroup.label;
+  const selectedKPIScopeObj = selectedOptionGroup.options.filter(
+    (opt) => (opt.value === value))[0];
+
+  selectedKPIScope.value = selectedKPIScopeObj;
+
+  updateDashboard(associatedESId, selectedKPIScopeObj.label);
+};
+
+/**
+ * The utility function formats the displayed label of the selector option group.
+ * 
+ * @param {string} esId Energy system id.
+ * @returns {string} Formatted selector option group label.
+ */
+const formatSelectorOptGroupLabel = (esId) => {
+  return `${window.get_es_title(esId)} [${esId}]`;
+};
+
+/**
+ * Calculate the grid item layout according to the current breakpoint.
+ * 
+ * @param {string} breakpoint The current breakpoint.
+ * @param {number} itemNr Grid item number used for positing the grid item in the dashboard.
+ */
+function calGridItemLayout(breakpoint, itemNr) {
+  // Vue Grid Layout library has the default number of columns for each breakpoint defined. 
+  // Apply the default cols per breakpoint below.
+  // https://jbaysolutions.github.io/vue-grid-layout/guide/properties.html#gridlayout
+  let cols = 12;
+  // Dynamically adjust colNum according to the current breakpoint.
+  let colNum = 3;
+  switch (breakpoint) {
+    case 'lg':
+      cols = 12;
+      colNum = 3;
+      break;
+    case 'md':
+      cols = 10;
+      colNum = 2;
+      break;
+    case 'sm':
+      cols = 6;
+      colNum = 2;
+      break;
+    case 'xs':
+      cols = 4;
+      colNum = 1;
+      break;
+    case 'xxs':
+      cols = 2;
+      colNum = 1;
+      break;
+  }
+  const w = cols / colNum;
+  const h = 8;
+  const x = (itemNr % colNum) * w;
+  const y = Math.floor(itemNr / colNum) * h;
+  return [x, y, w, h];
+}
+
+/**
+ * Updates the currentBreakpoint value and recalculates the grid layout accordingly.
+ * 
+ * @param {string} breakpoint The current breakpoint.
+ */
+ const onBreakpointChanged = (breakpoint) => {
+  currentBreakpoint.value = breakpoint;
+
+  // Recalculate layout due to breakpoint change.
+  const newLayout = layout.value.map((item, itemNr) => {
+    const [x, y, w, h] = calGridItemLayout(currentBreakpoint.value, itemNr);
+    return {
+      ...item,
+      x: x,
+      y: y,
+      w: w,
+      h: h
+    };
+  });
+  layout.value = [...newLayout];
+  dashboard_config.layout.value = [...newLayout];
+};
+
+/**
+ * Update dashboard contents according to the given esId and kpiScope.
+ * 
+ * @param {string} esId Energy system Id.
+ * @param {string} kpiScope KPI scope of the associated energy system.
+ */
+function updateDashboard(esId, kpiScope) {
+  console.debug(`Updating KPI dashboard for ES: ${esId} and scope: ${kpiScope}`);
+  
+  // Reset layout reference.
+  layout.value = [];
+  dashboard_config.layout.value = [];
+
+  // Preprocessing KPIs data
+  const scopeKPIs = esKPIs[esId][kpiScope];
+  const esScopeKPIs = {[esId]: scopeKPIs};
+  const scopeKPIsData = window.kpis.preprocess_all_kpis(esScopeKPIs);
+  const refKPIs = window.get_area_kpi_list(esId);
+  const kpiData = window.syncScopeKPIsWithRefKPIs(scopeKPIsData, refKPIs);
 
   let kpi_nr = 0;     // TODO: do we need to seperate kpi_nr and new_panel_id? Add panels to existing dashboard?
-  for (let kpi_name in kpi_data) {
-    let kpi_info = kpi_data[kpi_name];
+  for (let kpi_name in kpiData) {
+    let kpi_info = kpiData[kpi_name];
+    const [x, y, w, h] = calGridItemLayout(currentBreakpoint.value, kpi_nr);
     if (kpi_info[0]['type'] == 'Sankey') {
       layout.value.push({
-        x: (kpi_nr % 3) * 3,
-        y: Math.floor(kpi_nr / 3) * 5,
-        w: 3,
-        h: 5,
+        x: x,
+        y: y,
+        w: w,
+        h: h,
         i: new_panel_id,
         type: 'sankeypanel',
         options: {
@@ -170,30 +343,29 @@ const getAllKPIData = () => {
           'data': kpi_info[0]['flows'],
         },
       });
-    } else {
-        let chart_options = window.createChartOptions(kpi_info);
-        chart_options.title = kpi_name;
-        // console.log(chart_options);
+    } 
+    else {
+      let chart_options = window.createChartOptions(kpi_info);
+      chart_options.title = kpi_name;
+      // console.log(chart_options);
 
-        layout.value.push({
-          x: (kpi_nr % 3) * 3,
-          y: Math.floor(kpi_nr / 3) * 5,
-          w: 3,
-          h: 5,
-          i: new_panel_id,
-          type: 'charttable',
-          options: chart_options,
-          kpi_name: kpi_name,
-          kpi_type: kpi_info.type
-        });
+      layout.value.push({
+        x: x,
+        y: y,
+        w: w,
+        h: h,
+        i: new_panel_id,
+        type: 'charttable',
+        options: chart_options,
+        kpi_name: kpi_name,
+        kpi_type: kpi_info.type
+      });
     }
-
     kpi_nr = kpi_nr + 1;
     new_panel_id = new_panel_id + 1;
   }
   dashboard_config.layout.value = [...layout.value];
-};
-getAllKPIData();
+}
 
 const findNewPanelId = () => {
   new_panel_id = 0;
@@ -484,10 +656,6 @@ const handleAddPanel = (e) => {
   width: 100%;
 }
 
-.vue-grid-item .no-drag {
-  height: 100%;
-  width: 100%;
-}
 
 .vue-grid-item .minMax {
   font-size: 12px;

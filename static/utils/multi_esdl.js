@@ -530,6 +530,10 @@ function set_kpi_info(es_id, kpi_info) {
     esdl_list[es_id].kpi_info = kpi_info;
 }
 
+function get_es_title(es_id) {
+    return esdl_list[es_id].title;
+}
+
 function get_kpi_info(es_id) {
     return esdl_list[es_id].kpi_info;
 }

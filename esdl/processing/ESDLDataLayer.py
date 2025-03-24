@@ -765,7 +765,7 @@ class ESDLDataLayer:
 
         edr_client = EDRClient.get_instance()
         carriers_str = edr_client.get_object_from_EDR(edr_path)
-        carriers, parse_info = pm.add_from_string('carriers_str', carriers_str)
+        carriers, parse_info = pm.load_external_string('carriers_str', carriers_str)
 
         esi = es.energySystemInformation
         if not esi:
@@ -851,7 +851,7 @@ class ESDLDataLayer:
 
         edr_client = EDRClient.get_instance()
         sectors_str = edr_client.get_object_from_EDR(edr_path)
-        sectors, parse_info = pm.add_from_string('sectors_str', sectors_str)
+        sectors, parse_info = pm.load_external_string('sectors_str', sectors_str)
 
         esi = es.energySystemInformation
         if not esi:

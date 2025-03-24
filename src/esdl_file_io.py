@@ -21,10 +21,10 @@ import src.log as log
 from esdl.processing.string_uri import StringURI
 from esdlproject import Variant
 from esdlproject.ProjectManager import ProjectManager
-from extensions.projects import init_mapeditor_change_handlers
 from extensions.session_manager import set_session, get_project_manager, set_project_manager
 from src.process_es_area_bld import call_process_energy_system
 from src.tno.live_model_interface.api import send_add_variant_and_esdl_message_to_lmi, send_project_manager_to_lmi_async
+from src.tno.projects.core import init_mapeditor_change_handlers
 from src.tno.projects.emits import emit_active_esdl_project
 
 logger = log.get_logger(__name__)

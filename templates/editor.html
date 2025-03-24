@@ -53,13 +53,14 @@
     <link rel="stylesheet" href="./vendor/jjimenezshaw/L.Control.Layers.Tree.css" type="text/css"/>
     <script type="text/javascript" src="./vendor/jjimenezshaw/L.Control.Layers.Tree.js"></script>
 
+    <!-- Downloaded from https://github.com/google/palette.js -->
+    <script type="text/javascript" src="./plugins/palette.js"></script>
+
     <!-- downloaded from https://github.com/kartena/Proj4Leaflet -->
     <script type="text/javascript" src="./plugins/proj4.js"></script>
     <!--script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.5.0/proj4.js"></script-->
     <script type="text/javascript" src="./plugins/proj4leaflet.js"></script>
 
-    <!--script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.slim.js"></script-->
-    <!-- <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.7.4/socket.io.min.js"></script> -->
     <script type="text/javascript" src="./vendor/cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.4/socket.io.min.js"></script>
 <!--    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>-->
 
@@ -214,6 +215,8 @@
     <script type="module" src="./utils/admin_dialog.js"></script>
 
     <script type="module" src="./utils/KPIDashboard.js"></script>
+    <script type="module" src="./utils/esdl_analytics.js"></script>
+    <script type="module" src="./utils/ownership.js"></script>
 
     <script type="text/javascript" src="./utils/esdl_file_io.js"></script>
     <script type="text/javascript" src="./utils/custom_icons.js"></script>
@@ -259,7 +262,6 @@
 
         var services_enabled = {
             'edr': {% if edr_enabled %}true{% else %}false{% endif %},
-            'store': {% if store_enabled %}true{% else %}false{% endif %},
             'boundary_service': {% if boundary_service_enabled %}true{% else %}false{% endif %},
             'bag_service': {% if bag_service_enabled %}true{% else %}false{% endif %},
             'ibis_service': {% if ibis_service_enabled %}true{% else %}false{% endif %},
@@ -577,8 +579,13 @@
         //  Document is ready loading --> all functionality to react on incoming socketio messages
         // ------------------------------------------------------------------------------------------------------------
         $(document).ready(function() {
+
             namespace = '/esdl';
-            socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace, {'timeout':50000, 'connect timeout': 15000, path: "/socketio.io"});
+            socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace, {
+                'timeout': 50000,
+                'connect timeout': 15000,
+                path: "/socketio.io",
+            });
 
             function handleErrors(err) {
                 console.error("SocketIO error!", err)
@@ -587,6 +594,9 @@
             socket.on('connect_error', err => handleErrors(err))
             socket.on('connect_failed', err => handleErrors(err))
             socket.on('disconnect', err => handleErrors(err))
+
+            socket.onerror = (err) => handleErrors(err)
+            socket.onclose = () => console.log("WebSocket closed");
 
             // add_handler();
             add_geojson_listener(socket, map);
@@ -597,7 +607,6 @@
 
             // request the list of assets in the EDR
             get_edr_assets('edr_assets');
-
             socket.on('results.asset.positioning', function(msg) {
                 console.log(msg);
                 if (!msg.wind_potential) {
@@ -621,6 +630,10 @@
                 }
                 window.PubSubManager.broadcast('SOCKET_CONNECTED', socket);
                 auth_status(true); // Check immediately if we have an autorized session
+            });
+
+            socket.on('hide_loader', function() {
+               hide_loader();
             });
 
             socket.on('user_info', function(ui) {
@@ -1366,6 +1379,27 @@
                 }
             });
 
+            let clickCount = 0;
+            let clickTimer = null;
+
+            $('#loader-hider').on('click', function() {
+                console.debug("Hiding loader: " + clickCount);
+                clickCount++;
+
+                if (clickTimer) {
+                    clearTimeout(clickTimer);
+                }
+
+                clickTimer = setTimeout(function() {
+                    clickCount = 0;
+                }, 1000); // Reset after 1 second
+
+                if (clickCount === 3) {
+                    clickCount = 0;
+                    clearTimeout(clickTimer);
+                    hide_loader('all');
+                }
+            });
         });
     </script>
 
@@ -1573,6 +1607,9 @@
                                     <li><a class="dropdown-item" href="#" onclick="export_as_shapefiles(this, '.');">
                                         <div class="menu-icon" style="margin-top:0px"><i class="fa fa-file-export fa-smaller"></i></div>
                                         Export as shapefiles</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="export_as_inline_profile(this, '.');">
+                                        <div class="menu-icon ui-icon ui-icon-folder-open"></div>
+                                        Export with in-line profiles</a></li>
 
                                 </ul>
                             </li>
@@ -1587,6 +1624,7 @@
                                     <li><a class="dropdown-item" href="#" onclick="carriers_window();"><div class="menu-icon">&nbsp;</div>Energy carriers...</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="sectors_window();"><div class="menu-icon">&nbsp;</div>Sectors...</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="environmental_profiles();"><div class="menu-icon ui-icon ui-icon-star">&nbsp;</div>Environmental profiles...</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="ownership_dialog.open();"><div class="menu-icon" id="menu_ownership">&nbsp;</div>Ownership</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="shapefile_converter_window.open_window();"><div class="menu-icon ui-icon ui-icon-image">&nbsp;</div>Shapefile converter...</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="search_assets_window();"><div class="menu-icon ui-icon ui-icon-search">&nbsp;</div>Search assets...</a></li>
                                 </ul>
@@ -1683,23 +1721,36 @@
                                             Clear simulation results
                                         </a>
                                     </li>
-
-<!--                                    <li><a class="dropdown-item" href="#" onclick="show_kpis();"><div class="menu-icon">&nbsp;</div>KPIs</a></li>-->
-                                    <li class="separator"><span class="dropdown-item menu-separator"></span></li>
                                     <li>
                                         <a class="dropdown-item" href="#" onclick="show_or_hide_kpicharts_bar(this);">
                                             <div id="menu_option_kpi_window" class="menu-icon">&nbsp;</div>
                                             Show KPIs sidebar
                                         </a>
                                     </li>
-                                    <li><a class="dropdown-item" href="#" onclick="kpi_dashboard.open();"><div class="menu-icon" id="menu_kpi_dashboard"><i class="fa fa-chart-simple" aria-hidden="true"></i></div>KPI Dashboard...</a></li>
-                                    <li class="separator"><span class="dropdown-item menu-separator"></span></li>
-                                    <li><a class="dropdown-item" href="#" onclick="app_settings.open_window();"><div id="menu_settings" class="menu-icon" style="margin-top:0px"><i class="fa fa-cog" aria-hidden="true"></i></div>Settings...</a></li>
+                                    <li>
+                                        <a class="dropdown-item" href="#" onclick="kpi_dashboard.open();">
+                                            <div class="menu-icon" id="menu_kpi_dashboard">&nbsp;</div>
+                                            KPI Dashboard
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="#" onclick="esdl_analytics.open();">
+                                            <div class="menu-icon" id="menu_esdl_analytics">&nbsp;</div>
+                                            ESDL Analytics
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="#" onclick="app_settings.open_window();">
+                                            <div id="menu_settings" class="menu-icon" style="margin-top:0px">
+                                                <i class="fa fa-cog"></i>
+                                            </div>Settings
+                                        </a>
+                                    </li>
                                 </ul>
                             </li>
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">Help</a>
                                 <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" href="https://esdl-mapeditor-documentation.readthedocs.io/" target="#"><div class="menu-icon" id="menu_doc" style="margin-top:0px"><i class="fa fa-book" aria-hidden="true"></i></div>Documentation</a></li>
+                                    <li><a class="dropdown-item" href="https://esdl-mapeditor-documentation.readthedocs.io/" target="#"><div class="menu-icon" id="menu_doc" style="margin-top:0px"><i class="fa fa-book"></i></div>Documentation</a></li>
 {% if user_feedback_url %}
                                     <li><a class="dropdown-item" href="{{ user_feedback_url }}" target="#"><div class="menu-icon ui-icon ui-icon-comment" id="menu_user_feedback">&nbsp;</div>Give feedback or report issues</a></li>
 {% endif %}
@@ -1746,7 +1797,11 @@
 
     <div id="sidebar"></div>
     <div id="sidebar_b"></div>
-    <div id="loader"></div>
+    <div id="loader">
+        {# Click 3 times in the top left corner to hide the loader. #}
+        <div id="loader-hider"></div>
+        <div class="spinner"></div>
+    </div>
     <div id="kpicharts"></div>
     <div id="ldccontrol"></div>
     <div id="tdmonitorcontrol"></div>
@@ -1922,6 +1977,26 @@
         allowable_states: ['custom', 'maximized', 'minimized']
     };
 
+    const esdl_analytics_dialog_options = {
+        size: [ 1100, 700 ],
+        minSize: [ 100, 100 ],
+        maxSize: [ 4000, 2000 ],
+        anchor: [ 10, 50 ],
+        initOpen: false,
+        state: 'maximized',
+        allowable_states: ['custom', 'maximized', 'minimized']
+    }
+
+    const ownership_dialog_options = {
+        size: [ 1100, 700 ],
+        minSize: [ 100, 100 ],
+        maxSize: [ 4000, 2000 ],
+        anchor: [ 10, 50 ],
+        initOpen: false,
+        state: 'maximized',
+        allowable_states: ['custom', 'maximized', 'minimized']
+    }
+
 {% if essim_enabled and 'essim' in role %}
     L.control.essim_control().addTo(map);
 {% endif %}
@@ -1933,6 +2008,8 @@
     import TableEditorDialog from "./utils/table_editor.js";
     import KPIDashboard from "./utils/KPIDashboard.js";
     import AdminDialog from "./utils/admin_dialog.js";
+    import ESDLAnalytics from "./utils/esdl_analytics.js";
+    import OwnershipDialog from "./utils/ownership.js";
 
     const table_editor = new TableEditorDialog(table_editor_dialog_options);
     map.addControl(table_editor);
@@ -1944,7 +2021,15 @@
 
     const admin_dialog = new AdminDialog(admin_dialog_options);
     map.addControl(admin_dialog);
-    window.admin_dialog = admin_dialog
+    window.admin_dialog = admin_dialog;
+
+    const esdl_analytics = new ESDLAnalytics(esdl_analytics_dialog_options);
+    map.addControl(esdl_analytics);
+    window.esdl_analytics = esdl_analytics;
+
+    const ownership_dialog = new OwnershipDialog(ownership_dialog_options);
+    map.addControl(ownership_dialog);
+    window.ownership_dialog = ownership_dialog;
 </script>
 
 {% if debug %}

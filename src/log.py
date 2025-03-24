@@ -69,6 +69,22 @@ logging.config.dictConfig(
                 "level": "DEBUG" if FLASK_DEBUG else "INFO",
                 "propagate": False,
             },
+            "geventwebsocket": {
+                "handlers": ["default"],
+                "level": "INFO",
+                "propagate": False,
+            },
+            # SQLAlchemy is very noisy.
+            "sqlalchemy.engine": {
+                "handlers": ["default"],
+                "level": "WARNING",
+                "propagate": False,
+            },
+            "sqlalchemy.engine.Engine": {
+                "handlers": ["default"],
+                "level": "WARNING",
+                "propagate": False,
+            },
             # "esdl.undo": {
             #     "handlers": ["default"],
             #     "level": "DEBUG" if FLASK_DEBUG else "INFO",

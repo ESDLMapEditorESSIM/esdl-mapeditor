@@ -151,8 +151,8 @@ class TimeDimension:
             asset_id = info["id"]
             active_es_id = get_session("active_es_id_animation")
             timedimension_parameter = get_session("timedimension-parameter")
-            esh = get_handler()
-            asset = esh.get_by_id(active_es_id, asset_id)
+            pm = get_project_manager()
+            asset = pm.get_by_id(active_es_id, asset_id)
             asset_name = asset.name
             power = None
             # TODO leave out for mesido for now

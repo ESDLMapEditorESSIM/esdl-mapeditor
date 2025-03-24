@@ -1,2 +1,1 @@
-gunicorn==21.2.0
-gevent-websocket
+gunicorn==23.0.0

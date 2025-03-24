@@ -60,11 +60,15 @@ instance/
 .env
 
 # virtualenv
+.venv
 venv_old/
 ENV/
 
 # Directory for cvustom env files.
 envs/
+
+# Data Manager SQLite db
+data_manager.db
 
 # Editors
 .idea/
@@ -87,6 +91,7 @@ credentials/
 environments/
 venv_old/
 node_modules/
+data/sessions
 
 credentials/client_secrets_remote*.json
 package-lock.json

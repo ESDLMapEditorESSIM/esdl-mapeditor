@@ -110,7 +110,7 @@ const selectedFile = () => {
 }
 
 .panel_image {
-  border_radius: 8px;
+  border-radius: 8px;
   overflow: hidden;
   object-fit: contain;
 }

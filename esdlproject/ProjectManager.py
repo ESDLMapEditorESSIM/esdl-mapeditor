@@ -176,7 +176,11 @@ class ProjectManager:
     def add_change_listener(self, listener_id: str, call_back_fun):
         """
         Adds a listener to changes of ProjectManager's managed resources by informing listeners of changes
-        to the UndoRedoCommandStack
+        to the UndoRedoCommandStack.
+
+        Note: Be aware that in the `call_back_fun` code you are not allowed to change the ESDL as these changes
+        are not recorded and will generate error messages when this is detected.
+
         Parameters
         ----------
         listener_id - string to uniquely identify a listener
@@ -197,6 +201,10 @@ class ProjectManager:
     def change_handler(self, change: HighLevelChange, change_context: ChangeContext):
         """
         Generic change handler that informs all listeners of changes to the UndoRedoCommandStack.
+
+        Note: Be aware that in the change handler code you are not allowed to change the ESDL as these changes
+        are not recorded and will generate error messages when this is detected.
+
         Parameters
         ----------
         change HighLevelChange to send to the listeners
@@ -546,16 +554,23 @@ class ProjectManager:
     #         else:
     #             logger.warn(f"Fixme: ignoring DetailedChanges at this level")
 
+    def get_variants(self) -> list[Variant]:
+        """"
+        Creates a flat list of all the variants.
+        """
+        variants: list[Variant] = []
+        for vc in self.project.variantCollection:
+            vc: VariantCollection = vc
+            self.get_variant_list(vc.variant, variants)
+        return variants
+
     def get_energy_systems(self) -> list[esdl.EnergySystem]:
         """"
         Creates a list of all the variants associated energy systems (but not of the variantCollection energy system,
         as each variantCollection has its own main variant by convention). This only returns the snapshots of the
         variants that have a snapshot; it doesn't create new snapshots.
         """
-        variants: list[Variant] = []
-        for vc in self.project.variantCollection:
-            vc: VariantCollection = vc
-            self.get_variant_list(vc.variant, variants)
+        variants: list[Variant] = self.get_variants()
         energy_systems: list[EnergySystem] = []
         for v in variants:
             es = self.get_variant_snapshot(v)
@@ -569,10 +584,7 @@ class ProjectManager:
         :param es_id: the id of the energy system to remove
         :return: the removed variant or None if no variant was found with the given id
         """
-        variants: list[Variant] = []
-        for vc in self.project.variantCollection:
-            vc: VariantCollection = vc
-            self.get_variant_list(vc.variant, variants)
+        variants: list[Variant] = self.get_variants()
         for v in variants:
             es = self.get_or_create_variant_snapshot(v)
             if es.id == es_id:

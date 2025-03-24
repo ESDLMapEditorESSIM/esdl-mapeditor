@@ -28,10 +28,11 @@ let auth_status = function(dont_reschedule) {
                 uri = window.location; // use different uri when manually invoked, as the /editor should be loaded first when restarting the mapeditor code
             }
             if (!session.valid) {
-                const answer = confirm("Session has expired, re-authentication is necessary.\nPress Ok to go to the login page.");
+                const answer = confirm("Session has expired, re-authentication is necessary.\nPress Ok to reload the page");
                 if (answer) {
-                    console.log('Redirecting to', uri)
-                    window.location = uri;
+                    show_loader();
+                    console.log('Redirecting to: ', session.redirect_uri);
+                    window.location.reload();
                 }
             }
         })
@@ -40,4 +41,4 @@ let auth_status = function(dont_reschedule) {
             if (!dont_reschedule) setTimeout(auth_status, 60000);
         });
 };
-auth_status();
+//auth_status(); @see app.py where this check is implemented

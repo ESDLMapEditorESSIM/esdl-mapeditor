@@ -35,7 +35,10 @@ const {socket, subscribe} = useSocketIO();
  */
 function setEsdlProject(responseProject) {
     console.debug("Setting ESDL Project:", responseProject);
-    esdlProject.value = responseProject;
+    // In rare cases, the active_variant_id is not set. We ignore the response in that case.
+    if (responseProject.active_variant_id) {
+        esdlProject.value = responseProject;
+    }
 
     // TODO: Fix syncing left and right layer actions
     //window.select_active_layer(responseProject.active_variant_id);
