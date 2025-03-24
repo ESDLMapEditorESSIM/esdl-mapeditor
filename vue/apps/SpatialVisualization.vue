@@ -80,7 +80,12 @@
                           <template #actions>
                             <a-button
                               :disabled="ds.loadedSources[item] !== undefined || isLoading"
-                              @click="() => ds.addAsGeoJsonSource(item)"
+                              @click="() => {
+                                ds.loading = true;
+                                ds.addAsGeoJsonSource(item).then(() => {
+                                  ds.loading = false;
+                                });
+                              }"
                             >
                               Add
                             </a-button>
@@ -235,7 +240,7 @@
                 </a-select>
               </a-row>
               <a-row class="layer-style-option-row">
-                Marker size
+                Size
                 <a-col :span="16">
                   <a-slider
                     :value="vizLayer.markerSizeValue"
@@ -262,12 +267,22 @@
                 v-if="!vizLayer.features[0].geometry.type.includes('LineString')"
                 class="layer-style-option-row"
               >
-                Show marker outline
+                Show outline
                 <a-col :span="2">
                   <a-switch
                     :checked="vizLayer.showStroke"
                     size="small"
                     @change="(checkedStatus) => vizLayer.onToggleShowStroke(checkedStatus)"
+                  />
+                </a-col>
+              </a-row>
+              <a-row class="layer-style-option-row">
+                Show label
+                <a-col :span="2">
+                  <a-switch
+                    :checked="vizLayer.showLabel"
+                    size="small"
+                    @change="(checkedStatus) => vizLayer.onToggleShowLabels(checkedStatus)"
                   />
                 </a-col>
               </a-row>
@@ -324,7 +339,6 @@ const removeTooltipPopup = () => { window.jquery(".ui-tooltip-content").parents(
 // TODOs: Future works:
 // support data filtering
 // show data table
-// show text symbol
 // support asset references field
 // support custom field
 // speed up query time (getAssetFields)
@@ -366,7 +380,7 @@ const closeAddDataModal = () => {
 };
 
 /**
- * Populate the datasources array from the existing sources (kept in esdlListRef)
+ * Populate the datasources array from the existing sources (the ones kept in esdlListRef)
  * or instantiate a new EsdlLayerSource.
  */
 const initDatasources = () => {
@@ -425,8 +439,6 @@ class EsdlLayerSource extends DataSource {
    * @param {string} assetType ESDL asset type 
    */
   async addAsGeoJsonSource (assetType) {
-    this.loading = true;
-
     const layerFeatures = this.sources[assetType];
     const geoJsonFeaturePromises = layerFeatures.map(async (f) => {
       const g = f.toGeoJSON();
@@ -450,7 +462,6 @@ class EsdlLayerSource extends DataSource {
       ...(this.loadedSources || {}),
       [assetType]: geoJsonFeatureCollection 
     };
-    this.loading = false;
   }
 
   /**
@@ -491,7 +502,6 @@ class EsdlLayerSource extends DataSource {
         });
       });
 
-      // TODO: fix loading ended too early.
       this.loading = false;
     });
   }
@@ -538,7 +548,7 @@ class EsdlLayerSource extends DataSource {
 class VisualizedLayer {
   static initMarkerSizeValue = 5;
   static initOpacity = 1.0;
-  static initShowStroke = false;
+  static initStrokeWeight = 2;
   static initColorPickerColor = undefined;
   static initColorPalette = undefined;
   static initDisplayedPalettes = [];
@@ -632,10 +642,11 @@ class VisualizedLayer {
     this.styledType = undefined;
     this.markerSizeValue = VisualizedLayer.initMarkerSizeValue;
     this.opacity = VisualizedLayer.initOpacity;
-    this.showStroke = VisualizedLayer.initShowStroke;
     this.colorPickerColor = VisualizedLayer.initColorPickerColor;
     this.colorPalette = VisualizedLayer.initColorPalette;
     this.displayedPalettes = VisualizedLayer.initDisplayedPalettes;
+    this.showStroke = false;
+    this.showLabel = false;
   }
 
   createGeoJsonLayer (features) {
@@ -658,6 +669,11 @@ class VisualizedLayer {
 
   removeLayerFromMap (layer) {
     if (esdlListRef[this.sourceRef.id].layers["viz_layer"].hasLayer(layer)) {
+      // Remove existing tooltips to avoid them lingering on the map.
+      layer.eachLayer((featureLayer) => {
+        featureLayer.closeTooltip();
+        featureLayer.unbindTooltip(); 
+      });
       esdlListRef[this.sourceRef.id].layers["viz_layer"].removeLayer(layer);
     }
   }
@@ -696,7 +712,6 @@ class VisualizedLayer {
   onSelectStyledField (selectedField) {
     this.styledField = selectedField;
     this.styledFieldType = this.fieldOptions.find(f => f.value === selectedField).type;
-    this._setFeaturePopup(selectedField);
 
     let defaultStyleType = undefined;
     if (Object.keys(VisualizedLayer.StyleTypes).includes(this.styledFieldType)) {
@@ -737,6 +752,11 @@ class VisualizedLayer {
     this.styleLayer(this.styledType);
   }
 
+  onToggleShowLabels (checkedStatus) {
+    this.showLabel = checkedStatus;
+    this.styleLayer(this.styledType);
+  }
+
   /**
    * Style layer according to the given styleType and current style options.
    * 
@@ -768,6 +788,7 @@ class VisualizedLayer {
     }
     this._styleMarkerOpacity(this.opacity);
     this._showHideMarkerStroke(this.showStroke);
+    this._showHideFeatureLabels(this.styledField, this.showLabel);
   }
 
   // ---------------------------------------- //
@@ -785,7 +806,9 @@ class VisualizedLayer {
     const isPolyline = this.features[0].geometry.type.includes('LineString');
     this.layer.setStyle({
       radius: size, 
-      weight: isPolyline ? size * VisualizedLayer.radiusToWeight : 1
+      weight: isPolyline
+        ? size * VisualizedLayer.radiusToWeight 
+        : VisualizedLayer.initStrokeWeight
     });
   }
 
@@ -802,10 +825,31 @@ class VisualizedLayer {
     if (!isPolyline) {
         this.layer.setStyle({
         stroke: showStroke,
-        weight: 1,
+        weight: VisualizedLayer.initStrokeWeight,
         color: '#2e4053'
       });
     }
+  }
+
+  /**
+   * Show or hide the selected field value from features as tooltip labels.
+   */
+  _showHideFeatureLabels (selectedField, showLabel=false) {
+    this.layer.eachLayer((featureLayer) => {
+      // Clean up existing tooltip
+      featureLayer.closeTooltip();
+      featureLayer.unbindTooltip();
+
+      if (showLabel && (featureLayer.feature && featureLayer.feature.properties)) {
+        const fieldValue = featureLayer.feature.properties[selectedField];
+        const popupContent = fieldValue !== null ? `${fieldValue}` : "No data";
+        featureLayer.bindTooltip(popupContent, {
+          permanent: true,
+          direction: 'top',
+          opacity: 0.8
+        }).openTooltip();
+      }
+    });
   }
 
   _styleMarkerColorOnCategorizedFieldValue (styledField, palette) {
@@ -872,7 +916,9 @@ class VisualizedLayer {
         const isPolyline = feature.geometry.type.includes("LineString");
         return {
           radius: size, 
-          weight: isPolyline ? size * VisualizedLayer.radiusToWeight : 1
+          weight: isPolyline
+            ? size * VisualizedLayer.radiusToWeight
+            : VisualizedLayer.initStrokeWeight
         };
       });
     } else {
@@ -924,31 +970,15 @@ class VisualizedLayer {
    * Initialize a custom map pane to ensure GeoJSON features are added to the vizLayerPane
    * and are displayed on the top of the map.
    * 
-   * Ref: https://leafletjs.com/examples/map-panes/
+   * Ref:
+   * https://leafletjs.com/examples/map-panes/
+   * https://leafletjs.com/reference.html#map-tooltippane
    */
   _initVizLayerPane () {
     if (map.getPane(VisualizedLayer.customMapPane) === undefined) {
       const vizLayerPane = map.createPane(VisualizedLayer.customMapPane);
-      vizLayerPane.style.zIndex = 650;
+      vizLayerPane.style.zIndex = 640; // Keep it below the tooltippane (650)
     }
-  }
-
-  // TODO: fix console warning
-  _setFeaturePopup (selectedField) {
-    this.layer.eachLayer((layer) => {
-      // Remove any previously bound events
-      layer.off();
-
-      // New event listeners
-      layer.on('mouseover', (e) => {
-        const popupContent = `${layer.feature.properties[selectedField]}` || "No data available";
-        layer.bindPopup(popupContent).openPopup(e.latlng);
-      });
-
-      layer.on('mouseout', () => {
-        layer.closePopup();
-      });
-    });
   }
 
   _listLayerFieldOptions () {
