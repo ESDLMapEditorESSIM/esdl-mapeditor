@@ -104,6 +104,7 @@ class ESDLFileIO:
         # emit('alert', message, namespace='/esdl')
 
     def clear_mapeditor_ui(self):
+        # todo: del_session("shape_dictionary")
         es_info_list = {}
         set_session("es_info_list", es_info_list)
         emit('clear_ui')
