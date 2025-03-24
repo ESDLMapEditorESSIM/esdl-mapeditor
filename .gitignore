@@ -92,6 +92,7 @@ environments/
 venv_old/
 node_modules/
 data/sessions
+data/local
 
 credentials/client_secrets_remote*.json
 package-lock.json

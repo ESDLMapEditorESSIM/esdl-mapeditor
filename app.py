@@ -3235,8 +3235,8 @@ def initialize_app():
 
 
 @socketio.on('connect', namespace='/esdl')
-def connect():
-    logger.info("Websocket connection established")
+def connect(*args):
+    logger.info("Websocket connection established", args=args)
 
     if 'id' in session:
         logger.debug('- Old socketio id={}, new socketio id={}'.format(session['id'], request.sid))

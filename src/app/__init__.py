@@ -27,7 +27,7 @@ from src.log import get_logger
 from flask import Flask
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from src.settings import is_prod, PERSIST_SESSIONS
+from src.settings import is_prod, PERSIST_SESSIONS, DEFAULT_PROJECT_PATH
 
 logger = get_logger(__name__)
 

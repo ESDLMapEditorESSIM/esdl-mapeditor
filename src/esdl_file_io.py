@@ -67,12 +67,12 @@ class ESDLFileIO:
                         added_variants.append(variant)
                         #emit_active_esdl_project() # cant do emit here, because it is not socket io request
 
+                client_id = session["client_id"]
                 if not is_import:
                     # Now overwrite the project manager. We do this at the end to prevent the project manager from being
                     # overwritten with an incomplete project manager in case of an error.
                     set_project_manager(pm)
-                    init_mapeditor_change_handlers(pm)
-                client_id = session["client_id"]
+                    init_mapeditor_change_handlers(pm, client_id)
                 send_project_manager_to_lmi_async(only_send_for_client_id=client_id)
                 last_variant = added_variants[-1]
                 if last_variant is not None:

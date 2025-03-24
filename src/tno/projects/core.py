@@ -2,8 +2,8 @@ import uuid
 from datetime import datetime, timezone
 
 from flask import session, has_request_context, request
-from pyecore.resources.json import JsonOptions
 
+from esdl.resources.json import JsonOptions
 from esdl.undo import ChangeSource, ChangeContext
 from esdlproject import HighLevelChange
 from esdlproject.ProjectManager import ProjectManager, eobject_to_string, ESDLFormat
@@ -20,32 +20,32 @@ from extensions.session_manager import set_project_manager, set_session
 
 logger = log.get_logger(__name__)
 
-def create_new_project_manager(emit_to_frontend=True) -> ProjectManager:
+def create_new_project_manager(client_id=None) -> ProjectManager:
     """
     Create a new ProjectManager and set it as the active ProjectManager. This will also initialize the change handlers
     for the new ProjectManager, send the new ProjectManager to the LMI and emit the active ESDL project to the frontend.
     """
     pm = ProjectManager()
-    set_project_manager(pm)
-    init_mapeditor_change_handlers(pm)
-    set_session("es_info_list", {})
-    send_project_manager_to_lmi_async(only_send_for_client_id=session['client_id'])
+    set_project_manager(pm, client_id=client_id)
+    init_mapeditor_change_handlers(pm, client_id)
+    set_session("es_info_list", {}, client_id=client_id)
+    if has_request_context():
+        send_project_manager_to_lmi_async(only_send_for_client_id=session['client_id'])
 
-    can_emit = has_request_context() and hasattr(request, 'namespace')
-    if emit_to_frontend and can_emit:
-        emit_clear_frontend_esdls()
-        emit_clear_ui()
-        call_process_energy_system.submit()
-        emit_active_esdl_project()
-        emit_update_undo_redo_stack(pm.active_tracker.stack)
+        can_emit = hasattr(request, 'namespace')
+        if can_emit:
+            emit_clear_frontend_esdls()
+            emit_clear_ui()
+            call_process_energy_system.submit()
+            emit_active_esdl_project()
+            emit_update_undo_redo_stack(pm.active_tracker.stack)
     return pm
 
 
-def init_mapeditor_change_handlers(pm: ProjectManager):
+def init_mapeditor_change_handlers(pm: ProjectManager, client_id):
     """
     Makes sure this ProjectManager has the correct listeners for changes attached to it
     """
-    client_id = session["client_id"]
     if not pm.has_change_listener(SESSION_MANAGER_LISTENER_ID):
         pm.add_change_listener(SESSION_MANAGER_LISTENER_ID, on_change_recorded)
         logger.debug("Init PM client_id={} with listener for ESDL changes for LMI".format(client_id))
