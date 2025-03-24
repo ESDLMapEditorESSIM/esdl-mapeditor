@@ -238,12 +238,16 @@ class ResidentialArea:
                                             "qau": qau.deepcopy()}
                                     }
 
+        buildings_contain_heat_network_demand = False
         for asset_class, asset_info in totals.items():
             for asset_instance, asset_sub_info in asset_info.items():
                 # Create the aggregated version of this asset over all building types
                 asset = esdl.getEClassifier(asset_class)()
                 asset.id = str(uuid4())
                 asset.name = asset_instance
+
+                if isinstance(asset, esdl.HeatingDemand):
+                    buildings_contain_heat_network_demand = True
 
                 if isinstance(asset, esdl.Producer):
                     port = esdl.OutPort(id=str(uuid4()), name="OutPort")
@@ -276,16 +280,30 @@ class ResidentialArea:
         # Connect EConnection to the in-house electricity network
         aggr_bld_econn_outp.connectedTo.append(aggr_bld_elec_netw_inp)
 
+        if buildings_contain_heat_network_demand:
+            # Add HConnection to the AggregatedBuilding
+            aggr_bld_hconn = esdl.HConnection(id=str(uuid4()), name="Heat network connection")
+            aggr_bld_hconn_inp = esdl.InPort(id=str(uuid4()), name="In")
+            aggr_bld_hconn_outp = esdl.OutPort(id=str(uuid4()), name="Out")
+            aggr_bld_hconn.port.extend([aggr_bld_hconn_inp, aggr_bld_hconn_outp])
+            aggr_bld.asset.append(aggr_bld_hconn)
+
         # Connect all assets in the building to the in-house electricity network
         # For now assume all assets relate to electricity
         for bld_asset in aggr_bld.asset:
             if isinstance(bld_asset, esdl.Producer):
                 bld_asset.port[0].connectedTo.append(aggr_bld_elec_netw_inp)
-            elif isinstance(bld_asset, esdl.Consumer):
+            elif isinstance(bld_asset, esdl.Consumer) and not isinstance(bld_asset, esdl.HeatingDemand):
                 bld_asset.port[0].connectedTo.append(aggr_bld_elec_netw_outp)
+            elif isinstance(bld_asset, esdl.HeatingDemand):
+                bld_asset.port[0].connectedTo.append(aggr_bld_hconn_outp)
 
         # Expose the InPort of the EConnection to the outside of the Building
         aggr_bld.port.append(aggr_bld_econn_inp)
+
+        if buildings_contain_heat_network_demand:
+            # Expose the InPort of the HConnection to the outside of the Building
+            aggr_bld.port.append(aggr_bld_hconn_inp)
 
         # Indicate all buildings in AggregatedBuilding are residential buildings
         aggr_bld.buildingTypeDistribution = esdl.BuildingTypeDistribution(
@@ -322,7 +340,7 @@ class ResidentialArea:
                 result = json.loads(r.text)
                 if isinstance(result, list):
                     result.sort(key=lambda x: x["title"])
-                    self.building_list = result
+                    self.building_list = [res for res in result if "ERROR" not in res['id']]
                     self.building_list_datetime_retrieved = now
                     return result
                 else:

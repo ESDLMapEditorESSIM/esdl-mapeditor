@@ -373,6 +373,7 @@ class ETMSankeyToESDL:
 
         self.asset_to_carrier_mapping = {
             "ElectricityDemand": "Electricity",
+            "HeatingDemand": "Steam hot water",
             "PVInstallation": "Electricity",
             "PVPark": "Electricity",
             "EVChargingStation": "Electricity",
@@ -392,6 +393,13 @@ class ETMSankeyToESDL:
                     "parent": esdl.AbstractBuilding,
                     "parent_type": esdl.BuildingTypeEnum.RESIDENTIAL
                 }
+            },
+            "HeatingDemand": {
+                "Warmtevraag (gebouwgebonden)": {
+                    "sector": "Households space heating and hot water",
+                    "parent": esdl.AbstractBuilding,
+                    "parent_type": esdl.BuildingTypeEnum.RESIDENTIAL
+                },
             },
             "EVChargingStation": {
                 "Thuislaadpunten": {
