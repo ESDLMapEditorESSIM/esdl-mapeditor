@@ -103,9 +103,7 @@
               <br>
             </a-row>
             <a-col
-              v-if="currentTrace.length > 0 && 
-                (isProfileVariable || (!isProfileVariable && chartType==='chart'))
-              "
+              v-if="currentTrace.length > 0"
             >
               <br>
               <a-typography-title
@@ -113,13 +111,28 @@
               >
                 Display options
               </a-typography-title>
+              <a-row>
+                <a-segmented
+                  v-model:value="chartType"
+                  :options="chartTypes"
+                  style="width: 100%;"
+                  size="small"
+                  block
+                  @change="onChartTypeBtnClick"
+                >
+                  <template #label="{ value: value, payload = {} }">
+                    <component :is="payload.icon" style="vertical-align: 0.05rem" />
+                    {{ value.charAt(0).toUpperCase() + value.slice(1) }}
+                  </template>
+                </a-segmented>
+              </a-row>
             </a-col>
             <!----------------------------------------------->
             <!----- Profile variable - Display options ------>
             <!----------------------------------------------->
             <a-col v-if="isProfileVariable && filterSelected.length">
               <a-row>
-                <a-typography-title :level="5">Data selection</a-typography-title>
+                <a-typography-title :level="5">Date selection</a-typography-title>
                 <a-range-picker
                   v-model:value="profileDataRangeSelected"
                   :disabled-date="disabledDate"
@@ -144,7 +157,7 @@
               </a-row>
               <!-- TODO: show load duration curve -->
               <a-row v-if="profileVizTypeSelected === 'Aggregated'">
-                <a-typography-title :level="5">Aggregation Interval</a-typography-title>
+                <a-typography-title :level="5">Aggregation interval</a-typography-title>
                 <a-segmented
                   v-model:value="profileAggIntervalSelected"
                   :options="profileAggIntervals"
@@ -155,7 +168,7 @@
                 />
               </a-row>
               <a-row v-if="profileVizTypeSelected === 'Aggregated'">
-                <a-typography-title :level="5">Aggregation Function</a-typography-title>
+                <a-typography-title :level="5">Aggregation function</a-typography-title>
                 <a-segmented
                   v-model:value="profileAggFuncSelected"
                   :options="profileAggFuncs"
@@ -293,18 +306,20 @@
                 />
               </a-button>
             </a-row>
-            <!-- Chart type buttons -->
-            <a-radio-group v-model:value="chartType">
-              <a-radio-button
-                v-for="type in chartTypes"
-                :key="type.value"
-                :value="type.value"
-                :disabled="datasetSelected.length === 0 || variableSelected === null"
-                @click="onChartTypeBtnClick"
+            <!-- Export CSV button -->
+            <a-row>
+              <a-tooltip
+                v-if="chartType==='table' && currentTrace.length"
+                title="Export CSV"
               >
-                <component :is="type.icon" style="vertical-align: 0.05rem" />
-              </a-radio-button>
-            </a-radio-group>
+                <a-button @click="exportChartDataToCSV">
+                  <component 
+                    :is="DownloadOutlined"
+                    style="vertical-align: 0.1rem"
+                  />
+                </a-button>
+              </a-tooltip>
+            </a-row>
           </a-row>
         </a-layout-header>
         <a-layout-content class="graph-content">
@@ -324,6 +339,7 @@ import { notification } from 'ant-design-vue';
 import {
   BarChartOutlined,
   DeleteOutlined,
+  DownloadOutlined,
   EditOutlined,
   InfoCircleOutlined,
   LoadingOutlined,
@@ -358,9 +374,10 @@ const props = defineProps({
 // ---------- Component options ----------- //
 // ---------------------------------------- //
 
+// payload is used by AntD segmented component to display icon
 const chartTypes = [
-  {value: "chart", icon: BarChartOutlined},
-  {value: "table", icon: TableOutlined},
+  {value: "chart", payload: { icon: BarChartOutlined } },
+  {value: "table", payload: { icon: TableOutlined } },
 ];
 
 const dateTimeFormat = "YYYY-MM-DD HH:mm:ss";
@@ -433,8 +450,8 @@ const updateTitleInputWidth = (value) => {
 
 const chartType = ref(appliedOptions.chartType);
 
-const onChartTypeBtnClick = (event) => {
-  chartType.value = event.target.value;
+const onChartTypeBtnClick = (value) => {
+  chartType.value = value;
   updateTrace();
 };
 
@@ -1093,6 +1110,43 @@ const tableTraceHandler = (traces) => {
     traces: tableTrace,
     layout: tableLayout
   };
+};
+
+const exportChartDataToCSV = () => {
+  if (currentTrace.value[0] && currentTrace.value[0].type === 'table') {
+    try {
+      const tableData = currentTrace.value[0];
+      const csvFilename = variableSelected.value ? `${variableSelected.value}.csv` : `Untitled_chart_data.csv`;
+      const csvHeaders = tableData.header.values.map((col) => col[0].replace(/<\/?b>/g, ""));
+      const csvRows = [];
+      const rowCounts = tableData.cells.values[0].length;
+      for (let i = 0; i < rowCounts ; i++) {
+        const row = tableData.cells.values.map((array) => array[i]).join(",");
+        csvRows.push(row);
+      }
+      const csvContent = [csvHeaders, ...csvRows].join("\n");
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = csvFilename;
+      document.body.appendChild(link);
+      link.click();
+
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      const errorMsg = `Error exporting CSV: ${error}`;
+      console.error(errorMsg);
+      displayNotification("error", `${errorMsg}`);
+    }
+  } else {
+    const errorMsg = "No data or incorrect chart type.";
+    console.error(errorMsg);
+    displayNotification("error", `${errorMsg}`);
+  }
 };
 
 </script>
