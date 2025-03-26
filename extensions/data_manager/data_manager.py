@@ -571,6 +571,13 @@ class DataManager:
                     qau = esdl.QuantityAndUnitType(physicalQuantity=esdl.PhysicalQuantityEnum.LENGTH,
                                                    unit=esdl.UnitEnum.METRE, description="Length in m")
 
+            # Process asset ownership label
+            if isinstance(eobj, esdl.Asset):
+                d.labels = d.labels if d.labels is not None else {}
+                d.labels["Ownership"] = "Unassigned"
+                if eobj.isOwnedBy is not None:
+                    d.labels["Ownership"] = eobj.isOwnedBy.name
+
             # variable_name and qau and d should be defined here
             if not variable_name:
                 #variable_name = eobj.name if hasattr(eobj, 'name') else None
