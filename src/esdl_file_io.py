@@ -13,7 +13,7 @@
 #      TNO
 import base64
 
-from flask import Flask, request, session
+from flask import Flask, request, session, Request
 from flask_executor import Executor
 from flask_socketio import SocketIO, emit
 
@@ -43,6 +43,8 @@ class ESDLFileIO:
         @self.flask_app.route("/esdl_file_io", methods=['POST'])
         def esdl_file_io():
             try:
+                # Set max to 20 MB.
+                request.max_form_memory_size = 20 * 1024 * 1024
                 is_import = request.values.get("is_import", 'true') == 'true'
                 if is_import:
                     pm = get_project_manager()
