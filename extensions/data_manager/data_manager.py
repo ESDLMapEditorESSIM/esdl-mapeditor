@@ -11,24 +11,25 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+import json
 import logging
+import statistics
 from datetime import datetime
 from enum import Enum
 from typing import Any, TypedDict, List, Dict, Optional, Sequence, Iterable
-import json
 
+import pandas as pd
 from flask import Flask
 from flask_socketio import SocketIO
-from sqlalchemy import select, delete, column, literal_column, func
+from pandas import DataFrame
+from sqlalchemy import select, delete, column, literal_column
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text, func
-from sqlalchemy.exc import IntegrityError
-import pandas as pd
-from pandas import DataFrame
 
 import esdl
 from esdl.processing.ESDLAsset import get_asset_capability_type
-from esdl.processing.ESDLQuantityAndUnits import unit_to_string, build_qau_from_unit_string, qau_to_string
+from esdl.processing.ESDLQuantityAndUnits import unit_to_string
 from extensions.data_manager import db
 from extensions.data_manager.data_manager_message import (ChartType,
                                                           MetadataUpdateRequestBody,
@@ -42,7 +43,6 @@ from extensions.data_manager.db_model import DataSet, Variable, DataType, Data, 
 from extensions.session_manager import get_session, get_project_manager
 from src import settings
 from src.log import get_logger
-import statistics
 
 logger = get_logger(__name__)
 
@@ -104,6 +104,7 @@ def update_kpi_metadata(kpi: esdl.KPI, data: Data):
     elif isinstance(container, esdl.Area):
         # area KPI
         data.region = container.name
+        labels['Area type'] = container.type.name
 
     if len(labels) > 0:
         data.labels = labels
@@ -181,6 +182,7 @@ def handle_profile(profile: esdl.GenericProfile, ds: DataSet, variable_name: str
         d.sector = asset.sector.name if asset.sector else None
         d.node = asset.name or asset.id
         d.region = area.name
+        labels['Area type'] = area.type.name
         d.technology = asset.eClass.name
 
 
@@ -250,7 +252,7 @@ class DataManager:
     def register(self):
         logger.info("Registering DataManager extension")
         sqllogger = logging.getLogger("sqlalchemy.engine")
-        sqllogger.setLevel(logging.INFO)
+        sqllogger.setLevel(logging.ERROR)
         logger.info(f"Connecting to Data Manager database using: {settings.SQLALCHEMY_DATABASE_URI}")
         self.flask_app.config.update({"SQLALCHEMY_DATABASE_URI": settings.SQLALCHEMY_DATABASE_URI})
         db.init_app(self.flask_app)  # init SQLAlchemy
@@ -390,8 +392,8 @@ class DataManager:
             elif isinstance(eobj, esdl.Producer) or isinstance(eobj, esdl.Consumer) or isinstance(eobj, esdl.Conversion):
                 power = eobj.power
                 d = Data(dataset=ds, value=power)
-                d.region = eobj.area.name
                 d.labels = {'Power': power, 'State': eobj.state.name}
+                d.region = self.find_region(eobj, d.labels)
                 d.node = eobj.name or eobj.id
                 d.technology = eobj.eClass.name
                 d.sector = eobj.sector.name if eobj.sector else None
@@ -404,8 +406,8 @@ class DataManager:
             elif isinstance(eobj, esdl.Storage) or isinstance(eobj, esdl.Transport):
                 capacity = eobj.capacity
                 d = Data(dataset=ds, value=capacity)
-                d.region = eobj.area.name
                 d.labels = {'Capacity': capacity, 'State': eobj.state.name}
+                d.region = self.find_region(eobj, d.labels)
                 d.node = eobj.name or eobj.id
                 d.technology = eobj.eClass.name
                 d.sector = eobj.sector.name if eobj.sector else None
@@ -424,8 +426,8 @@ class DataManager:
                     length = eobj.length
                     diameter = eobj.diameter.name  # e.g. DN250
                     d = Data(dataset=ds, value=length)
-                    d.region = eobj.area.name
                     d.labels = {'Diameter': diameter, 'State': eobj.state.name}
+                    d.region = self.find_region(eobj, d.labels)
                     d.node = eobj.name or eobj.id
                     d.technology = eobj.eClass.name
                     d.sector = eobj.sector.name if eobj.sector else None
@@ -465,6 +467,16 @@ class DataManager:
         data_list.append(ds)
         return data_list
 
+    def find_region(self, eobj:esdl.Asset, labels: dict):
+        if not eobj.area:  # asset is in a AbstractBuilding or compoundAsset
+            parent = eobj.containingAsset or eobj.containingBuilding
+            region = parent.area.name
+            labels['Area scope'] = parent.area.scope.name
+        else:
+            region = eobj.area.name
+            labels['Area scope'] = eobj.area.scope.name
+        return region
+
     def update_filter_options(self, session:Session, dataset: DataSet):
         # get variables
         variables = session.scalars(select(Variable).where(Variable.dataset_id == dataset.id)).all()
@@ -492,6 +504,7 @@ class DataManager:
                 keys_list = session.scalars(select(literal_column("json_object_keys(labels)").label("keys")).distinct().select_from(Data).where(Data.variable_id == v.id)).all()
         
             for key in keys_list:
+                #print("-", key)
                 #options_per_label_key = session.scalars(select(literal_column("labels->>'"+key+"'").label("options")).distinct().select_from(Data).where(Data.variable_id == v.id)).all()
                 options_per_label_key = filter_none(session.scalars(select(Data.labels[key].as_string().label("options")).distinct().select_from(Data).where(Data.variable_id == v.id)).all())
                 filter_options[key] = FilterOptions(options=options_per_label_key, column="labels", key=key)
@@ -600,6 +613,8 @@ class DataManager:
                 msg = f"Failed to add dataset {es.name} [{variant_id}]. The name must be unique. Please rename ESDL and try again."
             else:
                 msg = f"An error occurred while adding or updating metadata: {e}"
+                import traceback
+                traceback.print_exc()
             log.exception(msg)
             return MetadataOperationResp(MetadataCRUDStatus.ERROR.value, msg)
 
