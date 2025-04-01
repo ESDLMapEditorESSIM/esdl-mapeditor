@@ -26,7 +26,7 @@ from esdl.resources.json import JsonResource
 from esdl.undo import ChangeSource, ChangeContext
 from esdlproject.change_handler import applyChange
 from esdlproject.variant_api import create_new_variant
-from extensions.session_manager import get_project_manager_with_client_id, managed_sessions
+from extensions.session_manager import get_project_manager_for_client_id, managed_sessions
 from src.log import get_logger
 from src.tno.envsettings import EnvSettings
 from src.tno.live_model_interface.api import activate_live_model_interface, send_project_manager_to_lmi
@@ -60,7 +60,7 @@ def on_high_level_change(message: HighLevelChangeMessage):
     external_resource.load()
     hlc = external_resource.contents[0]
     try:
-        pm = get_project_manager_with_client_id(client_id)
+        pm = get_project_manager_for_client_id(client_id)
     except KeyError as e:
         logger.warn(f"Ignoring received message due to: {str(e)}")
         return
@@ -145,7 +145,7 @@ def on_new_variant(message: NewVariantMessage):
     variant_id = message['variant_id']
     variant_name = message['variant_name']
     try:
-        pm = get_project_manager_with_client_id(client_id)
+        pm = get_project_manager_for_client_id(client_id)
     except KeyError as e:
         logger.warn(f"Ignoring received message due to: {str(e)}")
         return

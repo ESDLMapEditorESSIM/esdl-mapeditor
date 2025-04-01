@@ -139,3 +139,6 @@ def is_prod():
 PERSIST_SESSIONS = os.environ.get('PERSIST_SESSIONS', 'false').upper() == 'TRUE'
 SESSION_PERSISTENCE_PATH = os.environ.get('SESSION_STORAGE_PATH', 'data/sessions')
 SESSION_PERSISTENCE_FILE = 'managed_sessions.pkl'
+
+# ONLY FOR DEVELOPMENT: Loads the default project on startup. This only works in combination with PERSIST_SESSIONS.
+DEFAULT_PROJECT_PATH = os.environ.get('DEFAULT_PROJECT_PATH', None)

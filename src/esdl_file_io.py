@@ -13,7 +13,7 @@
 #      TNO
 import base64
 
-from flask import Flask, request, session
+from flask import Flask, request, session, Request
 from flask_executor import Executor
 from flask_socketio import SocketIO, emit
 
@@ -43,6 +43,8 @@ class ESDLFileIO:
         @self.flask_app.route("/esdl_file_io", methods=['POST'])
         def esdl_file_io():
             try:
+                # Set max to 20 MB.
+                request.max_form_memory_size = 20 * 1024 * 1024
                 is_import = request.values.get("is_import", 'true') == 'true'
                 if is_import:
                     pm = get_project_manager()
@@ -67,12 +69,12 @@ class ESDLFileIO:
                         added_variants.append(variant)
                         #emit_active_esdl_project() # cant do emit here, because it is not socket io request
 
+                client_id = session["client_id"]
                 if not is_import:
                     # Now overwrite the project manager. We do this at the end to prevent the project manager from being
                     # overwritten with an incomplete project manager in case of an error.
                     set_project_manager(pm)
-                    init_mapeditor_change_handlers(pm)
-                client_id = session["client_id"]
+                    init_mapeditor_change_handlers(pm, client_id)
                 send_project_manager_to_lmi_async(only_send_for_client_id=client_id)
                 last_variant = added_variants[-1]
                 if last_variant is not None:

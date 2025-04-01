@@ -82,7 +82,7 @@ def filter_none(input_list: Sequence) -> List:
     return [x for x in input_list if x is not None]
 
 def update_kpi_metadata(kpi: esdl.KPI, data: Data):
-    logger.debug('Handle KPI ', kpi_name=kpi.name)
+    # logger.debug('Handle KPI ', kpi_name=kpi.name)
     labels = {}
     kpis_container = kpi.eContainer()
     level_cnt: int = 0

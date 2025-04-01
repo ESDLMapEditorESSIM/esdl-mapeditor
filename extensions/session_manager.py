@@ -23,7 +23,7 @@ from flask import session
 
 import src.log as log
 from esdlproject.ProjectManager import ProjectManager
-from src.settings import PERSIST_SESSIONS, SESSION_PERSISTENCE_PATH, SESSION_PERSISTENCE_FILE
+from src.settings import PERSIST_SESSIONS, SESSION_PERSISTENCE_PATH, SESSION_PERSISTENCE_FILE, DEFAULT_PROJECT_PATH
 
 SESSION_MANAGER_LISTENER_ID = "session_manager"
 
@@ -81,24 +81,14 @@ def get_project_manager() -> ProjectManager | None:
     """
     Retrieve the ProjectManager from the session for the currently logged in user, or create a brand new one.
     """
-    from src.tno.projects.core import create_new_project_manager
-    global managed_sessions
     client_id = session["client_id"]
-    if client_id in managed_sessions:
-        if PM_KEY in managed_sessions[client_id]:
-            pm = managed_sessions[client_id][PM_KEY]
-        else:
-            logger.warning("No Project Manager in session. Returning empty project manager")
-            pm = create_new_project_manager()
-        return pm
-    else:
-        logger.warning("Session has timed-out. Returning None")
-        return None
+    return get_project_manager_for_client_id(client_id)
 
 
-def get_project_manager_with_client_id(client_id: str) -> ProjectManager:
+def get_project_manager_for_client_id(client_id: str) -> ProjectManager:
     """
-    Retrieve the ProjectManager from the session using the client_id but outside the request context.
+    Retrieve the ProjectManager from the session using the client_id. Call this directly if you are outside the
+    request context, otherwise get_project_manager might be more convenient.
     """
     # Import to prevent circular import.
     from src.tno.projects.core import create_new_project_manager
@@ -108,27 +98,28 @@ def get_project_manager_with_client_id(client_id: str) -> ProjectManager:
             pm = managed_sessions[client_id][PM_KEY]
         else:
             logger.warning("No Project Manager in session. Returning empty project manager")
-            pm = create_new_project_manager(emit_to_frontend=False)
+            pm = create_new_project_manager(client_id=client_id)
         return pm
     else:
         logger.warning("Session has timed-out, no client_id available. ")
         raise KeyError("Session has timed-out, no client_id available. ")
 
 
-def set_project_manager(pm: ProjectManager):
+def set_project_manager(pm: ProjectManager, client_id=None):
     """
-    Set the ProjectManager in the session for the currently logged in user.
+    Set the ProjectManager in the session for the provided client_id. If not provided, get it from the session.
     """
     # Import to prevent circular import.
     from src.tno.projects.core import on_change_recorded
     global managed_sessions
-    client_id = session["client_id"]
+    if client_id is None:
+        client_id = session["client_id"]
     if not pm.has_change_listener(SESSION_MANAGER_LISTENER_ID):
         pm.add_change_listener(SESSION_MANAGER_LISTENER_ID, on_change_recorded)
         logger.debug("Set PM client_id={} with listener for ESDL changes for LMI".format(client_id))
     else:
         logger.debug("Set PM client_id={}".format(client_id))
-    set_session(PM_KEY, pm)
+    set_session(PM_KEY, pm, client_id=client_id)
 
 
 def valid_session():
@@ -137,18 +128,13 @@ def valid_session():
     return False
 
 
-def set_session(key, value):
+def set_session(key, value, client_id=None):
     """
     Set memory-based session variable. Also update the last accessed time for this session.
-    :param key:
-    :param value:
-    :return:
     """
     global managed_sessions
-    if "client_id" not in session:
-        logger.warning("No client_id for the session is available, cannot set value for key {}".format(key))
-        return
-    client_id = session["client_id"]
+    if client_id is None:
+        client_id = session["client_id"]
     if client_id not in managed_sessions:
         managed_sessions[client_id] = dict()
     managed_sessions[client_id][LAST_ACCESSED_KEY] = datetime.now()
@@ -303,14 +289,25 @@ def load_sessions_from_disk():
             with open(storage_path, 'rb') as f:
                 loaded_sessions = pickle.load(f)
 
-            # Initialize empty managed_sessions with the loaded data
-            managed_sessions = loaded_sessions
+            # Assign loaded sessions to managed_sessions. Do not overwrite or things break.
+            for client_id, client_session in loaded_sessions.items():
+                if client_id not in managed_sessions:
+                    managed_sessions[client_id] = client_session
+
+            if DEFAULT_PROJECT_PATH:
+                for client_id, client_session in managed_sessions.items():
+                    pm = get_project_manager_for_client_id(client_id)
+                    # Read the project file from the default path
+                    try:
+                        with open(DEFAULT_PROJECT_PATH, 'r') as f:
+                            project = f.read()
+                            pm.load_from_string(project)
+                    except Exception as e:
+                        logger.error(f"Error loading default project for client {client_id}: {str(e)}")
 
             # Each client will get a new ProjectManager when they reconnect
             logger.info(f"Successfully loaded {len(managed_sessions)} sessions from disk")
         except Exception as e:
             logger.error(f"Error loading sessions from disk: {str(e)}")
-            managed_sessions = dict()
     else:
         logger.info("No saved sessions found, starting with empty session store")
-        managed_sessions = dict()
