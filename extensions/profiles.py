@@ -46,7 +46,7 @@ profiles = None
 
 
 def send_alert(message):
-    print(message)
+    logger.warning(message)
     # emit('alert', message, namespace='/esdl')
 
 
@@ -400,7 +400,7 @@ class Profiles:
         if self.settings_storage.has(setting_type, identifier, PROFILES_LIST):
             # update profile dict
             profiles = self.settings_storage.get(setting_type, identifier, PROFILES_LIST)
-            print('Deleting profile {}'.format(profiles[profile_id]))
+            logger.info('Deleting profile', profile=profiles[profile_id])
             del (profiles[profile_id])
             self.settings_storage.set(setting_type, identifier, PROFILES_LIST, profiles)
 
