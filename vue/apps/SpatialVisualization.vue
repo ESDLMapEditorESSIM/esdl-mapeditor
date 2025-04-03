@@ -232,7 +232,7 @@
                       <a-col
                         v-for="color in option.sample"
                         :key="color"
-                        :span="2"
+                        :span="Math.round(24/option.sample.length)"
                         :style="{ backgroundColor: color.startsWith('#') ? color : `#${color}`, height: '35px' }"
                       />
                     </a-row>
@@ -327,7 +327,7 @@ import {
   FileAddOutlined,
   LoadingOutlined
 } from "@ant-design/icons-vue";
-import { getAssetFields, generateColorscale } from "../utils/spatialVisualization";
+import { getAssetFields, generateColorscale, nseColorPalette } from "../utils/spatialVisualization";
 
 const loadingIcon = h(LoadingOutlined, {
   style: { fontSize: '5rem' }, spin: true
@@ -579,6 +579,7 @@ class VisualizedLayer {
     "Categorical": [
       { label: 'Default', value: 'Default', sample: defaultColors.slice(0, VisualizedLayer.sampleNum) },
       { label: 'Qualitative', value: 'Qualitative', sample: window.palette('mpn65', VisualizedLayer.sampleNum) },
+      nseColorPalette // TODO: remove this quick fix (implemented to support NSE use case)
     ],
     "Continuous": [
       { label: 'Diverging', value: 'Diverging', sample: window.palette('tol-dv', VisualizedLayer.sampleNum) },

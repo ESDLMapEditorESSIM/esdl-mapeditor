@@ -53,6 +53,13 @@ const getAssetFields = async(esId, assetId) => {
       console.error(error);
     }
 };
+// Custom North Sea Energy color palette 
+// TODO: implement a generic way to store and configure color options
+const nseColorPalette = { 
+  label: 'North Sea Energy',
+  value: 'NSE',
+  sample: ["#74c3d6", "#5f5546", "#ff6666", "#c1e1d7", "#99cc66", "#ef7843"]
+};
 
 // TODO: avoid duplicated code (ESDLAnalytics.vue)
 /**
@@ -80,11 +87,15 @@ const generateColorscale = (palette, numColors, defaultColors = pie_chart_color_
       case 'Rainbow':
         colorscale = window.palette('tol-rainbow', numColors);
         break;
+      // TODO: remove this quick fix (implemented to support NSE use case)
+      case 'NSE':
+        colorscale = nseColorPalette.sample;
+        break;
       case 'Default':
       default:
     }
     return colorscale.map(c => c.startsWith('#') ? c : `#${c}`);
 };
 
-export { getAssetFields, generateColorscale };
+export { getAssetFields, generateColorscale, nseColorPalette };
 
