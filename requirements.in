@@ -11,6 +11,7 @@ geojson
 influxdb==5.3.0
 openpyxl==3.1.2
 pyecore==0.15.1
+psycopg2-binary==2.9.10
 
 pymongo==3.11.0
 mongomock==3.23.0
