@@ -209,6 +209,7 @@ function remove_esdl_layer(es_id) {
         es_bld_id = active_es_id
         select_active_layer(active_es_id);
     }
+    window.PubSubManager.broadcast('REMOVE_LAYER', {removed_layer_id: es_id});
 }
 
 function rename_esdl_energy_system(es_id, name) {
@@ -258,6 +259,7 @@ function clear_esdl_layer_list() {
     for (let id in esdl_list) {
         for (let l in esdl_list[id].layers) {
             esdl_list[id].layers[l].removeFrom(map);
+            window.PubSubManager.broadcast('REMOVE_LAYER', {removed_layer_id: id});
         }
     }
     esdl_list = {};
