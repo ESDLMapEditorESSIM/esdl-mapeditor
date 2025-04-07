@@ -21,7 +21,7 @@ import src.log as log
 from esdl.processing.string_uri import StringURI
 from esdlproject import ESDLProject
 from esdlproject.variant_api import create_new_variant
-from extensions.session_manager import get_project_manager, set_session
+from extensions.session_manager import get_project_manager, set_session, del_session
 from src.app import executor, socketio
 from src.process_es_area_bld import process_energy_system
 from src.tno.live_model_interface.api import send_project_manager_to_lmi_async, send_delete_variant_message_to_lmi
@@ -62,6 +62,13 @@ def load_esdl_project():
     project = pm.load(uri)
     if project:
         set_session("es_info_list", {})
+
+        # Clear session variables
+        del_session("shape_dictionary")
+        del_session("conn_list")
+        del_session("asset_list")
+        del_session("area_bld_list")
+
     send_project_manager_to_lmi_async(only_send_for_client_id=session['client_id'])
     serialized_esdl_project = serialize_esdl_project(pm, pm.project)
     return jsonify(serialized_esdl_project)
@@ -85,6 +92,13 @@ def new_esdl_project(_):
     Create a brand-new energy project.
     """
     new_pm = create_new_project_manager()
+
+    # Clear session variables
+    del_session("shape_dictionary")
+    del_session("conn_list")
+    del_session("asset_list")
+    del_session("area_bld_list")
+
     return serialize_esdl_project(new_pm, new_pm.project)
 
 

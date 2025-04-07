@@ -24,7 +24,7 @@ from esdl.processing import ESDLAsset
 from esdl.undo_wrapper import undo_record_changes
 from esdlproject.ProjectManager import load_external_string
 from extensions.boundary_service import is_valid_boundary_id
-from extensions.session_manager import get_project_manager, get_session
+from extensions.session_manager import get_project_manager, get_session, get_session_for_esid
 from src.esdl_helper import get_tooltip_asset_attrs
 from src.process_es_area_bld import calc_building_assets_location, recalculate_area_bld_list, \
     get_area_id_from_mapeditor_id
@@ -175,7 +175,7 @@ class PICORooftopPVPotential:
                 pm = get_project_manager()
                 active_es_id = get_session('active_es_id')
 
-                shape_dictionary = get_session('shape_dictionary')
+                shape_dictionary = get_session_for_esid(active_es_id, 'shape_dictionary')
                 if not shape_dictionary:
                     shape_dictionary = {}
 

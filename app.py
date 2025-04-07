@@ -1477,9 +1477,9 @@ def process_command(message, stack: UndoRedoCommandStack):
                     area_bld_id = find_area_location_based(pm, active_es_id, geometry)
 
                 # Update shape dictionary
-                shape_dictionary = get_session('shape_dictionary')
+                shape_dictionary = get_session_for_esid(active_es_id, 'shape_dictionary')
                 shape_dictionary[new_area.id] = Shape.create(geometry)
-                set_session('shape_dictionary', shape_dictionary)
+                set_session_for_esid(active_es_id, 'shape_dictionary', shape_dictionary)
 
                 # Update drop down list with areas and buildings
                 add_area_to_area_bld_list(new_area, area_bld_id, area_bld_list)
@@ -1960,7 +1960,7 @@ def process_command(message, stack: UndoRedoCommandStack):
                         send_alert('Area could not be removed')
                     else:
                         # If the user removes an area with assets and connection, redraw everything
-                        shape_dictionary = get_session('shape_dictionary')
+                        shape_dictionary = get_session_for_esid(active_es_id, 'shape_dictionary')
                         try:
                             del shape_dictionary[area_id]  # delete area from shape dictionary
                         except KeyError:
@@ -2977,6 +2977,7 @@ def process_command(message, stack: UndoRedoCommandStack):
         remove_es_id = message['remove_es_id']
         es_info_list = get_session("es_info_list")
         del es_info_list[remove_es_id]  # update es info list too
+        # TODO: clear other session variables
         pm.remove_variant_by_energy_system_id(es_id=remove_es_id)
 
     if message['cmd'] == 'refresh_esdl':
@@ -2996,7 +2997,6 @@ def process_command(message, stack: UndoRedoCommandStack):
         else:
             send_alert("Nothing to undo at this time")
 
-
     if message['cmd'] == 'redo':
         logger.debug(f'Redo stack: {stack.stack}')
         if stack.can_redo():
@@ -3009,7 +3009,6 @@ def process_command(message, stack: UndoRedoCommandStack):
             call_process_energy_system.submit(force_update_es_id=active_es.id, zoom=False)  # run in seperate thread
         else:
             send_alert("Nothing to redo at this time")
-
 
     if message['cmd'] == 'undo_redo_until':
         target_idx = message['target_idx']
@@ -3113,8 +3112,11 @@ def process_file_command(message):
         set_session("es_info_list", es_info_list)
         emit('clear_ui')
         emit('clear_esdl_layer_list')
-        call_process_energy_system.submit(filename)
         del_session("shape_dictionary")
+        del_session("conn_list")
+        del_session("asset_list")
+        del_session("area_bld_list")
+        call_process_energy_system.submit(filename)
 
         del_session('store_item_metadata')
         emit('store_item_metadata', {})

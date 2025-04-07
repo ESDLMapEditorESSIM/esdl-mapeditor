@@ -21,7 +21,7 @@ import src.log as log
 from esdl.processing.string_uri import StringURI
 from esdlproject import Variant
 from esdlproject.ProjectManager import ProjectManager
-from extensions.session_manager import set_session, get_project_manager, set_project_manager
+from extensions.session_manager import set_session, get_project_manager, set_project_manager, del_session
 from src.process_es_area_bld import call_process_energy_system
 from src.tno.live_model_interface.api import send_add_variant_and_esdl_message_to_lmi, send_project_manager_to_lmi_async
 from src.tno.projects.core import init_mapeditor_change_handlers
@@ -106,7 +106,12 @@ class ESDLFileIO:
         # emit('alert', message, namespace='/esdl')
 
     def clear_mapeditor_ui(self):
-        # todo: del_session("shape_dictionary")
+        # clear these completely, but not when importing!
+        del_session("shape_dictionary")
+        del_session("conn_list")
+        del_session("asset_list")
+        del_session("area_bld_list")
+
         es_info_list = {}
         set_session("es_info_list", es_info_list)
         emit('clear_ui')
