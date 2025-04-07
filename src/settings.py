@@ -45,7 +45,7 @@ POSTGRES_DB_URI = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_H
 
 SQLITE_DB_NAME = os.environ.get('SQLITE_DB_NAME', 'data_manager.db')
 
-DB_DRIVER_TYPE = os.environ.get('DB_DRIVER_TYPE', 'postgresql')
+DB_DRIVER_TYPE = os.environ.get('DB_DRIVER_TYPE', 'sqlite')
 DEFAULT_DRIVER_URI = POSTGRES_DB_URI if DB_DRIVER_TYPE == 'postgresql' else f"sqlite:///{SQLITE_DB_NAME}"
 
 SQLALCHEMY_DATABASE_URI = os.environ.get('SQLALCHEMY_DATABASE_URI', POSTGRES_DB_URI)
