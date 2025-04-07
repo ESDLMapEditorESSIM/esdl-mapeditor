@@ -22,7 +22,7 @@ import pandas as pd
 from flask import Flask
 from flask_socketio import SocketIO
 from pandas import DataFrame
-from sqlalchemy import select, delete, column, literal_column
+from sqlalchemy import select, delete, column
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text, func
@@ -38,7 +38,8 @@ from extensions.data_manager.data_manager_message import (ChartType,
                                                           GetVariablesRequestBody,
                                                           GetColumnsRequestBody,
                                                           QueryRequestBody)
-from extensions.data_manager.db_interaction import create_db, drop_db
+from extensions.data_manager.db_interaction import create_db_tables, get_db_driver_type, DriverType, create_db, drop_db, \
+    drop_db_tables
 from extensions.data_manager.db_model import DataSet, Variable, DataType, Data, BaseModel
 from extensions.session_manager import get_session, get_project_manager
 from src import settings
@@ -233,7 +234,11 @@ def handle_profile(profile: esdl.GenericProfile, ds: DataSet, variable_name: str
 
     return d, qau, variable_name
 
-def preprocess_column(column_name: str, db_engine_driver: str = "sqlite") -> Any:
+def preprocess_column(column_name: str) -> Any:
+    if 'sqlite' in settings.SQLALCHEMY_DATABASE_URI:
+        db_engine_driver = "sqlite"
+    else:
+        db_engine_driver = "postgresql"
     if '/' in column_name:
         key_name = column_name.split('/')[1]
         if db_engine_driver == "sqlite":
@@ -259,9 +264,15 @@ class DataManager:
 
         # init database
         with self.flask_app.app_context():
-            drop_db(db_url=self.flask_app.config["SQLALCHEMY_DATABASE_URI"],
-                    app_instance_path=self.flask_app.instance_path)
-            create_db(self.flask_app.config["SQLALCHEMY_DATABASE_URI"])
+            db_driver_type = get_db_driver_type()
+            if db_driver_type == DriverType.SQLITE:
+                drop_db(db_url=self.flask_app.config["SQLALCHEMY_DATABASE_URI"],
+                        app_instance_path=self.flask_app.instance_path)
+                create_db(self.flask_app.config["SQLALCHEMY_DATABASE_URI"])
+            else:
+                # The sqlite approach doesn't work well with Postgres, so just dropping the tables.
+                drop_db_tables()
+                create_db_tables()
 
         @self.socketio.on("datamanager/metadata/add_update", namespace="/esdl")
         def _add_or_update_metadata(params: Dict) -> str:
@@ -492,8 +503,9 @@ class DataManager:
             unique_technology = filter_none(session.scalars(select(Data.technology).distinct().where(Data.variable_id == v.id).order_by(Data.technology)).all())
             unique_year = filter_none(session.scalars(select(Data.year).distinct().where(Data.variable_id == v.id).order_by(Data.year)).all())
 
-            # A workaround to extract Data.labels column (JSON) keys in SQLite as SQLite does not support json_object_keys 
-            if db.engine.url.drivername == 'sqlite':
+            # A workaround to extract Data.labels column (JSON) keys in SQLite as SQLite does not support json_object_keys
+            db_driver_type = get_db_driver_type()
+            if db_driver_type == DriverType.SQLITE:
                 keys_query = text("""
                     SELECT DISTINCT json_each.key AS keys
                     FROM Data, json_each(Data.labels)
@@ -501,8 +513,14 @@ class DataManager:
                 """)
                 keys_list = session.execute(keys_query, {'variable_id': v.id}).scalars().all()
             else:
-                keys_list = session.scalars(select(literal_column("json_object_keys(labels)").label("keys")).distinct().select_from(Data).where(Data.variable_id == v.id)).all()
-        
+                # PostgreSQL version using text() for raw SQL
+                keys_query = text("""
+                    SELECT DISTINCT jsonb_object_keys(labels) AS keys
+                    FROM "data"
+                    WHERE variable_id = :variable_id
+                """)
+                keys_list = session.execute(keys_query, {'variable_id': v.id}).scalars().all()
+
             for key in keys_list:
                 #print("-", key)
                 #options_per_label_key = session.scalars(select(literal_column("labels->>'"+key+"'").label("options")).distinct().select_from(Data).where(Data.variable_id == v.id)).all()
@@ -590,7 +608,7 @@ class DataManager:
         try:
             tables = self.process_esdl(es=es, owner=owner)
             session.add_all(tables)
-            safe_commit(session)
+            session.commit()
             # Extracts the DataSet instance from the tables list for postprocessing.
             ds = [d for d in tables if isinstance(d, DataSet)][0]
             self.update_filter_options(session, ds)
@@ -881,83 +899,3 @@ class DataManager:
                 })
 
         return traces
-
-def is_database_locked(session):
-    """
-    Checks if the SQLite database is currently locked.
-
-    :param session: SQLAlchemy session object
-    :return: True if locked, False otherwise
-    """
-    try:
-        # Try to execute a simple query with a timeout
-        connection = session.connection()
-        # Set timeout to 0 to make it non-blocking
-        connection.execute(text("PRAGMA busy_timeout = 0"))
-        # Try to begin a transaction
-        connection.execute(text("BEGIN IMMEDIATE TRANSACTION"))
-        # If we got here, the database is not locked
-        connection.execute(text("ROLLBACK"))
-        return False
-    except Exception as e:
-        error_message = str(e).lower()
-        if "database is locked" in error_message or "busy" in error_message:
-            return True
-        # Log unexpected errors
-        logger.warning(f"Unexpected error checking database lock: {e}")
-        return True
-
-
-def safe_commit(session, max_retries=5, retry_delay=0.2):
-    """
-    Safely commits changes to the database with retry logic for handling locks.
-
-    :param session: SQLAlchemy session object
-    :param max_retries: Maximum number of retries before giving up
-    :param retry_delay: Initial delay between retries in seconds (will increase with backoff)
-    :return: True if committed successfully, False otherwise
-    """
-    import time
-
-    for attempt in range(max_retries):
-        if attempt > 0:
-            # Log retry attempt
-            logger.info(f"Retrying database commit (attempt {attempt + 1}/{max_retries})")
-
-        # Check if database is locked
-        if is_database_locked(session):
-            if attempt == max_retries - 1:
-                logger.warning(f"Database is still locked after {max_retries} attempts, cannot commit changes")
-                return False
-
-            # Wait with exponential backoff before retrying
-            wait_time = retry_delay * (2 ** attempt)
-            logger.debug(f"Database is locked, waiting {wait_time:.2f}s before retry")
-            time.sleep(wait_time)
-            continue
-
-        # Try to commit if we got here
-        try:
-            session.commit()
-            if attempt > 0:
-                logger.info(f"Successfully committed after {attempt + 1} attempts")
-            return True
-        except Exception as e:
-            error_message = str(e).lower()
-            if "database is locked" in error_message or "busy" in error_message:
-                if attempt == max_retries - 1:
-                    logger.error(f"Database lock error persisted after {max_retries} attempts: {e}")
-                    session.rollback()
-                    return False
-
-                # Wait with exponential backoff before retrying
-                wait_time = retry_delay * (2 ** attempt)
-                logger.debug(f"Database lock error, waiting {wait_time:.2f}s before retry")
-                time.sleep(wait_time)
-            else:
-                # Non-lock related error
-                logger.error(f"Error committing to database: {e}")
-                session.rollback()
-                return False
-
-    return False  # Should not reach here, but just in case
