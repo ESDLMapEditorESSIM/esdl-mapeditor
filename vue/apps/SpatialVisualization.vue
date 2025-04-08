@@ -31,11 +31,11 @@
     <!------------- Content ------------->
     <!----------------------------------->
     <a-col style="height: 100%;">
-      <!-- Data sources -->
+      <!-- Sources -->
       <a-col>
         <a-row style="padding-bottom: 8px; align-items: center; justify-content: space-between;">
           <a-col :span="12">
-            <h2>Data Sources</h2>
+            <h2>Sources</h2>
           </a-col>
           <a-col>
             <a-button
@@ -48,12 +48,12 @@
                 :is="FileAddOutlined"
                 style="vertical-align: 0.1rem"
               />
-              Add Source
+              Add source
             </a-button>
             <!-- Add Data modal -->
             <a-modal
               v-model:open="addDataModalOpen"
-              title="Add data source"
+              title="Add source"
               width="65%"
             >
               <div v-if="isLoading" class="loading">
@@ -61,7 +61,7 @@
               </div>
               <br>
               <a-tabs v-model:activeKey="activeTabKey" type="card">
-                <!-- NOTE: Only support ESDL at the moment, can be extended to support GeoJSON, or other data sources. -->
+                <!-- NOTE: Only support ESDL at the moment, can be extended to support GeoJSON, or other sources. -->
                 <a-tab-pane key="add-data-tab-esdl" tab="ESDL" style="overflow-y: scroll; max-height: 600px;">
                   <a-row
                     v-for="(ds, idx) in datasources"
@@ -327,7 +327,9 @@ import {
   FileAddOutlined,
   LoadingOutlined
 } from "@ant-design/icons-vue";
-import { getAssetFields, generateColorscale, nseColorPalette } from "../utils/spatialVisualization";
+import { defaultColorScheme } from "@/utils/visualization";
+import { getAssetFields, generateColorscale, nseColorPalette } from "@/utils/spatialVisualization";
+import { useEsdlLayers } from "@/composables/esdlLayers";
 
 const loadingIcon = h(LoadingOutlined, {
   style: { fontSize: '5rem' }, spin: true
@@ -336,20 +338,10 @@ const loadingIcon = h(LoadingOutlined, {
 // to prevent stuck popup on UI
 const removeTooltipPopup = () => { window.jquery(".ui-tooltip-content").parents('div').remove();};
 
-// TODOs: Future works:
-// support data filtering
-// show data table
-// support asset references field
-// support custom field
-// speed up query time (getAssetFields)
-// allow reordering of vizualized layers
-// export data sources
-// rename Marker with symbol
-// sync layer show/hide with map layer control event
-// improve color scale options and calculation
-// support label or icon visualization style?
-// add layer legend?
-// support date field visualization?
+// TODOs: 
+// Future works see: https://ci.tno.nl/gitlab/GEIS/esdl-mapeditor/-/issues/172
+
+const  { getEsdlLayers, getEsdlFeatureGroupLayer } = useEsdlLayers();
 
 const datasources = ref([]);
 
@@ -359,12 +351,8 @@ const activeVizLayerKeys = ref([]);
 const addDataModalOpen = ref(false);
 const activeTabKey = ref("add-data-tab-esdl");
 
-// esdl_list defined in multi_esdl.js contains an object of opened ESDLs in map editor.
-// It is used here to keep the user states from this component (e.g. datasources and vizualized layers) in sync. globally.
-let esdlListRef = esdl_list;
-
-// pie_chart_color_list is defined in area_building_layer.js
-const defaultColors = pie_chart_color_list;
+// Use esdlListRef to keep the user states from this component (e.g. datasources and vizualized layers) in sync. globally.
+let esdlListRef = getEsdlLayers().value;
 
 onMounted(async () => {
   console.debug("Initializing Spatial Visualization component.");
@@ -511,7 +499,7 @@ class EsdlLayerSource extends DataSource {
   // ---------------------------- //
 
   async _getEsdlAssetLayers() {
-    const esdlLayer = window.get_layers(this.id, 'esdl_layer');
+    const esdlLayer = getEsdlFeatureGroupLayer(this.id, 'esdl_layer');
     const layerList = esdlLayer.getLayers();
     
     const layers = {};
@@ -572,12 +560,12 @@ class VisualizedLayer {
     ]
   });
 
-  static colorPickerPalette = defaultColors.map(c => ({value: c, label: c}));
+  static colorPickerPalette = defaultColorScheme.map(c => ({value: c, label: c}));
 
   static sampleNum = 12;
   static colorPalettes = {
     "Categorical": [
-      { label: 'Default', value: 'Default', sample: defaultColors.slice(0, VisualizedLayer.sampleNum) },
+      { label: 'Default', value: 'Default', sample: defaultColorScheme.slice(0, VisualizedLayer.sampleNum) },
       { label: 'Qualitative', value: 'Qualitative', sample: window.palette('mpn65', VisualizedLayer.sampleNum) },
       nseColorPalette // TODO: remove this quick fix (implemented to support NSE use case)
     ],

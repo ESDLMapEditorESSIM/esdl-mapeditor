@@ -1,3 +1,4 @@
+import { defaultColorScheme, nseColorScheme } from "@/utils/visualization";
 
 const mapEcoreTypeToJsType = (ecoreType) => {
     switch (ecoreType) {
@@ -58,7 +59,7 @@ const getAssetFields = async(esId, assetId) => {
 const nseColorPalette = { 
   label: 'North Sea Energy',
   value: 'NSE',
-  sample: ["#74c3d6", "#5f5546", "#ff6666", "#c1e1d7", "#99cc66", "#ef7843"]
+  sample: nseColorScheme
 };
 
 // TODO: avoid duplicated code (ESDLAnalytics.vue)
@@ -68,10 +69,10 @@ const nseColorPalette = {
  * @param {string} palette The type of color palette to use. Options include:
  *                         'Qualitative', 'Diverging', 'Sequential', 'Rainbow', and 'Default'.
  * @param {number} numColors The number of colors to generate in the colorscale.
- * @param {Array} defaultColors Default colors array (pie_chart_color_list is defined in area_building_layer.js)
+ * @param {Array} defaultColors Default color scheme array.
  * @returns {Array} An array of colorscale values.
  */
-const generateColorscale = (palette, numColors, defaultColors = pie_chart_color_list) => {
+const generateColorscale = (palette, numColors, defaultColors = defaultColorScheme) => {
     let colorscale = defaultColors;
     switch (palette) {
       case 'Qualitative':

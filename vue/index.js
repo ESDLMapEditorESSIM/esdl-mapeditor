@@ -156,9 +156,7 @@ window.add_edit_wms_layer = (object_id) => {
     mountSidebarComponent(AddEditWmsLayer)
 }
 
-window.open_spatial_visualization = (object_id) => {
-    const { newObject } = useObject();
-    newObject(object_id);
+window.open_spatial_visualization = () => {
     mountSidebarComponent(SpatialVisualization);
 };
 
