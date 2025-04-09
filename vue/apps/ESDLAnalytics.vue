@@ -203,7 +203,7 @@
                       <a-col
                         v-for="color in option.sample"
                         :key="color"
-                        :span="2"
+                        :span="Math.round(24/option.sample.length)"
                         :style="{ backgroundColor: color.startsWith('#') ? color : `#${color}`, height: '10px' }"
                       />
                     </a-row>
@@ -350,7 +350,8 @@ import {
   SyncOutlined,
 	TableOutlined }
 from "@ant-design/icons-vue";
-import AnalyticsPlot from '../components/esdlanalytics/AnalyticsPlot.vue';
+import { nseColorPalette } from '@/utils/spatialVisualization';
+import AnalyticsPlot from '@/components/esdlanalytics/AnalyticsPlot.vue';
 import dayjs from 'dayjs';
 import minMax from 'dayjs/plugin/minMax';
 
@@ -392,7 +393,9 @@ const colorPalettes = [
   { label: 'Qualitative', value: 'Qualitative', sample: window.palette('mpn65', sampleColorCount) },
   { label: 'Diverging', value: 'Diverging', sample: window.palette('tol-dv', sampleColorCount) },
   { label: 'Sequential', value: 'Sequential', sample: window.palette('tol-sq', sampleColorCount) },
-  { label: 'Rainbow', value: 'Rainbow', sample: window.palette('tol-rainbow', sampleColorCount) }
+  { label: 'Rainbow', value: 'Rainbow', sample: window.palette('tol-rainbow', sampleColorCount) },
+  // TODO: remove this quick fix (implemented to support NSE use case) 
+  { label: 'Custom color palette', value: 'NSE', sample: nseColorPalette.sample },
 ];
 
 const groupStackOptions = [
@@ -1066,6 +1069,10 @@ const barChartTraceHandler = (traces) => {
       break;
     case 'Rainbow':
       colorscale = window.palette('tol-rainbow', numColors);
+      break;
+    // TODO: remove this quick fix (implemented to support NSE use case)
+    case 'NSE':
+      colorscale = nseColorPalette.sample;
       break;
     case 'Default':
     default:
