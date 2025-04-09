@@ -1,6 +1,6 @@
 <template>
   <div
-    v-show="kpis_present || animation_possible || external_link_description!=null"
+    v-if="activeEsdlVisualizationAvailable()"
     class="my-control leaflet-result-visualizations-toolbar"
   >
     <a-row type="flex" justify="space-between">
@@ -13,38 +13,37 @@
         </a-button>
       </a-col>
     </a-row>
-
-    <a-row v-if="model_name!=null && calc_name!=null">
+    <a-row v-if="activeEsdlParams.message!=null">
       <a-space direction="vertical" align="center">
-        <span>For {{ model_name }} result: '{{ calc_name }}'</span>
+        <span style="width: 250px; display: inline-block; word-break: break-all;">{{ activeEsdlParams.message }}</span>
       </a-space>
     </a-row>
     <br>
     <a-row>
       <a-space direction="vertical" align="center">
         <a-space>
-          <a-button v-if="kpis_present" size="small" type="primary" @click="handleShowDashboard">
+          <a-button v-if="activeEsdlParams.kpis_present" size="small" type="primary" @click="handleShowDashboard">
             Show KPI dashboard
           </a-button>
         </a-space>
         <a-space>
           <a-button
-            v-if="external_link_description!=null" size="small" type="primary"
+            v-if="activeEsdlParams.external_link_description!=null" size="small" type="primary"
             @click="handleShowExternalLink"
           >
-            {{ external_link_description }}
+            {{ activeEsdlParams.external_link_description }}
           </a-button>
         </a-space>
-        <a-space-compact v-if="animation_possible" block size="small">
+        <a-space-compact v-if="activeEsdlParams.animation_possible" block size="small">
           <a-select
             ref="select"
-            v-model:value="anim_selected_field"
+            v-model:value="activeEsdlParams.anim_selected_field"
             style="width: 150px"
-            :options="anim_field_options"
+            :options="activeEsdlParams.anim_field_options"
             @change="handleChange"
           />
           <a-button
-            :disabled="anim_selected_field === 'Choose field ...'"
+            :disabled="activeEsdlParams.anim_selected_field === 'Choose field ...'"
             size="small"
             type="primary"
             @click="handleLoadAnimation"
@@ -52,9 +51,6 @@
             Load animation
           </a-button>
         </a-space-compact>
-        <a-space v-else-if="model_name!=null && calc_name!=null">
-          <span>No animation available</span>
-        </a-space>
       </a-space>
     </a-row>
   </div>
@@ -63,54 +59,106 @@
 <script setup>
 import {ref, onMounted} from 'vue';
 import {CloseOutlined} from '@ant-design/icons-vue';
+import {MessageNames, PubSubManager} from "@/bridge";
+import {useEsdlLayers} from "@/composables/esdlLayers";
 
-const kpis_present = ref(false);
-const animation_possible = ref(false);
-const anim_field_options = ref([]);
-const anim_selected_field = ref("Choose field ...");
-const esdl_id = ref(null);
-const anim_filter_tag_name = ref(null);
-const anim_filter_tag_value = ref(null);
-const anim_influxdb_host_override = ref(null);
-const model_name = ref(null);
-const calc_name = ref(null);
-const external_link_description = ref(null);
-const external_link_url = ref(null);
+const {getActiveEsdlLayerId} = useEsdlLayers();
+
+class VisualParams {
+  constructor(esdl_id) {
+    this.esdl_id = esdl_id;
+    this.kpis_present = false;
+    this.animation_possible = false;
+    this.anim_selected_field = "Choose field ...";
+    this.anim_filter_tag_name = null;
+    this.anim_filter_tag_value = null;
+    this.anim_influxdb_host_override = null;
+    this.anim_influxdb_port_override = null;
+    this.message = null;
+    this.external_link_url = null;
+    this.external_link_description = null;
+  }
+}
+
+/**  @type {import('vue').Ref<Record<string, VisualParams>>} */
+const paramsPerEsdl = ref({});
+/**  @type {import('vue').Ref<VisualParams>} */
+const activeEsdlParams = ref(null);
 
 onMounted(() => {
   window.addEventListener('load', () => {
     // run after everything is in-place
     window.socket.on('kpis_present', function (data) {
       console.log('kpis_present:', data['es_id']);
-      setEsdlId(data['es_id']);
-      kpis_present.value = true;
+      setActiveEsdlParams(data['es_id']);
+
+      activeEsdlParams.value.kpis_present = true;
+      // kpis are always loaded with general ESDL id, message, don't overwrite
+      if (activeEsdlParams.value.message === null) {
+        activeEsdlParams.value.message = data['message'];
+      }
     });
     window.socket.on('animation_esdl_data', function (data) {
       console.log('animation_esdl_data, esdl id: ', data['es_id']);
-      setEsdlId(data['es_id']);
-      animation_possible.value = true;
-      anim_field_options.value = [];
+      setActiveEsdlParams(data['es_id']);
+      activeEsdlParams.value.animation_possible = true;
+      activeEsdlParams.value.anim_field_options = [];
       data['fields'].forEach((field) => {
-        anim_field_options.value.push(
+        activeEsdlParams.value.anim_field_options.push(
             {
               value: field,
               label: field,
             }
         );
       });
-      model_name.value = data['model_name'];
-      calc_name.value = data['calc_name'];
-      anim_filter_tag_name.value = data["filter_tag_name"];
-      anim_filter_tag_value.value = data["filter_tag_value"];
-      anim_influxdb_host_override.value = data["influxdb_host_override"];
+      activeEsdlParams.value.message = data['message'];
+      activeEsdlParams.value.anim_filter_tag_name = data["filter_tag_name"];
+      activeEsdlParams.value.anim_filter_tag_value = data["filter_tag_value"];
+      activeEsdlParams.value.anim_influxdb_host_override = data["influxdb_host_override"];
+      activeEsdlParams.value.anim_influxdb_port_override = data["influxdb_port_override"];
     });
     window.socket.on('results_external_link', function (data) {
-      console.log('results_external_link:', data);
-      setEsdlId(data['es_id']);
-      external_link_description.value = data["description"]
-      external_link_url.value = data["url"]
+      console.log('results_external_link:', data['es_id']);
+      setActiveEsdlParams(data['es_id']);
+      activeEsdlParams.value.message = data['message'];
+      activeEsdlParams.value.external_link_description = data["description"];
+      activeEsdlParams.value.external_link_url = data["url"];
     });
   });
+});
+
+const setActiveEsdlParams = (esdl_id) => {
+  if (activeEsdlParams.value !== null && esdl_id === activeEsdlParams.value.esdl_id) {
+    return;
+  }
+  if (!(esdl_id in paramsPerEsdl.value)) {
+    paramsPerEsdl.value[esdl_id] = new VisualParams(esdl_id);
+  }
+  activeEsdlParams.value = paramsPerEsdl.value[esdl_id];
+};
+
+const activeEsdlVisualizationAvailable = () => {
+  if (activeEsdlParams.value !== null) {
+    if (activeEsdlParams.value.kpis_present || activeEsdlParams.value.animation_possible || activeEsdlParams.value.external_link_description != null) {
+      return true;
+    }
+  }
+  return false;
+};
+
+PubSubManager.subscribe(MessageNames.SELECT_ACTIVE_LAYER, (name, message) => {
+  const esdl_id = message.active_layer_id;
+  if (activeEsdlParams.value !== null && esdl_id === activeEsdlParams.value.esdl_id) {
+    return;
+  }
+  clearData();
+  setActiveEsdlParams(window.esdl_list[getActiveEsdlLayerId().value].id);
+});
+
+PubSubManager.subscribe(MessageNames.REMOVE_LAYER, (name, message) => {
+  const esdl_id = message.removed_layer_id;
+  delete paramsPerEsdl.value[esdl_id];
+  clearData();
 });
 
 const handleShowDashboard = () => {
@@ -118,12 +166,18 @@ const handleShowDashboard = () => {
 };
 
 const handleShowExternalLink = () => {
-  window.open(external_link_url.value, '_blank');
+  window.open(activeEsdlParams.value.external_link_url, '_blank');
 };
 
 const handleLoadAnimation = () => {
   time_dimension.initialize(
-      esdl_id.value, anim_filter_tag_name.value, anim_filter_tag_value.value, [], anim_selected_field.value, anim_influxdb_host_override.value
+      activeEsdlParams.value.esdl_id,
+      activeEsdlParams.value.anim_filter_tag_name,
+      activeEsdlParams.value.anim_filter_tag_value,
+      [],
+      activeEsdlParams.value.anim_selected_field,
+      activeEsdlParams.value.anim_influxdb_host_override,
+      activeEsdlParams.value.anim_influxdb_port_override
   );
 };
 
@@ -132,29 +186,13 @@ const handleDismiss = () => {
 };
 
 const handleChange = (value) => {
-  anim_selected_field.value = value;
+  activeEsdlParams.value.anim_selected_field = value;
 };
-
-const setEsdlId = (new_esdl_id) => {
-  if (new_esdl_id !== esdl_id.value) {  // remove data info if new ESDL
-    clearData();
-    esdl_id.value = new_esdl_id;
-  }
-}
 
 const clearData = () => {
   time_dimension.removeGeoJSONLayers();
   time_dimension.show_hide_animation_toolbar(false);
-  kpis_present.value = false;
-  animation_possible.value = false;
-  anim_selected_field.value = "Choose field ...";
-  anim_filter_tag_name.value = null;
-  anim_filter_tag_value.value = null;
-  anim_influxdb_host_override.value = null;
-  esdl_id.value = null;
-  model_name.value = null;
-  calc_name.value = null;
-  external_link_description.value = null;
+  activeEsdlParams.value = null;
 };
 
 </script>

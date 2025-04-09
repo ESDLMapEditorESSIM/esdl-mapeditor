@@ -36,8 +36,20 @@ OIDC_CLIENT_SECRETS = os.environ.get('OIDC_CLIENT_SECRETS', None) # 'credentials
 _use_gevent = os.environ.get('MAPEDITOR_USE_GEVENT', '')
 USE_GEVENT = (_use_gevent.upper() == 'TRUE' or _use_gevent == '1')
 
-db_name = 'data_manager.db'
-SQLALCHEMY_DATABASE_URI = os.environ.get('SQLALCHEMY_DATABASE_URI', f"sqlite:///{db_name}")
+# Database settings
+POSTGRES_HOST = os.environ.get('POSTGRES_HOST', 'localhost')
+POSTGRES_PORT = os.environ.get('POSTGRES_PORT', '5432')
+POSTGRES_USER = os.environ.get('POSTGRES_USER', 'mapeditor')
+POSTGRES_PASSWORD = os.environ.get('POSTGRES_PASSWORD', 'password')
+POSTGRES_DB = os.environ.get('POSTGRES_DB', 'mapeditor')
+POSTGRES_DB_URI = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+
+SQLITE_DB_NAME = os.environ.get('SQLITE_DB_NAME', 'data_manager.db')
+
+DB_DRIVER_TYPE = os.environ.get('DB_DRIVER_TYPE', 'postgresql')
+DEFAULT_DRIVER_URI = POSTGRES_DB_URI if DB_DRIVER_TYPE == 'postgresql' else f"sqlite:///{SQLITE_DB_NAME}"
+
+SQLALCHEMY_DATABASE_URI = os.environ.get('SQLALCHEMY_DATABASE_URI', POSTGRES_DB_URI)
 
 settings_storage_config = {
     "host": os.environ.get('SETTINGS_STORAGE_HOST', None),  # "mongo",

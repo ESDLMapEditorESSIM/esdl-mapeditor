@@ -113,7 +113,7 @@ class TimeDimension:
                 set_session(
                     "influxdb_connection",
                     Profiles.connect_to_animation_profiles_database(
-                        active_es_id, database, info["influxdb_host_override"]
+                        active_es_id, database, info["influxdb_host_override"], info["influxdb_port_override"]
                     ),
                 )
 

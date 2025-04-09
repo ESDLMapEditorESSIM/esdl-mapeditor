@@ -21,7 +21,7 @@ from urllib.parse import urlparse
 
 from flask import Flask
 from flask_socketio import SocketIO
-from sqlalchemy import select, delete, column, literal_column, func
+from sqlalchemy import select, delete, column
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text, func
 from sqlalchemy.exc import IntegrityError
@@ -33,6 +33,8 @@ import esdl
 from esdl.processing.ESDLAsset import get_asset_capability_type
 from esdl.processing.ESDLQuantityAndUnits import unit_to_string
 from esdl.profiles.influxdbprofilemanager import InfluxDBProfileManager, ConnectionSettings
+from extensions.data_manager.db_interaction import create_db_tables, get_db_driver_type, DriverType, create_db, drop_db, \
+    drop_db_tables
 from extensions.profiles import Profiles
 from extensions.data_manager import db
 from extensions.data_manager.data_manager_message import (ChartType,
@@ -44,7 +46,6 @@ from extensions.data_manager.data_manager_message import (ChartType,
                                                           QueryRequestBody,
                                                           ProfileVizType,
                                                           ProfileAggInterval)
-from extensions.data_manager.db_interaction import create_db, drop_db
 from extensions.data_manager.db_model import DataSet, Variable, DataType, Data, BaseModel
 from extensions.session_manager import get_handler, get_session
 from src import settings
@@ -292,7 +293,11 @@ def handle_static_profile(profile: esdl.StaticProfile, ds: DataSet, variable_nam
 
     return d, qau, variable_name
 
-def preprocess_column(column_name: str, db_engine_driver: str = "sqlite") -> Any:
+def preprocess_column(column_name: str) -> Any:
+    if 'sqlite' in settings.SQLALCHEMY_DATABASE_URI:
+        db_engine_driver = "sqlite"
+    else:
+        db_engine_driver = "postgresql"
     if '/' in column_name:
         key_name = column_name.split('/')[1]
         if db_engine_driver == "sqlite":
@@ -403,9 +408,15 @@ class DataManager:
 
         # init database
         with self.flask_app.app_context():
-            drop_db(db_url=self.flask_app.config["SQLALCHEMY_DATABASE_URI"],
-                    app_instance_path=self.flask_app.instance_path)
-            create_db(self.flask_app.config["SQLALCHEMY_DATABASE_URI"])
+            db_driver_type = get_db_driver_type()
+            if db_driver_type == DriverType.SQLITE:
+                drop_db(db_url=self.flask_app.config["SQLALCHEMY_DATABASE_URI"],
+                        app_instance_path=self.flask_app.instance_path)
+                create_db(self.flask_app.config["SQLALCHEMY_DATABASE_URI"])
+            else:
+                # The sqlite approach doesn't work well with Postgres, so just dropping the tables.
+                drop_db_tables()
+                create_db_tables()
 
         @self.socketio.on("datamanager/metadata/add_update", namespace="/esdl")
         def _add_or_update_metadata(params: Dict) -> str:
@@ -628,8 +639,9 @@ class DataManager:
             unique_technology = filter_none(session.scalars(select(Data.technology).distinct().where(Data.variable_id == v.id).order_by(Data.technology)).all())
             unique_year = filter_none(session.scalars(select(Data.year).distinct().where(Data.variable_id == v.id).order_by(Data.year)).all())
 
-            # A workaround to extract Data.labels column (JSON) keys in SQLite as SQLite does not support json_object_keys 
-            if db.engine.url.drivername == 'sqlite':
+            # A workaround to extract Data.labels column (JSON) keys in SQLite as SQLite does not support json_object_keys
+            db_driver_type = get_db_driver_type()
+            if db_driver_type == DriverType.SQLITE:
                 keys_query = text("""
                     SELECT DISTINCT json_each.key AS keys
                     FROM Data, json_each(Data.labels)
@@ -637,8 +649,14 @@ class DataManager:
                 """)
                 keys_list = session.execute(keys_query, {'variable_id': v.id}).scalars().all()
             else:
-                keys_list = session.scalars(select(literal_column("json_object_keys(labels)").label("keys")).distinct().select_from(Data).where(Data.variable_id == v.id)).all()
-        
+                # PostgreSQL version using text() for raw SQL
+                keys_query = text("""
+                    SELECT DISTINCT jsonb_object_keys(labels) AS keys
+                    FROM "data"
+                    WHERE variable_id = :variable_id
+                """)
+                keys_list = session.execute(keys_query, {'variable_id': v.id}).scalars().all()
+
             for key in keys_list:
                 print("-", key)
                 #options_per_label_key = session.scalars(select(literal_column("labels->>'"+key+"'").label("options")).distinct().select_from(Data).where(Data.variable_id == v.id)).all()

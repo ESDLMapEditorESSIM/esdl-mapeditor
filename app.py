@@ -113,6 +113,7 @@ from src.kpi_dashboard import KPIDashboard
 from utils.datetime_utils import parse_date
 from extensions.residential_area.residential_area import ResidentialArea
 from extensions.ownership.ownership import Ownership
+from extensions.spatial_visualization.spatial_visualization import SpatialVisualization
 
 print('MapEditor version {}'.format(mapeditor_version))
 print('MapEditor git describe {}'.format(mapeditor_long_version))
@@ -239,6 +240,7 @@ TooltipInfo(app, socketio)
 ActivityContextExtension(app, socketio, settings_storage)
 ResidentialArea(app, socketio, settings_storage)
 Ownership(app)
+SpatialVisualization(app)
 data_manager = DataManager(app, socketio)
 ExternalModels(app, socketio, models_storage, toast_notifications)
 WorkflowEngine(app, socketio, models_storage, esdl_services, toast_notifications)
@@ -1452,9 +1454,9 @@ def get_first_last_of_line(line):
 
 @executor.job
 def call_process_energy_system(esh, filename=None, es_title=None, app_context=None,
-                               force_update_es_id=None, zoom=True, result_post_esdl_load=None):
+                               force_update_es_id=None, zoom=True, result_post_esdl_load=None, load_animation=False):
     process_energy_system(esh, filename=filename, es_title=es_title, app_context=app_context,
-                          force_update_es_id=force_update_es_id, zoom=zoom)
+                          force_update_es_id=force_update_es_id, zoom=zoom, load_animation=load_animation)
     if result_post_esdl_load:
         emit('esdl_service_result', result_post_esdl_load)
 
@@ -3043,7 +3045,7 @@ def query_esdl_services(params):
     if esdl_service_ok:
         if esdl_service_result is not None:
             if backend_action and "run_after_esdl_loaded" in backend_action and backend_action["run_after_esdl_loaded"]:
-                esdl_service_result_post_esdl_load = esdl_service_result
+                esdl_service_result_post_esdl_load = esdl_service_result  # emit after ESDL has been loaded
             else:
                 emit('esdl_service_result', esdl_service_result)
     else:
@@ -3107,6 +3109,9 @@ def process_file_command(message):
     if message['cmd'] == 'import_esdl_from_file':
         file_content = message['file_content']
         filename = message['filename']
+        load_animation = False
+        if "load_animation" in message:
+            load_animation = message['load_animation']
         esh = get_handler()
 
         try:
@@ -3119,7 +3124,7 @@ def process_file_command(message):
                     for line in parse_info:
                         info += line + "\n"
                     send_alert("Warnings while opening {}:\n\n{}".format(filename, info))
-                call_process_energy_system.submit(esh, filename)  # run in seperate thread
+                call_process_energy_system.submit(esh, filename, load_animation=load_animation)  # run in seperate thread
                 set_session('active_es_id', imported_es.id)
                 set_session('es_filename', filename)
             except EnergySystemWithSameIdExists:

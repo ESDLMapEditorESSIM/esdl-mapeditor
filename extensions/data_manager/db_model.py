@@ -1,7 +1,6 @@
-from dataclasses import dataclass
 from enum import Enum
 
-from sqlalchemy.dialects import sqlite
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
 import sqlalchemy as sa
 
@@ -49,9 +48,7 @@ class DataSet(TimedBaseModel):
     )  # when was this dataset created
     created_by = db.Column(db.String, nullable=False)  # who created this dataset
     public = db.Column(db.Boolean, nullable=False, default=False)  # defines if a model is publicly accessible
-    security = db.Column(
-        sqlite.JSON
-    )  # arbitrary access control e.g. { 'owner': 'joost', shared_with': ['ewoud', 'edwin', 'wester']}
+    security = db.Column(JSONB)  # arbitrary access control e.g. { 'owner': 'joost', shared_with': ['ewoud', 'edwin', 'wester']}
     energy_system_id = db.Column(db.String, nullable=False)  # reference to the energy system id if using an ESDL file
 
     __table_args__ = (
@@ -85,8 +82,8 @@ class Variable(BaseModel):
     description = db.Column(db.String, nullable=True)  # human description of this variable (e.g. Primary energy mix)
     input_description = db.Column(db.String, nullable=True)  # human description of the input field in data (e.g. Fuel)
     output_description = db.Column(db.String, nullable=True)  # human description of the output (e.g. Energy carrier)
-    labels = db.Column(sqlite.JSON)  # extra labels for this variable
-    filter_options = db.Column(sqlite.JSON)
+    labels = db.Column(JSONB)  # extra labels for this variable
+    filter_options = db.Column(JSONB)
 
     def __init__(
         self,
@@ -130,4 +127,4 @@ class Data(BaseModel):
     technology = db.Column(db.String)
     year = db.Column(db.Integer)  # year as integer, e.g. 2030, 2040
     datetime = db.Column(db.DateTime)  # for timeseries data
-    labels = db.Column(sqlite.JSON)  # extra labels for this datapoint using JSON
+    labels = db.Column(JSONB)  # extra labels for this datapoint using JSON
