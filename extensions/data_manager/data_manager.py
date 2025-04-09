@@ -295,12 +295,13 @@ def handle_static_profile(profile: esdl.StaticProfile, ds: DataSet, variable_nam
 
 def preprocess_column(column_name: str) -> Any:
     if 'sqlite' in settings.SQLALCHEMY_DATABASE_URI:
-        db_engine_driver = "sqlite"
+        db_engine_driver = DriverType.SQLITE
     else:
-        db_engine_driver = "postgresql"
+        db_engine_driver = DriverType.POSTGRES
+
     if '/' in column_name:
         key_name = column_name.split('/')[1]
-        if db_engine_driver == "sqlite":
+        if db_engine_driver == DriverType.SQLITE:
             return func.json_extract(Data.labels, f"$.{key_name}").label(column_name)
         else:
             return Data.labels[key_name].astext.label(column_name)
@@ -940,13 +941,22 @@ class DataManager:
 
         # group_by_param = [DataSet.name] + [preprocess_column(group) for group in group_by]
 
+        # Handle JSON type query according to the db drive type.
+        db_driver_type = get_db_driver_type()
+        if db_driver_type == DriverType.SQLITE:
+            query_profile_id = func.json_extract(Data.labels, '$.profile_id').label('profile_id')
+            query_flow_direction = func.json_extract(Data.labels, '$.Flow direction').label('flow_direction')
+        else:
+            query_profile_id = Data.labels['profile_id'].astext.label('profile_id')
+            query_flow_direction = Data.labels['Flow direction'].astext.label('flow_direction')
+
         # energy_system_id and profile_id are required to derive the profile using esh.get_by_id()
         query = session.query(Data,
                               Data.node.label('attached_node'),
                               DataSet.name,
                               DataSet.energy_system_id,
-                              func.json_extract(Data.labels, '$.profile_id').label('profile_id'),
-                              func.json_extract(Data.labels, '$.Flow direction').label('flow_direction'))\
+                              query_profile_id,
+                              query_flow_direction)\
             .join(Variable, Variable.id == Data.variable_id).join(DataSet, Data.dataset_id == DataSet.id)\
             .where(Variable.name == variable_name)\
             .where(Variable.dataset_id.in_(dataset_ids))\
