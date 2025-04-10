@@ -1026,10 +1026,10 @@ def process_energy_system(
                             },
                         )
 
-                    # TODO: update asset_list???
-                    es_info_list[es.id] = {
-                        "processed": True
-                    }
+                # TODO: update asset_list???
+                es_info_list[es.id] = {
+                    "processed": True
+                }
 
                 # If one energysystem is added (by calling an external service or via the API) the active_es_id (backend) and
                 # active_layer_id (frontend) are not synchronized. As a temporary fix the following lines are added.
