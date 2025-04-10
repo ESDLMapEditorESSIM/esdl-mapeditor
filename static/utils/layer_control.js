@@ -394,7 +394,8 @@ function get_esdl_layer_control_tree_data() {
             { text: 'Potentials', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'pot_layer'}},
             { text: 'KPIs', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'kpi_layer'}},
             { text: 'Simulation results', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'sim_layer'}},
-            { text: 'Notes', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'notes_layer'}}
+            { text: 'Notes', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'notes_layer'}},
+            { text: 'Visualization', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'viz_layer'}},
         ];
 
         console.log('adding layer with id: '+ key);

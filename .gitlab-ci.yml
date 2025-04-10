@@ -35,6 +35,16 @@ build-mapeditor:
     - docker push $IMAGE:$TAG
     - docker push $IMAGE:$BRANCH
 
+build-mapeditor-gunicorn:
+  stage: build
+  variables:
+    IMAGE: $IMAGE_BASE/esdl-mapeditor
+  script:
+    - docker pull $IMAGE:$BRANCH-gunicorn || true
+    - docker build --build-arg git_commit=$TAG . -f docker/Dockerfile-gunicorn --cache-from $IMAGE:$BRANCH-gunicorn -t $IMAGE:$TAG-gunicorn -t $IMAGE:$BRANCH-gunicorn
+    - docker push $IMAGE:$TAG-gunicorn
+    - docker push $IMAGE:$BRANCH-gunicorn
+
 #build-mapeditor-uwsgi:
 #  stage: build
 #  variables:

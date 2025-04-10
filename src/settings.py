@@ -26,16 +26,36 @@ FLASK_DEBUG = (_flask_debug.upper() == 'TRUE' or _flask_debug == '1')
 
 USER_LOGGING_ENABLED = True
 # ASYNC_MODE = 'gevent_uwsgi'
-ASYNC_MODE = None # default for non uWGSI deployments
+ASYNC_MODE = None  # default for non uWGSI deployments
+
+# Use the domain name of the server where the application is running. Example: 'https://mapeditor.esdl.hesi.energy'
+ALLOWED_ORIGINS = os.environ.get('ALLOWED_ORIGINS', '*')
+
 
 OIDC_CLIENT_SECRETS = os.environ.get('OIDC_CLIENT_SECRETS', None) # 'credentials/client_secrets_opensource.json'
 _use_gevent = os.environ.get('MAPEDITOR_USE_GEVENT', '')
 USE_GEVENT = (_use_gevent.upper() == 'TRUE' or _use_gevent == '1')
 
+# Database settings
+POSTGRES_HOST = os.environ.get('POSTGRES_HOST', 'localhost')
+POSTGRES_PORT = os.environ.get('POSTGRES_PORT', '5432')
+POSTGRES_USER = os.environ.get('POSTGRES_USER', 'mapeditor')
+POSTGRES_PASSWORD = os.environ.get('POSTGRES_PASSWORD', 'password')
+POSTGRES_DB = os.environ.get('POSTGRES_DB', 'mapeditor')
+POSTGRES_DB_URI = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+
+SQLITE_DB_NAME = os.environ.get('SQLITE_DB_NAME', 'data_manager.db')
+
+DB_DRIVER_TYPE = os.environ.get('DB_DRIVER_TYPE', 'postgresql')
+DEFAULT_DRIVER_URI = POSTGRES_DB_URI if DB_DRIVER_TYPE == 'postgresql' else f"sqlite:///{SQLITE_DB_NAME}"
+
+SQLALCHEMY_DATABASE_URI = os.environ.get('SQLALCHEMY_DATABASE_URI', POSTGRES_DB_URI)
+
 settings_storage_config = {
     "host": os.environ.get('SETTINGS_STORAGE_HOST', None),  # "mongo",
     "port": os.environ.get('SETTINGS_STORAGE_PORT', "27017"),
-    "database": "esdl_mapeditor_settings"
+    "database": "esdl_mapeditor_settings",
+    "external_models_collection": "external_model_runs"
 }
 
 user_logging_config = {

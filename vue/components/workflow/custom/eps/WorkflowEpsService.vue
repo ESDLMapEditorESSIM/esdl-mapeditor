@@ -51,7 +51,7 @@ const props = defineProps({
   },
 });
 
-const { getParamsFromState, goToNextStep } = useWorkflow();
+const { getParamsFromState, goToStep } = useWorkflow();
 const workflowStep = props.workflowStep;
 
 let formData = { };
@@ -127,7 +127,7 @@ const doPost = async () => {
       }
 
       if (response.ok && workflowStep.auto) {
-        goToNextStep();
+        goToStep(workflowStep.next_step);
       }
     }
   } catch (e) {

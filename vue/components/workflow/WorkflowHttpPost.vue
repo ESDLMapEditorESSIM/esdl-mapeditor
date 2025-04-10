@@ -28,7 +28,7 @@ const workflowStep = props.workflowStep;
 
 const isLoading = ref(true);
 
-const { goToNextStep } = useWorkflow();
+const { goToStep } = useWorkflow();
 const { getParamsFromState } = useWorkflow();
 
 const message = ref("");
@@ -57,7 +57,7 @@ const doPost = async () => {
     }
 
     if (response.ok && workflowStep.auto) {
-      goToNextStep();
+      goToStep(workflowStep.next_step);
     }
   }
   isLoading.value = false;

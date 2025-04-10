@@ -10,6 +10,7 @@ import ObjectProperties from '@/apps/ObjectProperties.vue';
 import EDRAssets from '@/apps/EDRAssets.vue';
 import EnvironmentalProfiles from '@/apps/EnvironmentalProfiles.vue';
 import AddEditWmsLayer from '@/apps/AddEditWmsLayer.vue';
+import SpatialVisualization from '@/apps/SpatialVisualization.vue';
 import Carriers from '@/apps/Carriers.vue';
 import Sectors from '@/apps/Sectors.vue';
 import AboutBox from '@/apps/AboutBox.vue';
@@ -20,7 +21,9 @@ import SearchAssets from '@/apps/SearchAssets.vue';
 import AssetFeedback from '@/apps/AssetFeedback.vue';
 import AssetTableEditor from '@/apps/AssetTableEditor.vue';
 import CustomIconsSettings from "@/apps/CustomIconsSettings.vue";
-import KPIDashboard from './apps/KPIDashboard.vue';
+import KPIDashboard from '@/apps/KPIDashboard.vue';
+import ESDLAnalytics from '@/apps/ESDLAnalytics.vue';
+import OwnershipDialog from '@/apps/OwnershipDialog.vue';
 import {
     createVueLControl,
     mountApp,
@@ -52,6 +55,8 @@ import ResidentialArea from "@/apps/ResidentialArea.vue";
 import HeatTransition from "@/apps/HeatTransition.vue";
 import './utils/startDrawAsset';
 import ResultVisualizationsToolbar from "@/components/toolbars/ResultVisualizationsToolbar.vue";
+import {useReplaceEDRAsset} from "@/composables/replaceEDRAsset";
+import ToastNotifications from "@/apps/ToastNotifications.vue";
 
 // Vue.config.productionTip = false
 
@@ -101,10 +106,11 @@ window.edr_asset_window = () => {
     mountSidebarComponent(EDRAssets);
 }
 
-window.show_tooltip = (object_title, object_id, el_id) => {
-    const { newTooltipObjectID, newTitle } = useTooltipInfo();
+window.show_tooltip = (object_title, object_id, el_id, es_id) => {
+    const { newTooltipObjectID, newTitle, newESid } = useTooltipInfo();
     newTooltipObjectID(object_id);
     newTitle(object_title);
+    newESid(es_id);
     mountTooltipComponent(AssetTooltip, el_id);
 }
 
@@ -150,6 +156,10 @@ window.add_edit_wms_layer = (object_id) => {
     mountSidebarComponent(AddEditWmsLayer)
 }
 
+window.open_spatial_visualization = () => {
+    mountSidebarComponent(SpatialVisualization);
+};
+
 createVueLControl(ActiveLongProcess, {position: 'bottomright'});
 // mountApp(ToggleActiveLongProcess, '#vue_toggle_long_process_view');
 mountApp(AboutBox, '#vue_show_about_box')
@@ -170,9 +180,14 @@ createApp(ToggleShowAssetDrawToolbar).mount('#vue_toggle_show_asset_draw_toolbar
 mountApp(SidePane, '#vue_side_pane_root')
 createApp(ActivityContextSelector).mount('#vue_activity_context_selector')
 
+const [,toastNotificationInstance] = mountApp(ToastNotifications, '#toast_notifications');
+import {useToastNotifications} from "@/composables/toastNotifications";
+const {setToastNotificationsInstance } = useToastNotifications();
+setToastNotificationsInstance(toastNotificationInstance);
+
 createVueLControl(AssetsToBeAddedToolbar, {
         position: 'bottomright',
-    });
+});
 
 window.activate_table_editor_window = () => {
     mountApp(AssetTableEditor, '#table_editor_window');
@@ -180,6 +195,14 @@ window.activate_table_editor_window = () => {
 
 window.activate_kpi_dashboard_window = () => {
     mountApp(KPIDashboard, '#kpi_dashboard_window');
+}
+
+window.activate_esdl_analytics_window = () => {
+    mountApp(ESDLAnalytics, '#esdl_analytics_window');
+}
+
+window.activate_ownership_window = () => {
+    mountApp(OwnershipDialog, '#ownership_window');
 }
 
 createVueLControl(ResultVisualizationsToolbar, {
@@ -196,4 +219,10 @@ window.heat_transition_window = (area_id) => {
     const { newObject } = useObject();
     newObject(area_id);
     mountSidebarComponent(HeatTransition);
+}
+
+window.replace_with_edr_asset = (object_id_list, object_class) => {
+    const { newAssetInfo } = useReplaceEDRAsset();
+    newAssetInfo(object_id_list, object_class);
+    mountSidebarComponent(EDRAssets)
 }

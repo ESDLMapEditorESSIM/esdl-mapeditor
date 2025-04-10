@@ -16,6 +16,8 @@ import urllib
 
 from flask import Flask, jsonify, abort
 from flask_socketio import SocketIO
+
+from esdl import esdl
 from extensions.settings_storage import SettingsStorage
 import src.settings as settings
 import src.log as log
@@ -57,10 +59,12 @@ class EDRClient:
     def register(self):
         logger.info("Registering EDR extension")
 
-        @self.flask_app.route('/edr_assets')
-        def get_edr_assets():
+        @self.flask_app.route('/edr_assets/<asset_type>')
+        def get_edr_assets(asset_type = None):
+            if asset_type is None:
+                asset_type = "EnergyAsset"
             try:
-                res_code, res_list = self.get_EDR_list("EnergyAsset")
+                res_code, res_list = self.get_EDR_list(asset_type)
 
                 if res_code == 200:
                     return jsonify(res_list), 200
@@ -148,16 +152,26 @@ class EDRClient:
     def get_EDR_list(self, esdl_type, field_map=None, include_esdl=False):
         """
         Retrieves a list of items from the EDR. Can be used for assets (type="EnergyAsset"), profiles
-        (type="GenericProfile"), carrier lists (type="Carriers"),
+        (type="GenericProfile"), carrier lists (type="Carriers"), ...
+
+        esdl_type also be any class name of a subclass of EnergyAsset
         """
         esdl_type_section_mapping = {
             "EnergyAsset": "Assets",
             "GenericProfile": "Profiles",
         }
+
+        edr_section = "Key figures"
         if esdl_type in esdl_type_section_mapping:
             edr_section = esdl_type_section_mapping[esdl_type]
         else:
-            edr_section = "Key figures"
+            # try ... except ... to catch instantiating an abstract ESDL class
+            try:
+                obj_instance = esdl.getEClassifier(esdl_type)()
+                if isinstance(obj_instance, esdl.EnergyAsset):
+                    edr_section = "Assets"
+            except TypeError as e:
+                pass
 
         if not field_map:
             field_map = {

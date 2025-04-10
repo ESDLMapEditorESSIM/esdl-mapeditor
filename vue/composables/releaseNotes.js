@@ -10,7 +10,7 @@ export function useReleaseNotes() {
     try {
       const response = await fetch(path);
       return response.json();
-    } catch (e) {
+    } catch (error) {
       // eslint-disable-next-line
       console.error(error);
       return null;

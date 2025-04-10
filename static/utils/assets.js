@@ -196,7 +196,7 @@ function delete_asset(clicked_asset) {
         for (let i in asset.ports) {
             let from_id = asset.ports[i].id;
             for (let j in asset.ports[i].conn_to) {
-                remove_single_connection(from_id, asset.ports[i].conn_to[j], asset.esid)
+                remove_single_connection(from_id, asset.ports[i].conn_to[j].id, asset.esid)
             }
         }
 
@@ -256,7 +256,7 @@ function set_marker_handlers(marker) {
                 text: 'Set carrier',
                 icon: 'icons/SetCarrier.png',
                 callback: function(e) {
-                    select_carrier_menu(asset_id);
+                    select_carrier_menu(asset_id, "");
                 }
             });
             marker.options.contextmenuItems.push({
@@ -399,7 +399,7 @@ function set_marker_handlers(marker) {
             for (let i in marker.ports) {
                 let from_id = marker.ports[i].id;
                 for (let j in marker.ports[i].conn_to) {
-                    remove_single_connection(from_id, marker.ports[i].conn_to[j], marker.esid)
+                    remove_single_connection(from_id, marker.ports[i].conn_to[j].id, marker.esid)
                 }
             }
             socket.emit('command', {cmd: 'remove_object', id: marker.id, asspot: marker.asspot});
@@ -483,7 +483,7 @@ function set_line_handlers(line) {
         text: 'Set carrier',
         icon: 'icons/SetCarrier.png',
         callback: function(e) {
-            select_carrier_menu(line_id);
+            select_carrier_menu(line_id, "");
         }
     });
 
@@ -511,7 +511,7 @@ function set_line_handlers(line) {
             for (let i in line.ports) {
                 let from_id = line.ports[i].id;
                 for (let j in line.ports[i].conn_to) {
-                    remove_single_connection(from_id, line.ports[i].conn_to[j], line.esid)
+                    remove_single_connection(from_id, line.ports[i].conn_to[j].id, line.esid)
                 }
             }
 
@@ -740,6 +740,7 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
         for (let p=0; p<port_list.length; p++) {
             let port_carrier_id = port_list[p]['carrier'];
             if (port_carrier_id) {
+                let carrier_info_mapping = window.get_carrier_info_mapping(es_bld_id);
                 line_color = carrier_info_mapping[port_carrier_id]['color'];
             }
         }
@@ -814,12 +815,15 @@ var ui_counter = 0;
 function update_line_color(line_layer) {
     ui_counter++;
     debug_layer = line_layer;
+    let es_id = line_layer.esid;
     var line_color = colors[line_layer.type];
     let port_list = line_layer.ports;
+    let carrier_info_mapping = get_carrier_info_mapping(line_layer.esid);
     if (port_list) { // find line color based on carrier if available
         for (let p=0; p<port_list.length; p++) {
             let port_carrier_id = port_list[p]['carrier'];
             if (port_carrier_id) {
+                let carrier_info_mapping = window.get_carrier_info_mapping(es_id);
                 line_color = carrier_info_mapping[port_carrier_id]['color'];
                 break;
             }

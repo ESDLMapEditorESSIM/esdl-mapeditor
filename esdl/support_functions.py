@@ -11,23 +11,16 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-#
-#  This work is licensed to you under the Apache License, Version 2.0.
-#  You may obtain a copy of the license at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-#  Contributors:
-#      TNO         - Initial implementation
-#  Manager:
-#      TNO
 
 """
 Support functions for managing EObjects
 """
-from pyecore.ecore import EAttribute, EObject, EClass, EReference, EStructuralFeature
-from pyecore.valuecontainer import ECollection
 import logging
+from typing import Dict
+
+from pyecore.ecore import EAttribute, EObject, EClass, EReference, EStructuralFeature
+from pyecore.innerutils import InternalSet
+from pyecore.valuecontainer import ECollection
 
 logger = logging.getLogger(__name__)
 
@@ -56,12 +49,14 @@ def clone(self):
     return newone
 
 
-def deepcopy(self, memo=None):
+def deepcopy(self, memo=None, uuid_dict: Dict[str, EObject]=None ) -> EObject:
     """
     Deep copying an EObject.
     Does not work yet for copying references from other resources than this one.
+    :param memo: is used internally to find out which objects have been handled
+    :param uuid_dict: can be passed by the user to update the uuid_dict of the resource when deepcopying
+    :return a deepcopy of the object.
     """
-    #logger.debug("deepcopy: processing {}".format(self))
     first_call = False
     if memo is None:
         memo = dict()
@@ -70,11 +65,11 @@ def deepcopy(self, memo=None):
         return memo[self]
 
     copy: EObject = self.clone()
-    #logger.debug("Shallow copy: {}".format(copy))
+    if uuid_dict is not None and hasattr(copy, 'id'):
+        uuid_dict[copy.id] = copy
     eclass: EClass = self.eClass
     for x in eclass.eAllStructuralFeatures():
         if isinstance(x, EReference):
-            #logger.debug("deepcopy: processing reference {}".format(x.name))
             ref: EReference = x
             value: EStructuralFeature = self.eGet(ref)
             if value is None:
@@ -82,22 +77,21 @@ def deepcopy(self, memo=None):
             if ref.containment:
                 if ref.many and isinstance(value, ECollection):
                     #clone all containment elements
-                    eAbstractSet = copy.eGet(ref.name)
+                    eAbstractSet: ECollection = copy.eGet(ref.name)
                     for ref_value in value:
-                        duplicate = ref_value.__deepcopy__(memo)
+                        duplicate = ref_value.__deepcopy__(memo, uuid_dict=uuid_dict)
                         eAbstractSet.append(duplicate)
                 else:
-                    copy.eSet(ref.name, value.__deepcopy__(memo))
+                    copy.eSet(ref.name, value.__deepcopy__(memo, uuid_dict=uuid_dict))
             #else:
             #    # no containment relation, but a reference
             #    # this can only be done after a full copy
             #    pass
-    # now copy should a full copy, but without cross references
+    # now copy should a full copy, but without cross-references
 
     memo[self] = copy
 
     if first_call:
-        #logger.debug("copying references")
         for k, v in memo.items():
             eclass: EClass = k.eClass
             for x in eclass.eAllStructuralFeatures():
@@ -128,7 +122,7 @@ def deepcopy(self, memo=None):
                                 logger.warning(f'Cannot find reference of type {orig_value.eClass.name} of reference {k.eClass.name}.{ref.name} in deepcopy memo, using original')
                                 copy_value = orig_value
                             v.eSet(ref.name, copy_value)
-    copy._isset = set(self._isset)  # copy over the eIsSet configuration, otherwise all attributes are set due to this deepcopy
+    copy._isset = InternalSet(self._isset)  # copy over the eIsSet configuration, otherwise all attributes are set due to this deepcopy
     return copy
 
     # show deleted object from memory

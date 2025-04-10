@@ -70,18 +70,18 @@ const loadEsdl = () => {
   params["service_id"] = workflowStep.service.id;
 
   if (workflowStep["state_params"]) {
-    params["query_parameters"] = getParamsFromState(workflowStep["state_params"]);
+    params["state_params"] = getParamsFromState(workflowStep["state_params"]);
   } else {
-    params["query_parameters"] = {};
+    params["state_params"] = {};
   }
 
-  params["query_parameters"]['isolation_roof'] = selectedMeasures.value.includes(EpsMeasures.DAKISOLATIE);
-  params["query_parameters"]['isolation_facade'] = selectedMeasures.value.includes(EpsMeasures.GEVELISOLATIE);
-  params["query_parameters"]['isolation_glass'] = selectedMeasures.value.includes(EpsMeasures.GLASISOLATIE);
-  params["query_parameters"]['wtw'] = selectedMeasures.value.includes(EpsMeasures.WTW);
-  params["query_parameters"]['led'] = selectedMeasures.value.includes(EpsMeasures.LED);
-  params["query_parameters"]['heat_pump'] = selectedMeasures.value.includes(EpsMeasures.WARMTEPOMP);
-  params["query_parameters"]['pv'] = selectedMeasures.value.includes(EpsMeasures.PV);
+  params["state_params"]['isolation_roof'] = selectedMeasures.value.includes(EpsMeasures.DAKISOLATIE);
+  params["state_params"]['isolation_facade'] = selectedMeasures.value.includes(EpsMeasures.GEVELISOLATIE);
+  params["state_params"]['isolation_glass'] = selectedMeasures.value.includes(EpsMeasures.GLASISOLATIE);
+  params["state_params"]['wtw'] = selectedMeasures.value.includes(EpsMeasures.WTW);
+  params["state_params"]['led'] = selectedMeasures.value.includes(EpsMeasures.LED);
+  params["state_params"]['heat_pump'] = selectedMeasures.value.includes(EpsMeasures.WARMTEPOMP);
+  params["state_params"]['pv'] = selectedMeasures.value.includes(EpsMeasures.PV);
 
   window.show_loader();
   window.socket.emit("command", { cmd: "query_esdl_service", params: params });

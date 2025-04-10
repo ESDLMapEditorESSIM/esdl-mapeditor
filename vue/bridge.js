@@ -11,6 +11,7 @@ export const MessageNames = Object.freeze({
     CARRIER_COLORS: 'CARRIER_COLORS',
     SOCKET_CONNECTED: 'SOCKET_CONNECTED',
     SELECT_ACTIVE_LAYER: 'SELECT_ACTIVE_LAYER',
+    REMOVE_LAYER: 'REMOVE_LAYER',
 });
 
 export const PubSubManager = {
@@ -22,6 +23,7 @@ export const PubSubManager = {
         'CARRIER_COLORS': [],
         'SOCKET_CONNECTED': [],
         'SELECT_ACTIVE_LAYER': [],
+        'REMOVE_LAYER': [],
     },
 
     subscribe: function (name, callback) {

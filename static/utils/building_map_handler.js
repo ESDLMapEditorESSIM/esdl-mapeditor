@@ -159,5 +159,24 @@ function add_building_map_handlers(mp) {
         drawState.reset(); // reset connecting by pipe/cable
     });
 
+     // handle contextmenu in some corner cases. See port_handlers.js when right-clicking on a port to show context menu
+    mp.on('contextmenu.show', function (e) {
+        remove_tooltip();
+    });
+    mp.on('contextmenu.hide', function (e) {
+        // See port_handlers.js when right-clicking on a port to show context menu
+        // the port_marker and highlighted connections need to be reset, but
+        if (e.contextmenu.active_port_marker) {
+            let pm = e.contextmenu.active_port_marker;
+            pm.port_parent.active=false;
+            if (!pm.parent.mouseactive) {
+                pm.removeFrom(get_layers(active_layer_id, 'connection_layer'));
+                remove_tooltip();
+                unhighlight_connection(pm.port_parent);
+                delete e.contextmenu['active_port_marker'];
+            }
+        }
+    });
+
     return mp
 }

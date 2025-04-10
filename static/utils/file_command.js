@@ -57,7 +57,7 @@ function import_esdl_helper(event, inline=false) {
     // here we tell the reader what to do when it's done reading...
     reader.onload = readerEvent => {
         var content = readerEvent.target.result; // this is the content!
-        // socket.emit('file_command', {cmd: 'import_esdl_from_file', filename: file.name, file_content: content});
+        // socket.emit('file_command', {cmd: 'import_esdl_from_file', filename: file.name, file_content: content, load_animation: true});
         show_loader();
         $.ajax({
             url: resource_uri + '/esdl_file_import',
