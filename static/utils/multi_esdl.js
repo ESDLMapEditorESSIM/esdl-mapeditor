@@ -171,7 +171,8 @@ function create_new_esdl_layer(es_id, title) {
             connection_layer: L.featureGroup().addTo(map),
             kpi_layer: L.featureGroup().addTo(map),
             sim_layer: L.featureGroup().addTo(map),
-            notes_layer: L.featureGroup().addTo(map)
+            notes_layer: L.featureGroup().addTo(map),
+            viz_layer: L.featureGroup().addTo(map),
         },
         sector_list: null,
         carrier_list: null,

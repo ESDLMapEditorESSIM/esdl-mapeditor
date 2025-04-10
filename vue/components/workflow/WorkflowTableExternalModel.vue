@@ -543,7 +543,7 @@ const setActions = () => {
 
 </script>
 
-<style>
+<style scoped>
 .ant-table table {
   font-size: 10px !important;
   line-height: 1.2 !important;

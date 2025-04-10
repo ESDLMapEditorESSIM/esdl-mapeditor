@@ -39,6 +39,7 @@ import {
     Spin,
     Switch,
     Table,
+    Tabs,
     Tag,
     Tooltip,
     Transfer,
@@ -108,6 +109,7 @@ export function mountApp(component, elementSelector) {
     app.use(Spin);
     app.use(Switch);
     app.use(Table);
+    app.use(Tabs);
     app.use(Tag);
     app.use(Tooltip);
     app.use(Transfer);
