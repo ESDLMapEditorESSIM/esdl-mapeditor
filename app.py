@@ -3054,9 +3054,11 @@ def query_esdl_services(params):
     for result in results:
         esdl_service_ok, esdl_service_result, backend_action = result
         logger.debug('emitting result to browser')
-        esdl_service_result_post_esdl_load = Noneif esdl_service_ok:
-            if esdl_service_result is not None:if backend_action and "run_after_esdl_loaded" in backend_action and backend_action["run_after_esdl_loaded"]:
-                esdl_service_result_post_esdl_load = esdl_service_result  # emit after ESDL has been loaded
+        esdl_service_result_post_esdl_load = None
+        if esdl_service_ok:
+            if esdl_service_result is not None:
+                if backend_action and "run_after_esdl_loaded" in backend_action and backend_action["run_after_esdl_loaded"]:
+                    esdl_service_result_post_esdl_load = esdl_service_result  # emit after ESDL has been loaded
             else:
                 emit('esdl_service_result', esdl_service_result)
         else:

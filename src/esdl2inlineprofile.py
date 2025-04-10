@@ -49,36 +49,6 @@ class ESDL2InlineProfile:
 
             return response
 
-def copy_and_convert_esdl_profiles(
-        es_id: str,
-) -> EnergySystem:
-    """
-    Copy the active EnergySystem and convert its profiles to in-line profiles.
-    """
-    esh = get_handler()
-    es = esh.get_energy_system(es_id=es_id)
-    es_string = esh.to_string(es_id=es_id)
-    es_copy, parse_info = esh.load_external_string(es_string, name=f"{es.name} - In-line Profiles")
-    es_copy.name = get_session('es_filename') or (es.name or "Untitled EnergySystem") + " - In-line Profiles"
-    profiles_settings = Profiles.get_instance().get_profiles_settings()
-    es_converted = convert_esdl_profiles(es_copy, profiles_settings)
-    return es_converted
-
-
-def convert_esdl_profiles(
-        es: esdl.EnergySystem,
-        profiles_settings: dict[str, object],
-) -> esdl.EnergySystem:
-    logger.info("Convert InfluxDBProfiles for the whole energy system to TimeSeriesProfiles")
-
-        profile_mapping: dict[esdl.InfluxDBProfile, esdl.TimeSeriesProfile] = {}
-        ESDL2InlineProfile.search_all_influxdb_profiles_and_create_timeseries_profiles(es, profiles_settings, profile_mapping)
-        ESDL2InlineProfile.search_and_replace_all_profile_references(es, profile_mapping)
-        ESDL2InlineProfile.remove_all_influxdb_profiles(profile_mapping)
-
-        logger.info("Finished converting ESDL to in-line profiles")
-        return es
-
     @staticmethod
     def search_all_influxdb_profiles_and_create_timeseries_profiles(es: esdl.EnergySystem, profiles_settings, profile_mapping):
         logger.info("- Search all InfluxDBProfiles and create timeseries profiles")
@@ -98,32 +68,6 @@ def convert_esdl_profiles(
 
                 profile_mapping[obj] = timeseries_profile
 
-def search_and_replace_all_profile_references(es, profile_mapping):
-        logger.info("- Search all profile references to InfluxDBProfiles and replace it with a reference" +
-                    "to the TimeSeriesProfile")
-        for obj in es.eAllContents():
-            if isinstance(obj, esdl.ProfileReference):
-                referred_profile = obj.reference
-                container = obj.eContainer()
-                if referred_profile in profile_mapping:
-# reference is to one of the InfluxDBProfiles
-
-        # Create a new Reference to the TimeSeriesProfile but keep the original multiplier
-                    new_reference = esdl.ProfileReference(
-                        reference=profile_mapping[referred_profile],
-                        multiplier=obj.multiplier
-                    )
-
-                    containment_feature = obj.eContainmentFeature()
-                    attr = container.eGet(containment_feature.name)
-                    if isinstance(attr, EOrderedSet):
-                        attr.append(new_reference)
-                        attr.remove(obj)
-                    elif isinstance(attr, EAttribute):
-                        container.eSet(attr, new_reference)
-                    else:
-                        logger.error("Serious error! Not supported yet")
-
     @staticmethod
     def remove_all_influxdb_profiles(profile_mapping):
         logger.info("- Remove all influxdb profiles")
@@ -133,7 +77,7 @@ def search_and_replace_all_profile_references(es, profile_mapping):
             containment_feature = influxdb_profile.eContainmentFeature()
             attr = container.eGet(containment_feature.name)
             if isinstance(attr, EOrderedSet):
-        # if the attribute is not of type EOrderedSet (but probably EAttribute), the profile was overwritten
+                # if the attribute is not of type EOrderedSet (but probably EAttribute), the profile was overwritten
                 # by assigning to a new profile to the attribute
                 attr.remove(influxdb_profile)
 
@@ -166,3 +110,60 @@ def search_and_replace_all_profile_references(es, profile_mapping):
         timeseries_profile.name = profile.name
         timeseries_profile.profileType = profile.profileType
         return timeseries_profile
+
+def copy_and_convert_esdl_profiles(
+        es_id: str,
+) -> esdl.EnergySystem:
+    """
+    Copy the active EnergySystem and convert its profiles to in-line profiles.
+    """
+    esh = get_handler()
+    es = esh.get_energy_system(es_id=es_id)
+    es_string = esh.to_string(es_id=es_id)
+    es_copy, parse_info = esh.load_external_string(es_string, name=f"{es.name} - In-line Profiles")
+    es_copy.name = get_session('es_filename') or (es.name or "Untitled EnergySystem") + " - In-line Profiles"
+    profiles_settings = Profiles.get_instance().get_profiles_settings()
+    es_converted = convert_esdl_profiles(es_copy, profiles_settings)
+    return es_converted
+
+
+def convert_esdl_profiles(
+        es: esdl.EnergySystem,
+        profiles_settings: dict[str, object],
+) -> esdl.EnergySystem:
+    logger.info("Convert InfluxDBProfiles for the whole energy system to TimeSeriesProfiles")
+
+    profile_mapping: dict[esdl.InfluxDBProfile, esdl.TimeSeriesProfile] = {}
+    ESDL2InlineProfile.search_all_influxdb_profiles_and_create_timeseries_profiles(es, profiles_settings, profile_mapping)
+    ESDL2InlineProfile.search_and_replace_all_profile_references(es, profile_mapping)
+    ESDL2InlineProfile.remove_all_influxdb_profiles(profile_mapping)
+
+    logger.info("Finished converting ESDL to in-line profiles")
+    return es
+
+
+def search_and_replace_all_profile_references(es, profile_mapping):
+    logger.info("- Search all profile references to InfluxDBProfiles and replace it with a reference" +
+                "to the TimeSeriesProfile")
+    for obj in es.eAllContents():
+        if isinstance(obj, esdl.ProfileReference):
+            referred_profile = obj.reference
+            container = obj.eContainer()
+            if referred_profile in profile_mapping:
+            # reference is to one of the InfluxDBProfiles
+
+                # Create a new Reference to the TimeSeriesProfile but keep the original multiplier
+                new_reference = esdl.ProfileReference(
+                    reference=profile_mapping[referred_profile],
+                    multiplier=obj.multiplier
+                )
+
+                containment_feature = obj.eContainmentFeature()
+                attr = container.eGet(containment_feature.name)
+                if isinstance(attr, EOrderedSet):
+                    attr.append(new_reference)
+                    attr.remove(obj)
+                elif isinstance(attr, EAttribute):
+                    container.eSet(attr, new_reference)
+                else:
+                    logger.error("Serious error! Not supported yet")

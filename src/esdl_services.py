@@ -422,7 +422,8 @@ class ESDLServices:
                 results = []
                 for result_config in service["result"]:
                     try:
-                        result = self._process_service_result(esh, url_response, result_config, input_data, service, service_params, state_params, active_es_id)
+                        result = self._process_service_result(esh, url_response, result_config, input_data, service,
+                                                              service_params, state_params, active_es_id)
                         if result:
                             results.append(result)
                     except Exception as e:
@@ -438,7 +439,7 @@ class ESDLServices:
                         + str(url_response.reason)
                         + " with text: "
                         + str(url_response.text),
-                        )
+                    )
                 else:
                     logger.warning("Error running ESDL service ", input_data)
                 return [(False, str(input_data), None)]
@@ -446,7 +447,9 @@ class ESDLServices:
             logger.exception("Error accessing external ESDL service: " + str(e))
             return [(False, None, None)]
 
-    def _process_service_result(self, esh, url_response: Response, input_data, result_config, service: dict, service_params: dict, state_params, active_es_id: str) -> None | Tuple[bool, str | dict | None, dict | None]:
+    def _process_service_result(self, esh, url_response: Response, input_data, result_config, service: dict,
+                                service_params: dict, state_params, active_es_id: str) -> None | Tuple[
+        bool, str | dict | None, dict | None]:
         """
         Process the result of an ESDL service call. This can be adding an ESDL object to the current EnergySystem, printing
         the result, or adding assets to the main area.
