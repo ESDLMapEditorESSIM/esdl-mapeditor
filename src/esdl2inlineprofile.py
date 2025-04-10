@@ -111,6 +111,33 @@ class ESDL2InlineProfile:
         timeseries_profile.profileType = profile.profileType
         return timeseries_profile
 
+    @staticmethod
+    def search_and_replace_all_profile_references(es, profile_mapping):
+        logger.info("- Search all profile references to InfluxDBProfiles and replace it with a reference" +
+                    "to the TimeSeriesProfile")
+        for obj in es.eAllContents():
+            if isinstance(obj, esdl.ProfileReference):
+                referred_profile = obj.reference
+                container = obj.eContainer()
+                if referred_profile in profile_mapping:
+                    # reference is to one of the InfluxDBProfiles
+
+                    # Create a new Reference to the TimeSeriesProfile but keep the original multiplier
+                    new_reference = esdl.ProfileReference(
+                        reference=profile_mapping[referred_profile],
+                        multiplier=obj.multiplier
+                    )
+
+                    containment_feature = obj.eContainmentFeature()
+                    attr = container.eGet(containment_feature.name)
+                    if isinstance(attr, EOrderedSet):
+                        attr.append(new_reference)
+                        attr.remove(obj)
+                    elif isinstance(attr, EAttribute):
+                        container.eSet(attr, new_reference)
+                    else:
+                        logger.error("Serious error! Not supported yet")
+
 def copy_and_convert_esdl_profiles(
         es_id: str,
 ) -> esdl.EnergySystem:
@@ -140,30 +167,3 @@ def convert_esdl_profiles(
 
     logger.info("Finished converting ESDL to in-line profiles")
     return es
-
-
-def search_and_replace_all_profile_references(es, profile_mapping):
-    logger.info("- Search all profile references to InfluxDBProfiles and replace it with a reference" +
-                "to the TimeSeriesProfile")
-    for obj in es.eAllContents():
-        if isinstance(obj, esdl.ProfileReference):
-            referred_profile = obj.reference
-            container = obj.eContainer()
-            if referred_profile in profile_mapping:
-            # reference is to one of the InfluxDBProfiles
-
-                # Create a new Reference to the TimeSeriesProfile but keep the original multiplier
-                new_reference = esdl.ProfileReference(
-                    reference=profile_mapping[referred_profile],
-                    multiplier=obj.multiplier
-                )
-
-                containment_feature = obj.eContainmentFeature()
-                attr = container.eGet(containment_feature.name)
-                if isinstance(attr, EOrderedSet):
-                    attr.append(new_reference)
-                    attr.remove(obj)
-                elif isinstance(attr, EAttribute):
-                    container.eSet(attr, new_reference)
-                else:
-                    logger.error("Serious error! Not supported yet")
