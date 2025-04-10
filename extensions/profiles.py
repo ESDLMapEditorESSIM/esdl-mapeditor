@@ -25,6 +25,7 @@ from requests.exceptions import ConnectionError
 
 from esdl import esdl
 from esdl.esdl_handler import EnergySystemHandler
+from esdl.processing import ESDLEnergySystem
 from extensions.settings_storage import SettingType, SettingsStorage
 from extensions.session_manager import get_session, get_handler
 from extensions.panel_service import create_panel, get_panel_service_datasource
@@ -830,23 +831,24 @@ class Profiles:
             influxdb_client = Profiles.connect_to_animation_profiles_database(
                 esdl_id, esdl_id, influxdb_host_override, influxdb_port_override
             )
-            query_collections_with_asset_id = 'SHOW TAG VALUES WITH KEY="assetId"'
-            collections_with_asset_id = influxdb_client.query(query_collections_with_asset_id)
-            collection_ids = collections_with_asset_id.keys()[0]
+
+            esh = get_handler()
+            es = esh.get_energy_system(esdl_id)
+            carrier_ids = [carrier["id"] for carrier in ESDLEnergySystem.get_carrier_list(es)]
 
             fields = []
-            for collection_id in collection_ids:
-                tag_fields_query = f'SHOW TAG KEYS FROM "{collection_id}"'
+            for carrier_id in carrier_ids:
+                tag_fields_query = f'SHOW TAG KEYS FROM "{carrier_id}"'
                 result = influxdb_client.query(tag_fields_query)
                 tag_fields = ["time"] + [point["tagKey"] for point in result.get_points()]
 
                 all_fields_query = (
-                    f'SELECT * FROM "{collection_id}" '
+                    f'SELECT * FROM "{carrier_id}" '
                     f"WHERE \"assetClass\" = 'Pipe' OR \"assetClass\" = 'ElectricityCable' LIMIT 1"
                 )
                 result = influxdb_client.query(all_fields_query)
                 for point in result.get_points():
-                    fields += [key for key in point.keys() if key not in tag_fields]
+                    fields += [key for key in point.keys() if key not in tag_fields and key not in fields]
         except ConnectionError as nre:
             emit(
                 "alert",
@@ -865,6 +867,7 @@ class Profiles:
             return None
         except Exception as e:
             # No animation data
+            logger.info(f"No animation data found due to error: {e}")
             return None
 
         return fields
