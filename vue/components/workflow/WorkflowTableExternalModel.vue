@@ -149,6 +149,7 @@ const VIEW_FEEDBACK = "View feedback";
 const EDIT = "Edit";
 const VIEW_DETAILS = "View details";
 const DOWNLOAD_XLSX = "Download xlsx";
+const LOAD_INPUT_ESDL = "Load input ESDL";
 const DELETE = "Delete";
 
 const isLoading = ref(true);
@@ -208,44 +209,36 @@ const doAction = (record, action) => {
   if ("wait_icon" in action) {
     addOngoingBackendProcessId(processId);
   }
-  if (action.title === LOAD_RESULT || action.title === VIEW_FEEDBACK) {
+  if ([LOAD_RESULT, VIEW_FEEDBACK, LOAD_INPUT_ESDL].includes(action.title)) {
     window.show_loader();
-    const params = {};
-    if (action.title === LOAD_RESULT) {
-      params["service_config"] = {
-        "name": "Load ESDL",
+    const params = {
+      "service_config": {
+        "name": action.title,
         "type": "",
-        "external_model": stepParams.value.config.external_model,
         "result": [
           {
-            "action": "esdl",
-            "model_short_name": stepParams.value.config.model_short_name
+            "action": "esdl"
           }
         ],
         "state_params": true
-      };
+      }
+    };
+    if (action.title === LOAD_RESULT) {
+      params.service_config.external_model = "output_or_input_esdl";
+      params.service_config.result[0].model_short_name = stepParams.value.config.model_short_name;
       if (stepParams.value.config.result_animation) {
-        params["service_config"].result[0].animation = stepParams.value.config.result_animation;
+        params.service_config.result[0].animation = stepParams.value.config.result_animation;
       }
       if (stepParams.value.config.result_external_link) {
-        params["service_config"].result[0].external_link = stepParams.value.config.result_external_link;
+        params.service_config.result[0].external_link = stepParams.value.config.result_external_link;
       }
-    } else {
-      params["service_config"] = {
-        "name": "View feedback messages",
-        "type": "",
-        "external_model": stepParams.value.config.external_model,
-        "result": [
-          {
-            "action": "esdl",
-            "show_asset_feedback": true
-          }
-        ],
-        "with_jwt_token": true,
-        "state_params": true
-      };
+    } else if (action.title === VIEW_FEEDBACK) {
+      params.service_config.external_model = "output_or_input_esdl";
+      params.service_config.result[0].show_asset_feedback = true;
+    } else if (action.title === LOAD_INPUT_ESDL) {
+      params.service_config.external_model = "input_esdl";
     }
-    params["state_params"] = {
+    params.state_params = {
       [rowIdKey.value]: record[rowIdKey.value],
       [runNameKey.value]: record[runNameKey.value]
     }
@@ -520,6 +513,20 @@ const setActions = () => {
         }
     );
   }
+  if (stepParams.value.config.load_input_esdl) {
+    actions.value.push(
+        {
+          "title": LOAD_INPUT_ESDL,
+          "icon": "fas fa-sign-in-alt",
+          "enabled": {
+            "dataIndex": "status",
+            "values": [
+              "SUCCEEDED"
+            ]
+          }
+        }
+    );
+  }
   actions.value.push(
       {
         "title": DELETE,
@@ -536,7 +543,7 @@ const setActions = () => {
 
 </script>
 
-<style>
+<style scoped>
 .ant-table table {
   font-size: 10px !important;
   line-height: 1.2 !important;

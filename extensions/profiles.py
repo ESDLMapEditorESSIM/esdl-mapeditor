@@ -13,15 +13,19 @@
 #      TNO
 import base64
 import datetime
+from typing import Optional
 
 import pytz
 from flask import Flask
 from flask_socketio import SocketIO, emit
 from flask_executor import Executor
+from influxdb.exceptions import InfluxDBClientError
 from pyecore.ecore import EDate
+from requests.exceptions import ConnectionError
 
 from esdl import esdl
 from esdl.esdl_handler import EnergySystemHandler
+from esdl.processing import ESDLEnergySystem
 from extensions.settings_storage import SettingType, SettingsStorage
 from extensions.session_manager import get_session, get_handler
 from extensions.panel_service import create_panel, get_panel_service_datasource
@@ -46,7 +50,7 @@ profiles = None
 
 
 def send_alert(message):
-    print(message)
+    logger.warning(message)
     # emit('alert', message, namespace='/esdl')
 
 
@@ -400,7 +404,7 @@ class Profiles:
         if self.settings_storage.has(setting_type, identifier, PROFILES_LIST):
             # update profile dict
             profiles = self.settings_storage.get(setting_type, identifier, PROFILES_LIST)
-            print('Deleting profile {}'.format(profiles[profile_id]))
+            logger.info('Deleting profile', profile=profiles[profile_id])
             del (profiles[profile_id])
             self.settings_storage.set(setting_type, identifier, PROFILES_LIST, profiles)
 
@@ -741,48 +745,48 @@ class Profiles:
                     return profile
         return None
 
-
     @staticmethod
-    def connect_to_animation_profiles_database(es_id: str, database: str, host_override: str = None):
+    def connect_to_animation_profiles_database(
+            es_id: str, database: str = None, influxdb_host: str = None, influxdb_port: str = None
+    ):
         # get influxdb host and port from first pipe/cable
-        anim_profile_info_from_esdl = Profiles.get_profiles_for_asset_type(
-            es_id, [esdl.ElectricityCable, esdl.Pipe]
-        )
-        if not anim_profile_info_from_esdl:  # essim: profile info not in esdl
-            return InfluxDBClient(
-                host=settings.essim_config['ESSIM_database_server'],
-                port=settings.essim_config['ESSIM_database_port'],
-                database=database
-            )
+        anim_profile_info_from_esdl = Profiles.get_profiles_for_asset_type(es_id, [esdl.ElectricityCable, esdl.Pipe])
+        if not anim_profile_info_from_esdl:  # profile info not in esdl (essim type)
+            if not influxdb_host or not influxdb_port or not database:
+                return None  # No animation data available
         elif Profiles.check_if_profiles_have_same_host_port_database(anim_profile_info_from_esdl):
             profile = anim_profile_info_from_esdl[0]
-            influxdb_host = profile.host
-            if host_override:
-                influxdb_host = host_override
-            credentials = Profiles.get_instance().determine_database_credentials(
-                influxdb_host, profile.port, profile.database
-            )
-            if credentials:
-                influxdb_client = InfluxDBClient(
-                    host=influxdb_host,
-                    port=profile.port,
-                    database=database,
-                    username=credentials['username'],
-                    password=credentials['password']
-                )
-            else:
-                influxdb_client = InfluxDBClient(
-                    host=influxdb_host,
-                    port=profile.port,
-                    database=database
-                )
-            if not influxdb_client:
-                raise ConnectionError(f"Could not connect to influxdb '{influxdb_host}' to database '{database}'")
-
-            return influxdb_client
+            if not influxdb_host:
+                influxdb_host = profile.host
+            if not influxdb_port:
+                influxdb_port = profile.port
+            if not database:
+                database = profile.database
         else:
-            logger.info("Not all profiles use same host, port, database")
-            raise ConnectionError("Could not connect to influxdb")
+            error_message = (
+                "Could not load animation data: "
+                "not all ElectricityCable/Pipe profiles use the same host, port, database"
+            )
+            logger.error(error_message)
+            raise ConnectionError(error_message)
+
+        credentials = Profiles.get_instance().determine_database_credentials(
+            influxdb_host, influxdb_port, database
+        )
+        if credentials:
+            influxdb_client = InfluxDBClient(
+                host=influxdb_host,
+                port=influxdb_port,
+                database=database,
+                username=credentials["username"],
+                password=credentials["password"],
+            )
+        else:
+            influxdb_client = InfluxDBClient(host=influxdb_host, port=influxdb_port, database=database)
+        if not influxdb_client:
+            raise ConnectionError(f"Could not connect to influxdb '{influxdb_host}' to database '{database}'")
+
+        return influxdb_client
 
     @staticmethod
     def check_if_profiles_have_same_host_port_database(profile_list):
@@ -818,6 +822,55 @@ class Profiles:
 
         return True
 
+    @staticmethod
+    def get_animation_fields(
+            esdl_id: str, influxdb_host_override=None, influxdb_port_override=None
+    ) -> Optional[list[str]]:
+        # Get all fields available for all 'Pipe' and/or 'ElectricityCable' assets.
+        try:
+            influxdb_client = Profiles.connect_to_animation_profiles_database(
+                esdl_id, esdl_id, influxdb_host_override, influxdb_port_override
+            )
+
+            esh = get_handler()
+            es = esh.get_energy_system(esdl_id)
+            carrier_ids = [carrier["id"] for carrier in ESDLEnergySystem.get_carrier_list(es)]
+
+            fields = []
+            for carrier_id in carrier_ids:
+                tag_fields_query = f'SHOW TAG KEYS FROM "{carrier_id}"'
+                result = influxdb_client.query(tag_fields_query)
+                tag_fields = ["time"] + [point["tagKey"] for point in result.get_points()]
+
+                all_fields_query = (
+                    f'SELECT * FROM "{carrier_id}" '
+                    f"WHERE \"assetClass\" = 'Pipe' OR \"assetClass\" = 'ElectricityCable' LIMIT 1"
+                )
+                result = influxdb_client.query(all_fields_query)
+                for point in result.get_points():
+                    fields += [key for key in point.keys() if key not in tag_fields and key not in fields]
+        except ConnectionError as nre:
+            emit(
+                "alert",
+                f"Could connect to influxdb '{influxdb_client._host}:{influxdb_client._port}'"
+                f" for time series animation data retrieval.",
+                namespace="/esdl",
+            )
+            return None
+        except InfluxDBClientError as ie:
+            emit(
+                "alert",
+                f"Could get data from influxdb '{influxdb_client._host}:{influxdb_client._port}'"
+                f" for time series animation data retrieval: '{str(ie)}'.",
+                namespace="/esdl",
+            )
+            return None
+        except Exception as e:
+            # No animation data
+            logger.info(f"No animation data found due to error: {e}")
+            return None
+
+        return fields
 
 default_profile_groups = {
     "groups": [

@@ -26,6 +26,7 @@ from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEnergySystem, ESDLQuant
 from esdl.processing.ESDLEnergySystem import get_notes_list
 from extensions.boundary_service import BoundaryService, is_valid_boundary_id
 from extensions.mapeditor_settings import MapEditorSettings
+from extensions.profiles import Profiles
 from extensions.session_manager import set_handler, get_handler, get_session, set_session_for_esid, set_session, \
     get_session_for_esid
 from src.esdl_helper import get_asset_and_coord_from_port_id, asset_state_to_ui, \
@@ -907,7 +908,15 @@ def get_building_connections(building):
 #  If this function is run through process_energy_system.submit(filename, es_title) it is executed
 #  in a separate thread.
 # ---------------------------------------------------------------------------------------------------------------------
-def process_energy_system(esh, filename=None, es_title=None, app_context=None, force_update_es_id=None, zoom=True):
+def process_energy_system(
+    esh,
+    filename=None,
+    es_title=None,
+    app_context=None,
+    force_update_es_id=None,
+    zoom=True,
+    load_animation=False,
+):
     try:
         # NOTE: filename, es_title and app_context are currently not used.
         # emit('clear_ui')
@@ -977,7 +986,7 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None, f
                 # Only emit KPI info when there are area KPIs available
                 if len(es_area_kpis) > 0:
                     emit('kpis', {'es_id': es.id, 'scope': displayed_area_name, 'kpi_info': es_area_kpis})
-                    emit('kpis_present', {'es_id': es.id})
+                    emit('kpis_present', {'es_id': es.id, "message": es.name})
 
                 # measures can contain assets that still need to be added to the energysystem
                 assets_to_be_added = AssetsToBeAdded.get_assets_from_measures(es)
@@ -1001,6 +1010,22 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None, f
                 set_session_for_esid(es.id, 'asset_list', asset_list)
                 set_session_for_esid(es.id, 'area_bld_list', area_bld_list)
 
+                # Display animation if time series data for 'Pipe' or 'ElectricityCable' available
+                if load_animation:
+                    animation_fields = Profiles.get_animation_fields(es.id)
+                    if animation_fields:
+                        emit(
+                            "animation_esdl_data",
+                            {
+                                "es_id": es.id,
+                                "fields": animation_fields,
+                                "message": es.name,
+                                "filter_tag_name": None,
+                                "filter_tag_value": None,
+                                "influxdb_host_override": None,
+                            },
+                        )
+
                 # TODO: update asset_list???
                 es_info_list[es.id] = {
                     "processed": True
@@ -1017,7 +1042,7 @@ def process_energy_system(esh, filename=None, es_title=None, app_context=None, f
 
         if not at_least_one_energy_system_processed:
             logger.debug("No energysystem was processed at all. Hiding the loader")
-            emit('hide_loader');
+            emit('hide_loader')
 
         set_handler(esh)
         # emit('set_active_layer_id', main_es.id)

@@ -15,9 +15,13 @@
 """
 This file contains messages and message preparation for incremental ui updates.
 """
-from typing import TypedDict, List, NotRequired
-
+import sys
 from esdl import esdl
+
+if sys.version_info < (3, 11):
+    from typing_extensions import TypedDict, List, NotRequired
+else:
+    from typing import TypedDict, List, NotRequired
 
 
 ###################################
