@@ -856,9 +856,10 @@ esdl_config = {
                 "explanation": "This workflow allows you to run the ICE workflow for business parks.",
                 "type": "vueworkflow",
                 "resumable": True,
+
                 "workflow": [
                     {
-                        # 0
+                        "id": "home",
                         "name": "Begin",
                         "description": "How would you like to proceed?",
                         "type": "choice",
@@ -871,33 +872,33 @@ esdl_config = {
                             {
                                 "name": "Create a new Energy Potential Scan project",
                                 "type": "primary",
-                                "next_step": 1,
+                                "next_step": "create-project",
                             },
                             {
                                 "name": "Adjust EPS input",
                                 "type": "primary",
-                                "next_step": 2,
+                                "next_step": "adjust-eps-input",
                             },
                             {
-                                "name": "Run EPS", 
+                                "name": "Run EPS",
                                 "type": "primary",
-                                "next_step": 8,
+                                "next_step": "select-existing-project-for-run-eps",
                             },
                             {
                                 "name": "Load EPS results",
                                 "type": "primary",
-                                "next_step": 10,
+                                "next_step": "select-eps-execution",
                             },
                             {
                                 "name": "Explore EPS results",
                                 "type": "primary",
-                                "next_step": 12,
+                                "next_step": "explore-eps-results",
                                 "enable_if_state": "execution.success",
                             },
                             {
                                 "name": "Apply EPS measures",
                                 "type": "primary",
-                                "next_step": 13,
+                                "next_step": "apply-eps-measures",
                                 "enable_if_state": "execution.success",
                             },
                             # ESTIMATE FLEX ASSETS
@@ -908,13 +909,13 @@ esdl_config = {
                             {
                                 "name": "Start Flex Scan phase 1",
                                 "type": "primary",
-                                "next_step": 14,
+                                "next_step": "start-flex-scan-phase-1",
                                 "enable_if_state": "execution.success",
                             },
                             {
                                 "name": "Load FS phase 1 results",
                                 "type": "primary",
-                                "next_step": 15,
+                                "next_step": "select-flex-scan-f1-year",
                                 "enable_if_state": "execution.success",
                             },
                             # CONFIGURE ENERGY INFRASTRUCTURE
@@ -925,7 +926,7 @@ esdl_config = {
                             {
                                 "name": "Configure energy infrastructure",
                                 "type": "primary",
-                                "next_step": 17,
+                                "next_step": "configure-energy-infrastructure",
                             },
                             # ADD SMART METER PROFILES
                             {
@@ -935,12 +936,12 @@ esdl_config = {
                             {
                                 "name": "Generate energy profiles template",
                                 "type": "primary",
-                                "next_step": 18,
+                                "next_step": "generate-profile-template",
                             },
                             {
                                 "name": "Upload energy profiles template",
                                 "type": "primary",
-                                "next_step": 19,
+                                "next_step": "upload-profiles",
                             },
                             # CONFIGURE SCENARIOS
                             {
@@ -950,17 +951,17 @@ esdl_config = {
                             {
                                 "name": "Apply energy saving measures",
                                 "type": "primary",
-                                "next_step": 20,
+                                "next_step": "custom-energy-saving-measures",
                             },
                             {
                                 "name": "Configure new assets",
                                 "type": "primary",
-                                "next_step": 21,
+                                "next_step": "configure-new-assets",
                             },
                             {
                                 "name": "Configure energy hub",
                                 "type": "primary",
-                                "next_step": 22,
+                                "next_step": "energy-hub",
                             },
                             # OPTIMISE ENERGY HUB
                             {
@@ -974,12 +975,12 @@ esdl_config = {
                             {
                                 "name": "Generate cost information template",
                                 "type": "primary",
-                                "next_step": 23,
+                                "next_step": "generate-cost-information-template",
                             },
                             {
                                 "name": "Upload cost information template",
                                 "type": "primary",
-                                "next_step": 24,
+                                "next_step": "upload-cost-information-template",
                             },
                             {
                                 "name": "Optimise asset dimensions",
@@ -988,12 +989,12 @@ esdl_config = {
                             {
                                 "name": "Run Energy Hub Configurator",
                                 "type": "primary",
-                                "next_step": 25,
+                                "next_step": "run-energy-hub-configurator",
                             },
                             {
                                 "name": "Load EHC results",
                                 "type": "primary",
-                                "next_step": 26,
+                                "next_step": "load-ehc-results",
                             },
                             {
                                 "name": "Optimise flexibility (in development)",
@@ -1003,13 +1004,13 @@ esdl_config = {
                                 "name": "Start Flex Scan phase 2",
                                 "type": "primary",
                                 "disabled": True,
-                                "next_step": 27,
+                                "next_step": "start-flex-scan-phase-2",
                             },
                             {
                                 "name": "Load FS phase 2 results",
                                 "type": "primary",
                                 "disabled": True,
-                                "next_step": 28,
+                                "next_step": "load-flex-scan-phase-2-results",
                             },
                             {
                                 "name": "Calculate business case (in development)",
@@ -1019,13 +1020,13 @@ esdl_config = {
                                 "name": "Run Energy Hub Configurator",
                                 "type": "primary",
                                 "disabled": True,
-                                "next_step": 29,
+                                "next_step": "run-ehc-business-case-module",
                             },
                             {
                                 "name": "Load EHC results",
                                 "type": "primary",
                                 "disabled": True,
-                                "next_step": 30,
+                                "next_step": "load-ehc-business-case-results",
                             },
                             # SIMULATE TOTAL ENERGY SYSTEM
                             {
@@ -1035,21 +1036,21 @@ esdl_config = {
                             {
                                 "name": "Run Energy System Simulator",
                                 "type": "primary",
-                                "next_step": 31,
+                                "next_step": "run-essim",
                             },
                         ],
                     },
                     {
-                        # 1
+                        "id": "create-project",
                         "name": "Create Project",
                         "description": "",
                         "type": "custom",
                         "component": "eps-create-project",
                         "url": f"{EPS_WEB_HOST}/api/projects/",
-                        "next_step": 0,
+                        "next_step": "home",
                     },
                     {
-                        # 2
+                        "id": "adjust-eps-input",
                         "name": "Adjust EPS input",
                         "description": "",
                         "type": "choice",
@@ -1057,19 +1058,19 @@ esdl_config = {
                             {
                                 "name": "Download project file",
                                 "description": "If you want to inspect the KvK data or modify input data, you can download a project file.",
-                                "next_step": 3,
+                                "next_step": "select-existing-project-for-download",
                                 "type": "primary",
                             },
                             {
                                 "name": "Upload project file",
                                 "description": "An adjusted project file can be uploaded to serve as input for a new EPS run. This file can then be selected in the next step: Run EPS.",
-                                "next_step": 6,
+                                "next_step": "select-existing-project-for-upload",
                                 "type": "primary",
                             },
                         ],
                     },
                     {
-                        # 3
+                        "id": "select-existing-project-for-download",
                         "name": "Select existing project",
                         "description": "Please select the project for which you would like to download a project file.",
                         "type": "select-query",
@@ -1082,10 +1083,10 @@ esdl_config = {
                             "value_field": "id",
                         },
                         "target_variable": "project",
-                        "next_step": 4,
+                        "next_step": "select-project-file-for-download",
                     },
                     {
-                        # 4
+                        "id": "select-project-file-for-download",
                         "name": "Select project file",
                         "description": "Please select the project file you would like to download.",
                         "type": "select-query",
@@ -1099,10 +1100,10 @@ esdl_config = {
                             "value_field": "id",
                         },
                         "target_variable": "file",
-                        "next_step": 5,
+                        "next_step": "download-project-file",
                     },
                     {
-                        # 5
+                        "id": "download-project-file",
                         "name": "Download project file",
                         "description": "By clicking the button below you can download the selected project file.",
                         "type": "download_file",
@@ -1116,7 +1117,7 @@ esdl_config = {
                         },
                     },
                     {
-                        # 6
+                        "id": "select-existing-project-for-upload",
                         "name": "Select existing project",
                         "description": "Please select the project for which you would like to upload a project file.",
                         "type": "select-query",
@@ -1129,13 +1130,12 @@ esdl_config = {
                             "value_field": "id",
                         },
                         "target_variable": "project",
-                        "next_step": 7,
+                        "next_step": "upload-project-file",
                     },
                     {
-                        # 7
+                        "id": "upload-project-file",
                         "name": "Upload project file",
-                        "description": "Note: When uploading a project file with the same name as a previous project "
-                        "file, the previous file will be overwritten!",
+                        "description": "Note: When uploading a project file with the same name as a previous project file, the previous file will be overwritten!",
                         "type": "upload_file",
                         "target": {
                             "url": f"{EPS_WEB_HOST}/api/uploads/",
@@ -1145,7 +1145,7 @@ esdl_config = {
                         "success_text": "The newly uploaded file can be used to start a new EPS run.",
                     },
                     {
-                        # 8
+                        "id": "select-existing-project-for-run-eps",
                         "name": "Select existing project",
                         "description": "",
                         "type": "select-query",
@@ -1158,10 +1158,10 @@ esdl_config = {
                             "value_field": "id",
                         },
                         "target_variable": "project",
-                        "next_step": 9,
+                        "next_step": "run-the-eps",
                     },
                     {
-                        # 9
+                        "id": "run-the-eps",
                         "name": "Run the EPS",
                         "description": "",
                         "type": "custom",
@@ -1175,14 +1175,13 @@ esdl_config = {
                                     "message": "EPS started successfully! It can take up to 45 minutes for the EPS to complete. When it is complete, the results can be found under 'Resultaten' in the EPS Web environment."
                                 },
                                 "429": {
-                                    "message": "It is currently busy on the server. We cannot start an EPS execution "
-                                    "at this time. Please try again at a later time. "
+                                    "message": "It is currently busy on the server. We cannot start an EPS execution at this time. Please try again at a later time."
                                 },
                             },
                         },
                     },
                     {
-                        # 10
+                        "id": "select-eps-execution",
                         "name": "Select EPS execution",
                         "description": "",
                         "label": "Choose the EPS execution from which to load the results as a baseline energy system ESDL in the Map Editor.",
@@ -1192,14 +1191,16 @@ esdl_config = {
                             "url": f"{EPS_WEB_HOST}/api/eps/",
                             "http_method": "get",
                             "choices_attr": "executions",
-                            "label_fields": ["project", "id", {"label": "complete", "map": {True: "Complete", False: "Failed"}, "default": "Processing"}],
+                            "label_fields": ["project", "id",
+                                             {"label": "complete", "map": {True: "Complete", False: "Failed"},
+                                              "default": "Processing"}],
                             "value_field": "id",
                         },
                         "target_variable": "execution",
-                        "next_step": 11,
+                        "next_step": "load-eps",
                     },
                     {
-                        # 11
+                        "id": "load-eps",
                         "name": "Load EPS",
                         "description": "Please wait a moment while we load the EPS output as ESDL. This ESDL contains the energy system with no measures applied. When the EPS is loaded, please continue.",
                         "type": "service",
@@ -1227,7 +1228,7 @@ esdl_config = {
                         }
                     },
                     {
-                        # 12
+                        "id": "explore-eps-results",
                         "name": "Explore EPS results",
                         "description": "",
                         "type": "custom",
@@ -1238,7 +1239,7 @@ esdl_config = {
                         },
                     },
                     {
-                        # 13
+                        "id": "apply-eps-measures",
                         "name": "Apply EPS measures",
                         "description": "",
                         "type": "custom",
@@ -1294,7 +1295,7 @@ esdl_config = {
                         }
                     },
                     {
-                        # 14
+                        "id": "start-flex-scan-phase-1",
                         "name": "Start Flex Scan phase 1",
                         "description": "",
                         "type": "custom",
@@ -1304,7 +1305,7 @@ esdl_config = {
                         },
                     },
                     {
-                        # 15
+                        "id": "select-flex-scan-f1-year",
                         "name": "Select Flex Scan F1 year",
                         "description": "Choose the year for which you want to load the Flex Scan phase 1 results. NB. Make sure to select the ESDL layer you wish to use as a baseline for the Flex Scan F1 results.",
                         "type": "choice",
@@ -1312,7 +1313,7 @@ esdl_config = {
                             {
                                 "name": "2020",
                                 "description": "",
-                                "next_step": 16,
+                                "next_step": "load-flex-scan-f1",
                                 "target_variable_value": {
                                     "year": 2020
                                 }
@@ -1320,7 +1321,7 @@ esdl_config = {
                             {
                                 "name": "2025",
                                 "description": "",
-                                "next_step": 16,
+                                "next_step": "load-flex-scan-f1",
                                 "target_variable_value": {
                                     "year": 2025
                                 }
@@ -1328,7 +1329,7 @@ esdl_config = {
                             {
                                 "name": "2030",
                                 "description": "",
-                                "next_step": 16,
+                                "next_step": "load-flex-scan-f1",
                                 "target_variable_value": {
                                     "year": 2030
                                 }
@@ -1337,7 +1338,7 @@ esdl_config = {
                         "target_variable": "flexscanf1",
                     },
                     {
-                        # 16
+                        "id": "load-flex-scan-f1",
                         "name": "Load Flex Scan F1",
                         "type": "service",
                         "state_params": {
@@ -1372,39 +1373,37 @@ esdl_config = {
                             ],
                             "with_jwt_token": True,
                         },
-                        # "target_variable": "flexscanf1.year",  # when wanting to set loaded per year
                         "target_variable": "flexscanf1",
                         "target_variable_value": {
                             "loaded": True
                         },
                     },
                     {
-                        # 17
-                        # TODO: choose correct type and implement
+                        "id": "configure-energy-infrastructure",
                         "name": "",
                         "description": "",
                         "type": "text",
                         "text": """
-                            A basic theoretical configuration of the electricity and gas infrastructure has been generated by the EPS, connecting all electricity connections to one substation and all gas connections to one gas network. 
-                            In this step, this infrastructure configuration can be adjusted to reflect the actual situation, and the infrastructure attributes can be set. 
-                            This can be done using the standard ESDL Map Editor functionalities.
-                        """,
+                        A basic theoretical configuration of the electricity and gas infrastructure has been generated by the EPS, connecting all electricity connections to one substation and all gas connections to one gas network.
+                        In this step, this infrastructure configuration can be adjusted to reflect the actual situation, and the infrastructure attributes can be set.
+                        This can be done using the standard ESDL Map Editor functionalities.
+                    """,
                     },
                     {
-                        # 18
+                        "id": "generate-profile-template",
                         "name": "Generate profile template",
                         "description": "",
                         "type": "custom",
                         "component": "dice-generate-profile-template",
                     },
                     {
-                        # 19
+                        "id": "upload-profiles",
                         "name": "Upload profiles",
                         "type": "custom",
                         "component": "dice-upload-profiles",
                     },
                     {
-                        # 20
+                        "id": "custom-energy-saving-measures",
                         "name": "Custom energy saving measures",
                         "description": "",
                         "type": "custom",
@@ -1435,14 +1434,14 @@ esdl_config = {
                         }
                     },
                     {
-                        # 21
+                        "id": "configure-new-assets",
                         "name": "Configure new assets",
                         "description": "",
                         "type": "text",
                         "text": "At this point of the workflow you can add any assets and connections, to model your energy system scenario. Please make sure that you have selected the EPS measures you are interested in beforehand, and that you have applied any custom measures if applicable. These cannot be adjusted in a later stage.",
                     },
                     {
-                        # 22
+                        "id": "energy-hub",
                         "name": "Energy Hub",
                         "description": "",
                         "type": "custom",
@@ -1469,22 +1468,21 @@ esdl_config = {
                         }
                     },
                     {
-                        # 23
+                        "id": "generate-cost-information-template",
                         "name": "Generate cost information template",
                         "description": "",
                         "type": "custom",
                         "component": "cost-information-generate-template",
                     },
                     {
-                        # 24
+                        "id": "upload-cost-information-template",
                         "name": "Upload cost information template",
                         "description": "",
                         "type": "custom",
                         "component": "cost-information-upload-template",
                     },
                     {
-                        # 25 (TEMP)
-                        # TODO: swap with commented step below when EHC is hosted
+                        "id": "run-energy-hub-configurator",
                         "name": "Run Energy Hub Configurator",
                         "description": "",
                         "type": "text",
@@ -1537,46 +1535,42 @@ esdl_config = {
                     #     }
                     # },
                     {
-                        # 26
-                        # TODO: choose correct type and implement
+                        "id": "load-ehc-results",
                         "name": "Load Energy Hub Configurator results",
                         "description": "",
                         "type": "text",
                         "text": "The ESDL file from the EHC results can be imported into the Map Editor by selecting the 'Import ESDL with in-line profiles' option from the 'File' menu in the top-left corner of the screen. The ESDL file can be selected from the file dialog that appears and will be automatically added to your ESDL layers.",
                     },
                     {
-                        # 27
-                        # TODO: choose correct type and implement
+                        "id": "start-flex-scan-phase-2",
                         "name": "Start Flex Scan phase 2",
                         "description": "",
                         "type": "text",
                         "text": "PLACEHOLDER",
                     },
                     {
-                        # 28
-                        # TODO: choose correct type and implement
+                        "id": "load-flex-scan-phase-2-results",
                         "name": "Load Flex Scan phase 2 results",
                         "description": "",
                         "type": "text",
                         "text": "PLACEHOLDER",
                     },
                     {
-                        # 29
+                        "id": "run-ehc-business-case-module",
                         "name": "Run EHC Business Case module",
                         "description": "",
                         "type": "text",
                         "text": "PLACEHOLDER",
                     },
                     {
-                        # 30
+                        "id": "load-ehc-business-case-results",
                         "name": "Load EHC Business Case results",
                         "description": "",
                         "type": "text",
                         "text": "PLACEHOLDER",
                     },
                     {
-                        # 31
-                        # TODO: choose correct type and implement
+                        "id": "run-essim",
                         "name": "Run ESSIM",
                         "description": "",
                         "type": "text",
