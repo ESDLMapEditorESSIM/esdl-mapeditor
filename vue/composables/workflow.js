@@ -268,17 +268,30 @@ export function useWorkflow() {
      * @param {*} dataConfig the data config from the json service configuration for the workflow step
      * @param {*} afterDataRetrievedFunction optional function that will be called after getting the data
      */
-    const getInputData = async (dataConfig, afterDataRetrievedFunction = () => {
-    }) => {
+    const getInputData = async (dataConfig, afterDataRetrievedFunction = () => {}) => {
+        if (dataConfig === null || dataConfig === undefined) {
+            throw new Error("No data config found for workflow step");
+        }
+
         let data = {};
 
         if ("from_config" in dataConfig) {
             data = {...data, ...dataConfig.from_config};
         }
+
         if ("from_url" in dataConfig) {
-            const request_params = {};
-            if ("request_params" in dataConfig.from_url) {
-                dataConfig.from_url.request_params.forEach(function (param) {
+            const urlConfig = dataConfig.from_url;
+            const url = urlConfig.url;
+            const method = urlConfig.method || 'GET';
+            const headers = urlConfig.headers || {};
+
+            if (method.toLowerCase() !== 'post' && method.toLowerCase() !== 'get') {
+                throw new Error(`Unsupported HTTP method: ${method}`);
+            }
+
+            let request_params = {};
+            if ("request_params" in urlConfig) {
+                urlConfig.request_params.forEach(function (param) {
                     if ("value" in param) {
                         request_params[param.name] = param.value;
                     } else if ("parameter_name" in param) {
@@ -288,19 +301,34 @@ export function useWorkflow() {
                     }
                 });
             }
-            const response = await workflowGetData(dataConfig.from_url.url, request_params);
-            if ("wrapper_variable" in dataConfig.from_url) {
-                data[dataConfig.from_url.wrapper_variable] = response;
-            } else {
-                data = {...data, ...response};
+
+            try {
+                let response;
+                if (method.toLowerCase() === 'POST') {
+                    const body = urlConfig.body || request_params;
+                    response = await workflowPostData(url, body, headers);
+                } else {
+                    response = await workflowGetData(url, request_params, headers);
+                }
+
+                if ("wrapper_variable" in urlConfig) {
+                    data[urlConfig.wrapper_variable] = response;
+                } else {
+                    data = {...data, ...response};
+                }
+            } catch (error) {
+                console.error(`Error in HTTP ${method} request:`, error);
             }
         }
+
         if ("from_state" in dataConfig) {
             for (const [key, value] of Object.entries(dataConfig.from_state)) {
                 data[key] = getFromState(value);
             }
         }
+
         if ("from_socket" in dataConfig) {
+            // In case of socket, we work with a callback.
             const fromSocket = dataConfig.from_socket;
 
             let params = "params" in fromSocket ? fromSocket.params : {};
@@ -318,11 +346,13 @@ export function useWorkflow() {
                 afterDataRetrievedFunction(data);
             });
         } else {
+            // This should only be done if there is no from_socket handler, as that one has to wait for the callback.
             if (Object.keys(data).length === 0) {
                 data = null;
             }
             afterDataRetrievedFunction(data);
         }
+
     };
 
     /**
@@ -424,6 +454,28 @@ export const WorkflowNextStepTriggerOptions = Object.freeze({
     BUTTON_CLICK: "button_click",
 });
 
+/**
+ * @typedef {Object} StepConfig
+ * @property {Object|null} [state_params] - Mapping of parameters in state
+ * @property {boolean} [datetimes_convert_Z] - Whether to convert datetime formats
+ * @property {string|null} [button_text]
+ * @property {Object|null} workflow_engine
+ * @property {string|null} next_step
+ * @property {string} next_step_trigger
+ */
+
+/**
+ * @typedef {Object} StepParameters
+ * @property {string} id - Step identifier
+ * @property {StepConfig|null} config - Configuration options
+ * @property {Object|null} data - Data for the step
+ * @property {string|null} [buttonText] - Optional button text
+ * @property {Object|null} workflowEngine - Workflow engine configuration
+ * @property {string|null} nextStep - Next step identifier
+ * @property {string} nextStepTrigger - Trigger type for next step
+ * @property {Object|null} [service] - Service configuration
+ */
+
 export class StepParameters {
     constructor(id, config, data, buttonText, workflowEngine, nextStep, nextStepTrigger) {
         this.id = id;
@@ -433,6 +485,7 @@ export class StepParameters {
         this.workflowEngine = workflowEngine;
         this.nextStep = nextStep;
         this.nextStepTrigger = nextStepTrigger;
+        this.service = null;
     }
 }
 

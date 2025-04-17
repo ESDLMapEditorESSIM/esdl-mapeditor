@@ -374,7 +374,9 @@ class ESDLServices:
                             param_value = (base64.b64encode(param.encode("utf-8"))).decode("utf-8")
                         else:
                             param_value = param
-                        body[cfg_service_param["name"]] = param_value
+                        # For backwards compatibility support both names. When using name, not all result handling will properly work.
+                        param_name = cfg_service_param.get("parameter_name", cfg_service_param.get("name"))
+                        body[param_name] = param_value
                 else:
                     # Parameter is a "real" URL parameter: ?key1=value1&key2=value2&...
                     if first_qp:
@@ -422,7 +424,7 @@ class ESDLServices:
                 results = []
                 for result_config in service["result"]:
                     try:
-                        result = self._process_service_result(esh, url_response, result_config, input_data, service,
+                        result = self._process_service_result(esh, url_response, input_data, result_config, service,
                                                               service_params, state_params, active_es_id)
                         if result:
                             results.append(result)
@@ -462,7 +464,11 @@ class ESDLServices:
         :param active_es_id:
         :return: None or a tuple with a boolean indicating success, a message, and a dictionary with additional information.
         """
-        # print(r.text)
+        if "model_short_name" in result_config:
+            model_short_name = result_config["model_short_name"]
+        else:
+            model_short_name = "Model"
+
         if result_config["action"] == "esdl":
             if "json_field" in service["result"][0]:
                 esdl_data = url_response.json()[result_config["json_field"]]
@@ -481,78 +487,74 @@ class ESDLServices:
             es, parse_info = esh.add_from_string(service["name"], esdl_response)
             # TODO deal with parse_info?
 
-        if "show_asset_feedback" in result_config and result_config["show_asset_feedback"]:
-            model_run_data = self.models_storage.get_model_run(state_params["run_id"])
-            if ESDL_FEEDBACK in model_run_data:
-                feedback = model_run_data[ESDL_FEEDBACK]
-            else:
-                feedback = {}
+            message = None
+            backend_action = {"force_update_es_id": es.id}
 
-            return (
-                True,
-                {"asset_feedback": feedback},
-                {"force_update_es_id": es.id, "run_after_esdl_loaded": True},
-            )
+            if "show_asset_feedback" in result_config and result_config["show_asset_feedback"]:
+                model_run_data = self.models_storage.get_model_run(state_params["run_id"])
+                if ESDL_FEEDBACK in model_run_data:
+                    feedback = model_run_data[ESDL_FEEDBACK]
+                else:
+                    feedback = {}
 
-        if "model_short_name" in result_config:
-            model_short_name = result_config["model_short_name"]
-        else:
-            model_short_name = "Model"
-        if "animation" in result_config:
-            influxdb_host_override = None
-            if "influxdb_host_override" in result_config["animation"]:
-                influxdb_host_override = result_config["animation"]["influxdb_host_override"]
-            influxdb_port_override = None
-            if "influxdb_port_override" in result_config["animation"]:
-                influxdb_port_override = result_config["animation"]["influxdb_port_override"]
+                message = {"asset_feedback": feedback}
+                backend_action["run_after_esdl_loaded"] = True
 
-            try:
-                animation_fields = Profiles.get_animation_fields(
-                    es.id,
-                    influxdb_host_override=influxdb_host_override,
-                    influxdb_port_override=influxdb_port_override
-                )
-                if animation_fields:
-                    filter_tag_name = None
-                    filter_tag_value = None
-                    if "filter_on_tag" in service["result"][0]["animation"]:
-                        model_run_data = self.models_storage.get_model_run(state_params["run_id"])
-                        filter_tag_name = service["result"][0]["animation"]["filter_on_tag"]["tag_name"]
-                        filter_tag_value = get_nested_dict_value(
-                            model_run_data,
-                            service["result"][0]["animation"]["filter_on_tag"]["value_database_key"],
-                        )
-                    emit(
-                        "animation_esdl_data",
-                        {
-                            "es_id": es.id,
-                            "fields": animation_fields,
-                            "message": f"For {model_short_name} result: '{state_params['run_name']}'",
-                            "filter_tag_name": filter_tag_name,
-                            "filter_tag_value": filter_tag_value,
-                            "influxdb_host_override": influxdb_host_override,
-                            "influxdb_port_override": influxdb_port_override,
-                        },
+            if "animation" in result_config:
+                influxdb_host_override = None
+                if "influxdb_host_override" in result_config["animation"]:
+                    influxdb_host_override = result_config["animation"]["influxdb_host_override"]
+                influxdb_port_override = None
+                if "influxdb_port_override" in result_config["animation"]:
+                    influxdb_port_override = result_config["animation"]["influxdb_port_override"]
+
+                try:
+                    animation_fields = Profiles.get_animation_fields(
+                        es.id,
+                        influxdb_host_override=influxdb_host_override,
+                        influxdb_port_override=influxdb_port_override
                     )
-            except Exception as e:
-                logger.error(e)
-                return False, str(e), None
+                    if animation_fields:
+                        filter_tag_name = None
+                        filter_tag_value = None
+                        if "filter_on_tag" in service["result"][0]["animation"]:
+                            model_run_data = self.models_storage.get_model_run(state_params["run_id"])
+                            filter_tag_name = service["result"][0]["animation"]["filter_on_tag"]["tag_name"]
+                            filter_tag_value = get_nested_dict_value(
+                                model_run_data,
+                                service["result"][0]["animation"]["filter_on_tag"]["value_database_key"],
+                            )
+                        emit(
+                            "animation_esdl_data",
+                            {
+                                "es_id": es.id,
+                                "fields": animation_fields,
+                                "message": f"For {model_short_name} result: '{state_params['run_name']}'",
+                                "filter_tag_name": filter_tag_name,
+                                "filter_tag_value": filter_tag_value,
+                                "influxdb_host_override": influxdb_host_override,
+                                "influxdb_port_override": influxdb_port_override,
+                            },
+                        )
+                except Exception as e:
+                    logger.error(e)
+                    return False, str(e), None
 
-        if "external_link" in service["result"][0]:
-            model_run_data = self.models_storage.get_model_run(state_params["run_id"])
-            external_link_url = get_nested_dict_value(
-                model_run_data, service["result"][0]["external_link"]["value_database_key"]
-            )
-            emit(
-                "results_external_link",
-                {
-                    "description": service["result"][0]["external_link"]["description"],
-                    "url": external_link_url,
-                    "es_id": es.id,
-                    "message": f"For {model_short_name} result: '{state_params['run_name']}'",
-                },
-            )
-            return True, None, {"force_update_es_id": es.id}
+            if "external_link" in result_config:
+                model_run_data = self.models_storage.get_model_run(state_params["run_id"])
+                external_link_url = get_nested_dict_value(
+                    model_run_data, result_config["external_link"]["value_database_key"]
+                )
+                emit(
+                    "results_external_link",
+                    {
+                        "description": result_config["external_link"]["description"],
+                        "url": external_link_url,
+                        "es_id": es.id,
+                        "message": f"For {model_short_name} result: '{state_params['run_name']}'",
+                    },
+                )
+            return True, message, backend_action
         elif result_config["action"] == "print":
             return True, json.loads(input_data), None
         elif result_config["action"] == "add_assets":

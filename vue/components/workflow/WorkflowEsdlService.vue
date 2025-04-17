@@ -18,7 +18,10 @@
     <p v-if="workflowStep.service.description">
       {{ workflowStep.service.description }}
     </p>
-    <p v-else-if="workflowStep.service.description!==''">
+    <p v-else-if="workflowStep.service.auto">
+      The ESDL service will be called automatically. Please click the button below when the ESDL was loaded fully.
+    </p>
+    <p v-else-if="workflowStep.service.description !==''">
       Please select the "Run ESDL service" button below to run the ESDL service
       and load the results.
     </p>
@@ -26,7 +29,7 @@
       v-if="stepParams.nextStepTrigger === WorkflowNextStepTriggerOptions.BUTTON_CLICK"
       type="primary"
       :disabled="!isAllInputValid()"
-      @click="loadEsdl"
+      @click="submitButton"
     >
       <div v-if="stepParams.buttonText"> {{ stepParams.buttonText }}</div>
       <div v-else>
@@ -41,10 +44,8 @@
 import {setattrd} from "@/utils/utils";
 
 import {useWorkflow, WorkflowNextStepTriggerOptions} from "@/composables/workflow";
-import {useEsdlLayers} from "@/composables/esdlLayers";
 import {onMounted, ref, watch} from "vue";
 
-// eslint-disable-next-line no-unused-vars
 const {
   getWorkflowStepParameters,
   getParamsFromState,
@@ -64,7 +65,7 @@ const props = defineProps({
   },
 });
 
-/** @type {import('vue').Ref<StepParameters|null>} */
+/** @type {import('vue').Ref<import('@/composables/workflow').StepParameters|null>} */
 const stepParams = ref({});
 
 onMounted(() => {
@@ -81,17 +82,28 @@ const esdlWasLoaded = () => {
   goToFirstStep();
 };
 
+const submitButton = () => {
+  if (stepParams.value.service.auto) {
+    // If the service is auto, the button takes you to the next step.
+    goToStep(stepParams.value.nextStep);
+  } else {
+    loadEsdl();
+  }
+}
+
 const loadEsdl = () => {
-  console.log("Loading ESDL service");
+  console.debug("Loading ESDL service", stepParams.value);
   let params = {};
   params["service_config"] = stepParams.value.service;
 
-  if (stepParams.value.config["state_params"]) {
+  const stepConfig = stepParams.value.config;
+
+  if (stepConfig && stepConfig["state_params"]) {
     params["state_params"] = getParamsFromState(stepParams.value.config["state_params"]);
   } else {
     params["state_params"] = {};
   }
-  if (stepParams.value.config["datetimes_convert_Z"]) {  // for i.e. essim
+  if (stepConfig && stepConfig["datetimes_convert_Z"]) {  // for i.e. essim
     for (const [key, value] of Object.entries(params["state_params"])) {
       if (!isNaN(new Date(value).getTime())) { // string is in datetime format
         params["state_params"][key] = value.replace(".000Z", "+0100");
@@ -114,16 +126,14 @@ const loadEsdl = () => {
       window.hide_loader();
     });
   } else {
-    window.socket.emit("command", {cmd: "query_esdl_service", params: params}, () => {
-      goToStep(stepParams.value.nextStep);
-    });
+    window.socket.emit("command", {cmd: "query_esdl_service", params: params});
   }
 };
 
 const init = async () => {
   stepParams.value = getWorkflowStepParameters(props.workflowStep);
   stepParams.value.service = props.workflowStep.service;
-  if (stepParams.value.nextStepTrigger === WorkflowNextStepTriggerOptions.LOADING_COMPLETE) {
+  if (stepParams.value.nextStepTrigger === WorkflowNextStepTriggerOptions.LOADING_COMPLETE || stepParams.value.service.auto) {
     // Load the ESDL upon loading of this step.
     loadEsdl();
   }

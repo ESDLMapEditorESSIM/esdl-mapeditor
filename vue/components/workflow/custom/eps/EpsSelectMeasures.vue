@@ -15,17 +15,16 @@
   </div>
   <hr>
   <div id="eps-measures-checkbox-group">
-    <a-checkbox-group v-model:value="selectedMeasures" name="measures" :options="plainOptions" style="flex-direction: column"/>
+    <a-checkbox-group v-model:value="selectedMeasures" name="measures" :options="plainOptions" style="flex-direction: column" />
   </div>
   <a-button type="primary" @click="loadEsdl"> Retrieve ESDL for selected measures </a-button>
 </template>
 
 <script setup>
 import {ref, watch} from "vue";
-import {useWorkflow} from "../../../../composables/workflow.js";
-// eslint-disable-next-line no-unused-vars
+import {useWorkflow} from "@/composables/workflow";
 import "@jsonforms/vue-vanilla/vanilla.css";
-import {symDiff} from "../../../../utils/utils";
+import {symDiff} from "@/utils/utils";
 
 const props = defineProps({
   workflowStep: {
@@ -69,8 +68,8 @@ const loadEsdl = () => {
   const params = {};
   params["service_id"] = workflowStep.service.id;
 
-  if (workflowStep["state_params"]) {
-    params["state_params"] = getParamsFromState(workflowStep["state_params"]);
+  if (workflowStep.config["state_params"]) {
+    params["state_params"] = getParamsFromState(workflowStep.config["state_params"]);
   } else {
     params["state_params"] = {};
   }

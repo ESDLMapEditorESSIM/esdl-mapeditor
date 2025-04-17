@@ -67,10 +67,12 @@
 
     <WorkflowChoice
       v-if="currentWorkflow.workflowStep.type === WorkflowStepTypes.CHOICE"
+      :key="currentWorkflow.workflowStep.name"
       :workflow-step="currentWorkflow.workflowStep"
     />
     <WorkflowSelect
       v-else-if="currentWorkflow.workflowStep.type === WorkflowStepTypes.SELECT"
+      :key="currentWorkflow.workflowStep.name"
       :workflow-step="currentWorkflow.workflowStep"
     />
     <WorkflowTable

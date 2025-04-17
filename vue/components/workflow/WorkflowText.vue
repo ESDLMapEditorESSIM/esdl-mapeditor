@@ -50,6 +50,11 @@ const updateData = (data) => {
 
 const init = async () => {
   stepParams.value = getWorkflowStepParameters(props.workflowStep);
-  await getInputData(stepParams.value.data, updateData);
+  try {
+    await getInputData(stepParams.value.data, updateData);
+  } catch (error) {
+    console.error("Error fetching input data:", error);
+    updateData("Error fetching input data.");
+  }
 };
 </script>

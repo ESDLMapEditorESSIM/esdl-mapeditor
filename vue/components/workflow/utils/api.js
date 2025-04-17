@@ -8,17 +8,27 @@ import {checkAndRefreshAuthStatus} from "../../../utils/status";
  *
  * @param remote_url (string) The URL to forward to.
  * @param request_params (object) The key-value query parameters.
+ * @param headers (object) The headers to send with the request.
  * @returns {Promise<Response|null>} The respoose, or null if nothing was received.
  */
-export async function workflowGetData(remote_url, request_params) {
-    request_params["url"] = remote_url;
+export async function workflowGetData(remote_url, request_params, headers) {
     window.show_loader();
+    request_params["url"] = remote_url;
+    if (!headers) {
+        headers = {};
+    }
     try {
         const is_logged_in = await checkAndRefreshAuthStatus();
         if (is_logged_in) {
             const queryString = new URLSearchParams(request_params).toString();
             // Perform the request to the mapeditor backend, who will forward it to the service.
-            const response = await fetch(`workflow/get_data?${queryString}`);
+            const response = await fetch(`workflow/get_data?${queryString}`, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...headers,
+                },
+            });
             if (response.ok) {
                 return await response.json();
             } else {
@@ -41,8 +51,11 @@ export async function workflowGetData(remote_url, request_params) {
  * 
  * Returns the response.
  */
-export async function workflowPostData(remote_url, request_params) {
+export async function workflowPostData(remote_url, request_params, headers) {
     window.show_loader();
+    if (!headers) {
+        headers = {};
+    }
     try {
         const is_logged_in = await checkAndRefreshAuthStatus();
         if (is_logged_in) {
@@ -56,6 +69,7 @@ export async function workflowPostData(remote_url, request_params) {
                 body: JSON.stringify(params),
                 headers: {
                     "Content-Type": "application/json",
+                    ...headers,
                 },
             });
             if (response.ok) {

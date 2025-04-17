@@ -3007,7 +3007,8 @@ def process_command(message):
     if message['cmd'] == 'remove_energysystem':
         remove_es_id = message['remove_es_id']
         es_info_list = get_session("es_info_list")
-        del es_info_list[remove_es_id]  # update es info list too
+        if remove_es_id in es_info_list:
+            del es_info_list[remove_es_id]
         clear_session_key_for_esid(remove_es_id, 'shape_dictionary')
         clear_session_key_for_esid(remove_es_id, 'conn_list')
         clear_session_key_for_esid(remove_es_id, 'asset_list')
@@ -3044,7 +3045,7 @@ def query_esdl_services(params):
     logger.debug('calling service')
     try:
         results = esdl_services.call_esdl_service(params)
-        logger.debug('results: {}'.format(results))
+        logger.debug('ESDL service results: {}'.format(results))
     except Exception as exc:
         logger.exception("Exception when querying ESDL service")
         esdl_service_ok = False

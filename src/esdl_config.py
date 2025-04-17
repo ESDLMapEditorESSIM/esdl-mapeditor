@@ -1073,33 +1073,51 @@ esdl_config = {
                         "id": "select-existing-project-for-download",
                         "name": "Select existing project",
                         "description": "Please select the project for which you would like to download a project file.",
-                        "type": "select-query",
-                        "multiple": False,
-                        "source": {
-                            "url": f"{EPS_WEB_HOST}/api/projects/",
-                            "http_method": "get",
-                            "choices_attr": "projects",
+                        "type": "select",
+                        "config": {
+                            "multiple": False,
                             "label_fields": ["name"],
                             "value_field": "id",
+                            "choices_attr": "projects",
                         },
-                        "target_variable": "project",
+                        "data": {
+                            "from_url": {
+                                "url": f"{EPS_WEB_HOST}/api/projects/",
+                                "method": "GET",
+                                "headers": {
+                                    "Accept": "application/json"
+                                },
+                            },
+                            "to_state": {},
+                            "output_wrapper_variable": "project"
+                        },
                         "next_step": "select-project-file-for-download",
                     },
                     {
                         "id": "select-project-file-for-download",
                         "name": "Select project file",
                         "description": "Please select the project file you would like to download.",
-                        "type": "select-query",
-                        "multiple": False,
-                        "source": {
-                            "url": EPS_WEB_HOST + "/api/projects/{project_id}/files",
-                            "request_params": {"project_id": "project.id"},
-                            "http_method": "get",
-                            "choices_attr": "file_names",
+                        "type": "select",
+                        "config": {
+                            "multiple": False,
                             "label_fields": ["name"],
                             "value_field": "id",
+                            "choices_attr": "file_names",
                         },
-                        "target_variable": "file",
+                        "data": {
+                            "from_url": {
+                                "url": f"{EPS_WEB_HOST}/api/projects/{{project_id}}/files",
+                                "request_params": [
+                                    {"name": "project_id", "parameter_name": "project.id"}
+                                ],
+                                "method": "GET",
+                                "headers": {
+                                    "Accept": "application/json"
+                                },
+                            },
+                            "to_state": {},
+                            "output_wrapper_variable": "file"
+                        },
                         "next_step": "download-project-file",
                     },
                     {
@@ -1120,16 +1138,24 @@ esdl_config = {
                         "id": "select-existing-project-for-upload",
                         "name": "Select existing project",
                         "description": "Please select the project for which you would like to upload a project file.",
-                        "type": "select-query",
-                        "multiple": False,
-                        "source": {
-                            "url": f"{EPS_WEB_HOST}/api/projects/",
-                            "http_method": "get",
-                            "choices_attr": "projects",
+                        "type": "select",
+                        "config": {
+                            "multiple": False,
                             "label_fields": ["name"],
                             "value_field": "id",
+                            "choices_attr": "projects",
                         },
-                        "target_variable": "project",
+                        "data": {
+                            "from_url": {
+                                "url": f"{EPS_WEB_HOST}/api/projects/",
+                                "method": "GET",
+                                "headers": {
+                                    "Accept": "application/json"
+                                },
+                            },
+                            "to_state": {},
+                            "output_wrapper_variable": "project"
+                        },
                         "next_step": "upload-project-file",
                     },
                     {
@@ -1185,26 +1211,44 @@ esdl_config = {
                         "name": "Select EPS execution",
                         "description": "",
                         "label": "Choose the EPS execution from which to load the results as a baseline energy system ESDL in the Map Editor.",
-                        "type": "select-query",
-                        "multiple": False,
-                        "source": {
-                            "url": f"{EPS_WEB_HOST}/api/eps/",
-                            "http_method": "get",
+                        "type": "select",
+                        "config": {
+                            "multiple": False,
                             "choices_attr": "executions",
-                            "label_fields": ["project", "id",
-                                             {"label": "complete", "map": {True: "Complete", False: "Failed"},
-                                              "default": "Processing"}],
+                            "label_fields": [
+                                "project",
+                                "id",
+                                {
+                                    "label": "complete",
+                                    "map": {True: "Complete", False: "Failed"},
+                                    "default": "Processing"
+                                },
+                            ],
                             "value_field": "id",
                         },
-                        "target_variable": "execution",
-                        "next_step": "load-eps",
+                        "data": {
+                            "from_url": {
+                                "url": f"{EPS_WEB_HOST}/api/eps/",
+                                "method": "GET",
+                                "headers": {
+                                    "Accept": "application/json"
+                                },
+                            },
+                            "to_state": {},
+                            "output_wrapper_variable": "execution",
+                        },
+                        "button_text": "Load EPS results",
+                        "next_step": "load-eps"
                     },
                     {
                         "id": "load-eps",
                         "name": "Load EPS",
                         "description": "Please wait a moment while we load the EPS output as ESDL. This ESDL contains the energy system with no measures applied. When the EPS is loaded, please continue.",
-                        "type": "service",
-                        "state_params": {"execution_id": "execution.id"},
+                        "type": "esdl-service",
+                        "config": {
+                            "state_params": {"execution_id": "execution.id"},
+                        },
+                        "button_text": "Confirm EPS loaded",
                         "service": {
                             "id": "9bd2f969-f240-4b26-ace5-2e03fbc04b12",
                             "name": "Visualize EPS",
@@ -1219,7 +1263,6 @@ esdl_config = {
                             "result": [{"code": 200, "action": "esdl"}],
                             "query_parameters": [
                                 {
-                                    "name": "File Name",
                                     "location": "url",
                                     "parameter_name": "execution_id",
                                 }
@@ -1244,7 +1287,9 @@ esdl_config = {
                         "description": "",
                         "type": "custom",
                         "component": "eps-select-measures",
-                        "state_params": {"execution_id": "execution.id"},
+                        "config": {
+                            "state_params": {"execution_id": "execution.id"},
+                        },
                         "service": {
                             "id": "9bd2f969-f240-4b26-ace5-2e03fbc04b14",
                             "name": "Select EPS measures",
@@ -1340,10 +1385,12 @@ esdl_config = {
                     {
                         "id": "load-flex-scan-f1",
                         "name": "Load Flex Scan F1",
-                        "type": "service",
-                        "state_params": {
-                            "execution_id": "execution.id",
-                            "year": "flexscanf1.year"
+                        "type": "esdl-service",
+                        "config": {
+                            "state_params": {
+                                "execution_id": "execution.id",
+                                "year": "flexscanf1.year"
+                            },
                         },
                         "service": {
                             "id": "f25dfd1a-525d-42db-92d6-6d358bbdfca1",
@@ -1383,11 +1430,14 @@ esdl_config = {
                         "name": "",
                         "description": "",
                         "type": "text",
-                        "text": """
-                        A basic theoretical configuration of the electricity and gas infrastructure has been generated by the EPS, connecting all electricity connections to one substation and all gas connections to one gas network.
-                        In this step, this infrastructure configuration can be adjusted to reflect the actual situation, and the infrastructure attributes can be set.
-                        This can be done using the standard ESDL Map Editor functionalities.
-                    """,
+                        "data": {
+                            "from_config": {
+                                "text": """
+                                A basic theoretical configuration of the electricity and gas infrastructure has been generated by the EPS, connecting all electricity connections to one substation and all gas connections to one gas network. In this step, this infrastructure configuration can be adjusted to reflect the actual situation, and the infrastructure attributes can be set.
+                                This can be done using the standard ESDL Map Editor functionalities.
+                            """,
+                            },
+                        },
                     },
                     {
                         "id": "generate-profile-template",
@@ -1438,7 +1488,11 @@ esdl_config = {
                         "name": "Configure new assets",
                         "description": "",
                         "type": "text",
-                        "text": "At this point of the workflow you can add any assets and connections, to model your energy system scenario. Please make sure that you have selected the EPS measures you are interested in beforehand, and that you have applied any custom measures if applicable. These cannot be adjusted in a later stage.",
+                        "data": {
+                            "from_config": {
+                                "text": "At this point of the workflow you can add any assets and connections, to model your energy system scenario. Please make sure that you have selected the EPS measures you are interested in beforehand, and that you have applied any custom measures if applicable. These cannot be adjusted in a later stage.",
+                            },
+                        },
                     },
                     {
                         "id": "energy-hub",
@@ -1486,10 +1540,14 @@ esdl_config = {
                         "name": "Run Energy Hub Configurator",
                         "description": "",
                         "type": "text",
-                        "text": """
-                            For the energy hub configured in an ESDL layer, the economical optimal collective battery specifications can be calculated with the EHC, together with the corresponding business case.
-                            Currently the EHC only accepts ESDL files with in-line placed energy profiles. Please, first make sure the correct ESDL layer is selected. Then the required ESDL file can be obtained from the 'File' menu in the top-left corner of the screen. Within this menu, select the 'Export ESDL with in-line profiles' option. The resulting ESDL file can be used by the EHC.
-                        """,
+                        "data": {
+                            "from_config": {
+                                "text": """
+                                For the energy hub configured in an ESDL layer, the economical optimal collective battery specifications can be calculated with the EHC, together with the corresponding business case.
+                                Currently the EHC only accepts ESDL files with in-line placed energy profiles. Please, first make sure the correct ESDL layer is selected. Then the required ESDL file can be obtained from the 'File' menu in the top-left corner of the screen. Within this menu, select the 'Export ESDL with in-line profiles' option. The resulting ESDL file can be used by the EHC.
+                            """,
+                            },
+                        },
                     },
                     # {
                     #     # 25
@@ -1539,13 +1597,22 @@ esdl_config = {
                         "name": "Load Energy Hub Configurator results",
                         "description": "",
                         "type": "text",
-                        "text": "The ESDL file from the EHC results can be imported into the Map Editor by selecting the 'Import ESDL with in-line profiles' option from the 'File' menu in the top-left corner of the screen. The ESDL file can be selected from the file dialog that appears and will be automatically added to your ESDL layers.",
+                        "data": {
+                            "from_config": {
+                                "text": "The ESDL file from the EHC results can be imported into the Map Editor by selecting the 'Import ESDL with in-line profiles' option from the 'File' menu in the top-left corner of the screen. The ESDL file can be selected from the file dialog that appears and will be automatically added to your ESDL layers.",
+                            },
+                        },
                     },
                     {
                         "id": "start-flex-scan-phase-2",
                         "name": "Start Flex Scan phase 2",
                         "description": "",
                         "type": "text",
+                        "data": {
+                            "from_config": {
+                                "text": "PLACEHOLDER",
+                            },
+                        },
                         "text": "PLACEHOLDER",
                     },
                     {
@@ -1553,28 +1620,44 @@ esdl_config = {
                         "name": "Load Flex Scan phase 2 results",
                         "description": "",
                         "type": "text",
-                        "text": "PLACEHOLDER",
+                        "data": {
+                            "from_config": {
+                                "text": "PLACEHOLDER",
+                            },
+                        },
                     },
                     {
                         "id": "run-ehc-business-case-module",
                         "name": "Run EHC Business Case module",
                         "description": "",
                         "type": "text",
-                        "text": "PLACEHOLDER",
+                        "data": {
+                            "from_config": {
+                                "text": "PLACEHOLDER",
+                            },
+                        },
                     },
                     {
                         "id": "load-ehc-business-case-results",
                         "name": "Load EHC Business Case results",
                         "description": "",
                         "type": "text",
-                        "text": "PLACEHOLDER",
+                        "data": {
+                            "from_config": {
+                                "text": "PLACEHOLDER",
+                            },
+                        },
                     },
                     {
                         "id": "run-essim",
                         "name": "Run ESSIM",
                         "description": "",
                         "type": "text",
-                        "text": "An ESSIM run for the selected ESDL layer can be started via the ESSIM button on the left side of the ESDL Map Editor",
+                        "data": {
+                            "from_config": {
+                                "text": "An ESSIM run for the selected ESDL layer can be started via the ESSIM button on the left side of the ESDL Map Editor",
+                            },
+                        },
                     },
 
                     # TODO: check if these steps can be safely removed
