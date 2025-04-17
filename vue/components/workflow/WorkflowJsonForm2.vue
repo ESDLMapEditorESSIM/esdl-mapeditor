@@ -109,7 +109,7 @@ const validateEvent = (event) => {
   }
 
   let varValue = event.target.value;
-  if (schema["properties"][varName]["type"] === "number" && varValue !== "") {
+  if (["number", "integer"].includes(schema["properties"][varName]["type"]) && varValue !== "") {
     varValue = Number(varValue);
   }
 
@@ -130,7 +130,7 @@ const onChange = (event) => {
 
 const validateJsonForm = (data) => {
   const validate = ajv.compile(schema);
-  const isValid = validate(data) || schema === {};
+  const isValid = validate(data) || Object.keys(schema).length === 0;
   setWorkflowStepInputValid(stepParams.value.id, isValid);
   return {isValid, errors: validate.errors};
 };
