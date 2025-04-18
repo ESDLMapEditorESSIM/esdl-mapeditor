@@ -94,6 +94,7 @@ window.carriers_window = () => {
     mountSidebarComponent(Carriers);
 }
 
+window.object_properties_active_panels = null;
 window.object_properties_window = (object_id) => {
     console.log('object_properties_list', object_id)
     const { newObject } = useObject();
