@@ -33,6 +33,10 @@ model_contexts_config = {
             "Potential": [
                 "name",
             ],
+            "ExposedPortsAsset": [
+                "name",
+                "state"
+            ],
             # ===========================
             #  The 5 ESDL capabilities
             # ===========================
@@ -114,7 +118,11 @@ model_contexts_config = {
             "EnergyAsset": [
                 "name",
                 "state",
-            ]
+            ],
+            "ExposedPortsAsset": [
+                "name",
+                "state"
+            ],
         },
         "ESSIM": {
             # ===========================
@@ -159,6 +167,10 @@ model_contexts_config = {
                 "name",
                 "state",
                 "technicalLifetime"
+            ],
+            "ExposedPortsAsset": [
+                "name",
+                "state"
             ],
             "Potential": [
                 "name",

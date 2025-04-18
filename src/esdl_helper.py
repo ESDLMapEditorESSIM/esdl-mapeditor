@@ -218,6 +218,25 @@ def add_spatial_attributes(asset, attrs):
         attrs['surfaceArea'] = asset.surfaceArea
 
 
+def add_extra_attributes(asset: esdl.Asset, extra_attributes: dict = None) -> dict:
+    """
+    Collect extra attributes that might be required to draw specific icons, compound asset info, ...
+    This updates the existing dictionary provided by parameter extra_attributes, or creates a new dict
+    :return dict with extra attributes
+    """
+    if not extra_attributes:
+        extra_attributes = {}
+    if asset.eIsSet(asset, 'assetType'):
+        extra_attributes['assetType'] = asset.assetType
+    # use the first asset in a compound asset as icon for this asset
+    # send this to the front-end in extra_attributes
+    if isinstance(asset, esdl.CompoundAsset):
+        if len(asset.asset) > 0:
+            first_asset_type = asset.asset[0].eClass.name
+            extra_attributes['compoundFirstAssetType'] = first_asset_type
+
+    return extra_attributes
+
 def energy_asset_to_ui(esh, es_id, asset):  # , port_asset_mapping):
     port_list = []
     conn_list = []
@@ -257,8 +276,7 @@ def energy_asset_to_ui(esh, es_id, asset):  # , port_asset_mapping):
 
     state = asset_state_to_ui(asset)
     geom = asset.geometry
-    extra_attributes = dict()
-    extra_attributes['assetType'] = asset.assetType
+    extra_attributes = add_extra_attributes(asset)
     if geom:
         if isinstance(geom, esdl.Point):
             lat = geom.lat

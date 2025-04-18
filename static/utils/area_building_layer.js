@@ -727,6 +727,10 @@ function create_area_dist_KPIs_pie_chart(ar, refAreaDistKPIs, refDistKPIsRange, 
 
 function resize_area_pi_charts() {
     let area_layers = get_layers(active_layer_id, 'area_layer');
+    if (!area_layers) {
+        // in case area_layer is not present (e.g. in Building Editor)
+        return;
+    }
 
     area_layers.eachLayer(function(featuregroup_instance) {
         if (featuregroup_instance instanceof L.FeatureGroup) {

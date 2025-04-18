@@ -23,7 +23,7 @@ function isBuildingEditorOpen() {
 }
 
 function open_building_editor(dialog, building_info) {
-    //console.log(building_info);
+    console.log(building_info);
     bld_edit_id = building_info['id'];
 
     var contents = [
@@ -52,7 +52,8 @@ function open_building_editor(dialog, building_info) {
     ].join('');
 
     dialog.setContent(contents);
-    dialog.setTitle("Building Editor - " + building_info['building_list'][0][1]);
+    let assetType = building_info['building_list'][0][3] || "Building"
+    dialog.setTitle(assetType + " Editor - " + building_info['building_list'][0][1]);
     // document.getElementById('building-info').innerHTML = 'Test';
 
     if (bld_map && bld_map.remove) {

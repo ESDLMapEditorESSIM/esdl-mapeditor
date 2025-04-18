@@ -18,9 +18,9 @@
         <template v-if="EDRAssets && EDRAssets.length">
           <td>EDR: </td>
           <td v-for="asset in EDRAssets" :key="asset.edr_asset_id" class="icon">
-            <div :title="asset.edr_asset_name" :class="'circle '+asset.edr_asset_cap" @click="buttonEDRClick(asset)">
+            <div :title="asset.edr_asset_name" :class="'circle ' + deriveCSSClass(asset)" @click="buttonEDRClick(asset)">
               <div class="image-div" style="font-size:0px">
-                <img class="asset-icon circle-img" :src="'images/' + asset.edr_asset_type + '.png'" draggable="false">
+                <img class="asset-icon circle-img" :src="deriveImage(asset)" draggable="false">
               </div>
             </div>
           </td>
@@ -28,9 +28,9 @@
         <template v-if="recentEDRAssets && recentEDRAssets.length">
           <td>Recent EDR: </td>
           <td v-for="asset in recentEDRAssets" :key="asset.edr_asset_id" class="icon">
-            <div :title="asset.edr_asset_name" :class="'circle '+asset.edr_asset_cap" @click="buttonEDRClick(asset)">
+            <div :title="asset.edr_asset_name" :class="'circle ' + deriveCSSClass(asset)" @click="buttonEDRClick(asset)">
               <div class="image-div" style="font-size:0px">
-                <img class="asset-icon circle-img" :src="'images/' + asset.edr_asset_type + '.png'" draggable="false">
+                <img class="asset-icon circle-img" :src="deriveImage(asset)" draggable="false">
               </div>
             </div>
           </td>
@@ -96,7 +96,7 @@ export default {
     },
     startDrawing: function(assetName) {
       var marker_class_name = window[assetName+ "Marker"];
-      if (assetName == 'Pipe' || assetName == 'ElectricityCable')
+      if (assetName === 'Pipe' || assetName === 'ElectricityCable')
         window.update_line_asset_menu(assetName);
       else
         window.update_asset_menu(assetName);
@@ -139,6 +139,26 @@ export default {
         'edr_asset_info': asset
       });
       this.startDrawing(asset.edr_asset_type);   // communicate the ESDL class of the clicked EDR asset
+    },
+    deriveCSSClass: function(asset) {
+       // 'edr_asset_type': edr_asset_type -> ESDL type
+       // 'edr_asset_cap': edr_asset_cap -> ESDL capablity
+       if (asset.edr_asset_cap && asset.edr_asset_cap !== "none") {
+         return asset.edr_asset_cap;
+       } else {
+         // in case of building or compound asset
+         if (asset.edr_asset_type === "CompoundAsset") {
+           return "Building"; // use Building css from custom.css
+         }
+         return asset.edr_asset_type;
+       }
+    },
+    deriveImage: function(asset) {
+      let imgsrc = 'images/' + asset.edr_asset_type + '.png';
+      if (!window.assets_for_icons.includes(asset.edr_asset_type)) {
+        imgsrc = window.drawTextImage(window.getAbbrevation(asset.edr_asset_type));
+      }
+      return imgsrc;
     }
   },
 };

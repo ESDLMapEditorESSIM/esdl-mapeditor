@@ -40,7 +40,7 @@ import src.settings as settings
 from esdl import esdl
 from esdl.esdl_handler import EnergySystemHandler, EnergySystemWithSameIdExists
 from esdl.processing import ESDLAsset, ESDLEcore, ESDLEnergySystem, ESDLGeometry, ESDLQuantityAndUnits
-from esdl.processing.ESDLAsset import get_asset_capability_type
+from esdl.processing.ESDLAsset import get_asset_capability_type, update_ids_in_object
 from esdl.processing.ESDLEcore import instantiate_type
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from extensions.activity_context import ActivityContextExtension
@@ -86,7 +86,7 @@ from src.esdl2shapefile import ESDL2Shapefile
 from src.esdl2inlineprofile import ESDL2InlineProfile
 from src.esdl_helper import asset_state_to_ui, generate_profile_info, get_asset_and_coord_from_port_id, \
     get_asset_from_port_id, get_connected_to_info, get_port_profile_info, get_tooltip_asset_attrs, \
-    update_carrier_conn_list, add_spatial_attributes
+    update_carrier_conn_list, add_spatial_attributes, add_extra_attributes
 from src.esdl_services import ESDLServices
 from src.essim_kpis import ESSIM_KPIs
 from src.essim_validation import validate_ESSIM
@@ -797,11 +797,12 @@ def update_asset_connection_locations(asset: esdl.Asset, lat, lon):
 
     emit('clear_connections')   # clear current active layer connections
     add_to_building = False
-    if asset.containingBuilding:
+    #if asset.containingBuilding or asset.containingAsset:
+    if isinstance(asset.eContainer(), esdl.ExposedPortsAsset):
         # building editor is open, so only update building connections.
-        building = asset.containingBuilding
-        bld_info = get_building_information(building)
-        conn_list = bld_info["conn_list"]
+        container = asset.eContainer()  # containingBuilding or asset.containingAsset
+        container_info = get_building_information(container)
+        conn_list = container_info["conn_list"]
         add_to_building = True
     emit('add_connections', {'es_id': active_es_id, 'conn_list': conn_list, 'add_to_building': add_to_building})
 
@@ -1540,13 +1541,10 @@ def process_command(message):
                 # Quick fix: session variable adding_edr_assets now contains ESDL string
                 class_ = type(asset)
                 object_type = class_.__name__
-                print(asset)
                 # Check if any IDs were 'accidentally' set in EDR model template and replace them by a new unique ID
                 # If no ID was set, assign no new ID either
-                for c in asset.eContents:
-                    if c.eClass.findEStructuralFeature('id'):
-                        if c.eGet('id'):
-                            c.eSet('id', str(uuid.uuid4()))
+                update_ids_in_object(asset)
+
             else:
                 asset_drawing_mode = get_session('asset_drawing_mode')
                 if asset_drawing_mode == 'asset_from_measures':
@@ -1611,14 +1609,14 @@ def process_command(message):
                 # Set port existence booleans
                 no_out_port = True
                 no_in_port = True
-                if isinstance(asset, esdl.EnergyAsset):
+                if isinstance(asset, esdl.ConnectableAsset):
                     for p in asset.port:
                         if isinstance(p, esdl.OutPort):
                             no_out_port = False
                         if isinstance(p, esdl.InPort):
                             no_in_port = False
 
-                if not isinstance(asset, esdl.AbstractBuilding):
+                if not isinstance(asset, esdl.ExposedPortsAsset): # not Buildings or Compound assets
                     # -------------------------------------------------------------------------------------------------------------
                     #  Add assets with a polyline geometry and an InPort and an OutPort
                     # -------------------------------------------------------------------------------------------------------------
@@ -1815,7 +1813,7 @@ def process_command(message):
                                 asset.port.append(esdl.OutPort(id=str(uuid.uuid4()), name='Out'))
                         else:
                             logger.error('Unknown asset capability {}'.format(capability))
-                else:
+                else: # abstract building or CompoundAsset
                     # Calculate location of building assets if building comes from EDR
                     calc_building_assets_location(asset)
                     # Update drop down list with areas and buildings
@@ -1832,22 +1830,23 @@ def process_command(message):
                 buildings_to_be_added_list = []
 
                 # TODO: check / solve cable as Point issue?
-                if not isinstance(asset, esdl.AbstractBuilding):
+                if isinstance(asset, esdl.ConnectableAsset):
                     port_list = create_asset_port_message(asset)
+                else:
+                    port_list = []
 
                 # Collect extra attributes that might be required to draw specific icons, ...
-                extra_attributes = dict()
-                extra_attributes['assetType'] = asset.assetType
+                extra_attributes = add_extra_attributes(asset)
 
-                if isinstance(asset, esdl.AbstractBuilding):
+                if isinstance(asset, esdl.ExposedPortsAsset):
                     if isinstance(geometry, esdl.Point):
                         buildings_to_be_added_list.append(['point', asset.name, asset.id, type(asset).__name__,
                                                            [shape['coordinates']['lat'], shape['coordinates']['lng']],
-                                                           False, {}, extra_attributes])
+                                                           False, {}, extra_attributes, port_list])
                     elif isinstance(geometry, esdl.Polygon):
                         boundary = ESDLGeometry.create_boundary_from_geometry(geometry)
                         buildings_to_be_added_list.append(['polygon', asset.name, asset.id, type(asset).__name__,
-                                                           boundary["coordinates"], False, {}, extra_attributes])
+                                                           boundary["coordinates"], False, {}, extra_attributes, port_list])
                     emit('add_building_objects', {'es_id': es_edit.id, 'building_list': buildings_to_be_added_list,
                                                   'zoom': False})
                 else:
@@ -1896,7 +1895,7 @@ def process_command(message):
             # asset = ESDLAsset.find_asset(es_edit.instance[0].area, obj_id)
             # asset can also be any other object in ESDL
             asset = esh.get_by_id(active_es_id, obj_id)
-            if isinstance(asset, esdl.AbstractBuilding):
+            if isinstance(asset, esdl.ExposedPortsAsset):
                 # Update drop down list with areas and buildings
                 remove_ab_from_area_bld_list(asset.id, area_bld_list)
                 emit('area_bld_list', {'es_id': active_es_id, 'area_bld_list': area_bld_list})
@@ -2002,43 +2001,38 @@ def process_command(message):
                 send_alert('Cannot connect ports of the same type. One should be an InPort and one should be an OutPort')
             else:
                 connect_ports(port1, port2)
-                # TODO Handle asset.containingAsset for compoundAssets
                 add_to_building = False
-                if asset1.containingBuilding:
-                    asset1_bld_id = asset1.containingBuilding.id
-                if asset2.containingBuilding:
-                    if asset1.containingBuilding:
+                #if asset1.containingBuilding or asset1.containingAsset:
+                #if isinstance(asset1.eContainer(), esdl.ExposedPortsAsset):
+                #    asset1_container = asset1.eContainer()  # containingBuilding or asset1.containingAsset
+                #if asset2.containingBuilding or asset2.containingAsset:
+                asset1_container = asset1.eContainer()  # containingBuilding or asset1.containingAsset
+                asset2_container = asset2.eContainer()  # containingBuilding or asset2.containingAsset
+                if isinstance(asset2_container, esdl.ExposedPortsAsset):
+                    if isinstance(asset1_container, esdl.ExposedPortsAsset):
                         # assets both in buildings
-                        if asset1_bld_id == asset2.containingBuilding.id:
+                        if asset1_container.id == asset2_container.id:
                             # assets in same building
                             add_to_building = True
                         else:
                             # assets in different buildings
-                            bld_asset1 = asset1.containingBuilding
-                            asset1_port_location = (bld_asset1.geometry.lat, bld_asset1.geometry.lon)
-                            bld_asset2 = asset2.containingBuilding
-                            asset2_port_location = (bld_asset2.geometry.lat, bld_asset2.geometry.lon)
+                            asset1_port_location = (asset1_container.geometry.lat, asset1_container.geometry.lon)
+                            asset2_port_location = (asset2_container.geometry.lat, asset2_container.geometry.lon)
                             add_to_building = False
                     else:
                         # asset2 in building and asset1 not in building
-                        bld_asset2 = asset2.containingBuilding
-                        asset2_port_location = (bld_asset2.geometry.lat, bld_asset2.geometry.lon)
+                        asset2_port_location = (asset2_container.geometry.lat, asset2_container.geometry.lon)
                         add_to_building = False
                 else:
                     # asset2 not in building
-                    if asset1.containingBuilding:
+                    # if asset1.containingBuilding or asset1.containingAsset:
+                    if isinstance(asset1_container, esdl.ExposedPortsAsset):
                         # asset1 in building and asset2 not in building
-                        bld_asset1 = asset1.containingBuilding
-                        asset1_port_location = (bld_asset1.geometry.lat, bld_asset1.geometry.lon)
+                        asset1_port_location = (asset1_container.geometry.lat, asset1_container.geometry.lon)
                         add_to_building = False
                     else:
                         # both assets not in building
                         add_to_building = False
-
-                # emit('add_new_conn', {'es_id': es_edit.id, 'add_to_building': add_to_building,
-                #                       'from-port-id': port1_id, 'to-port-id': port2_id,
-                #                       'new_conn': [[asset1_port_location[0], asset1_port_location[1]],
-                #                                    [asset2_port_location[0], asset2_port_location[1]]]})
 
                 # propagate carrier
                 if not port2.carrier and port1.carrier:
@@ -2059,19 +2053,20 @@ def process_command(message):
 
                 conn_list = get_session_for_esid(active_es_id, 'conn_list')
                 conn_message = {'from-port-id': port1_id, 'from-port-carrier': p1_carr_id, 'from-asset-id': asset1.id,
-                                  'from-asset-coord': [asset1_port_location[0], asset1_port_location[1]],
-                                  'to-port-id': port2_id, 'to-port-carrier': p2_carr_id, 'to-asset-id': asset2.id,
-                                  'to-asset-coord': [asset2_port_location[0], asset2_port_location[1]]}
+                                'from-asset-coord': [asset1_port_location[0], asset1_port_location[1]],
+                                'to-port-id': port2_id, 'to-port-carrier': p2_carr_id, 'to-asset-id': asset2.id,
+                                'to-asset-coord': [asset2_port_location[0], asset2_port_location[1]]}
                 conn_list.append(conn_message)
                 emit('add_connections', {"es_id": active_es_id, "conn_list": [conn_message], "add_to_building": add_to_building})
 
                 # update ports of assets that are connected
                 to_update_assets = [asset1, asset2]
-                # assets is in a building/compound asset, so update also the containingBuilding
-                if asset1.containingBuilding or asset1.containingAsset:
-                    to_update_assets.append(asset1.containingBuilding or asset1.containingAsset)
-                if asset2.containingBuilding or asset2.containingAsset:
-                    to_update_assets.append(asset2.containingBuilding or asset2.containingAsset)
+                # assets is in a building/compound asset, so update also the container
+                #if asset1.containingBuilding or asset1.containingAsset:
+                if isinstance(asset1.eContainer(), esdl.ExposedPortsAsset):
+                    to_update_assets.append(asset1.eContainer())
+                if isinstance(asset2.eContainer(), esdl.ExposedPortsAsset):
+                    to_update_assets.append(asset2.eContainer())
                 for asset in to_update_assets:
                     emit('update_asset', create_update_asset_message(asset))
         else:
@@ -2535,7 +2530,8 @@ def process_command(message):
             bld_conn_list = bld_info["conn_list"]
             emit('clear_connections', {'id': building_id})   # clear current active layer connections
             emit('add_connections', {'es_id': es_edit.id, 'conn_list': bld_conn_list, 'add_to_building': True})
-        if from_port.energyasset.containingBuilding is None or to_port.energyasset.containingBuilding is None:
+        #if from_port.energyasset.containingBuilding is None or to_port.energyasset.containingBuilding is None:
+        if isinstance(from_port.energyasset, esdl.EnergyAsset) or isinstance(to_port.energyasset, esdl.EnergyAsset):
             # only clear main map connections if not both assets are in a building
             emit('clear_connections', {'id': active_es_id})   # clear current active layer connections
             emit('add_connections', {'es_id': active_es_id, 'conn_list': new_list})

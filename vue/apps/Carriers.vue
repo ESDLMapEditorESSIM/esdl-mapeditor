@@ -459,9 +459,9 @@ export default {
       for (let gr=0; gr<profiles_list['groups'].length; gr++) {
         let options = [];
         for (let pr=0; pr<profiles.length; pr++) {
-          if (profiles_list['groups'][gr].setting_type == profiles[pr][1].setting_type) {
-            if (profiles[pr][1].setting_type == 'project' &&
-              profiles[pr][1].project_name != profiles_list['groups'][gr].project_name) continue;
+          if (profiles_list['groups'][gr].setting_type === profiles[pr][1].setting_type) {
+            if (profiles[pr][1].setting_type === 'project' &&
+              profiles[pr][1].project_name !== profiles_list['groups'][gr].project_name) continue;
 
             options.push({
               'value': profiles[pr][1].profile_uiname,
@@ -484,7 +484,7 @@ export default {
     },
     deleteCarrier: function(id) {
       let i=0;
-      while (this.carrier_list[i]['id'] != id) i++;
+      while (this.carrier_list[i]['id'] !== id) i++;
       this.carrier_list.splice(i, 1);
       delete this.carrier_info_mapping[i];
       window.socket.emit('command', {cmd: 'remove_carrier', carrier_id: id});
