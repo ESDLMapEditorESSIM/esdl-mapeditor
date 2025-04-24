@@ -797,10 +797,9 @@ def update_asset_connection_locations(asset: esdl.Asset, lat, lon):
 
     emit('clear_connections')   # clear current active layer connections
     add_to_building = False
-    #if asset.containingBuilding or asset.containingAsset:
     if isinstance(asset.eContainer(), esdl.ExposedPortsAsset):
         # building editor is open, so only update building connections.
-        container = asset.eContainer()  # containingBuilding or asset.containingAsset
+        container = asset.eContainer()
         container_info = get_building_information(container)
         conn_list = container_info["conn_list"]
         add_to_building = True
@@ -2002,12 +2001,8 @@ def process_command(message):
             else:
                 connect_ports(port1, port2)
                 add_to_building = False
-                #if asset1.containingBuilding or asset1.containingAsset:
-                #if isinstance(asset1.eContainer(), esdl.ExposedPortsAsset):
-                #    asset1_container = asset1.eContainer()  # containingBuilding or asset1.containingAsset
-                #if asset2.containingBuilding or asset2.containingAsset:
-                asset1_container = asset1.eContainer()  # containingBuilding or asset1.containingAsset
-                asset2_container = asset2.eContainer()  # containingBuilding or asset2.containingAsset
+                asset1_container = asset1.eContainer()
+                asset2_container = asset2.eContainer()
                 if isinstance(asset2_container, esdl.ExposedPortsAsset):
                     if isinstance(asset1_container, esdl.ExposedPortsAsset):
                         # assets both in buildings
@@ -2025,7 +2020,6 @@ def process_command(message):
                         add_to_building = False
                 else:
                     # asset2 not in building
-                    # if asset1.containingBuilding or asset1.containingAsset:
                     if isinstance(asset1_container, esdl.ExposedPortsAsset):
                         # asset1 in building and asset2 not in building
                         asset1_port_location = (asset1_container.geometry.lat, asset1_container.geometry.lon)
@@ -2062,7 +2056,6 @@ def process_command(message):
                 # update ports of assets that are connected
                 to_update_assets = [asset1, asset2]
                 # assets is in a building/compound asset, so update also the container
-                #if asset1.containingBuilding or asset1.containingAsset:
                 if isinstance(asset1.eContainer(), esdl.ExposedPortsAsset):
                     to_update_assets.append(asset1.eContainer())
                 if isinstance(asset2.eContainer(), esdl.ExposedPortsAsset):
@@ -2530,12 +2523,14 @@ def process_command(message):
             bld_conn_list = bld_info["conn_list"]
             emit('clear_connections', {'id': building_id})   # clear current active layer connections
             emit('add_connections', {'es_id': es_edit.id, 'conn_list': bld_conn_list, 'add_to_building': True})
-        #if from_port.energyasset.containingBuilding is None or to_port.energyasset.containingBuilding is None:
-        if isinstance(from_port.energyasset, esdl.EnergyAsset) or isinstance(to_port.energyasset, esdl.EnergyAsset):
+        #if isinstance(from_port.energyasset, esdl.EnergyAsset) or isinstance(to_port.energyasset, esdl.EnergyAsset):
+        if (not isinstance(from_port.energyasset.eContainer(), esdl.ExposedPortsAsset)
+                    or not isinstance(to_port.energyasset.eContainer(), esdl.ExposedPortsAsset)):
             # only clear main map connections if not both assets are in a building
             emit('clear_connections', {'id': active_es_id})   # clear current active layer connections
             emit('add_connections', {'es_id': active_es_id, 'conn_list': new_list})
 
+    # Not used anymore afaik.
     if message['cmd'] == 'remove_connection':
         # socket.emit('command', {cmd: 'remove_connection', from_asset_id: from_asset_id, from_port_id: from_port_id,
         #                         to_asset_id: to_asset_id, to_port_id: to_port_id, 'building_id': building_id});
@@ -2563,7 +2558,6 @@ def process_command(message):
             else:
                 print(' - removed {}'.format(conn))
         set_session_for_esid(active_es_id, 'conn_list', new_list)  # set new connection list
-        # TODO: send es.id with this message?
         if building_id:
             # building editor is open, so only update building connections.
             building = esh.get_by_id(es_edit.id, building_id)
@@ -2573,9 +2567,11 @@ def process_command(message):
             emit('add_connections', {'es_id': es_edit.id, 'conn_list': conn_list, 'add_to_building': True})
 
         # always clear the main layer, as the connection edited can be at two maps at the same time
-        # only clear main map if the assets are not part of a containingBuilding
-        if from_port.energyasset.containingBuilding is None or to_port.energyasset.containingBuilding is None:
-            emit('clear_connections', {'id': es_edit.id})   # clear main layer layer connections
+        # only clear main map if the assets are not part of a abstract building or compound asset
+        # if from_port.energyasset.containingBuilding is None or to_port.energyasset.containingBuilding is None:
+        if (not isinstance(from_port.energyasset.eContainer(), esdl.ExposedPortsAsset)
+                or not isinstance(to_port.energyasset.eContainer(), esdl.ExposedPortsAsset)):
+            emit('clear_connections', {'id': es_edit.id})   # clear main layer connections
             emit('add_connections', {'es_id': es_edit.id, 'conn_list': new_list, 'add_to_building': False})
 
     if message['cmd'] == 'set_carrier':

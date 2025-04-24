@@ -226,7 +226,7 @@ def add_extra_attributes(asset: esdl.Asset, extra_attributes: dict = None) -> di
     """
     if not extra_attributes:
         extra_attributes = {}
-    if asset.eIsSet(asset, 'assetType'):
+    if asset.eIsSet('assetType'):
         extra_attributes['assetType'] = asset.assetType
     # use the first asset in a compound asset as icon for this asset
     # send this to the front-end in extra_attributes

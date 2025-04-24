@@ -102,6 +102,7 @@ function connect_asset(feature_id, port_id) {
     }
 }
 
+// TODO: can be removed, no usages
 function remove_connection(from_asset_id, from_port_id, to_asset_id, to_port_id) {
     socket.emit('command', {cmd: 'remove_connection', from_asset_id:from_asset_id, from_port_id:from_port_id, to_asset_id:to_asset_id, to_port_id:to_port_id});
 }
