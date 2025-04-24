@@ -73,6 +73,9 @@ async function loadProjectFile(file) {
 function onLoadProject(event) {
   const files = event.target.files;
   loadProjectFile(files[0]);
+
+  // Clear the input box value, such that same project file can be loaded twice (the onchange keeps working)
+  event.target.value = '';
 }
 
 // eslint-disable-next-line no-unused-vars
