@@ -89,7 +89,7 @@ const submitButton = () => {
   } else {
     loadEsdl();
   }
-}
+};
 
 const loadEsdl = () => {
   console.debug("Loading ESDL service", stepParams.value);

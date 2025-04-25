@@ -3008,7 +3008,7 @@ def process_command(message):
         remove_es_id = message['remove_es_id']
         es_info_list = get_session("es_info_list")
         if remove_es_id in es_info_list:
-            del es_info_list[remove_es_id]
+            del es_info_list[remove_es_id]  # update es info list too
         clear_session_key_for_esid(remove_es_id, 'shape_dictionary')
         clear_session_key_for_esid(remove_es_id, 'conn_list')
         clear_session_key_for_esid(remove_es_id, 'asset_list')

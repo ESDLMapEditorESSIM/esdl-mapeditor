@@ -50,6 +50,21 @@ class ESDL2InlineProfile:
             return response
 
     @staticmethod
+    def convert_esdl_profiles(
+        es: esdl.EnergySystem,
+        profiles_settings: dict[str, object],
+    ) -> esdl.EnergySystem:
+        logger.info("Convert InfluxDBProfiles for the whole energy system to TimeSeriesProfiles")
+
+        profile_mapping: dict[esdl.InfluxDBProfile, esdl.TimeSeriesProfile] = {}
+        ESDL2InlineProfile.search_all_influxdb_profiles_and_create_timeseries_profiles(es, profiles_settings, profile_mapping)
+        ESDL2InlineProfile.search_and_replace_all_profile_references(es, profile_mapping)
+        ESDL2InlineProfile.remove_all_influxdb_profiles(profile_mapping)
+
+        logger.info("Finished converting ESDL to in-line profiles")
+        return es
+
+    @staticmethod
     def search_all_influxdb_profiles_and_create_timeseries_profiles(es: esdl.EnergySystem, profiles_settings, profile_mapping):
         logger.info("- Search all InfluxDBProfiles and create timeseries profiles")
         for obj in es.eAllContents():
@@ -67,49 +82,6 @@ class ESDL2InlineProfile:
                     logger.error("Serious error! Not supported yet")
 
                 profile_mapping[obj] = timeseries_profile
-
-    @staticmethod
-    def remove_all_influxdb_profiles(profile_mapping):
-        logger.info("- Remove all influxdb profiles")
-        for influxdb_profile in list(profile_mapping.keys()):
-            container = influxdb_profile.eContainer()
-
-            containment_feature = influxdb_profile.eContainmentFeature()
-            attr = container.eGet(containment_feature.name)
-            if isinstance(attr, EOrderedSet):
-                # if the attribute is not of type EOrderedSet (but probably EAttribute), the profile was overwritten
-                # by assigning to a new profile to the attribute
-                attr.remove(influxdb_profile)
-
-    @staticmethod
-    def convert_influxdb_to_timeseries_profile(profile: esdl.InfluxDBProfile, profiles_settings: dict[str, object]) -> esdl.TimeSeriesProfile:
-        influxdb_settings = None# Find profile server information for the InfluxDBProfile
-        for prof_server in profiles_settings["profiles_servers"]:
-            if prof_server["host"] in profile.host and prof_server["port"] == str(profile.port):
-                influxdb_settings = ConnectionSettings(
-                    host=prof_server["host"],
-                    port=profile.port,
-                    database=profile.database,
-                    username=prof_server["username"],
-                    password=prof_server["password"],
-                    ssl=prof_server.get("ssl_enabled", False),
-                    verify_ssl=prof_server.get("ssl_enabled", False),
-                )
-        if not influxdb_settings:
-            logger.error(f"No InfluxDBProfile settings found for {profile.name}")
-            raise Exception("No InfluxDBProfile settings found for {profile.name}")
-
-        prof_manager = InfluxDBProfileManager(influxdb_settings)
-        prof_manager.load_influxdb(
-            measurement=profile.measurement,
-            fields=[profile.field],
-            from_datetime=profile.startDate,
-            to_datetime=profile.endDate
-        )
-        timeseries_profile = prof_manager.get_esdl_timeseries_profile(profile_name=profile.name)
-        timeseries_profile.name = profile.name
-        timeseries_profile.profileType = profile.profileType
-        return timeseries_profile
 
     @staticmethod
     def search_and_replace_all_profile_references(es, profile_mapping):
@@ -138,32 +110,47 @@ class ESDL2InlineProfile:
                     else:
                         logger.error("Serious error! Not supported yet")
 
-def copy_and_convert_esdl_profiles(
-        es_id: str,
-) -> esdl.EnergySystem:
-    """
-    Copy the active EnergySystem and convert its profiles to in-line profiles.
-    """
-    esh = get_handler()
-    es = esh.get_energy_system(es_id=es_id)
-    es_string = esh.to_string(es_id=es_id)
-    es_copy, parse_info = esh.load_external_string(es_string, name=f"{es.name} - In-line Profiles")
-    es_copy.name = get_session('es_filename') or (es.name or "Untitled EnergySystem") + " - In-line Profiles"
-    profiles_settings = Profiles.get_instance().get_profiles_settings()
-    es_converted = convert_esdl_profiles(es_copy, profiles_settings)
-    return es_converted
+    @staticmethod
+    def remove_all_influxdb_profiles(profile_mapping):
+        logger.info("- Remove all influxdb profiles")
+        for influxdb_profile in list(profile_mapping.keys()):
+            container = influxdb_profile.eContainer()
 
+            containment_feature = influxdb_profile.eContainmentFeature()
+            attr = container.eGet(containment_feature.name)
+            if isinstance(attr, EOrderedSet):
+                # if the attribute is not of type EOrderedSet (but probably EAttribute), the profile was overwritten
+                # by assigning to a new profile to the attribute
+                attr.remove(influxdb_profile)
 
-def convert_esdl_profiles(
-        es: esdl.EnergySystem,
-        profiles_settings: dict[str, object],
-) -> esdl.EnergySystem:
-    logger.info("Convert InfluxDBProfiles for the whole energy system to TimeSeriesProfiles")
+    @staticmethod
+    def convert_influxdb_to_timeseries_profile(profile: esdl.InfluxDBProfile, profiles_settings: dict[str, object]) -> esdl.TimeSeriesProfile:
+        influxdb_settings = None
 
-    profile_mapping: dict[esdl.InfluxDBProfile, esdl.TimeSeriesProfile] = {}
-    ESDL2InlineProfile.search_all_influxdb_profiles_and_create_timeseries_profiles(es, profiles_settings, profile_mapping)
-    ESDL2InlineProfile.search_and_replace_all_profile_references(es, profile_mapping)
-    ESDL2InlineProfile.remove_all_influxdb_profiles(profile_mapping)
+        # Find profile server information for the InfluxDBProfile
+        for prof_server in profiles_settings["profiles_servers"]:
+            if prof_server["host"] in profile.host and prof_server["port"] == str(profile.port):
+                influxdb_settings = ConnectionSettings(
+                    host=prof_server["host"],
+                    port=profile.port,
+                    database=profile.database,
+                    username=prof_server["username"],
+                    password=prof_server["password"],
+                    ssl=prof_server.get("ssl_enabled", False),
+                    verify_ssl=prof_server.get("ssl_enabled", False),
+                )
 
-    logger.info("Finished converting ESDL to in-line profiles")
-    return es
+        if not influxdb_settings:
+            logger.error(f"No InfluxDBProfile settings found for {profile.name}")
+            raise Exception("No InfluxDBProfile settings found for {profile.name}")
+
+        prof_manager = InfluxDBProfileManager(influxdb_settings)
+        prof_manager.load_influxdb(
+            measurement=profile.measurement,
+            fields=[profile.field],
+            from_datetime=profile.startDate,
+            to_datetime=profile.endDate
+        )
+        timeseries_profile = prof_manager.get_esdl_timeseries_profile(profile_name=profile.name)
+        return timeseries_profile
+

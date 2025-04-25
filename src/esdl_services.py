@@ -240,9 +240,9 @@ class ESDLServices:
             return [(False, None, None)]
 
         url = None
-        headers = service["headers"]
         if "url" in service:
             url = service["url"]
+            headers = service["headers"]
             if service.get("with_jwt_token", False):
                 jwt_token = get_session("jwt-token")
                 headers["Authorization"] = f"Bearer {jwt_token}"
@@ -375,7 +375,7 @@ class ESDLServices:
                         else:
                             param_value = param
                         # For backwards compatibility support both names. When using name, not all result handling will properly work.
-                        param_name = cfg_service_param.get("parameter_name", cfg_service_param.get("name"))
+                        param_name = cfg_service_param.get("name", cfg_service_param.get("name"))
                         body[param_name] = param_value
                 else:
                     # Parameter is a "real" URL parameter: ?key1=value1&key2=value2&...

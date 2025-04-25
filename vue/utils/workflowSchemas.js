@@ -10,7 +10,7 @@ const nextStepsSchema = {
             "enum": ["AND", "OR"]
         },
         "then": {
-            "type": "integer",
+            "type": "string",
         },
         "rules": {
             "type": "array",
