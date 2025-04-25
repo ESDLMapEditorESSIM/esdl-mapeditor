@@ -35,7 +35,7 @@ from extensions.external_models.external_models_storage import ExternalModelsSto
 from extensions.profiles import Profiles
 from extensions.session_manager import get_handler, get_session, set_session
 from extensions.settings_storage import SettingsStorage
-from src.esdl2inlineprofile import convert_esdl_profiles, copy_and_convert_esdl_profiles
+from src.esdl2inlineprofile import copy_and_convert_esdl_profiles
 from src.esdl_helper import energy_asset_to_ui
 from src.process_es_area_bld import calc_possible_locations_in_area, choose_location
 from src.tno.shared.util import get_nested_dict_value
@@ -240,9 +240,9 @@ class ESDLServices:
             return [(False, None, None)]
 
         url = None
+        headers = service.get("headers", {})
         if "url" in service:
             url = service["url"]
-            headers = service["headers"]
             if service.get("with_jwt_token", False):
                 jwt_token = get_session("jwt-token")
                 headers["Authorization"] = f"Bearer {jwt_token}"
@@ -375,7 +375,7 @@ class ESDLServices:
                         else:
                             param_value = param
                         # For backwards compatibility support both names. When using name, not all result handling will properly work.
-                        param_name = cfg_service_param.get("name", cfg_service_param.get("name"))
+                        param_name = cfg_service_param.get("name", cfg_service_param.get("parameter_name"))
                         body[param_name] = param_value
                 else:
                     # Parameter is a "real" URL parameter: ?key1=value1&key2=value2&...
