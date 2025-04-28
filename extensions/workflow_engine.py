@@ -287,7 +287,7 @@ class WorkflowEngine:
             try:
                 # run initial workflow step inside request context to enable for instance selected ESDL loading
                 if init_data["type"] == "esdl_service":
-                    esdl_service_ok, esdl_service_result, _ = self.esdl_services.call_esdl_service(init_data)
+                    esdl_service_ok, esdl_service_result, _ = self.esdl_services.call_esdl_service(init_data)[0]
 
                     esdl_service_result["model_run_doc"]["is_owner"] = (
                         esdl_service_result["model_run_doc"]["user"] == user_email
