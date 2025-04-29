@@ -87,7 +87,6 @@ def filter_none(input_list: Sequence) -> List:
     return [x for x in input_list if x is not None]
 
 def update_kpi_metadata(kpi: esdl.KPI, data: Data):
-    print('Handle KPI ', kpi.name)
     labels = {}
     kpis_container = kpi.eContainer()
     level_cnt: int = 0
@@ -403,7 +402,7 @@ class DataManager:
     def register(self):
         logger.info("Registering DataManager extension")
         sqllogger = logging.getLogger("sqlalchemy.engine")
-        sqllogger.setLevel(logging.INFO)
+        sqllogger.setLevel(logging.WARNING)
         logger.info(f"Connecting to Data Manager database using: {settings.SQLALCHEMY_DATABASE_URI}")
         self.flask_app.config.update({"SQLALCHEMY_DATABASE_URI": settings.SQLALCHEMY_DATABASE_URI})
         db.init_app(self.flask_app)  # init SQLAlchemy
@@ -469,7 +468,7 @@ class DataManager:
 
         :return: List of database entries to add to the database (BaseModel subclasses)
         """
-
+        logger.info(f"Processing ESDL {es.name} [{es.id}]")
         data_list: List[BaseModel] = []
         variables: Dict[str, Variable] = {}
 
@@ -487,7 +486,6 @@ class DataManager:
             is_profile_variable = None
 
             if isinstance(eobj, esdl.SingleValue) or isinstance(eobj, esdl.TimeSeriesProfile):
-                logger.debug(f"Handling {eobj.eClass.name}/{eobj.name}")
                 # single value profile
                 # profile: esdl.SingleValue = eobj
                 d, qau, variable_name = handle_static_profile(eobj, ds, variable_name)
@@ -660,7 +658,6 @@ class DataManager:
                 keys_list = session.execute(keys_query, {'variable_id': v.id}).scalars().all()
 
             for key in keys_list:
-                print("-", key)
                 #options_per_label_key = session.scalars(select(literal_column("labels->>'"+key+"'").label("options")).distinct().select_from(Data).where(Data.variable_id == v.id)).all()
                 options_per_label_key = filter_none(session.scalars(select(Data.labels[key].as_string().label("options")).distinct().select_from(Data).where(Data.variable_id == v.id)).all())
                 filter_options[key] = FilterOptions(options=options_per_label_key, column="labels", key=key)
@@ -938,6 +935,8 @@ class DataManager:
         max_datapoints = options.profile.get('max_datapoints')
         agg_interval = options.profile.get('agg_interval')
         agg_func = options.profile.get('agg_func')
+
+        logger.info(f"Querying influxdb profile traces with {vars(options)}")
         
         resp = { "data_range": [], "traces": [], "errors": [], "error_msg": "" }
 
@@ -1096,8 +1095,7 @@ class DataManager:
 
         traces = []
         
-        logger.info(f"Querying {chart_type.value} chart traces with dataset_ids: \
-                    {dataset_ids}, variable: {variable_name}, group_by: {group_by}, and filters: {filters}")
+        logger.info(f"Querying {chart_type.value} traces with {vars(options)}")
                 
         if len(group_by) == 0:
             group_by = ['year']
