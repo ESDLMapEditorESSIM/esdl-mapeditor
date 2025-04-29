@@ -49,6 +49,8 @@ class ProfileAggFunc(Enum):
 class ProfileQueryOptions:
     viz_type: ProfileVizType
     data_range: List[str]
+    max_datapoints: Optional[int]
+    """If specified, downsample profile data to approximately the given value."""
     agg_interval: Optional[ProfileAggInterval]
     agg_func: Optional[ProfileAggFunc]
 

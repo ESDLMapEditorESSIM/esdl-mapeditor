@@ -84,7 +84,13 @@ class InfluxDBProfileManager(ProfileManager):
             if isinstance(source_profile, InfluxDBProfileManager):
                 self.database_settings = source_profile.database_settings
 
-    def load_influxdb(self, measurement: str, fields: list, from_datetime: datetime = None, to_datetime: datetime = None, filters: list = None):
+    def load_influxdb(self, 
+                      measurement: str,
+                      fields: list,
+                      from_datetime: datetime = None,
+                      to_datetime: datetime = None,
+                      filters: list = None,
+                      groupby_interval_sec: int = None):
         """
         Loads profile information from InfluxDB
 
@@ -93,6 +99,7 @@ class InfluxDBProfileManager(ProfileManager):
         :param from_datetime: the start datetime (included in the data)
         :param to_datetime: the end datetime (included in the data)
         :param filters: a list of dictionaries with 'tag' and 'value' keys, that can be used to filter on the data
+        :param groupby_interval_sec: optional groupby interval in second; if not `None`, `mean()` as an aggregation function is applied to field values
         :return: None
         """
         self.clear_profile()
@@ -110,9 +117,16 @@ class InfluxDBProfileManager(ProfileManager):
                 where_clause_list.append(f"{filter['tag']}='{filter['value']}'")
 
         fields_string = ','.join(['"'+field+'"' for field in fields])
+        if groupby_interval_sec is not None:
+            fields_string = ','.join([f"mean(\"{field}\") as \"{field}\""  for field in fields])
+
         query_string = f"SELECT {fields_string} FROM \"{measurement}\""
+        
         if where_clause_list:
             query_string += " WHERE (" + " AND ".join(where_clause_list) + ")"
+
+        if groupby_interval_sec is not None:
+            query_string += f" GROUP BY time({groupby_interval_sec}s) fill(null)"
 
         res = self.influxdb_client.query(query_string)
 

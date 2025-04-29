@@ -25,6 +25,7 @@
       <AnalyticsPlot
         :trace="props.options?.currentTrace || []"
         :layout="props.options?.currentLayout || {}"
+        @on-relayout="onAnalyticsPlotRelayout"
       />
     </a-row>
   </div>
@@ -34,7 +35,7 @@
 import { defineProps } from "vue";
 import AnalyticsPlot from "../esdlanalytics/AnalyticsPlot.vue";
 import { CloseOutlined, FormOutlined } from "@ant-design/icons-vue";
-  
+
 const props = defineProps({
 	options: {
 		type: Object,
@@ -43,6 +44,11 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['onRemove', 'onEdit']);
+
+// Skip plot relayout event handling in AnalyticsPanel.
+const onAnalyticsPlotRelayout = () => {
+  console.debug("Handling plot relayout event is currently not supported in AnalyticsPanel");
+}
 
 </script>
 

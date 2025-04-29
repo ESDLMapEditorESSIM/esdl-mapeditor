@@ -155,6 +155,20 @@
                   @change="onSelectProfileVizType"
                 />
               </a-row>
+              <a-row style="align-items: center; padding-top: 12px;">
+                <a-switch
+                  v-model:checked="profileDownsampling"
+                  size="small"
+                  :disabled="profileVizTypeSelected === 'Aggregated'"
+                  @change="onProfileDownsampling"
+                />
+                <a-typography-paragraph style="padding-left: 8px; margin-bottom: 0px;">Downsampling</a-typography-paragraph>
+                <a-tooltip :title="profileDownsampleMsg">
+                  <a-button size="small" type="text">
+                    <component :is="InfoCircleOutlined" style="vertical-align: 0.1rem" />
+                  </a-button>
+                </a-tooltip>
+              </a-row>
               <!-- TODO: show load duration curve -->
               <a-row v-if="profileVizTypeSelected === 'Aggregated'">
                 <a-typography-title :level="5">Aggregation interval</a-typography-title>
@@ -218,14 +232,18 @@
                 style="display: flex; flex-direction: column; padding-top: 12px;"
                 @change="onSelectDisplayOptions"
               />
-              <a-checkbox
+              <br>
+              <a-row 
                 v-if="!isProfileVariable || (isProfileVariable && profileVizTypeSelected === 'Aggregated')"
-                v-model:checked="showBarNumbers"
-                style="padding-top: 12px;"
-                @click="onSelectDisplayOptions"
+                style="align-items: center; padding-top: 12px;"
               >
-                Show numbers on bar chart
-              </a-checkbox>
+                <a-switch
+                  v-model:checked="showBarNumbers"
+                  size="small"
+                  @change="onSelectDisplayOptions"
+                />
+                <a-typography-paragraph style="padding-left: 8px; margin-bottom: 0px;">Show numbers on bar chart</a-typography-paragraph>
+              </a-row>
             </a-col>
             <!------------------------------------------->
             <!------------- Dataset handler ------------->
@@ -326,6 +344,7 @@
           <AnalyticsPlot
             :trace="currentTrace"
             :layout="currentLayout"
+            @on-relayout="onAnalyticsPlotRelayout"
           />
         </a-layout-content>
       </a-layout>
@@ -386,6 +405,12 @@ const profileVizTypes = ['Profile', 'Aggregated'];
 const profileAggIntervals = ['Week', 'Month', 'Quarter', 'Year'];
 const profileAggFuncs = ['Count', 'Max', 'Min', 'Sum', 'Mean'];
 
+const profileMaxDataPoints = 100 // The value is applied in updateTrace() when profileDownsampling === true
+const profileDownsampleMsg = "Downsampling simplifies large dataset for better chart readability and performance " + 
+                             `by limiting visualization to approximately ${profileMaxDataPoints} data points. ` + 
+                             "The average value is used to represent data within each interval. " +
+                             "Toggle it on to explore general trends or off to access the full dataset." 
+
 const sampleColorCount = 12;
 const colorPalettes = [
   // pie_chart_color_list is defined in area_building_layer.js
@@ -421,6 +446,7 @@ const initOptions = {
   profileDataRanges: [],
   profileDataRangeSelected: [],
   profileVizTypeSelected: profileVizTypes[0],
+  profileDownsampling: true,
   profileAggIntervalSelected: profileAggIntervals[0],
   profileAggFuncSelected: profileAggFuncs[0],
   groupbyOptions: [],
@@ -473,6 +499,7 @@ const isProfileVariable = ref(appliedOptions.isProfileVariable);
 const profileDataRanges = ref(appliedOptions.profileDataRanges);
 const profileDataRangeSelected = ref(appliedOptions.profileDataRangeSelected);
 const profileVizTypeSelected = ref(appliedOptions.profileVizTypeSelected);
+const profileDownsampling = ref(appliedOptions.profileDownsampling);
 const profileAggIntervalSelected = ref(appliedOptions.profileAggIntervalSelected);
 const profileAggFuncSelected = ref(appliedOptions.profileAggFuncSelected);
 const groupbyOptions = ref(appliedOptions.groupbyOptions);
@@ -502,6 +529,7 @@ const getOptions = () => {
     profileDataRanges: profileDataRanges.value,
     profileDataRangeSelected: profileDataRangeSelected.value,
     profileVizTypeSelected: profileVizTypeSelected.value,
+    profileDownsampling: profileDownsampling.value,
     profileAggIntervalSelected: profileAggIntervalSelected.value,
     profileAggFuncSelected: profileAggFuncSelected.value,
     groupbyOptions: groupbyOptions.value,
@@ -590,6 +618,55 @@ const onSelectProfileDataRange = () => {
 };
 
 const onSelectProfileVizType = () => {
+  // Switch off profile downsampling when visualization type is not 'Profile' (could be misleading)
+  if (profileVizTypeSelected.value !== 'Profile') {
+    profileDownsampling.value = false;
+  } else {
+    profileDownsampling.value = true;
+  }
+  updateTrace();
+};
+
+const onProfileDownsampling = () => {
+  updateTrace();
+};
+
+/**
+ * Triggered to update profileDataRangeSelected state when newLayoutRanges is emitted from 
+ * the user interaction with AnalyticsPlot (zoom in/out or pan). Only updateTrace() when interacting with profile data.
+ * 
+ * @param {Object|null} newLayoutRanges An object with structure as {x: [xaxis.range[0], xaxis.range[1]], y: [yaxis.range[0], yaxis.range[1]]}
+ *                                      when zoom in/out or pan event is occurred; otherwise, null is returned.
+ */ 
+const onAnalyticsPlotRelayout = (newLayoutRanges) => {
+  if (!isProfileVariable.value) {
+    return;
+  }
+
+  if (profileVizTypeSelected.value !== 'Profile') {
+    return;
+  }
+
+  // Restore to default data range when newLayoutRanges is null.
+  if (newLayoutRanges === null) {
+    profileDataRangeSelected.value = [];
+  } 
+  // Apply subset of data range for querying data.
+  else {
+    try {
+      let dateTimeRanges = newLayoutRanges["x"];
+      // Handling a special case that the returned datetime string in newLayoutRanges is with format: "YYYY-MM-DD HH:mm"
+      newLayoutRanges["x"].forEach((dt, idx) => {
+        if (dayjs(dt, "YYYY-MM-DD HH:mm", true).isValid()) {
+          dateTimeRanges[idx] = `${dt}:00`;
+        }
+      })
+      profileDataRangeSelected.value = dtStringsToDayJsObjects(dateTimeRanges);
+    } catch (error) {
+      displayNotification("error", `An error occurred while applying the selected data extent for querying: ${error}`);
+    }
+  }
+
   updateTrace();
 };
 
@@ -912,12 +989,12 @@ const updateTrace = async() => {
           profileDataRangeSelected.value.map(dt => formatAsDateTimeStr(dt)) : [],
         viz_type: profileVizTypeSelected.value,
       };
+    if (profileDownsampling.value) {
+      options['profile']['max_datapoints'] = profileMaxDataPoints;
+    }
     if (profileVizTypeSelected.value === 'Aggregated') {
-      options['profile'] = {
-        ...options['profile'],
-        agg_interval: profileAggIntervalSelected.value,
-        agg_func: profileAggFuncSelected.value
-      };
+      options['profile']['agg_interval'] = profileAggIntervalSelected.value;
+      options['profile']['agg_func'] = profileAggFuncSelected.value;
     }
   }
 

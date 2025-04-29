@@ -17,6 +17,7 @@ from enum import Enum
 from typing import Any, TypedDict, List, Dict, Optional, Sequence, Iterable, Tuple
 import json
 import re
+import math
 from urllib.parse import urlparse
 
 from flask import Flask
@@ -455,7 +456,7 @@ class DataManager:
 
             # TODO: return rounded query values
             if req_body.profile:
-                return self.query_influxdb_profile(db.session, options=req_body) 
+                return self.query_influxdb_profile(db.session, options=req_body)
             else:
                 return self.query(db.session, options=req_body)
 
@@ -933,6 +934,10 @@ class DataManager:
         chart_type = options.chart_type
         viz_type = options.profile['viz_type']
         data_range = options.profile['data_range']
+
+        max_datapoints = options.profile.get('max_datapoints')
+        agg_interval = options.profile.get('agg_interval')
+        agg_func = options.profile.get('agg_func')
         
         resp = { "data_range": [], "traces": [], "errors": [], "error_msg": "" }
 
@@ -1011,6 +1016,11 @@ class DataManager:
                     start_date = profile.startDate
                     end_date = profile.endDate
 
+                groupby_interval_sec = None
+                if max_datapoints:
+                    time_delta_sec = (end_date - start_date).total_seconds()
+                    groupby_interval_sec = math.ceil(time_delta_sec / max_datapoints)
+
                 try:
                     prof_manager = InfluxDBProfileManager(influxdb_settings)
                     prof_manager.load_influxdb(
@@ -1019,8 +1029,10 @@ class DataManager:
                         from_datetime=start_date,
                         to_datetime=end_date,
                         filters=query_filters,
+                        groupby_interval_sec=groupby_interval_sec
                     )
-                    datetime_profile = prof_manager.get_esdl_datetime_profile(profile_name=profile.name)
+                    # profile_data_list: a list of lists, with each list structure to be [datetime, field value, ...]
+                    datetime_profile = prof_manager.profile_data_list
                 except Exception as e:
                     err = f"Error retrieving {profile.host}:{profile.port} {profile_label} profile: {e}"
                     resp['errors'].append(err)
@@ -1028,14 +1040,17 @@ class DataManager:
                     continue
 
                 data = []
-                for d in datetime_profile.element.items:
-                    d: esdl.ProfileElement
-                    date: datetime = d.from_
-                    value = d.value * profile.multiplier
+                for d in datetime_profile:
+                    # skip when value is None (this can occur when downsampling is applied)
+                    if d[1] is None:
+                        continue
+
+                    date: datetime = d[0]
+                    value = d[1] * profile.multiplier
                     data.append((date, value))
 
                 if viz_type == ProfileVizType.AGGREGATED.value:
-                    viz_data = aggregate_profile_data(data, options.profile['agg_interval'], options.profile['agg_func'])
+                    viz_data = aggregate_profile_data(data, agg_interval, agg_func)
                 else:
                     datetimes = [date.strftime(dt_str_format) for date, _ in data]
                     values = [value for _, value in data]
