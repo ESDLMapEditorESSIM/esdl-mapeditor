@@ -832,6 +832,9 @@ class Profiles:
                 esdl_id, esdl_id, influxdb_host_override, influxdb_port_override
             )
 
+            if not influxdb_client:
+                return None
+
             esh = get_handler()
             es = esh.get_energy_system(esdl_id)
             carrier_ids = [carrier["id"] for carrier in ESDLEnergySystem.get_carrier_list(es)]

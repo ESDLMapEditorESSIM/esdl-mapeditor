@@ -83,7 +83,8 @@
     :ok-text="activeAction.title === EDIT? 'Save' : activeAction.title === DELETE? 'Delete' : 'Ok'"
     :ok-button-props="{danger: activeAction.title === DELETE}"
     width="80%"
-    :body-style="{'max-height': 'calc(100% - 80px)', 'overflow': 'auto'}"
+    style="top: 50px"
+    :body-style="{'max-height': 'calc(100vh - 200px)', 'overflow': 'auto'}"
     @ok="handleModalOk"
   >
     <json-forms

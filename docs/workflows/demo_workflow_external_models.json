@@ -278,7 +278,6 @@
           "id": "74c9d1a2-c92a-46ed-a7e4-9931971cdd28",
           "description": "",
           "name": "",
-          "button_label": "Run Essim Calculation",
           "headers": {
             "User-Agent": "ESDL Mapeditor/1.0",
             "Accept": "application/json",
@@ -574,7 +573,6 @@
           "id": "74c9d1a2-c92a-46ed-a7e4-9931971cbb21",
           "description": "",
           "name": "",
-          "button_label": "Run Omotes Calculation",
           "headers": {
             "User-Agent": "ESDL Mapeditor/1.0",
             "Content-Type": "application/json"
