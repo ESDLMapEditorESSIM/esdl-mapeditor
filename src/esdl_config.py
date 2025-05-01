@@ -504,11 +504,6 @@ esdl_config = {
                                 "next_step": 25,
                             },
                             {
-                                "name": "Load EHC results",
-                                "type": "primary",
-                                "next_step": 26,
-                            },
-                            {
                                 "name": "Optimise flexibility (in development)",
                                 "type": "subheader",
                             },
@@ -516,29 +511,13 @@ esdl_config = {
                                 "name": "Start Flex Scan phase 2",
                                 "type": "primary",
                                 "disabled": True,
-                                "next_step": 27,
+                                "next_step": 26,
                             },
                             {
                                 "name": "Load FS phase 2 results",
                                 "type": "primary",
                                 "disabled": True,
-                                "next_step": 28,
-                            },
-                            {
-                                "name": "Calculate business case (in development)",
-                                "type": "subheader",
-                            },
-                            {
-                                "name": "Run Energy Hub Configurator",
-                                "type": "primary",
-                                "disabled": True,
-                                "next_step": 29,
-                            },
-                            {
-                                "name": "Load EHC results",
-                                "type": "primary",
-                                "disabled": True,
-                                "next_step": 30,
+                                "next_step": 27,
                             },
                             # SIMULATE TOTAL ENERGY SYSTEM
                             {
@@ -548,7 +527,7 @@ esdl_config = {
                             {
                                 "name": "Run Energy System Simulator",
                                 "type": "primary",
-                                "next_step": 31,
+                                "next_step": 28,
                             },
                         ],
                     },
@@ -996,69 +975,58 @@ esdl_config = {
                         "component": "cost-information-upload-template",
                     },
                     {
-                        # 25 (TEMP)
-                        # TODO: swap with commented step below when EHC is hosted
+                        # 25
+                        # TODO: WHEN EHC IS HOSTED
                         "name": "Run Energy Hub Configurator",
-                        "description": "",
-                        "type": "text",
-                        "text": """
-                            For the energy hub configured in an ESDL layer, the economical optimal collective battery specifications can be calculated with the EHC, together with the corresponding business case.
-                            Currently the EHC only accepts ESDL files with in-line placed energy profiles. Please, first make sure the correct ESDL layer is selected. Then the required ESDL file can be obtained from the 'File' menu in the top-left corner of the screen. Within this menu, select the 'Export ESDL with in-line profiles' option. The resulting ESDL file can be used by the EHC.
-                        """,
+                        "description": "For the energy hub configured in an ESDL layer, the economical optimal collective battery specifications can be calculated with the EHC, together with the corresponding business case. As result of this step, a new ESDL layer will be created with the EHC results, and a business case Excel will be downloaded to your browser automatically.",
+                        "type": "service",
+                        "service": {
+                            "id": "9bd2f969-f240-4b26-ace5-2e03fbc04b13",
+                            "name": "Run Energy Hub Configurator",
+                            "headers": {
+                                "Accept": "application/esdl+xml",
+                                "User-Agent": "ESDL Mapeditor/0.1",
+                            },
+                            # "url": "https://ehc.bicore.nl/auth-test",
+                            "url": "https://ehc.bicore.nl/process",
+                            # "url": "http://localhost:8111/dice_workflow/mock",
+                            "http_method": "post",
+                            "type": "",
+                            "body_config": {
+                                "type": "json",
+                                "profiles": "inline",
+                                "parameters": [
+                                    {
+                                        "type": "esdl",
+                                        "parameter": "esdl",
+                                        "encoding": "base64_encoded",
+                                    },
+                                    {
+                                        "type": "value",
+                                        "parameter": "email",
+                                        "value": "lars@xithing.io",
+                                    }
+                                ],
+                            },
+                            "result": [
+                                {
+                                    "action": "esdl",
+                                    "encoding": "base64_encoded",
+                                    "json_field": "esdl",
+                                },
+                                {
+                                    "action": "download_file",
+                                    "encoding": "base64_encoded",
+                                    "json_field": "business_case_excel",
+                                    "filename": "ehc_business_case.xlsx",
+                                    "content_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                },
+                            ],
+                            "with_jwt_token": True,
+                        }
                     },
-                    # {
-                    #     # 25
-                    #     # TODO: WHEN EHC IS HOSTED
-                    #     "name": "Run Energy Hub Configurator",
-                    #     "description": "For the energy hub configured in an ESDL layer, the economical optimal collective battery specifications can be calculated with the EHC, together with the corresponding business case. Currently the EHC only accepts ESDL files with in-line placed energy profiles. Please, first make sure the correct ESDL layer is selected. Then the required ESDL file can be obtained from the 'File' menu in the top-left corner of the screen. Within this menu, select the 'Export with in-line profiles' option. The resulting ESDL file can be used by the EHC.",
-                    #     "type": "service",
-                    #     "service": {
-                    #         "id": "9bd2f969-f240-4b26-ace5-2e03fbc04b13",
-                    #         "name": "Run Energy Hub Configurator",
-                    #         "headers": {
-                    #             "Accept": "application/esdl+xml",
-                    #             "User-Agent": "ESDL Mapeditor/0.1",
-                    #         },
-                    #         "url": "http://localhost:8111/dice_workflow/mock",
-                    #         "http_method": "post",
-                    #         "type": "",
-                    #         "body_config": {
-                    #             "type": "json",
-                    #             "profiles": "inline",
-                    #             "parameters": [
-                    #                 {
-                    #                     "type": "esdl",
-                    #                     "parameter": "esdl",
-                    #                     "encoding": "base64_encoded",
-                    #                 },
-                    #             ],
-                    #         },
-                    #         "result": [
-                    #             {
-                    #                 "action": "esdl",
-                    #                 "encoding": "base64_encoded",
-                    #                 "json_field": "esdl",
-                    #             },
-                    #             {
-                    #                 "action": "download_file",
-                    #                 "encoding": "base64_encoded",
-                    #                 "json_field": "business_case_excel",
-                    #                 "filename": "ehc_business_case.xlsx",
-                    #                 "content_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    #             },
-                    #         ],
-                    #     }
-                    # },
                     {
                         # 26
-                        # TODO: choose correct type and implement
-                        "name": "Load Energy Hub Configurator results",
-                        "description": "",
-                        "type": "text",
-                        "text": "The ESDL file from the EHC results can be imported into the Map Editor by selecting the 'Import ESDL with in-line profiles' option from the 'File' menu in the top-left corner of the screen. The ESDL file can be selected from the file dialog that appears and will be automatically added to your ESDL layers.",
-                    },
-                    {
-                        # 27
                         # TODO: choose correct type and implement
                         "name": "Start Flex Scan phase 2",
                         "description": "",
@@ -1066,7 +1034,7 @@ esdl_config = {
                         "text": "PLACEHOLDER",
                     },
                     {
-                        # 28
+                        # 27
                         # TODO: choose correct type and implement
                         "name": "Load Flex Scan phase 2 results",
                         "description": "",
@@ -1074,21 +1042,7 @@ esdl_config = {
                         "text": "PLACEHOLDER",
                     },
                     {
-                        # 29
-                        "name": "Run EHC Business Case module",
-                        "description": "",
-                        "type": "text",
-                        "text": "PLACEHOLDER",
-                    },
-                    {
-                        # 30
-                        "name": "Load EHC Business Case results",
-                        "description": "",
-                        "type": "text",
-                        "text": "PLACEHOLDER",
-                    },
-                    {
-                        # 31
+                        # 28
                         # TODO: choose correct type and implement
                         "name": "Run ESSIM",
                         "description": "",

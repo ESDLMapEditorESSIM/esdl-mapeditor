@@ -10,6 +10,7 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+import uuid
 from typing import Tuple
 
 from pyecore.resources import ResourceSet, URI
@@ -204,6 +205,9 @@ class EnergySystemHandler:
         es, parse_info = self.load_external_string(esdl_string)
         # If the EnergySystem was successfully parsed from the esdl_string
         if es:
+            if es.id in self.esid_uri_dict and overwrite_existing is False:
+                es.id = str(uuid.uuid4())
+
             # If the EnergySystem ID is already known in the esid_uri_dict
             if es.id in self.esid_uri_dict:
                 # If overwrite_existing is set to True

@@ -33,7 +33,7 @@ from esdl.processing import ESDLAsset, ESDLGeometry, ESDLEnergySystem
 from extensions.profiles import Profiles
 from extensions.session_manager import get_handler, get_session, set_session
 from extensions.settings_storage import SettingsStorage
-from src.esdl2inlineprofile import convert_esdl_profiles, copy_and_convert_esdl_profiles
+from src.esdl2inlineprofile import copy_and_convert_esdl_profiles
 from src.esdl_helper import energy_asset_to_ui
 from src.process_es_area_bld import calc_possible_locations_in_area, choose_location
 from utils.datetime_utils import parse_date
@@ -432,7 +432,7 @@ def _process_service_result(esh, r: Response, result_config, service: dict, serv
         else:
             esdl_response = r.text
 
-        es, parse_info = esh.add_from_string(service["name"], esdl_response)
+        es, parse_info = esh.add_from_string(service["name"], esdl_response, overwrite_existing=False)
         # TODO deal with parse_info?
 
         if "mode" in result_config and result_config["mode"] == "animation_possible":
