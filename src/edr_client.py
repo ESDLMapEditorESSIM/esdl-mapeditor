@@ -59,6 +59,7 @@ class EDRClient:
     def register(self):
         logger.info("Registering EDR extension")
 
+        @self.flask_app.route('/edr_assets')
         @self.flask_app.route('/edr_assets/<asset_type>')
         def get_edr_assets(asset_type = None):
             if asset_type is None:
