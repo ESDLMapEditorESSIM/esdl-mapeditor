@@ -73,6 +73,7 @@ def drop_db(db_url: str, app_instance_path: str):
         if driver_type == DriverType.SQLITE:
             # in flask, 'instance' path is used to store the database file
             # which is not supported by sqlalchemy_utils
+            url = make_url(db_url)
             db_path = os.path.join(app_instance_path, url.database)
             try:
                 os.remove(db_path)
