@@ -1010,9 +1010,11 @@ esdl_config = {
                             },
                             "result": [
                                 {
-                                    "action": "esdl",
+                                    "action": "download_file",
                                     "encoding": "base64_encoded",
                                     "json_field": "esdl",
+                                    "filename": "ehc_result.esdl",
+                                    "content_type": "application/xml",
                                 },
                                 {
                                     "action": "download_file",
