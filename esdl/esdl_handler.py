@@ -73,6 +73,7 @@ class EnergySystemHandler:
     def _new_resource_set(self):
         """Resets the resourceset (e.g. when loading a new file)"""
         self.rset = ResourceSet()
+        self.esid_uri_dict = {}  # clean up the esid_uri_dict
         self.resource = None
         self._set_resource_factories()
 
@@ -135,15 +136,22 @@ class EnergySystemHandler:
             parse_info = tmp_resource.get_parse_information()
         # At this point, the model instance is loaded!
         # self.energy_system = self.resource.contents[0]
-        self.validate(es=tmp_resource.contents[0])
+        energy_system = tmp_resource.contents[0]
+        if energy_system.id in self.esid_uri_dict:
+            energy_system.id = str(uuid4())
+            logger.warning(f"Detected duplicate Energy System Id for {uri.normalize()}, adapting to a new one: {energy_system.id}")
+            # a small hack to convey this information to the user in the frontend, as parse_info will be displayed
+            parse_info.append(f"Warning: The EnergySystem ID of \n{uri.plain} \nwith name '{energy_system.name}' \nwas already in use, a new one has been generated. \n"
+                              f"\nWhen saving this new ID will be used.")
+        self.validate(es=energy_system)
         if isinstance(uri, str):
-            self.esid_uri_dict[tmp_resource.contents[0].id] = uri
+            self.esid_uri_dict[energy_system.id] = uri
         else:
-            self.esid_uri_dict[tmp_resource.contents[0].id] = uri.normalize()
+            self.esid_uri_dict[energy_system.id] = uri.normalize()
         # Edwin: recursive moet hier toch False zijn?? immers elke resource heeft zijn eigen uuid_dict
         # Ewoud: precies, dus in False veranderd
-        self.add_object_to_dict(tmp_resource.contents[0].id, tmp_resource.contents[0], False)
-        return tmp_resource.contents[0], parse_info
+        self.add_object_to_dict(energy_system.id, energy_system, False)
+        return energy_system, parse_info
 
     def load_from_string(self, esdl_string, name='from_string', new_id=None):
         """
@@ -216,6 +224,9 @@ class EnergySystemHandler:
                     resource = self.rset.create_resource(uri)
                     resource.contents.append(es)
                     self.esid_uri_dict[es.id] = uri.normalize()
+                    # TODO: this should not be necessary, but as we load the ESDL using the
+                    # self.load_external_string(), the uuid_dict is not copied to the new resource...
+                    # this call iterates through the whole ESDL again, which is slow for large ESDLs
                     self.add_object_to_dict(es.id, es, True)
 
                     return es, parse_info

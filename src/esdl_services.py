@@ -252,43 +252,49 @@ class ESDLServices:
         if "send_email_in_post_body_parameter" in service:
             body[service["send_email_in_post_body_parameter"]] = get_session("user-email")
 
-        if service["type"] == "geo_query":
-            area_scope_tag = service["geographical_scope"]["url_area_scope"]
-            area_id_tag = service["geographical_scope"]["url_area_id"]
+        if "type" in service:
+            if service["type"] == "geo_query":
+                area_scope_tag = service["geographical_scope"]["url_area_scope"]
+                area_id_tag = service["geographical_scope"]["url_area_id"]
 
-            area_scope = service_params["area_scope"]
-            url = url.replace(area_scope_tag, area_scope)
-            ares_id = service_params["area_id"]
-            url = url.replace(area_id_tag, ares_id)
-            if "url_area_subscope" in service["geographical_scope"]:
-                area_subscope_tag = service["geographical_scope"]["url_area_subscope"]
-                area_subscope = service_params["area_subscope"]
-                url = url.replace(area_subscope_tag, area_subscope)
-        elif service["type"].startswith("send_esdl"):
-            esdlstr = esh.to_string(active_es_id)
+                area_scope = service_params["area_scope"]
+                url = url.replace(area_scope_tag, area_scope)
+                ares_id = service_params["area_id"]
+                url = url.replace(area_id_tag, ares_id)
+                if "url_area_subscope" in service["geographical_scope"]:
+                    area_subscope_tag = service["geographical_scope"]["url_area_subscope"]
+                    area_subscope = service_params["area_subscope"]
+                    url = url.replace(area_subscope_tag, area_subscope)
+            elif service["type"].startswith("send_esdl"):
+                esdlstr = esh.to_string(active_es_id)
 
-            if service["body"] == "url_encoded":
-                body["energysystem"] = urllib.parse.quote(esdlstr)
-                # print(body)
-            elif service["body"] == "base64_encoded":
-                esdlstr_bytes = esdlstr.encode("utf-8")
-                esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
-                body["energysystem"] = esdlstr_base64_bytes.decode("utf-8")
-            elif service["body"] == "json_text":
-                body["energysystem"] = esdlstr
-            else:
-                body = esdlstr
-        elif service["type"] == "simulation":
-            esdlstr = esh.to_string(active_es_id)
+                if service["body"] == "url_encoded":
+                    body["energysystem"] = urllib.parse.quote(esdlstr)
+                    # print(body)
+                elif service["body"] == "base64_encoded":
+                    esdlstr_bytes = esdlstr.encode("utf-8")
+                    esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
+                    body["energysystem"] = esdlstr_base64_bytes.decode("utf-8")
+                elif service["body"] == "json_text":
+                    body["energysystem"] = esdlstr
+                else:
+                    body = esdlstr
+            elif service["type"] == "simulation":
+                esdlstr = esh.to_string(active_es_id)
 
-            if service["body"] == "url_encoded":
-                body["energysystem"] = urllib.parse.quote(esdlstr)
-            elif service["body"] == "base64_encoded":
-                esdlstr_bytes = esdlstr.encode("utf-8")
-                esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
-                body["energysystem"] = esdlstr_base64_bytes.decode("utf-8")
-            else:
-                body = esdlstr
+                if service["body"] == "url_encoded":
+                    body["energysystem"] = urllib.parse.quote(esdlstr)
+                elif service["body"] == "base64_encoded":
+                    esdlstr_bytes = esdlstr.encode("utf-8")
+                    esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
+                    body["energysystem"] = esdlstr_base64_bytes.decode("utf-8")
+                else:
+                    body = esdlstr
+
+        # The parameter values that were communicated by the frontend
+        state_params = service_params["state_params"]
+        # The parameter definition from the service config
+        config_service_params = service.get("query_parameters", {})
 
         if "body_config" in service:
             if service["body_config"].get("profiles") == "inline":
@@ -333,11 +339,16 @@ class ESDLServices:
                         for bp in body_params:
                             if param["parameter"] == bp:
                                 body[param["parameter"]] = body_params[bp]
-
-        # The parameter values that were communicated by the frontend
-        state_params = service_params["state_params"]
-        # The parameter definition from the service config
-        config_service_params = service.get("query_parameters", {})
+                    if param["type"] == "object":
+                        obj = dict()
+                        # Create and object (dictionary) with key value pairs from specific parameters from the state
+                        for p in param["parameters"]:
+                            if state_params:
+                                for key in state_params:
+                                    if state_params[key]:
+                                        if p["parameter"] == key:
+                                            obj[p["parameter_name"]] = state_params[key]
+                        body[param["parameter_name"]] = obj
 
         first_qp = True
         for cfg_service_param in config_service_params:
@@ -391,7 +402,13 @@ class ESDLServices:
             input_data = None
             if url:
                 if service["http_method"] == "get":
-                    url_response = requests.get(url, headers=headers)
+                    if service["type"].endswith("json") or (
+                        "body_config" in service and service["body_config"]["type"] == "json"
+                    ):
+                        kwargs = {"json": body}
+                    else:
+                        kwargs = None
+                    url_response = requests.get(url, headers=headers, **kwargs)
                 elif service["http_method"] == "delete":
                     url_response = requests.delete(url, headers=headers)
                 elif service["http_method"] == "post":

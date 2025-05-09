@@ -589,6 +589,42 @@ function add_service_to_contextmenu(layer, service, callback) {
 }
 
 /**
+ * Creates a WKT string for a Leaflet layer
+ * Source: https://gist.github.com/bmcbride/4248238
+ */
+function toWKT(layer) {
+    var lng, lat, coords= [];
+    if (layer instanceof L.Polygon || layer instanceof L.Polyline) {
+        var latlngs = layer.getLatLngs();
+        for (var i = 0; i < latlngs.length; i++) {
+            var latlngs1 = latlngs[i];
+            if (latlngs1.length) {
+                for (var j = 0; j < latlngs1.length; j++) {
+                    coords.push(latlngs1[j].lng + " " + latlngs1[j].lat);
+                    if (j === 0) {
+                        lng = latlngs1[j].lng;
+                        lat = latlngs1[j].lat;
+                    }
+                }
+            } else {
+                coords.push(latlngs[i].lng + " " + latlngs[i].lat);
+                if (i === 0) {
+                    lng = latlngs[i].lng;
+                    lat = latlngs[i].lat;
+                }
+            }
+        };
+        if (layer instanceof L.Polygon) {
+            return "POLYGON((" + coords.join(",") + "," + lng + " " + lat + "))";
+        } else if (layer instanceof L.Polyline) {
+            return "LINESTRING(" + coords.join(",") + ")";
+        }
+    } else if (layer instanceof L.Marker) {
+        return "POINT(" + layer.getLatLng().lng + " " + layer.getLatLng().lat + ")";
+    }
+};
+
+/**
  * Add a service to the context menu of an area.
  * @param layer
  * @param service
@@ -598,6 +634,7 @@ function add_service_to_area_contextmenu(layer, service, idx) {
     add_service_to_contextmenu(layer, service, function (e) {
         const state = {
             area_id: layer.id,
+            wkt: toWKT(layer),
         }
         if (service['type'] === 'vueworkflow' || service['type'] === 'workflow') {
             window.show_service_settings(idx, state);
