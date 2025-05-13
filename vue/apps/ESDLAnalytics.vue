@@ -406,8 +406,7 @@ const profileAggIntervals = ['Week', 'Month', 'Quarter', 'Year'];
 const profileAggFuncs = ['Count', 'Max', 'Min', 'Sum', 'Mean'];
 
 const profileMaxDataPoints = 100 // The value is applied in updateTrace() when profileDownsampling === true
-const profileDownsampleMsg = "Downsampling simplifies large dataset for better chart readability and performance " + 
-                             `by limiting visualization to approximately ${profileMaxDataPoints} data points. ` + 
+const profileDownsampleMsg = "Downsampling simplifies large dataset for better chart readability and performance. " + 
                              "The average value is used to represent data within each interval. " +
                              "Toggle it on to explore general trends or off to access the full dataset." 
 

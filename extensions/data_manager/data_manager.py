@@ -1018,7 +1018,10 @@ class DataManager:
                 groupby_interval_sec = None
                 if max_datapoints:
                     time_delta_sec = (end_date - start_date).total_seconds()
-                    groupby_interval_sec = math.ceil(time_delta_sec / max_datapoints)
+                    # To round to common (readable) interval: 1s, 30s, 1m, 30m, 1h, 6h, 12h, 1d
+                    common_intervals = [1, 30, 60, 1800, 3600, 21600, 43200, 86400]
+                    interval_sec = math.ceil(time_delta_sec / max_datapoints)
+                    groupby_interval_sec = min(common_intervals, key=lambda x: abs(x - interval_sec))
 
                 try:
                     prof_manager = InfluxDBProfileManager(influxdb_settings)
