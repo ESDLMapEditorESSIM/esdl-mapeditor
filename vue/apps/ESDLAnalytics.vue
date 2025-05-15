@@ -103,9 +103,7 @@
               <br>
             </a-row>
             <a-col
-              v-if="currentTrace.length > 0 && 
-                (isProfileVariable || (!isProfileVariable && chartType==='chart'))
-              "
+              v-if="currentTrace.length > 0"
             >
               <br>
               <a-typography-title
@@ -113,13 +111,28 @@
               >
                 Display options
               </a-typography-title>
+              <a-row>
+                <a-segmented
+                  v-model:value="chartType"
+                  :options="chartTypes"
+                  style="width: 100%;"
+                  size="small"
+                  block
+                  @change="onChartTypeBtnClick"
+                >
+                  <template #label="{ value: value, payload = {} }">
+                    <component :is="payload.icon" style="vertical-align: 0.05rem" />
+                    {{ value.charAt(0).toUpperCase() + value.slice(1) }}
+                  </template>
+                </a-segmented>
+              </a-row>
             </a-col>
             <!----------------------------------------------->
             <!----- Profile variable - Display options ------>
             <!----------------------------------------------->
             <a-col v-if="isProfileVariable && filterSelected.length">
               <a-row>
-                <a-typography-title :level="5">Data selection</a-typography-title>
+                <a-typography-title :level="5">Date selection</a-typography-title>
                 <a-range-picker
                   v-model:value="profileDataRangeSelected"
                   :disabled-date="disabledDate"
@@ -142,9 +155,23 @@
                   @change="onSelectProfileVizType"
                 />
               </a-row>
+              <a-row style="align-items: center; padding-top: 12px;">
+                <a-switch
+                  v-model:checked="profileDownsampling"
+                  size="small"
+                  :disabled="profileVizTypeSelected === 'Aggregated'"
+                  @change="onProfileDownsampling"
+                />
+                <a-typography-paragraph style="padding-left: 8px; margin-bottom: 0px;">Downsampling</a-typography-paragraph>
+                <a-tooltip :title="profileDownsampleMsg">
+                  <a-button size="small" type="text">
+                    <component :is="InfoCircleOutlined" style="vertical-align: 0.1rem" />
+                  </a-button>
+                </a-tooltip>
+              </a-row>
               <!-- TODO: show load duration curve -->
               <a-row v-if="profileVizTypeSelected === 'Aggregated'">
-                <a-typography-title :level="5">Aggregation Interval</a-typography-title>
+                <a-typography-title :level="5">Aggregation interval</a-typography-title>
                 <a-segmented
                   v-model:value="profileAggIntervalSelected"
                   :options="profileAggIntervals"
@@ -155,7 +182,7 @@
                 />
               </a-row>
               <a-row v-if="profileVizTypeSelected === 'Aggregated'">
-                <a-typography-title :level="5">Aggregation Function</a-typography-title>
+                <a-typography-title :level="5">Aggregation function</a-typography-title>
                 <a-segmented
                   v-model:value="profileAggFuncSelected"
                   :options="profileAggFuncs"
@@ -190,7 +217,7 @@
                       <a-col
                         v-for="color in option.sample"
                         :key="color"
-                        :span="2"
+                        :span="Math.round(24/option.sample.length)"
                         :style="{ backgroundColor: color.startsWith('#') ? color : `#${color}`, height: '10px' }"
                       />
                     </a-row>
@@ -205,14 +232,18 @@
                 style="display: flex; flex-direction: column; padding-top: 12px;"
                 @change="onSelectDisplayOptions"
               />
-              <a-checkbox
+              <br>
+              <a-row 
                 v-if="!isProfileVariable || (isProfileVariable && profileVizTypeSelected === 'Aggregated')"
-                v-model:checked="showBarNumbers"
-                style="padding-top: 12px;"
-                @click="onSelectDisplayOptions"
+                style="align-items: center; padding-top: 12px;"
               >
-                Show numbers on bar chart
-              </a-checkbox>
+                <a-switch
+                  v-model:checked="showBarNumbers"
+                  size="small"
+                  @change="onSelectDisplayOptions"
+                />
+                <a-typography-paragraph style="padding-left: 8px; margin-bottom: 0px;">Show numbers on bar chart</a-typography-paragraph>
+              </a-row>
             </a-col>
             <!------------------------------------------->
             <!------------- Dataset handler ------------->
@@ -293,24 +324,27 @@
                 />
               </a-button>
             </a-row>
-            <!-- Chart type buttons -->
-            <a-radio-group v-model:value="chartType">
-              <a-radio-button
-                v-for="type in chartTypes"
-                :key="type.value"
-                :value="type.value"
-                :disabled="datasetSelected.length === 0 || variableSelected === null"
-                @click="onChartTypeBtnClick"
+            <!-- Export CSV button -->
+            <a-row>
+              <a-tooltip
+                v-if="chartType==='table' && currentTrace.length"
+                title="Export CSV"
               >
-                <component :is="type.icon" style="vertical-align: 0.05rem" />
-              </a-radio-button>
-            </a-radio-group>
+                <a-button @click="exportChartDataToCSV">
+                  <component 
+                    :is="DownloadOutlined"
+                    style="vertical-align: 0.1rem"
+                  />
+                </a-button>
+              </a-tooltip>
+            </a-row>
           </a-row>
         </a-layout-header>
         <a-layout-content class="graph-content">
           <AnalyticsPlot
             :trace="currentTrace"
             :layout="currentLayout"
+            @on-relayout="onAnalyticsPlotRelayout"
           />
         </a-layout-content>
       </a-layout>
@@ -324,6 +358,7 @@ import { notification } from 'ant-design-vue';
 import {
   BarChartOutlined,
   DeleteOutlined,
+  DownloadOutlined,
   EditOutlined,
   InfoCircleOutlined,
   LoadingOutlined,
@@ -334,7 +369,8 @@ import {
   SyncOutlined,
 	TableOutlined }
 from "@ant-design/icons-vue";
-import AnalyticsPlot from '../components/esdlanalytics/AnalyticsPlot.vue';
+import { nseColorPalette } from '@/utils/spatialVisualization';
+import AnalyticsPlot from '@/components/esdlanalytics/AnalyticsPlot.vue';
 import dayjs from 'dayjs';
 import minMax from 'dayjs/plugin/minMax';
 
@@ -358,15 +394,21 @@ const props = defineProps({
 // ---------- Component options ----------- //
 // ---------------------------------------- //
 
+// payload is used by AntD segmented component to display icon
 const chartTypes = [
-  {value: "chart", icon: BarChartOutlined},
-  {value: "table", icon: TableOutlined},
+  {value: "chart", payload: { icon: BarChartOutlined } },
+  {value: "table", payload: { icon: TableOutlined } },
 ];
 
 const dateTimeFormat = "YYYY-MM-DD HH:mm:ss";
 const profileVizTypes = ['Profile', 'Aggregated'];
 const profileAggIntervals = ['Week', 'Month', 'Quarter', 'Year'];
 const profileAggFuncs = ['Count', 'Max', 'Min', 'Sum', 'Mean'];
+
+const profileMaxDataPoints = 100 // The value is applied in updateTrace() when profileDownsampling === true
+const profileDownsampleMsg = "Downsampling simplifies large dataset for better chart readability and performance. " + 
+                             "The average value is used to represent data within each interval. " +
+                             "Toggle it on to explore general trends or off to access the full dataset." 
 
 const sampleColorCount = 12;
 const colorPalettes = [
@@ -375,7 +417,9 @@ const colorPalettes = [
   { label: 'Qualitative', value: 'Qualitative', sample: window.palette('mpn65', sampleColorCount) },
   { label: 'Diverging', value: 'Diverging', sample: window.palette('tol-dv', sampleColorCount) },
   { label: 'Sequential', value: 'Sequential', sample: window.palette('tol-sq', sampleColorCount) },
-  { label: 'Rainbow', value: 'Rainbow', sample: window.palette('tol-rainbow', sampleColorCount) }
+  { label: 'Rainbow', value: 'Rainbow', sample: window.palette('tol-rainbow', sampleColorCount) },
+  // TODO: remove this quick fix (implemented to support NSE use case) 
+  { label: 'Custom color palette', value: 'NSE', sample: nseColorPalette.sample },
 ];
 
 const groupStackOptions = [
@@ -401,6 +445,7 @@ const initOptions = {
   profileDataRanges: [],
   profileDataRangeSelected: [],
   profileVizTypeSelected: profileVizTypes[0],
+  profileDownsampling: true,
   profileAggIntervalSelected: profileAggIntervals[0],
   profileAggFuncSelected: profileAggFuncs[0],
   groupbyOptions: [],
@@ -433,8 +478,8 @@ const updateTitleInputWidth = (value) => {
 
 const chartType = ref(appliedOptions.chartType);
 
-const onChartTypeBtnClick = (event) => {
-  chartType.value = event.target.value;
+const onChartTypeBtnClick = (value) => {
+  chartType.value = value;
   updateTrace();
 };
 
@@ -453,6 +498,7 @@ const isProfileVariable = ref(appliedOptions.isProfileVariable);
 const profileDataRanges = ref(appliedOptions.profileDataRanges);
 const profileDataRangeSelected = ref(appliedOptions.profileDataRangeSelected);
 const profileVizTypeSelected = ref(appliedOptions.profileVizTypeSelected);
+const profileDownsampling = ref(appliedOptions.profileDownsampling);
 const profileAggIntervalSelected = ref(appliedOptions.profileAggIntervalSelected);
 const profileAggFuncSelected = ref(appliedOptions.profileAggFuncSelected);
 const groupbyOptions = ref(appliedOptions.groupbyOptions);
@@ -482,6 +528,7 @@ const getOptions = () => {
     profileDataRanges: profileDataRanges.value,
     profileDataRangeSelected: profileDataRangeSelected.value,
     profileVizTypeSelected: profileVizTypeSelected.value,
+    profileDownsampling: profileDownsampling.value,
     profileAggIntervalSelected: profileAggIntervalSelected.value,
     profileAggFuncSelected: profileAggFuncSelected.value,
     groupbyOptions: groupbyOptions.value,
@@ -570,6 +617,55 @@ const onSelectProfileDataRange = () => {
 };
 
 const onSelectProfileVizType = () => {
+  // Switch off profile downsampling when visualization type is not 'Profile' (could be misleading)
+  if (profileVizTypeSelected.value !== 'Profile') {
+    profileDownsampling.value = false;
+  } else {
+    profileDownsampling.value = true;
+  }
+  updateTrace();
+};
+
+const onProfileDownsampling = () => {
+  updateTrace();
+};
+
+/**
+ * Triggered to update profileDataRangeSelected state when newLayoutRanges is emitted from 
+ * the user interaction with AnalyticsPlot (zoom in/out or pan). Only updateTrace() when interacting with profile data.
+ * 
+ * @param {Object|null} newLayoutRanges An object with structure as {x: [xaxis.range[0], xaxis.range[1]], y: [yaxis.range[0], yaxis.range[1]]}
+ *                                      when zoom in/out or pan event is occurred; otherwise, null is returned.
+ */ 
+const onAnalyticsPlotRelayout = (newLayoutRanges) => {
+  if (!isProfileVariable.value) {
+    return;
+  }
+
+  if (profileVizTypeSelected.value !== 'Profile') {
+    return;
+  }
+
+  // Restore to default data range when newLayoutRanges is null.
+  if (newLayoutRanges === null) {
+    profileDataRangeSelected.value = [];
+  } 
+  // Apply subset of data range for querying data.
+  else {
+    try {
+      let dateTimeRanges = newLayoutRanges["x"];
+      // Handling a special case that the returned datetime string in newLayoutRanges is with format: "YYYY-MM-DD HH:mm"
+      newLayoutRanges["x"].forEach((dt, idx) => {
+        if (dayjs(dt, "YYYY-MM-DD HH:mm", true).isValid()) {
+          dateTimeRanges[idx] = `${dt}:00`;
+        }
+      })
+      profileDataRangeSelected.value = dtStringsToDayJsObjects(dateTimeRanges);
+    } catch (error) {
+      displayNotification("error", `An error occurred while applying the selected data extent for querying: ${error}`);
+    }
+  }
+
   updateTrace();
 };
 
@@ -892,12 +988,12 @@ const updateTrace = async() => {
           profileDataRangeSelected.value.map(dt => formatAsDateTimeStr(dt)) : [],
         viz_type: profileVizTypeSelected.value,
       };
+    if (profileDownsampling.value) {
+      options['profile']['max_datapoints'] = profileMaxDataPoints;
+    }
     if (profileVizTypeSelected.value === 'Aggregated') {
-      options['profile'] = {
-        ...options['profile'],
-        agg_interval: profileAggIntervalSelected.value,
-        agg_func: profileAggFuncSelected.value
-      };
+      options['profile']['agg_interval'] = profileAggIntervalSelected.value;
+      options['profile']['agg_func'] = profileAggFuncSelected.value;
     }
   }
 
@@ -1050,6 +1146,10 @@ const barChartTraceHandler = (traces) => {
     case 'Rainbow':
       colorscale = window.palette('tol-rainbow', numColors);
       break;
+    // TODO: remove this quick fix (implemented to support NSE use case)
+    case 'NSE':
+      colorscale = nseColorPalette.sample;
+      break;
     case 'Default':
     default:
   }
@@ -1093,6 +1193,43 @@ const tableTraceHandler = (traces) => {
     traces: tableTrace,
     layout: tableLayout
   };
+};
+
+const exportChartDataToCSV = () => {
+  if (currentTrace.value[0] && currentTrace.value[0].type === 'table') {
+    try {
+      const tableData = currentTrace.value[0];
+      const csvFilename = variableSelected.value ? `${variableSelected.value}.csv` : `Untitled_chart_data.csv`;
+      const csvHeaders = tableData.header.values.map((col) => col[0].replace(/<\/?b>/g, ""));
+      const csvRows = [];
+      const rowCounts = tableData.cells.values[0].length;
+      for (let i = 0; i < rowCounts ; i++) {
+        const row = tableData.cells.values.map((array) => array[i]).join(",");
+        csvRows.push(row);
+      }
+      const csvContent = [csvHeaders, ...csvRows].join("\n");
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = csvFilename;
+      document.body.appendChild(link);
+      link.click();
+
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      const errorMsg = `Error exporting CSV: ${error}`;
+      console.error(errorMsg);
+      displayNotification("error", `${errorMsg}`);
+    }
+  } else {
+    const errorMsg = "No data or incorrect chart type.";
+    console.error(errorMsg);
+    displayNotification("error", `${errorMsg}`);
+  }
 };
 
 </script>
