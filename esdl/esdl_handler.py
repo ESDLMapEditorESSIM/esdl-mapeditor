@@ -207,7 +207,7 @@ class EnergySystemHandler:
 
         :returns: EnergySystem and the parse warnings as a tuple (es, parse_info)
         """
-        es, parse_info = self.load_external_string(esdl_string)
+        es, parse_info = self.load_external_string(esdl_string, name=name)
         # If the EnergySystem was successfully parsed from the esdl_string
         if es:
             # If the EnergySystem ID is already known in the esid_uri_dict
