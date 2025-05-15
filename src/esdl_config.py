@@ -1481,6 +1481,7 @@ esdl_config = {
                             "to_state": {},
                             "output_wrapper_variable": "selected_hub",
                         },
+                        "reload_on_esdl_activation": True,
                         "next_step": "flex-scan-phase-2",
                         "next_step_trigger": "input_change",
                     },

@@ -268,7 +268,8 @@ export function useWorkflow() {
      * @param {*} dataConfig the data config from the json service configuration for the workflow step
      * @param {*} afterDataRetrievedFunction optional function that will be called after getting the data
      */
-    const getInputData = async (dataConfig, afterDataRetrievedFunction = () => {}) => {
+    const getInputData = async (dataConfig, afterDataRetrievedFunction = () => {
+    }) => {
         if (dataConfig === null || dataConfig === undefined) {
             throw new Error("No data config found for workflow step");
         }
@@ -418,6 +419,7 @@ export function useWorkflow() {
             stepConfig.workflow_engine || null,
             stepConfig.next_step,
             nextStepTrigger,
+            stepConfig.reload_on_esdl_activation || false,
         );
     };
 
@@ -474,10 +476,11 @@ export const WorkflowNextStepTriggerOptions = Object.freeze({
  * @property {string|null} nextStep - Next step identifier
  * @property {string} nextStepTrigger - Trigger type for next step
  * @property {Object|null} [service] - Service configuration
+ * @property {boolean} reloadOnEsdlActivation - optional reload of input data when selecting another ESDL
  */
 
 export class StepParameters {
-    constructor(id, config, data, buttonText, workflowEngine, nextStep, nextStepTrigger) {
+    constructor(id, config, data, buttonText, workflowEngine, nextStep, nextStepTrigger, reloadOnEsdlActivation) {
         this.id = id;
         this.config = config;
         this.data = data;
@@ -486,6 +489,7 @@ export class StepParameters {
         this.nextStep = nextStep;
         this.nextStepTrigger = nextStepTrigger;
         this.service = null;
+        this.reloadOnEsdlActivation = reloadOnEsdlActivation;
     }
 }
 
