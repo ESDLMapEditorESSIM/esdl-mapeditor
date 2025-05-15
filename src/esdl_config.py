@@ -1324,7 +1324,7 @@ esdl_config = {
                         "name": "Energy Hub",
                         "description": "",
                         "type": "custom",
-                        "component": "eps-init-energy-hub",
+                        "component": "pdtoolsuite-init-energy-hub",
                         "service": {
                             "id": "9bd2f969-f240-4b26-ace5-2e03fbc04b16",
                             "name": "EPS Energy Hub",

@@ -1566,9 +1566,10 @@
                                     <li><a class="dropdown-item" href="#" onclick="export_as_inline_profile(this, '.');">
                                         <div class="menu-icon" style="font-size: 12px;"><i class="fa fa-cloud-download-alt"></i></div>Export ESDL with in-line profiles</a>
                                     </li>
-                                    <li><a class="dropdown-item" href="#" onclick="document.querySelector('.inputImportInlineFile').click();">
-                                        <div class="menu-icon" style="font-size: 12px;"><i class="fa fa-cloud-download-alt"></i></div>Import ESDL with in-line profiles</a>
-                                    </li>
+{#                                    Disabled for main until we figure out how to cleanly import these files. #}
+{#                                    <li><a class="dropdown-item" href="#" onclick="document.querySelector('.inputImportInlineFile').click();">#}
+{#                                        <div class="menu-icon" style="font-size: 12px;"><i class="fa fa-cloud-download-alt"></i></div>Import ESDL with in-line profiles</a>#}
+{#                                    </li>#}
                                 </ul>
                             </li>
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">Edit</a>
@@ -1721,7 +1722,7 @@
         <div id="ctrl" style="float: right; position: relative; padding:3px;">
             <input class="inputFile" type="file" style="display: none;" onchange="load_esdl_files(event);" onclick="this.value=null;" multiple>
             <input class="inputImportFile" type="file" style="display: none;" onchange="import_ESDL(event);" onclick="this.value=null;">
-            <input class="inputImportInlineFile" type="file" style="display: none;" onchange="import_esdl_with_inline_profiles(event);" onclick="this.value=null;">
+{#            <input class="inputImportInlineFile" type="file" style="display: none;" onchange="import_esdl_with_inline_profiles(event);" onclick="this.value=null;">#}
 
 {% if edr_enabled %}
             <button id="edr-asset-btn" onclick="edr_asset_window();" title="EDR assets" class="ui-button ui-widget ui-corner-all">EDR assets</button>

@@ -161,11 +161,9 @@ import {default as WorkflowJsonForm2} from "@/components/workflow/WorkflowJsonFo
 import {default as WorkflowCallJsFunction} from "@/components/workflow/WorkflowCallJsFunction";
 import {default as WorkflowCompositeStep} from "@/components/workflow/WorkflowCompositeStep.vue";
 import WorkflowDataIO from "@/components/workflow/WorkflowDataIO.vue";
-import {MenuOutlined} from "@ant-design/icons-vue";
 import {MessageNames, PubSubManager} from "@/bridge";
 import {useEsdlLayers} from "@/composables/esdlLayers";
 import {ref} from "vue";
-import EpsInitEnergyHub from "@/components/workflow/custom/eps/EpsInitEnergyHub.vue";
 
 const {getActiveEsdlLayerId} = useEsdlLayers();
 

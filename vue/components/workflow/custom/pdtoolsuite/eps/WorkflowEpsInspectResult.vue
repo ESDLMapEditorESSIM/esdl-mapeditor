@@ -30,7 +30,7 @@ import {onUnmounted, ref} from "vue";
 import {BuildOutlined, HomeOutlined, NumberOutlined, TeamOutlined,} from "@ant-design/icons-vue";
 import {useWorkflow} from "@/composables/workflow";
 import {useEsdlBuildings} from "@/composables/esdlBuildings";
-import {workflowGetData} from "../../utils/api.js";
+import {workflowGetData} from "../../../utils/api.js";
 
 const { getFromState } = useWorkflow();
 const { addBuildingContextMenuItem, removeBuildingContextMenuItem } = useEsdlBuildings();

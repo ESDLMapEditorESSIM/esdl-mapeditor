@@ -8,15 +8,15 @@
   </p>
 
   <a-form-item label="File to upload">
-    <a-input id="upload-file" type="file"/>
+    <a-input id="upload-file" type="file" />
   </a-form-item>
   <a-button type="primary" @click="uploadTemplate">Upload cost information</a-button>
 </template>
 
 <script setup="props">
-import {doPost} from "../../../../utils/api";
-import {useLongProcessState} from "../../../../composables/longProcess";
-import {genericErrorHandler} from "../../../../utils/errors";
+import {doPost} from "../../../../../utils/api";
+import {useLongProcessState} from "../../../../../composables/longProcess";
+import {genericErrorHandler} from "../../../../../utils/errors";
 
 const {startLongProcess} = useLongProcessState();
 

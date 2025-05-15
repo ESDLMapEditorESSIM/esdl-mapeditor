@@ -10,10 +10,10 @@
 </template>
 
 <script setup="props">
-import {doPost} from "../../../../utils/api";
-import {useLongProcessState} from "../../../../composables/longProcess";
-import {download_binary_file_from_base64_str_with_type} from "../../../../utils/files";
-import {genericErrorHandler} from "../../../../utils/errors";
+import {doPost} from "../../../../../utils/api";
+import {useLongProcessState} from "../../../../../composables/longProcess";
+import {download_binary_file_from_base64_str_with_type} from "../../../../../utils/files";
+import {genericErrorHandler} from "../../../../../utils/errors";
 
 const {startLongProcess} = useLongProcessState();
 

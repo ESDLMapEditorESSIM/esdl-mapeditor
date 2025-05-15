@@ -80,9 +80,9 @@ function import_ESDL(event) {
     import_esdl_helper(event, false);
 }
 
-function import_esdl_with_inline_profiles(event) {
-    import_esdl_helper(event, true);
-}
+// function import_esdl_with_inline_profiles(event) {
+//     import_esdl_helper(event, true);
+// }
 
 function save_ESDL(e, prefix) {
     let url = prefix+'/esdl';

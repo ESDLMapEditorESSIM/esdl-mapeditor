@@ -23,11 +23,11 @@
 
 <script setup="props">
 import { ref } from "vue";
-import { genericErrorHandler } from "../../../../utils/errors.js";
-import { useWorkflow } from "../../../../composables/workflow.js";
+import { genericErrorHandler } from "../../../../../utils/errors.js";
+import { useWorkflow } from "../../../../../composables/workflow.js";
 // eslint-disable-next-line no-unused-vars
-import { default as NextOrClose } from "../../NextOrClose.vue";
-import { workflowGetJsonForm } from "../../utils/api.js";
+import { default as NextOrClose } from "../../../NextOrClose.vue";
+import { workflowGetJsonForm } from "../../../utils/api.js";
 // eslint-disable-next-line no-unused-vars
 import { JsonForms } from "@jsonforms/vue";
 import {
@@ -36,7 +36,7 @@ import {
   vanillaRenderers,
 } from "@jsonforms/vue-vanilla";
 import "@jsonforms/vue-vanilla/vanilla.css";
-import { workflowPostData } from "../../utils/api.js";
+import { workflowPostData } from "../../../utils/api.js";
 
 // eslint-disable-next-line no-unused-vars
 const myStyles = mergeStyles(defaultStyles, { control: { label: "mylabel" } });
