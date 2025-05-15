@@ -28,7 +28,7 @@ import io
 import os
 import requests
 import tempfile
-from typing import Dict, List, Optional, Tuple, TypedDict, Union, cast
+from typing import Dict, List, Optional, Tuple, TypedDict, Union, cast, Type
 import zipfile
 
 from esdl import esdl
@@ -102,9 +102,7 @@ class DiceWorkflow:
                 for kpi_name, kpi in kpi_dict.items():
                     kpis_value_dict[kpi_name] = kpi.value
                 energy_assets_type_dict = _building_energy_assets_to_type_dict(building)
-                heatpumps: list[esdl.HeatPump] = cast(
-                    list[esdl.HeatPump], energy_assets_type_dict.get("HeatPump")
-                )
+                heatpumps: list[esdl.HeatPump] = cast(list[esdl.HeatPump], energy_assets_type_dict.get("HeatPump"))
                 if heatpumps:
                     heatpump_efficiency = heatpumps[0].COP
                 else:
@@ -119,6 +117,19 @@ class DiceWorkflow:
                 building_dicts.append(building_dict)
 
             return jsonify(building_dicts), 200
+
+        @self.socketio.on("get_electricity_networks_active_es", namespace="/esdl")
+        def get_electricity_networks_json_forms(params):
+            el_networks: list[esdl.Asset] = _get_assets_of_type_in_active_es(esdl.ElectricityNetwork)
+            el_networks_options: list[dict] = []
+            for el_network in el_networks:
+                el_networks_dict = dict(
+                    id=el_network.id,
+                    title=el_network.name,
+                )
+                el_networks_options.append(el_networks_dict)
+
+            return el_networks_options, 200
 
         @self.flask_app.route("/dice_workflow/mock", methods=["POST"])
         def mockdata():
@@ -141,9 +152,7 @@ class DiceWorkflow:
             active_es_id = get_session("active_es_id")
             esh = get_handler()
 
-            base64_es = base64.b64encode(
-                esh.to_string(active_es_id).encode("utf-8")
-            ).decode()
+            base64_es = base64.b64encode(esh.to_string(active_es_id).encode("utf-8")).decode()
             payload = dict(
                 energysystem=base64_es,
             )
@@ -151,9 +160,7 @@ class DiceWorkflow:
             r = requests.post(url, json=payload, timeout=DEFAULT_TIMEOUT)
             return jsonify(r.json())
 
-        @self.flask_app.route(
-            "/dice_workflow/profiles/template/progress/<process_id>", methods=["GET"]
-        )
+        @self.flask_app.route("/dice_workflow/profiles/template/progress/<process_id>", methods=["GET"])
         def check_generate_profile_template(process_id: str):
             response = _check_profiles_progress(process_id)
             if not response.get("finished", False):
@@ -183,17 +190,13 @@ class DiceWorkflow:
             url = f"{ESDL_UPLOAD_PROFILES_HOST}/process/profile"
             active_es_id = get_session("active_es_id")
             esh = get_handler()
-            base64_es = base64.b64encode(
-                esh.to_string(active_es_id).encode("utf-8")
-            ).decode()
+            base64_es = base64.b64encode(esh.to_string(active_es_id).encode("utf-8")).decode()
             files = dict(energysystem=base64_es, profile_excel=profiles_upload_file)
 
             r = requests.post(url, files=files, timeout=DEFAULT_TIMEOUT)
             return jsonify(r.json())
 
-        @self.flask_app.route(
-            "/dice_workflow/profiles/upload/progress/<process_id>", methods=["GET"]
-        )
+        @self.flask_app.route("/dice_workflow/profiles/upload/progress/<process_id>", methods=["GET"])
         def check_upload_profiles(process_id: str):
             response = _check_profiles_progress(process_id)
             if not response.get("finished", False):
@@ -219,9 +222,9 @@ class DiceWorkflow:
         @self.flask_app.route("/dice_workflow/export_essim", methods=["GET", "POST"])
         def export_essim():
             try:
-                essim_exports: dict[
-                    str, DiceESSIMExport
-                ] = self.settings_storage.get_for_current_user(DICE_ESSIM_EXPORTS)
+                essim_exports: dict[str, DiceESSIMExport] = self.settings_storage.get_for_current_user(
+                    DICE_ESSIM_EXPORTS
+                )
             except KeyError:
                 essim_exports = dict()
 
@@ -243,9 +246,7 @@ class DiceWorkflow:
                                 simulation_id=simulation_id,
                                 readable_export_type=readable_export_type,
                                 export_type=export_type,
-                                date=essim_export.get(
-                                    "start_date", datetime.now().isoformat()
-                                ),
+                                date=essim_export.get("start_date", datetime.now().isoformat()),
                                 description=result["simulationDescription"],
                             )
                         )
@@ -271,9 +272,7 @@ class DiceWorkflow:
                 )
                 essim_export_id = f"{simulation_id}_{readable_export_type}"
                 essim_exports[essim_export_id] = essim_export
-                self.settings_storage.set_for_current_user(
-                    DICE_ESSIM_EXPORTS, essim_exports
-                )
+                self.settings_storage.set_for_current_user(DICE_ESSIM_EXPORTS, essim_exports)
 
                 # Start job to generate the export.
                 self.executor.submit(
@@ -286,13 +285,11 @@ class DiceWorkflow:
                 )
                 return jsonify({}), 202
 
-        @self.flask_app.route(
-            "/dice_workflow/export_essim/<simulation_id>/download", methods=["POST"]
-        )
+        @self.flask_app.route("/dice_workflow/export_essim/<simulation_id>/download", methods=["POST"])
         def export_essim_download(simulation_id: str):
-            essim_export: DiceESSIMExport = self.settings_storage.get_for_current_user(
-                DICE_ESSIM_EXPORTS
-            ).get(simulation_id)
+            essim_export: DiceESSIMExport = self.settings_storage.get_for_current_user(DICE_ESSIM_EXPORTS).get(
+                simulation_id
+            )
             if essim_export is None or not essim_export["finished"]:
                 return jsonify({}), 404
             file_paths = essim_export.get("file_paths", [])
@@ -313,15 +310,11 @@ class DiceWorkflow:
                 )
             )
 
-        @self.flask_app.route(
-            "/dice_workflow/export_essim/<simulation_id>", methods=["GET"]
-        )
+        @self.flask_app.route("/dice_workflow/export_essim/<simulation_id>", methods=["GET"])
         def export_essim_progress(simulation_id: str):
             try:
-                essim_export: DiceESSIMExport = (
-                    self.settings_storage.get_for_current_user(DICE_ESSIM_EXPORTS).get(
-                        simulation_id
-                    )
+                essim_export: DiceESSIMExport = self.settings_storage.get_for_current_user(DICE_ESSIM_EXPORTS).get(
+                    simulation_id
                 )
             except KeyError:
                 return dict(progress=0, message="Export not yet started")
@@ -329,9 +322,7 @@ class DiceWorkflow:
             if essim_export is None:
                 return dict(progress=0, message="Export not yet started")
             if essim_export["failed_msg"]:
-                return dict(
-                    progress=100, failed=True, message=essim_export["failed_msg"]
-                )
+                return dict(progress=100, failed=True, message=essim_export["failed_msg"])
             if essim_export["finished"]:
                 return dict(progress=100, message="Export complete")
             return dict(progress=10, message="Exporting data")
@@ -347,16 +338,12 @@ def _export_energy_system_simulation_task(
     """
     A background task to export the energy system simulation results.
     """
-    user_processes: Dict[str, DiceESSIMExport] = settings_storage.get_for_current_user(
-        DICE_ESSIM_EXPORTS
-    )
+    user_processes: Dict[str, DiceESSIMExport] = settings_storage.get_for_current_user(DICE_ESSIM_EXPORTS)
     essim_export = user_processes.get(essim_export_id)
     try:
         logger.info("Exporting energy system simulation results")
 
-        influx_url_parts = (
-            essim_config["influx_mapeditor_url"].replace("http://", "").rpartition(":")
-        )
+        influx_url_parts = essim_config["influx_mapeditor_url"].replace("http://", "").rpartition(":")
         influx_client = InfluxDBClient(influx_url_parts[0], influx_url_parts[2])
 
         db = influx_client.get_list_database()[-1]["name"]
@@ -369,29 +356,21 @@ def _export_energy_system_simulation_task(
         esh = get_handler()
         # Get ESDL from ESSIM.
         essim_simulation_run = retrieve_simulation_from_essim(simulation_id)
-        esdl_string = essim_esdl_contents_to_esdl_string(
-            essim_simulation_run["esdlContents"]
-        )
+        esdl_string = essim_esdl_contents_to_esdl_string(essim_simulation_run["esdlContents"])
         es, _ = esh.load_external_string(esdl_string, name=f"essim_{simulation_id}")
 
-        dir_path = tempfile.mkdtemp(
-            prefix=f"ESSIM-export-{export_type}-{simulation_id}"
-        )
+        dir_path = tempfile.mkdtemp(prefix=f"ESSIM-export-{export_type}-{simulation_id}")
         file_paths: Dict[str, str] = dict()
 
         if export_type == DiceESSIMExportType.BUSINESS_CASE:
-            business_case_export_wb = export_business_case(
-                influx_client, simulation_id, es
-            )
+            business_case_export_wb = export_business_case(influx_client, simulation_id, es)
             logger.info("Finished exporting business case, saving result to file")
             filename = "business_case.xlsx"
             path = os.path.join(dir_path, filename)
             file_paths[filename] = path
             business_case_export_wb.save(path)
         else:
-            results = export_energy_system_simulation(
-                influx_client, simulation_id, es, networks
-            )
+            results = export_energy_system_simulation(influx_client, simulation_id, es, networks)
             logger.info("Finished exporting ICE, saving result to files")
 
             for filename, df in results.items():
@@ -420,6 +399,22 @@ class ExportEssimDict(TypedDict):
     export_type: str
     es_id: Optional[str]
     networks: Optional[List[str]]
+
+
+def _get_assets_of_type_in_active_es(asset_type: Type[esdl.Asset]) -> List[esdl.Asset]:
+    """
+    Retrieve all buildings in the active energy system and returns it sorted by name.
+    """
+    active_es_id = get_session("active_es_id")
+    esh = get_handler()
+    es = esh.get_energy_system(es_id=active_es_id)
+    area = es.instance[0].area
+    assets: List[asset_type] = []
+    for asset in area.asset:
+        if isinstance(asset, asset_type):
+            assets.append(asset)
+    assets.sort(key=lambda asset: asset.name)
+    return assets
 
 
 def _get_buildings_in_active_es() -> List[esdl.GenericBuilding]:

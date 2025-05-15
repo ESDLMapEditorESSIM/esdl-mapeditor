@@ -24,8 +24,9 @@
 </template>
 
 <script setup="props">
-import {onMounted, ref} from "vue";
+import {onMounted, onUnmounted, ref} from "vue";
 import {useWorkflow, WorkflowNextStepTriggerOptions} from "@/composables/workflow";
+import {MessageNames, PubSubManager} from "@/bridge";
 
 const props = defineProps({
   workflowStep: {
@@ -43,6 +44,7 @@ const options = ref([]);
 const placeholder = ref("Select");
 const form = ref([]);
 const mode = ref("");
+let subscriptionId = "";
 
 const selectStatus = ref("error");
 
@@ -59,7 +61,14 @@ const {
 let choicesByValue;
 
 onMounted(() => {
+  subscriptionId = PubSubManager.subscribe(MessageNames.SELECT_ACTIVE_LAYER, () => {
+    init();
+  });
   init();
+});
+
+onUnmounted(() => {
+  PubSubManager.unsubscribe(subscriptionId);
 });
 
 const onSubmit = async () => {

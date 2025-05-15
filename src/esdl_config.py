@@ -287,566 +287,423 @@ esdl_config = {
                 }
             ],
         },
-{
-    "id": "x12c4a2b-8eee-46f7-a225-87c5f85e666a",
-    "name": "Essim",
-    "explanation": "Run, view and manage Essim calculations",
-    "type": "vueworkflow",
-    "hide_step_history": True,
-    "workflow": [
-      {
-        "id": "base_steps_with_table",
-        "type": "composite",
-        "config": {
-          "step_ids": [
-            "select_name_and_time_step",
-            "select_simulation_period",
-            "select_custom_period",
-            "select_kpis",
-            "start_run",
-            "runs_table"
-          ]
-        },
-        "next_step": "base_steps_with_table"
-      },
-      {
-        "id": "select_name_and_time_step",
-        "name": "New Run",
-        "type": "json-form2",
-        "data": {
-          "from_config": {
-            "schema": {
-              "type": "object",
-              "properties": {
-                "run_name": {
-                  "type": "string",
-                  "minLength": 3,
-                  "title": "Name"
-                },
-                "time_step": {
-                  "type": "string",
-                  "oneOf": [
-                    {
-                      "const": "1h",
-                      "title": "1 hour"
+        {
+            "id": "x12c4a2b-8eee-46f7-a225-87c5f85e666a",
+            "name": "Essim",
+            "explanation": "Run, view and manage Essim calculations",
+            "type": "vueworkflow",
+            "hide_step_history": True,
+            "workflow": [
+                {
+                    "id": "base_steps_with_table",
+                    "type": "composite",
+                    "config": {
+                        "step_ids": [
+                            "select_name_and_time_step",
+                            "select_simulation_period",
+                            "select_custom_period",
+                            "select_kpis",
+                            "start_run",
+                            "runs_table",
+                        ]
                     },
-                    {
-                      "const": "15m",
-                      "title": "15 minutes"
-                    }
-                  ]
-                }
-              },
-              "required": [
-                "run_name",
-                "time_step"
-              ]
-            },
-            "uischema": {
-              "elements": [
-                {
-                  "scope": "#/properties/run_name",
-                  "type": "Control"
+                    "next_step": "base_steps_with_table",
                 },
                 {
-                  "scope": "#/properties/time_step",
-                  "type": "Control"
-                }
-              ],
-              "type": "VerticalLayout"
-            },
-            "formData": {
-              "time_step": "1h"
-            }
-          },
-          "to_state": {}
-        },
-        "next_step": "base_steps_with_table",
-        "next_step_trigger": "input_change"
-      },
-      {
-        "id": "select_simulation_period",
-        "name": "",
-        "description": "Please select the simulation period:",
-        "type": "select",
-        "config": {
-          "placeholder": "Select simulation period",
-          "multiple": False,
-          "label_fields": [
-            "description"
-          ],
-          "value_field": "id"
-        },
-        "data": {
-          "from_config": [
-            {
-              "id": "year2015",
-              "description": "Year 2015",
-              "formData": {
-                "start_time": "2015-01-01T00:00:00+0100",
-                "end_time": "2016-01-01T00:00:00+0100"
-              },
-              "schema": {
-                "properties": {
-                  "start_time": {
-                    "format": "date-time",
-                    "type": "string"
-                  },
-                  "end_time": {
-                    "format": "date-time",
-                    "type": "string"
-                  }
+                    "id": "select_name_and_time_step",
+                    "name": "New Run",
+                    "type": "json-form2",
+                    "data": {
+                        "from_config": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "run_name": {"type": "string", "minLength": 3, "title": "Name"},
+                                    "time_step": {
+                                        "type": "string",
+                                        "oneOf": [
+                                            {"const": "1h", "title": "1 hour"},
+                                            {"const": "15m", "title": "15 minutes"},
+                                        ],
+                                    },
+                                },
+                                "required": ["run_name", "time_step"],
+                            },
+                            "uischema": {
+                                "elements": [
+                                    {"scope": "#/properties/run_name", "type": "Control"},
+                                    {"scope": "#/properties/time_step", "type": "Control"},
+                                ],
+                                "type": "VerticalLayout",
+                            },
+                            "formData": {"time_step": "1h"},
+                        },
+                        "to_state": {},
+                    },
+                    "next_step": "base_steps_with_table",
+                    "next_step_trigger": "input_change",
                 },
-                "required": [
-                  "start_time",
-                  "end_time"
-                ],
-                "type": "object"
-              },
-              "uischema": {
-                "elements": [
-                  {
-                    "scope": "#/properties/start_time",
-                    "type": "Control",
-                    "options": {
-                      "readonly": True
-                    }
-                  },
-                  {
-                    "scope": "#/properties/end_time",
-                    "type": "Control",
-                    "options": {
-                      "readonly": True
-                    }
-                  }
-                ],
-                "type": "VerticalLayout"
-              }
-            },
-            {
-              "id": "year2019",
-              "description": "Year 2019",
-              "formData": {
-                "start_time": "2019-01-01T00:00:00+0100",
-                "end_time": "2020-01-01T00:00:00+0100"
-              },
-              "schema": {
-                "properties": {
-                  "start_time": {
-                    "format": "date-time",
-                    "type": "string"
-                  },
-                  "end_time": {
-                    "format": "date-time",
-                    "type": "string"
-                  }
+                {
+                    "id": "select_simulation_period",
+                    "name": "",
+                    "description": "Please select the simulation period:",
+                    "type": "select",
+                    "config": {
+                        "placeholder": "Select simulation period",
+                        "multiple": False,
+                        "label_fields": ["description"],
+                        "value_field": "id",
+                    },
+                    "data": {
+                        "from_config": [
+                            {
+                                "id": "year2015",
+                                "description": "Year 2015",
+                                "formData": {
+                                    "start_time": "2015-01-01T00:00:00+0100",
+                                    "end_time": "2016-01-01T00:00:00+0100",
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "start_time": {"format": "date-time", "type": "string"},
+                                        "end_time": {"format": "date-time", "type": "string"},
+                                    },
+                                    "required": ["start_time", "end_time"],
+                                    "type": "object",
+                                },
+                                "uischema": {
+                                    "elements": [
+                                        {
+                                            "scope": "#/properties/start_time",
+                                            "type": "Control",
+                                            "options": {"readonly": True},
+                                        },
+                                        {
+                                            "scope": "#/properties/end_time",
+                                            "type": "Control",
+                                            "options": {"readonly": True},
+                                        },
+                                    ],
+                                    "type": "VerticalLayout",
+                                },
+                            },
+                            {
+                                "id": "year2019",
+                                "description": "Year 2019",
+                                "formData": {
+                                    "start_time": "2019-01-01T00:00:00+0100",
+                                    "end_time": "2020-01-01T00:00:00+0100",
+                                },
+                                "schema": {
+                                    "properties": {
+                                        "start_time": {"format": "date-time", "type": "string"},
+                                        "end_time": {"format": "date-time", "type": "string"},
+                                    },
+                                    "required": ["start_time", "end_time"],
+                                    "type": "object",
+                                },
+                                "uischema": {
+                                    "elements": [
+                                        {
+                                            "scope": "#/properties/start_time",
+                                            "type": "Control",
+                                            "options": {"readonly": True},
+                                        },
+                                        {
+                                            "scope": "#/properties/end_time",
+                                            "type": "Control",
+                                            "options": {"readonly": True},
+                                        },
+                                    ],
+                                    "type": "VerticalLayout",
+                                },
+                            },
+                            {
+                                "id": "custom",
+                                "description": "custom period",
+                                "formData": {},
+                                "schema": {
+                                    "properties": {
+                                        "start_time": {"format": "date-time", "type": "string"},
+                                        "end_time": {"format": "date-time", "type": "string"},
+                                    },
+                                    "required": ["start_time", "end_time"],
+                                    "type": "object",
+                                },
+                                "uischema": {
+                                    "elements": [
+                                        {"scope": "#/properties/start_time", "type": "Control"},
+                                        {"scope": "#/properties/end_time", "type": "Control"},
+                                    ],
+                                    "type": "VerticalLayout",
+                                },
+                            },
+                        ],
+                        "to_state": {},
+                        "output_wrapper_variable": "selected_simulation_period",
+                    },
+                    "next_step": "base_steps_with_table",
+                    "next_step_trigger": "input_change",
                 },
-                "required": [
-                  "start_time",
-                  "end_time"
-                ],
-                "type": "object"
-              },
-              "uischema": {
-                "elements": [
-                  {
-                    "scope": "#/properties/start_time",
-                    "type": "Control",
-                    "options": {
-                      "readonly": True
-                    }
-                  },
-                  {
-                    "scope": "#/properties/end_time",
-                    "type": "Control",
-                    "options": {
-                      "readonly": True
-                    }
-                  }
-                ],
-                "type": "VerticalLayout"
-              }
-            },
-            {
-              "id": "custom",
-              "description": "custom period",
-              "formData": {},
-              "schema": {
-                "properties": {
-                  "start_time": {
-                    "format": "date-time",
-                    "type": "string"
-                  },
-                  "end_time": {
-                    "format": "date-time",
-                    "type": "string"
-                  }
+                {
+                    "id": "select_custom_period",
+                    "name": "",
+                    "type": "json-form2",
+                    "config": {"data_from_variable": "selected_simulation_period"},
+                    "data": {
+                        "from_state": {"selected_simulation_period": "selected_simulation_period"},
+                        "to_state": {},
+                    },
+                    "next_step": "base_steps_with_table",
+                    "next_step_trigger": "input_change",
                 },
-                "required": [
-                  "start_time",
-                  "end_time"
-                ],
-                "type": "object"
-              },
-              "uischema": {
-                "elements": [
-                  {
-                    "scope": "#/properties/start_time",
-                    "type": "Control"
-                  },
-                  {
-                    "scope": "#/properties/end_time",
-                    "type": "Control"
-                  }
-                ],
-                "type": "VerticalLayout"
-              }
-            }
-          ],
-          "to_state": {},
-          "output_wrapper_variable": "selected_simulation_period"
-        },
-        "next_step": "base_steps_with_table",
-        "next_step_trigger": "input_change"
-      },
-      {
-        "id": "select_custom_period",
-        "name": "",
-        "type": "json-form2",
-        "config": {
-          "data_from_variable": "selected_simulation_period"
-        },
-        "data": {
-          "from_state": {
-            "selected_simulation_period": "selected_simulation_period"
-          },
-          "to_state": {}
-        },
-        "next_step": "base_steps_with_table",
-        "next_step_trigger": "input_change"
-      },
-      {
-        "id": "select_kpis",
-        "name": "",
-        "description": "Please select the KPIs that you want to be calculated after the simulation:",
-        "type": "select",
-        "config": {
-          "placeholder": "Select KPI modules",
-          "multiple": True,
-          "label_fields": [
-            "description"
-          ],
-          "value_field": "id"
-        },
-        "data": {
-          "from_url": {
-            "url": "http://essim-engine:8112/essim/simulation/kpiModules/"
-          },
-          "to_state": {},
-          "output_wrapper_variable": "selected_kpis"
-        },
-        "next_step": "base_steps_with_table",
-        "next_step_trigger": "input_change"
-      },
-      {
-        "id": "start_run",
-        "name": "",
-        "description": "",
-        "type": "esdl-service",
-        "config": {
-          "state_params": {
-            "run_name": "run_name",
-            "start_time": "start_time",
-            "end_time": "end_time",
-            "time_step": "time_step"
-          },
-          "datetimes_convert_Z": True
-        },
-        "service": {
-          "id": "74c9d1a2-c92a-46ed-a7e4-9931971cdd28",
-          "description": "",
-          "name": "",
-          "button_label": "Run Essim Calculation",
-          "headers": {
-            "User-Agent": "ESDL Mapeditor/1.0",
-            "Accept": "application/json",
-            "Content-Type": "application/json"
-          },
-          "url": "http://essim-engine:8112/essim/simulation",
-          "http_method": "post",
-          "type": "send_esdl",
-          "send_email_in_post_body_parameter": "user_name",
-          "query_parameters": [
-            {
-              "name": "simulationDescription",
-              "description": "Simulation name",
-              "parameter_name": "run_name",
-              "location": "body"
-            },
-            {
-              "name": "startDate",
-              "description": "start date",
-              "parameter_name": "start_time",
-              "location": "body"
-            },
-            {
-              "name": "endDate",
-              "description": "end date",
-              "parameter_name": "end_time",
-              "location": "body"
-            },
-            {
-              "name": "timeStep",
-              "description": "time step",
-              "parameter_name": "time_step",
-              "location": "body"
-            },
-            {
-              "name": "influxURL",
-              "description": "influx url",
-              "value": "http://influxdb:8086",
-              "location": "body"
-            },
-            {
-              "name": "user",
-              "description": "Essim user",
-              "value": "mapeditor",
-              "location": "body"
-            }
-          ],
-          "body": "json_text",
-          "body_config": {
-            "type": "json",
-            "parameters": [
-              {
-                "type": "esdl",
-                "encoding": "base64_encoded",
-                "parameter": "esdlContents"
-              },
-              {
-                "type": "esdl_id",
-                "parameter": "scenarioID"
-              }
-            ]
-          },
-          "result": [
-            {
-              "code": 200,
-              "action": "save_model_run",
-              "external_model_name": "essim",
-              "external_model_id_response_param": "id",
-              "run_name_state_param": "run_name"
-            }
-          ],
-          "with_jwt_token": False,
-          "state_params": True
-        },
-        "button_text": "Start model run",
-        "next_step": "retrieve_run_progress_results",
-        "workflow_engine": {
-          "run_name": "state_params.run_name",
-          "workflow_engine_next_step": "retrieve_run_progress_results"
-        }
-      },
-      {
-        "id": "retrieve_run_progress_results",
-        "monitor_name": "Running Essim Calculation...",
-        "type": "workflow-engine-monitor",
-        "config": {
-          "model_run_result_polling": {
-            "query_list": [
-              {
-                "url": "http://essim-engine:8112/essim/simulation/<MODEL_JOB_ID>",
-                "response_mapping": {
-                  "status": "status.state",
-                  "progress_fraction": "status.description"
+                {
+                    "id": "select_kpis",
+                    "name": "",
+                    "description": "Please select the KPIs that you want to be calculated after the simulation:",
+                    "type": "select",
+                    "config": {
+                        "placeholder": "Select KPI modules",
+                        "multiple": True,
+                        "label_fields": ["description"],
+                        "value_field": "id",
+                    },
+                    "data": {
+                        "from_url": {"url": "http://essim-engine:8112/essim/simulation/kpiModules/"},
+                        "to_state": {},
+                        "output_wrapper_variable": "selected_kpis",
+                    },
+                    "next_step": "base_steps_with_table",
+                    "next_step_trigger": "input_change",
                 },
-                "model_specific_response_mapping": {
-                  "scenarioID": "scenarioID",
-                  "simRunDate": "simRunDate",
-                  "dashboardURL": "dashboardURL"
+                {
+                    "id": "start_run",
+                    "name": "",
+                    "description": "",
+                    "type": "esdl-service",
+                    "config": {
+                        "state_params": {
+                            "run_name": "run_name",
+                            "start_time": "start_time",
+                            "end_time": "end_time",
+                            "time_step": "time_step",
+                        },
+                        "datetimes_convert_Z": True,
+                    },
+                    "service": {
+                        "id": "74c9d1a2-c92a-46ed-a7e4-9931971cdd28",
+                        "description": "",
+                        "name": "",
+                        "button_label": "Run Essim Calculation",
+                        "headers": {
+                            "User-Agent": "ESDL Mapeditor/1.0",
+                            "Accept": "application/json",
+                            "Content-Type": "application/json",
+                        },
+                        "url": "http://essim-engine:8112/essim/simulation",
+                        "http_method": "post",
+                        "type": "send_esdl",
+                        "send_email_in_post_body_parameter": "user_name",
+                        "query_parameters": [
+                            {
+                                "name": "simulationDescription",
+                                "description": "Simulation name",
+                                "parameter_name": "run_name",
+                                "location": "body",
+                            },
+                            {
+                                "name": "startDate",
+                                "description": "start date",
+                                "parameter_name": "start_time",
+                                "location": "body",
+                            },
+                            {
+                                "name": "endDate",
+                                "description": "end date",
+                                "parameter_name": "end_time",
+                                "location": "body",
+                            },
+                            {
+                                "name": "timeStep",
+                                "description": "time step",
+                                "parameter_name": "time_step",
+                                "location": "body",
+                            },
+                            {
+                                "name": "influxURL",
+                                "description": "influx url",
+                                "value": "http://influxdb:8086",
+                                "location": "body",
+                            },
+                            {"name": "user", "description": "Essim user", "value": "mapeditor", "location": "body"},
+                        ],
+                        "body": "json_text",
+                        "body_config": {
+                            "type": "json",
+                            "parameters": [
+                                {"type": "esdl", "encoding": "base64_encoded", "parameter": "esdlContents"},
+                                {"type": "esdl_id", "parameter": "scenarioID"},
+                            ],
+                        },
+                        "result": [
+                            {
+                                "code": 200,
+                                "action": "save_model_run",
+                                "external_model_name": "essim",
+                                "external_model_id_response_param": "id",
+                                "run_name_state_param": "run_name",
+                            }
+                        ],
+                        "with_jwt_token": False,
+                        "state_params": True,
+                    },
+                    "button_text": "Start model run",
+                    "next_step": "retrieve_run_progress_results",
+                    "workflow_engine": {
+                        "run_name": "state_params.run_name",
+                        "workflow_engine_next_step": "retrieve_run_progress_results",
+                    },
                 },
-                "esdl_encoding": "base64_encoded",
-                "status_mapping": {
-                  "SUBMITTED": [
-                    "CREATED"
-                  ],
-                  "RUNNING": [
-                    "RUNNING"
-                  ],
-                  "SUCCEEDED": [
-                    "COMPLETE"
-                  ],
-                  "CANCELLED": [
-                    "CANCELLED"
-                  ],
-                  "ERROR": [
-                    "TIMEOUT",
-                    "ERROR"
-                  ]
-                }
-              }
+                {
+                    "id": "retrieve_run_progress_results",
+                    "monitor_name": "Running Essim Calculation...",
+                    "type": "workflow-engine-monitor",
+                    "config": {
+                        "model_run_result_polling": {
+                            "query_list": [
+                                {
+                                    "url": "http://essim-engine:8112/essim/simulation/<MODEL_JOB_ID>",
+                                    "response_mapping": {
+                                        "status": "status.state",
+                                        "progress_fraction": "status.description",
+                                    },
+                                    "model_specific_response_mapping": {
+                                        "scenarioID": "scenarioID",
+                                        "simRunDate": "simRunDate",
+                                        "dashboardURL": "dashboardURL",
+                                    },
+                                    "esdl_encoding": "base64_encoded",
+                                    "status_mapping": {
+                                        "SUBMITTED": ["CREATED"],
+                                        "RUNNING": ["RUNNING"],
+                                        "SUCCEEDED": ["COMPLETE"],
+                                        "CANCELLED": ["CANCELLED"],
+                                        "ERROR": ["TIMEOUT", "ERROR"],
+                                    },
+                                }
+                            ],
+                            "retry_interval_seconds": 2,
+                            "maximum_wait_seconds": 3600,
+                        }
+                    },
+                },
+                {
+                    "id": "runs_table",
+                    "name": "Results overview",
+                    "description": "",
+                    "type": "table-external-model",
+                    "config": {
+                        "external_model": "essim",
+                        "model_short_name": "essim",
+                        "has_feedback_messages": False,
+                        "result_animation": {
+                            "filter_on_tag": {"tag_name": "simulationRun", "value_database_key": "model_job_id"}
+                        },
+                        "result_external_link": {
+                            "description": "Open Dashboard",
+                            "value_database_key": "model_specific_output.dashboardURL",
+                        },
+                        "delete_result_url": "",
+                        "time_series_xlsx_download": {
+                            "filter_on_tag": {"tag_name": "simulationRun", "value_database_key": "model_job_id"},
+                            "esdl_object_name_field": "assetName",
+                            "excel_sheets_per_table": [
+                                {
+                                    "name_postfix": "PinW",
+                                    "field_name_recorded_per_esdl_object": "allocationPower",
+                                    "field_names_unrelated_to_esdl_objects": ["imbalancePower"],
+                                    "exclude_values": {"field_name": "capability", "values_to_exclude": ["Transport"]},
+                                },
+                                {
+                                    "name_postfix": "EinJ",
+                                    "field_name_recorded_per_esdl_object": "allocationEnergy",
+                                    "field_names_unrelated_to_esdl_objects": ["imbalanceEnergy"],
+                                    "exclude_values": {"field_name": "capability", "values_to_exclude": ["Transport"]},
+                                },
+                            ],
+                        },
+                    },
+                    "data": {
+                        "from_socket": {
+                            "event": "get_external_model_runs_for_user",
+                            "params": {"external_model_name": "essim"},
+                        }
+                    },
+                    "with_jwt_token": True,
+                },
             ],
-            "retry_interval_seconds": 2,
-            "maximum_wait_seconds": 3600
-          }
-        }
-      },
-      {
-        "id": "runs_table",
-        "name": "Results overview",
-        "description": "",
-        "type": "table-external-model",
-        "config": {
-          "external_model": "essim",
-          "model_short_name": "essim",
-          "has_feedback_messages": False,
-          "result_animation": {
-            "filter_on_tag": {
-              "tag_name": "simulationRun",
-              "value_database_key": "model_job_id"
-            }
-          },
-          "result_external_link": {
-            "description": "Open Dashboard",
-            "value_database_key": "model_specific_output.dashboardURL"
-          },
-          "delete_result_url": "",
-          "time_series_xlsx_download": {
-            "filter_on_tag": {
-              "tag_name": "simulationRun",
-              "value_database_key": "model_job_id"
-            },
-            "esdl_object_name_field": "assetName",
-            "excel_sheets_per_table": [
-              {
-                "name_postfix": "PinW",
-                "field_name_recorded_per_esdl_object": "allocationPower",
-                "field_names_unrelated_to_esdl_objects": [
-                  "imbalancePower"
-                ],
-                "exclude_values": {
-                  "field_name": "capability",
-                  "values_to_exclude": [
-                    "Transport"
-                  ]
-                }
-              },
-              {
-                "name_postfix": "EinJ",
-                "field_name_recorded_per_esdl_object": "allocationEnergy",
-                "field_names_unrelated_to_esdl_objects": [
-                  "imbalanceEnergy"
-                ],
-                "exclude_values": {
-                  "field_name": "capability",
-                  "values_to_exclude": [
-                    "Transport"
-                  ]
-                }
-              }
-            ]
-          }
         },
-        "data": {
-          "from_socket": {
-            "event": "get_external_model_runs_for_user",
-            "params": {
-              "external_model_name": "essim"
-            }
-          }
+        {
+            "id": "912c4a2b-8eee-46f7-a225-87c5f85e645f",
+            "name": "ESDL Validator",
+            "explanation": "This service allows you validate an ESDL against a certain schema",
+            "type": "vueworkflow",
+            "workflow": [
+                {
+                    "id": "schema_and_validate",
+                    "type": "composite",
+                    "config": {"step_ids": ["select_schema", "validate_esdl"]},
+                    "next_step": "schema_and_validate",
+                },
+                {
+                    "id": "select_schema",
+                    "name": "Select schema",
+                    "description": "",
+                    "type": "select",
+                    "config": {"multiple": False, "label_fields": ["name"], "value_field": "id"},
+                    "data": {
+                        "from_url": {"url": "http://esdl-validator:5000/schema"},
+                        "to_state": {},
+                        "output_wrapper_variable": "schema",
+                    },
+                    "next_step": "schema_and_validate",
+                    "next_step_trigger": "input_change",
+                },
+                {
+                    "id": "validate_esdl",
+                    "name": "",
+                    "type": "esdl-service",
+                    "config": {"state_params": {"schemas": "schema.id"}},
+                    "service": {
+                        "id": "64c9d1a2-c92a-46ed-a7e4-9931971cbb20",
+                        "name": "Validate ESDL against schema",
+                        "description": "",
+                        "headers": {
+                            "User-Agent": "ESDL Mapeditor/0.1",
+                            "Content-Type": "application/xml;charset=UTF-8",
+                        },
+                        "url": "http://esdl-validator:5000/validationToMessages/",
+                        "http_method": "post",
+                        "type": "send_esdl",
+                        "query_parameters": [
+                            {
+                                "name": "Schemas",
+                                "description": "ID of the schema to validate this ESDL against",
+                                "parameter_name": "schemas",
+                            }
+                        ],
+                        "body": "",
+                        "result": [{"code": 200, "action": "asset_feedback"}],
+                        "with_jwt_token": False,
+                        "state_params": True,
+                    },
+                    "button_text": "Validate",
+                    "previous_step": "select_schema",
+                },
+            ],
+            "show_on_toolbar": True,
+            "icon": {"filename": "Validator.png", "type": "filename"},
         },
-        "with_jwt_token": True
-      }
-    ]
-  },
-  {
-    "id": "912c4a2b-8eee-46f7-a225-87c5f85e645f",
-    "name": "ESDL Validator",
-    "explanation": "This service allows you validate an ESDL against a certain schema",
-    "type": "vueworkflow",
-    "workflow": [
-      {
-        "id": "schema_and_validate",
-        "type": "composite",
-        "config": {
-          "step_ids": [
-            "select_schema",
-            "validate_esdl"
-          ]
-        },
-        "next_step": "schema_and_validate"
-      },
-      {
-        "id": "select_schema",
-        "name": "Select schema",
-        "description": "",
-        "type": "select",
-        "config": {
-          "multiple": False,
-          "label_fields": [
-            "name"
-          ],
-          "value_field": "id"
-        },
-        "data": {
-          "from_url": {
-            "url": "http://esdl-validator:5000/schema"
-          },
-          "to_state": {},
-          "output_wrapper_variable": "schema"
-        },
-        "next_step": "schema_and_validate",
-        "next_step_trigger": "input_change"
-      },
-      {
-        "id": "validate_esdl",
-        "name": "",
-        "type": "esdl-service",
-        "config": {
-          "state_params": {
-            "schemas": "schema.id"
-          }
-        },
-        "service": {
-          "id": "64c9d1a2-c92a-46ed-a7e4-9931971cbb20",
-          "name": "Validate ESDL against schema",
-          "description": "",
-          "headers": {
-            "User-Agent": "ESDL Mapeditor/0.1",
-            "Content-Type": "application/xml;charset=UTF-8"
-          },
-          "url": "http://esdl-validator:5000/validationToMessages/",
-          "http_method": "post",
-          "type": "send_esdl",
-          "query_parameters": [
-            {
-              "name": "Schemas",
-              "description": "ID of the schema to validate this ESDL against",
-              "parameter_name": "schemas"
-            }
-          ],
-          "body": "",
-          "result": [
-            {
-              "code": 200,
-              "action": "asset_feedback"
-            }
-          ],
-          "with_jwt_token": False,
-          "state_params": True
-        },
-        "button_text": "Validate",
-        "previous_step": "select_schema"
-      }
-    ],
-    "show_on_toolbar": True,
-    "icon": {
-      "filename": "Validator.png",
-      "type": "filename"
-    }
-  }
-
     ],
     "role_based_esdl_services": {
         "eps": [
@@ -856,7 +713,6 @@ esdl_config = {
                 "explanation": "This workflow allows you to run the ICE workflow for business parks.",
                 "type": "vueworkflow",
                 "resumable": True,
-
                 "workflow": [
                     {
                         "id": "home",
@@ -1001,16 +857,10 @@ esdl_config = {
                                 "type": "subheader",
                             },
                             {
-                                "name": "Start Flex Scan phase 2",
+                                "name": "Flex Scan phase 2",
                                 "type": "primary",
-                                "disabled": True,
-                                "next_step": "start-flex-scan-phase-2",
-                            },
-                            {
-                                "name": "Load FS phase 2 results",
-                                "type": "primary",
-                                "disabled": True,
-                                "next_step": "load-flex-scan-phase-2-results",
+                                "disabled": False,
+                                "next_step": "flex-scan-phase-2",
                             },
                             {
                                 "name": "Calculate business case (in development)",
@@ -1084,12 +934,10 @@ esdl_config = {
                             "from_url": {
                                 "url": f"{EPS_WEB_HOST}/api/projects/",
                                 "method": "GET",
-                                "headers": {
-                                    "Accept": "application/json"
-                                },
+                                "headers": {"Accept": "application/json"},
                             },
                             "to_state": {},
-                            "output_wrapper_variable": "project"
+                            "output_wrapper_variable": "project",
                         },
                         "next_step": "select-project-file-for-download",
                     },
@@ -1107,16 +955,12 @@ esdl_config = {
                         "data": {
                             "from_url": {
                                 "url": f"{EPS_WEB_HOST}/api/projects/{{project_id}}/files",
-                                "request_params": [
-                                    {"name": "project_id", "parameter_name": "project.id"}
-                                ],
+                                "request_params": [{"name": "project_id", "parameter_name": "project.id"}],
                                 "method": "GET",
-                                "headers": {
-                                    "Accept": "application/json"
-                                },
+                                "headers": {"Accept": "application/json"},
                             },
                             "to_state": {},
-                            "output_wrapper_variable": "file"
+                            "output_wrapper_variable": "file",
                         },
                         "next_step": "download-project-file",
                     },
@@ -1126,8 +970,7 @@ esdl_config = {
                         "description": "By clicking the button below you can download the selected project file.",
                         "type": "download_file",
                         "source": {
-                            "url": EPS_WEB_HOST
-                                   + "/api/projects/{project_id}/files/{file_name}",
+                            "url": EPS_WEB_HOST + "/api/projects/{project_id}/files/{file_name}",
                             "request_params": {
                                 "project_id": "project.id",
                                 "file_name": "file.id",
@@ -1149,12 +992,10 @@ esdl_config = {
                             "from_url": {
                                 "url": f"{EPS_WEB_HOST}/api/projects/",
                                 "method": "GET",
-                                "headers": {
-                                    "Accept": "application/json"
-                                },
+                                "headers": {"Accept": "application/json"},
                             },
                             "to_state": {},
-                            "output_wrapper_variable": "project"
+                            "output_wrapper_variable": "project",
                         },
                         "next_step": "upload-project-file",
                     },
@@ -1221,7 +1062,7 @@ esdl_config = {
                                 {
                                     "label": "complete",
                                     "map": {True: "Complete", False: "Failed"},
-                                    "default": "Processing"
+                                    "default": "Processing",
                                 },
                             ],
                             "value_field": "id",
@@ -1230,15 +1071,13 @@ esdl_config = {
                             "from_url": {
                                 "url": f"{EPS_WEB_HOST}/api/eps/",
                                 "method": "GET",
-                                "headers": {
-                                    "Accept": "application/json"
-                                },
+                                "headers": {"Accept": "application/json"},
                             },
                             "to_state": {},
                             "output_wrapper_variable": "execution",
                         },
                         "button_text": "Load EPS results",
-                        "next_step": "load-eps"
+                        "next_step": "load-eps",
                     },
                     {
                         "id": "load-eps",
@@ -1268,7 +1107,7 @@ esdl_config = {
                                 }
                             ],
                             "with_jwt_token": True,
-                        }
+                        },
                     },
                     {
                         "id": "explore-eps-results",
@@ -1276,10 +1115,7 @@ esdl_config = {
                         "description": "",
                         "type": "custom",
                         "component": "eps-inspect-result",
-                        "custom_data": {
-                            "url": EPS_WEB_HOST
-                                   + "/api/eps/{execution_id}/pand/{pand_bagid}"
-                        },
+                        "custom_data": {"url": EPS_WEB_HOST + "/api/eps/{execution_id}/pand/{pand_bagid}"},
                     },
                     {
                         "id": "apply-eps-measures",
@@ -1337,7 +1173,7 @@ esdl_config = {
                             ],
                             "result": [{"code": 200, "action": "esdl"}],
                             "with_jwt_token": True,
-                        }
+                        },
                     },
                     {
                         "id": "start-flex-scan-phase-1",
@@ -1359,25 +1195,19 @@ esdl_config = {
                                 "name": "2020",
                                 "description": "",
                                 "next_step": "load-flex-scan-f1",
-                                "target_variable_value": {
-                                    "year": 2020
-                                }
+                                "target_variable_value": {"year": 2020},
                             },
                             {
                                 "name": "2025",
                                 "description": "",
                                 "next_step": "load-flex-scan-f1",
-                                "target_variable_value": {
-                                    "year": 2025
-                                }
+                                "target_variable_value": {"year": 2025},
                             },
                             {
                                 "name": "2030",
                                 "description": "",
                                 "next_step": "load-flex-scan-f1",
-                                "target_variable_value": {
-                                    "year": 2030
-                                }
+                                "target_variable_value": {"year": 2030},
                             },
                         ],
                         "target_variable": "flexscanf1",
@@ -1387,10 +1217,7 @@ esdl_config = {
                         "name": "Load Flex Scan F1",
                         "type": "esdl-service",
                         "config": {
-                            "state_params": {
-                                "execution_id": "execution.id",
-                                "year": "flexscanf1.year"
-                            },
+                            "state_params": {"execution_id": "execution.id", "year": "flexscanf1.year"},
                         },
                         "service": {
                             "id": "f25dfd1a-525d-42db-92d6-6d358bbdfca1",
@@ -1416,14 +1243,12 @@ esdl_config = {
                                     "name": "Flex Scan F1 year",
                                     "parameter_name": "year",
                                     "location": "url",
-                                }
+                                },
                             ],
                             "with_jwt_token": True,
                         },
                         "target_variable": "flexscanf1",
-                        "target_variable_value": {
-                            "loaded": True
-                        },
+                        "target_variable_value": {"loaded": True},
                     },
                     {
                         "id": "configure-energy-infrastructure",
@@ -1481,7 +1306,7 @@ esdl_config = {
                             ],
                             "result": [{"code": 200, "action": "esdl"}],
                             "with_jwt_token": True,
-                        }
+                        },
                     },
                     {
                         "id": "configure-new-assets",
@@ -1519,7 +1344,7 @@ esdl_config = {
                             ],
                             "result": [{"code": 200, "action": "esdl"}],
                             "with_jwt_token": True,
-                        }
+                        },
                     },
                     {
                         "id": "generate-cost-information-template",
@@ -1604,27 +1429,183 @@ esdl_config = {
                         },
                     },
                     {
-                        "id": "start-flex-scan-phase-2",
-                        "name": "Start Flex Scan phase 2",
-                        "description": "",
-                        "type": "text",
-                        "data": {
-                            "from_config": {
-                                "text": "PLACEHOLDER",
-                            },
+                        "id": "flex-scan-phase-2",
+                        "name": "Flex scan phase 2",
+                        "type": "composite",
+                        "config": {
+                            "step_ids": [
+                                "select-name-and-goal-flex-scan",
+                                "select-hub-flex-scan",
+                                "start-flex-scan-phase-2",
+                                "table-flex-scan-phase-2-runs",
+                            ]
                         },
-                        "text": "PLACEHOLDER",
+                        "next_step": "flex-scan-phase-2",
                     },
                     {
-                        "id": "load-flex-scan-phase-2-results",
-                        "name": "Load Flex Scan phase 2 results",
-                        "description": "",
-                        "type": "text",
+                        "id": "select-name-and-goal-flex-scan",
+                        "type": "json-form2",
                         "data": {
                             "from_config": {
-                                "text": "PLACEHOLDER",
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "run_name": {"type": "string", "minLength": 3, "title": "Name"},
+                                        "optimization_goal": {
+                                            "type": "string",
+                                            "oneOf": [
+                                                {"const": "infra", "title": "infra"},
+                                                {"const": "duurzaamheid", "title": "sustainability"},
+                                                {"const": "kosten", "title": "costs"},
+                                            ],
+                                        },
+                                    },
+                                    "required": ["run_name", "optimization_goal"],
+                                }
+                            },
+                            "to_state": {},
+                        },
+                        "next_step": "flex-scan-phase-2",
+                        "next_step_trigger": "input_change",
+                    },
+                    {
+                        "id": "select-hub-flex-scan",
+                        "name": "",
+                        "description": "Select the Hub (electricity network from active ESDL)",
+                        "type": "select",
+                        "config": {"multiple": False, "label_fields": ["title"], "value_field": "id"},
+                        "data": {
+                            "from_socket": {
+                                "event": "get_electricity_networks_active_es",
+                            },
+                            "to_state": {},
+                            "output_wrapper_variable": "selected_hub",
+                        },
+                        "next_step": "flex-scan-phase-2",
+                        "next_step_trigger": "input_change",
+                    },
+                    {
+                        "id": "start-flex-scan-phase-2",
+                        "name": "",
+                        "description": "",
+                        "type": "esdl-service",
+                        "config": {
+                            "state_params": {
+                                "run_name": "run_name",
+                                "optimization_goal": "optimization_goal",
+                                "hub_elect_network_id": "selected_hub.id",
                             },
                         },
+                        "service": {
+                            "id": "74c9d1a2-c92a-46ed-a7e4-9931971ced58",
+                            "description": "",
+                            "name": "",
+                            "headers": {
+                                "User-Agent": "ESDL Mapeditor/1.0",
+                                "Accept": "application/json",
+                                "Content-Type": "application/json",
+                            },
+                            "url": "http://localhost:7200/flex/start",
+                            "http_method": "post",
+                            "type": "send_esdl",
+                            "send_email_in_post_body_parameter": "user_name",
+                            "query_parameters": [
+                                {
+                                    "name": "run_name",
+                                    "description": "Run name",
+                                    "parameter_name": "run_name",
+                                    "location": "body",
+                                },
+                                {
+                                    "name": "optimization_goal",
+                                    "description": "Optimization goal",
+                                    "parameter_name": "optimization_goal",
+                                    "location": "body",
+                                },
+                                {
+                                    "name": "hub_elect_network_id",
+                                    "description": "Hub electricity network ID",
+                                    "parameter_name": "hub_elect_network_id",
+                                    "location": "body",
+                                },
+                            ],
+                            "body": "json_text",
+                            "body_config": {
+                                "type": "json",
+                                "parameters": [
+                                    {"type": "esdl", "encoding": "base64_encoded", "parameter": "esdl_file_base64_str"},
+                                ],
+                            },
+                            "result": [
+                                {
+                                    "code": 200,
+                                    "action": "save_model_run",
+                                    "external_model_name": "flexscan",
+                                    "external_model_id_response_param": "phase2_execution_id",
+                                    "run_name_state_param": "run_name",
+                                }
+                            ],
+                            "with_jwt_token": False,
+                            "state_params": True,
+                        },
+                        "button_text": "Start model run",
+                        "next_step": "flex-scan-phase-2",
+                        "workflow_engine": {
+                            "run_name": "state_params.run_name",
+                            "workflow_engine_next_step": "retrieve-flex-scan-phase-2-run-progress-results",
+                        },
+                    },
+                    {
+                        "id": "retrieve-flex-scan-phase-2-run-progress-results",
+                        "monitor_name": "Running Flexscan phase 2 Calculation...",
+                        "type": "workflow-engine-monitor",
+                        "config": {
+                            "model_run_result_polling": {
+                                "query_list": [
+                                    {
+                                        "url": "http://localhost:7200/flex/<MODEL_JOB_ID>/progress",
+                                        "response_mapping": {
+                                            "status": "status",
+                                            "progress_fraction": "progress_fraction",
+                                        },
+                                        "model_specific_response_mapping": {
+                                            "flexscan_results_url": "flexscan_results_url",
+                                        },
+                                        "esdl_encoding": "base64_encoded",
+                                        "status_mapping": {
+                                            "RUNNING": ["RUNNING"],
+                                            "SUCCEEDED": ["SUCCEEDED"],
+                                            "CANCELLED": ["CANCELLED"],
+                                            "ERROR": ["ERROR"],
+                                        },
+                                    }
+                                ],
+                                "retry_interval_seconds": 2,
+                                "maximum_wait_seconds": 3600,
+                            }
+                        },
+                    },
+                    {
+                        "id": "table-flex-scan-phase-2-runs",
+                        "name": "Results overview",
+                        "description": "",
+                        "type": "table-external-model",
+                        "config": {
+                            "model_short_name": "flexscan",
+                            "has_feedback_messages": False,
+                            "result_external_link": {
+                                "description": "View Results dashboard",
+                                "value_database_key": "model_specific_output.flexscan_results_url",
+                            },
+                            "delete_result_url": "http://localhost:7200/flex/<MODEL_JOB_ID>/results",
+                        },
+                        "data": {
+                            "from_socket": {
+                                "event": "get_external_model_runs_for_user",
+                                "params": {"external_model_name": "flexscan"},
+                            }
+                        },
+                        "with_jwt_token": True,
                     },
                     {
                         "id": "run-ehc-business-case-module",
@@ -1659,7 +1640,6 @@ esdl_config = {
                             },
                         },
                     },
-
                     # TODO: check if these steps can be safely removed
                     # {
                     #     # 8
