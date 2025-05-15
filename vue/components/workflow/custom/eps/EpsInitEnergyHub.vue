@@ -94,7 +94,7 @@ const doGetData = async () => {
   selectedBuildingIds.value = [];
   isLoading.value = true;
   try {
-    const response = await doGet("dice_workflow/get_buildings");
+    const response = await doGet("pdtoolsuite_workflow/get_buildings");
     if (!response) {
       alert("No buildings received.");
       return
@@ -112,8 +112,8 @@ const workflowStep = props.workflowStep;
 const onSubmit = async () => {
   const params = {};
   params["service_id"] = workflowStep.service.id;
-  params["query_parameters"] = {};
-  params["query_parameters"]['building_ids'] = selectedBuildingIds.value;
+  params["state_params"] = {};
+  params["state_params"]['building_ids'] = selectedBuildingIds.value;
 
   window.socket.emit("command", { cmd: "query_esdl_service", params: params });
   window.show_loader();

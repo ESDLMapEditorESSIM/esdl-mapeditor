@@ -294,7 +294,7 @@ const doGetData = async () => {
   selectedBuildingIds.value = [];
   isLoading.value = true;
   try {
-    const response = await doGet("dice_workflow/get_buildings");
+    const response = await doGet("pdtoolsuite_workflow/get_buildings");
     if (!response) {
       alert("No buildings received.");
       return

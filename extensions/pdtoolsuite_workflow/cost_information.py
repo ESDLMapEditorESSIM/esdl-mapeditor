@@ -13,7 +13,7 @@ logger = get_logger(__name__)
 
 DEFAULT_TIMEOUT = 30
 
-# TODO: put this here, or embed in the dice_workflow.py file?
+# TODO: put this here, or embed in the pdtoolsuite_workflow.py file?
 
 class CostInformation:
     def __init__(self, flask_app: Flask):

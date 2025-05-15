@@ -1269,13 +1269,13 @@ esdl_config = {
                         "name": "Generate profile template",
                         "description": "",
                         "type": "custom",
-                        "component": "dice-generate-profile-template",
+                        "component": "pdtoolsuite-generate-profile-template",
                     },
                     {
                         "id": "upload-profiles",
                         "name": "Upload profiles",
                         "type": "custom",
-                        "component": "dice-upload-profiles",
+                        "component": "pdtoolsuite-upload-profiles",
                     },
                     {
                         "id": "custom-energy-saving-measures",
@@ -1387,7 +1387,7 @@ esdl_config = {
                     #             "Accept": "application/esdl+xml",
                     #             "User-Agent": "ESDL Mapeditor/0.1",
                     #         },
-                    #         "url": "http://localhost:8111/dice_workflow/mock",
+                    #         "url": "http://localhost:8111/pdtoolsuite_workflow/mock",
                     #         "http_method": "post",
                     #         "type": "",
                     #         "body_config": {

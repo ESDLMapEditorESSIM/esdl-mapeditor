@@ -292,7 +292,7 @@ class ESDLServices:
                     body = esdlstr
 
         # The parameter values that were communicated by the frontend
-        state_params = service_params["state_params"]
+        state_params = service_params.get("state_params")
         # The parameter definition from the service config
         config_service_params = service.get("query_parameters", {})
 
