@@ -3826,14 +3826,18 @@ The information defined in this data table should be sufficient to build a query
 
 class ProfileConstraint(Constraint):
     """Allow to specify a certain constraint as a profile (varying over time)"""
-    profile = EReference(ordered=True, unique=True, containment=True, derived=False)
+    minimum = EReference(ordered=True, unique=True, containment=True, derived=False)
+    maximum = EReference(ordered=True, unique=True, containment=True, derived=False)
 
-    def __init__(self, *, profile=None, **kwargs):
+    def __init__(self, *, minimum=None, maximum=None, **kwargs):
 
         super().__init__(**kwargs)
 
-        if profile is not None:
-            self.profile = profile
+        if minimum is not None:
+            self.minimum = minimum
+
+        if maximum is not None:
+            self.maximum = maximum
 
 
 @abstract
