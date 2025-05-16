@@ -332,7 +332,7 @@ def get_profile_influxdb_settings(profile: esdl.InfluxDBProfile, profiles_settin
     # Ensure host part only (without http:// or https://) 
     host = urlparse(profile.host).netloc if profile.host.startswith(('http://', 'https://')) else profile.host
     try:
-        influxdb_client = InfluxDBClient(host=host, port=profile.port, ssl=True, verify_ssl=True)
+        influxdb_client = InfluxDBClient(host=host, port=profile.port, ssl=True, verify_ssl=True, retries=1, timeout=2)
         db = influxdb_client.get_list_database()
         if db:
             return ConnectionSettings(
