@@ -304,7 +304,7 @@ def preprocess_column(column_name: str) -> Any:
         if db_engine_driver == DriverType.SQLITE:
             return func.json_extract(Data.labels, f"$.{key_name}").label(column_name)
         else:
-            return Data.labels[key_name].astext.label(column_name)
+            return func.jsonb_extract_path_text(Data.labels, key_name).label(column_name)
     else:
         return column(column_name)
     
@@ -332,7 +332,7 @@ def get_profile_influxdb_settings(profile: esdl.InfluxDBProfile, profiles_settin
     # Ensure host part only (without http:// or https://) 
     host = urlparse(profile.host).netloc if profile.host.startswith(('http://', 'https://')) else profile.host
     try:
-        influxdb_client = InfluxDBClient(host=host, port=profile.port, ssl=True, verify_ssl=True)
+        influxdb_client = InfluxDBClient(host=host, port=profile.port, ssl=True, verify_ssl=True, retries=1, timeout=2)
         db = influxdb_client.get_list_database()
         if db:
             return ConnectionSettings(
@@ -951,8 +951,8 @@ class DataManager:
             query_profile_id = func.json_extract(Data.labels, '$.profile_id').label('profile_id')
             query_flow_direction = func.json_extract(Data.labels, '$.Flow direction').label('flow_direction')
         else:
-            query_profile_id = Data.labels['profile_id'].astext.label('profile_id')
-            query_flow_direction = Data.labels['Flow direction'].astext.label('flow_direction')
+            query_profile_id = func.jsonb_extract_path_text(Data.labels, 'profile_id').label('profile_id')
+            query_flow_direction = func.jsonb_extract_path_text(Data.labels, 'Flow direction').label('flow_direction')
 
         # energy_system_id and profile_id are required to derive the profile using esh.get_by_id()
         query = session.query(Data,
