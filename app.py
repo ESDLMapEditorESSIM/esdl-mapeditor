@@ -23,7 +23,7 @@ from datetime import datetime
 from warnings import warn
 
 import requests
-import structlog.contextvars
+from structlog.contextvars import bind_contextvars, clear_contextvars
 from flask import Response, redirect, render_template, request, send_from_directory, session, url_for, g
 from flask_oidc import OpenIDConnect
 from flask_oidc.model import User
@@ -99,7 +99,7 @@ from src.shape import Shape
 from src.table_editor import TableEditor
 from src.tno.events_api import EventsAPI
 from src.tno.live_model_interface.api import send_init_new_project_to_lmi, send_project_manager_to_lmi_async
-from src.tno.live_model_interface.lmi_listener import start_live_model_interface_thread
+from src.tno.live_model_interface.lmi_listener import start_live_model_interface_thread, is_lmi_thread_alive
 from src.tno.locking import NamedLocker
 from src.tno.projects.emits import emit_active_esdl_project
 from src.tno.undoredo.types import serialize_command_stack
@@ -234,6 +234,7 @@ def add_header(r: Response):
     Add headers to both force latest IE rendering engine or Chrome Frame,
     and also to cache the rendered page for 10 minutes.
     """
+    clear_contextvars()
     if r.content_type == 'image/png': # images are allowed to be cached.
         return r
     if settings.FLASK_DEBUG:    # only prevent caching when debugging
@@ -245,14 +246,20 @@ def add_header(r: Response):
 
 @app.before_request
 def before_request():
-    # store session id
+    if not is_lmi_thread_alive():
+        start_live_model_interface_thread(app)
+
+    # Store session id
     session['client_id'] = request.cookies.get(app.config['SESSION_COOKIE_NAME'])  # get cookie id
 
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
     user_email = get_session("user-email")
 
-    structlog.contextvars.clear_contextvars()
-    structlog.contextvars.bind_contextvars(
-        user=user_email
+    # Bind context variables for logging. These are logged for all log statements inside this request.
+    bind_contextvars(
+        user=user_email,
+        request_id=request_id,
+        client_id=session['client_id'],
     )
 
 
@@ -1602,7 +1609,7 @@ def process_command(message, stack: UndoRedoCommandStack):
                         outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
                         asset.port.append(outp)
                         asset.length = float(shape['length']) if 'length' in shape else 0.0
-                        print(message)
+                        # print(message)
                         # automatically connect the conductor to the ports that have been clicked
                         if 'connect_ports' in message and message['connect_ports'] != '':
                             connect_ports_msg = message['connect_ports']
@@ -2233,7 +2240,7 @@ def process_command(message, stack: UndoRedoCommandStack):
                         #length = len(param_value)
                         eCollection = asset.eGet(param_name)
                         eCollection.clear()  # TODO no support for multi-select of enums
-                        print('after clear', eCollection)
+                        # print('after clear', eCollection)
                         if not isinstance(param_value, list):
                             param_value = [param_value]
                         for item in param_value:
@@ -2981,7 +2988,7 @@ def process_command(message, stack: UndoRedoCommandStack):
         pm.remove_variant_by_energy_system_id(es_id=remove_es_id)
 
     if message['cmd'] == 'refresh_esdl':
-        print('refresh_esdl')
+        logger.info("Refreshing ESDL")
         call_process_energy_system.submit(force_update_es_id=active_es.id, zoom=False)  # run in seperate thread
 
     if message['cmd'] == 'undo':

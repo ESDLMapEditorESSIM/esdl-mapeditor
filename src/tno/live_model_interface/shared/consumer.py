@@ -424,6 +424,7 @@ class ReconnectingConsumer(object):
             try:
                 self._consumer.run()
             except KeyboardInterrupt:
+                logger.exception("ReconnectingConsumer: Keyboard interrupt")
                 self._consumer.stop()
                 break
             self._maybe_reconnect()

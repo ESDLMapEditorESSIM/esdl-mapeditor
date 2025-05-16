@@ -39,10 +39,14 @@ from src.tno.mongo.models import ApplicationContext
 logger = get_logger(__name__)
 
 # TODO: Find better way to get app here? import directly results in cyclic import error
-local_app = None
+LOCAL_APP = None
+
+LMI_THREAD: Thread | None = None
 
 LAST_PM_REFRESH_SENT: datetime | None = None
 """The last time we sent a project manager refresh. This is used to prevent sending a PM refresh for an old message."""
+
+LMI_THREAD_LAST_HEALTH_CHECKED: datetime = datetime.now(timezone.utc)
 
 
 def on_high_level_change(message: HighLevelChangeMessage):
@@ -79,11 +83,11 @@ def on_high_level_change(message: HighLevelChangeMessage):
     # lock.acquire(timeout=10.0)
     # logger.info(f"Lock acquired, processing {current_thread()}")
     #tracker = pm.active_tracker
-    global local_app
+    global LOCAL_APP
 
     tracker = pm.get_change_tracker_for_variant(variant)
     # add more context to the changes received, for the incremental UI updates
-    context = ChangeContext(source=ChangeSource.EXTERNAL, client_id=client_id, resource=es.eResource, flask_app=local_app)
+    context = ChangeContext(source=ChangeSource.EXTERNAL, client_id=client_id, resource=es.eResource, flask_app=LOCAL_APP)
     with tracker.stack.track_changes(label=hlc.label, change_context=context):
         for change in hlc.change:
             applyChange(change, es.eResource)
@@ -202,16 +206,39 @@ def on_live_model_interface_message(channel, basic_deliver: Basic.Deliver, prope
 
 
 def start_live_model_interface_thread(app):
-    global local_app
-    local_app = app
-
     """Start the RabbitMQ thread."""
-    logger.info("Starting RabbitMQ thread for live_model_interface listener")
-    thread = LiveModelInterfaceThread()
-    thread.start()
+    global LMI_THREAD
+    global LOCAL_APP
+    # Initialize the local_app variable so we have access to the app context in the thread.
+    LOCAL_APP = app
+
+    logger.info("Starting RabbitMQ thread for lmi_listener")
+    LMI_THREAD = LiveModelInterfaceThread()
+    LMI_THREAD.start()
     # Send clear project manager message, to indicate live model interfaces can clear their project managers.
     clear_pm_message = dict(id=str(uuid.uuid4()), timestamp=datetime.now(timezone.utc), client_id=None, user_email=None)
     send_rabbitmq_message(clear_pm_message, "events.pm.clear")
+
+
+def is_lmi_thread_alive() -> True:
+    """Check if the LiveModelInterfaceThread is dead."""
+    global LMI_THREAD
+    global LMI_THREAD_LAST_HEALTH_CHECKED
+
+    now = datetime.now(timezone.utc)
+    if (now - LMI_THREAD_LAST_HEALTH_CHECKED).total_seconds() > 60:
+        LMI_THREAD_LAST_HEALTH_CHECKED = now
+        logger.info("Checking if LMI thread is alive")
+
+        if LMI_THREAD is None:
+            logger.warning("LMI thread has not been started")
+            return False
+
+        if not LMI_THREAD.is_alive():
+            logger.warning("LMI thread is dead")
+            return False
+
+    return True
 
 
 class LiveModelInterfaceThread(Thread):
@@ -220,16 +247,22 @@ class LiveModelInterfaceThread(Thread):
         self.daemon = True
 
     def run(self):
-        consumer_config = RabbitMQConsumerConfig(
-            amqp_url=AMQP_URL,
-            exchange=EnvSettings.rabbitmq_exchange(),
-            exchange_type=ExchangeType.topic,
-            queue=EnvSettings.rabbitmq_queue(),
-            routing_keys=["lmi.#"],
-            on_start_consuming_callback=None,
-            on_message=on_live_model_interface_message,
-            durable_queue=True,
-        )
+        while True:
+            logger.info("Starting RabbitMQ consumer for lmi_listener")
+            try:
+                consumer_config = RabbitMQConsumerConfig(
+                    amqp_url=AMQP_URL,
+                    exchange=EnvSettings.rabbitmq_exchange(),
+                    exchange_type=ExchangeType.topic,
+                    queue=EnvSettings.rabbitmq_queue(),
+                    routing_keys=["lmi.#"],
+                    on_start_consuming_callback=None,
+                    on_message=on_live_model_interface_message,
+                    durable_queue=True,
+                )
 
-        consumer = ReconnectingConsumer(consumer_config)
-        consumer.run()
+                consumer = ReconnectingConsumer(consumer_config)
+                consumer.run()
+            except Exception:
+                logger.exception("RabbitMQ consumer died unexexpectedly")
+
