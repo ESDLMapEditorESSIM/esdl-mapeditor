@@ -403,12 +403,13 @@ const chartTypes = [
 const dateTimeFormat = "YYYY-MM-DD HH:mm:ss";
 const profileVizTypes = ['Profile', 'Aggregated'];
 const profileAggIntervals = ['Week', 'Month', 'Quarter', 'Year'];
-const profileAggFuncs = ['Count', 'Max', 'Min', 'Sum', 'Mean'];
+const profileAggFuncs = ['Mean', 'Sum', 'Max', 'Min', 'Count'];
 
 const profileMaxDataPoints = 100 // The value is applied in updateTrace() when profileDownsampling === true
 const profileDownsampleMsg = "Downsampling simplifies large dataset for better chart readability and performance. " + 
                              "The average value is used to represent data within each interval. " +
-                             "Toggle it on to explore general trends or off to access the full dataset." 
+                             "Toggle it on to explore general trends or off to access the full dataset. " + 
+                             "It is disabled by default for the aggregated visualization type."
 
 const sampleColorCount = 12;
 const colorPalettes = [
