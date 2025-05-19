@@ -300,7 +300,7 @@ class BoundaryService:
                         if shape:
                             shape_dictionary[boundary['code']] = shape
                     except Exception as e:
-                        print('Error parsing JSON from GEIS boundary service: '+ str(e))
+                        logger.exception('Error parsing JSON from GEIS boundary service: '+ str(e))
 
                     if geom:
                         skip_subarea = False
@@ -349,7 +349,7 @@ class BoundaryService:
                     str.upper(identifier)
                 )
                 if stations:
-                    print(f"BoundaryService: stations: {stations}")
+                    logger.info("BoundaryService: stations", stations=stations)
                     stations_dict = {}
 
                     for st in stations:
@@ -505,11 +505,11 @@ class BoundaryService:
                     boundary_cache[str(year)+id] = reply
                     return reply
                 else:
-                    print("WARNING: Empty response for Boundary service for {} with id {}".format(scope.name, id))
+                    logger.warning("WARNING: Empty response for Boundary service for {} with id {}".format(scope.name, id))
                     return None
 
             except Exception as e:
-                print('ERROR in accessing Boundary service for {} with id {}: {}'.format(scope.name, id, e))
+                logger.exception('ERROR in accessing Boundary service for {} with id {}: {}'.format(scope.name, id, e))
                 return None
         else:
             return None
@@ -540,11 +540,11 @@ class BoundaryService:
                     boundary_cache["SA_" + scope_id] = reply
                     return reply
                 else:
-                    print("WARNING: Empty response for Boundary service supply area info for {} with id {}".format(scope.name, id))
+                    logger.warning("WARNING: Empty response for Boundary service supply area info for {} with id {}".format(scope.name, id))
                     return None
 
             except Exception as e:
-                print('ERROR in accessing Boundary service supply area info for {} with id {}: {}'.format(scope.name, id, e))
+                logger.exception('ERROR in accessing Boundary service supply area info for {} with id {}: {}'.format(scope.name, id, e))
                 return None
         else:
             return None
@@ -568,11 +568,11 @@ class BoundaryService:
                     reply = json.loads(r.text)
                     return reply
                 else:
-                    print("WARNING: Empty response for Boundary service station info for {} with id {}".format(scope.name, id))
+                    logger.warning("WARNING: Empty response for Boundary service station info for {} with id {}".format(scope.name, id))
                     return None
 
             except Exception as e:
-                print('ERROR in accessing Boundary service station info for {} with id {}: {}'.format(scope.name, id, e))
+                logger.exception('ERROR in accessing Boundary service station info for {} with id {}: {}'.format(scope.name, id, e))
                 return None
         else:
             return None
@@ -601,7 +601,7 @@ class BoundaryService:
 
                 return reply
             except Exception as e:
-                print('ERROR in accessing Boundary service for {} with id {}, subscope {}: {}'.format(scope.name, id, subscope.name, str(e)))
+                logger.exception('ERROR in accessing Boundary service for {} with id {}, subscope {}: {}'.format(scope.name, id, subscope.name, str(e)))
                 return {}
         else:
             return {}

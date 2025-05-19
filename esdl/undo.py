@@ -135,7 +135,7 @@ class UndoRedoCommandStack:
         :param change_context: the context of the change, default INTERNAL
         """
         logger.debug("Acquiring recording lock", label=label)
-        acquired = self.recording_lock.acquire() # timeout=60)  # lock is released in stop_recording()
+        acquired = self.recording_lock.acquire(timeout=60)  # lock is released in stop_recording()
         if acquired:
             self._failed_lock_acquire_count = 0
         else:
@@ -143,6 +143,7 @@ class UndoRedoCommandStack:
             logger.warning("Could not acquire recording lock", attempt=self._failed_lock_acquire_count, label=label)
             if self._failed_lock_acquire_count > 5:
                 # Probably this is a deadlock. Some process is not releasing the lock.
+                logger.warning("Forcefully releasing recording lock", label=label)
                 self.recording_lock.release()
                 acquired = self.recording_lock.acquire(timeout=10)
                 if not acquired:
@@ -181,20 +182,28 @@ class UndoRedoCommandStack:
     @contextmanager
     def pause_recording(self):
         """
-        Temporarily pause recording of changes.
+        Temporarily pause recording of changes. This is useful when you want to do some changes that should not be
+        tracked. For example, when you are in a change handler and you want to do some changes.
+
+        If we are recording, we should have the lock, and vice versa.
+
+        This function should work even when we are not actually recording.
         """
-        reset = False
-        # make sure pause_recording also works if you are not recording
-        if self.recording_lock.locked() and self._recording:
-            self.recording_lock.release()
-            reset = True
+        # We don't need to release the lock during pausing. We still want the lock, we just don't want to track
+        # changes.
+        have_lock = self.recording_lock.locked()
+
+        if have_lock and self._recording:
             self._recording = False
         try:
             yield
         finally:
-            if not self.recording_lock.locked() and reset:
-                self.recording_lock.acquire(timeout=10)
+            if have_lock:
                 self._recording = True
+                if not self.recording_lock.locked():
+                    # If we somehow lost the lock, we need to reacquire it. This shouldn't happen.
+                    logger.warning("Reacquiring recording lock after pause")
+                    self.recording_lock.acquire(timeout=10)
 
 
     def stop_recording(self, call_change_handler: bool = True):

@@ -13,7 +13,7 @@
 #      TNO
 
 import logging.config
-from typing import List, Any
+from typing import Callable
 
 import structlog
 from structlog.threadlocal import merge_threadlocal
@@ -21,7 +21,7 @@ from structlog.threadlocal import merge_threadlocal
 from src.settings import FLASK_DEBUG
 
 timestamper = structlog.processors.TimeStamper(fmt="iso")
-shared_processors: List[Any] = [
+shared_processors: list[Callable] = [
     structlog.stdlib.add_logger_name,
     structlog.stdlib.add_log_level,
     structlog.stdlib.PositionalArgumentsFormatter(),

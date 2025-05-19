@@ -577,26 +577,26 @@ def create_area_info_geojson(area):
     except:
         show_assets_without_location = True
 
-    print("- Finding ESDL boundaries...")
+    logger.info("- Finding ESDL boundaries...")
     BoundaryService.get_instance().preload_area_subboundaries_in_cache(area)
     find_area_info_geojson(area_list, pot_list, area, shape_dictionary, show_assets_without_location)
-    print("- Done")
+    logger.info("- Done")
 
     set_session_for_esid(es_id,'shape_dictionary', shape_dictionary)
     return area_list, pot_list
 
 
 def find_boundaries_in_ESDL(top_area, es_id: str = None):
-    print("Finding area and potential boundaries in ESDL")
+    logger.info("Finding area and potential boundaries in ESDL")
     area_list, pot_list = create_area_info_geojson(top_area)
 
     # Sending an empty list triggers removing the legend at client side
-    print('- Sending area information to client, size={}'.format(getsizeof(area_list)))
+    logger.info('- Sending area information to client, size={}'.format(getsizeof(area_list)))
     emit('geojson', {"layer": "area_layer", "geojson": area_list, "es_id": es_id})
     # Buildings are now taken care of in process_building
     # print('- Sending building information to client, size={}'.format(getsizeof(building_list)))
     # emit('geojson', {"layer": "bld_layer", "geojson": building_list})
-    print('- Sending potential information to client, size={}'.format(getsizeof(pot_list)))
+    logger.info('- Sending potential information to client, size={}'.format(getsizeof(pot_list)))
     emit('geojson', {"layer": "pot_layer", "geojson": pot_list, "es_id": es_id})
 
 
@@ -639,7 +639,7 @@ def add_missing_coordinates(area):
         if (isinstance(child, esdl.EnergyAsset) and not isinstance(child.eContainer(), esdl.AbstractBuilding)) or \
                 isinstance(child, esdl.AggregatedBuilding) or isinstance(child, esdl.Building):
             if not child.geometry:
-                print("add missing coordinates for asset {}".format(child.name))
+                logger.info("add missing coordinates for asset {}".format(child.name))
                 child.geometry = calc_random_location_around_center(center, delta_x / 4, delta_y / 4, RD_coords)
 
 
