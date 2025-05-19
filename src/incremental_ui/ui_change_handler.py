@@ -18,7 +18,7 @@ from pyecore.ecore import EObject
 from esdl import esdl
 from esdl.resources.xmlresource import XMLResource
 from esdl.undo import ChangeSource, ChangeContext
-from esdlproject import HighLevelChange, DetailedChange, Set, Add, Remove
+from esdlproject import HighLevelChange, DetailedChange, Set, Add, Remove, Delete
 from extensions.session_manager import managed_sessions, get_session
 from src.incremental_ui.connections import create_connection, remove_connection_from_conn_list
 from src.log import get_logger
@@ -65,7 +65,7 @@ def change_handler(high_level_change: HighLevelChange, context: ChangeContext):
     es = context.resource.contents[0]
     #pm = get_project_manager_with_client_id(context.client_id)
 
-    with context.flask_app.test_request_context():
+    with (context.flask_app.test_request_context()):
         session['client_id'] = context.client_id
         # todo replace managed_sessions with get_session(client_id=xx, 'socketio_sid')
         request.sid = managed_sessions[context.client_id]['socketio_sid']
@@ -108,6 +108,7 @@ def change_handler(high_level_change: HighLevelChange, context: ChangeContext):
                                 remove_connection_from_conn_list(owner, target, conn_list)
                                 ui_update_handled = True
                     elif change.feature == "KPIs" and isinstance(change, Set):  # high level KPI section has changed
+                        # triggered when KPIs are *replaced*
                         owner = safe_resolve(context.resource, change.ownerFragment)
                         if isinstance(owner, esdl.Area):
                             logger.info(f"incremental_ui: update for KPIs of {owner} (postponed)")
@@ -116,11 +117,23 @@ def change_handler(high_level_change: HighLevelChange, context: ChangeContext):
                             while isinstance(parent, esdl.Area):
                                 prev_parent = parent
                                 parent = parent.eContainer()
-
                             main_area = prev_parent
-
-                            # do update area KPIs
-                            # find_and_send_KPI_information_in_ESDL(owner)
+                    elif change.feature == "kpi" and (isinstance(change, Add) or isinstance(change, Delete)):
+                        # triggered when KPIs are *added* or *deleted*
+                        if isinstance(change, Add):
+                            delete_add = "add"
+                        elif isinstance(change, Delete):
+                            delete_add = "delete"
+                        else: "remove"
+                        owner = safe_resolve(context.resource, change.ownerFragment)  # this is the KPIs object
+                        if isinstance(owner, esdl.KPIs):
+                            parent = owner.eContainer()
+                            logger.info(f"incremental_ui: {delete_add} KPIs.kpi of {parent} (postponed)")
+                            prev_parent = owner
+                            while isinstance(parent, esdl.Area):
+                                prev_parent = parent
+                                parent = parent.eContainer()
+                            main_area = prev_parent
 
                 except ResolveException as e:
                     logger.warning("Resolve failure:", e)

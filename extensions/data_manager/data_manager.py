@@ -244,7 +244,7 @@ def preprocess_column(column_name: str) -> Any:
         if db_engine_driver == "sqlite":
             return func.json_extract(Data.labels, f"$.{key_name}").label(column_name)
         else:
-            return Data.labels[key_name].astext.label(column_name)
+            return Data.labels[key_name].label(column_name)
     else:
         return column(column_name)
 

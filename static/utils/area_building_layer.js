@@ -36,7 +36,7 @@ var get_building_color = get_buildingYear_colors;     // function to get color o
 // HTML element ids for indexing
 const areaLegendDivId = 'area-legend-div';
 const areaMarkerResizeDivId = 'area-marker-resize-div';
-let areaMarkerResizeSliderVal = 1.0; // resize map area marker (pie chart) size based on the slider value
+let areaMarkerResizeSliderVal = 2.0; // resize map area marker (pie chart) size based on the slider value
 
 let initMapZoomLevel; // initial map zoom level used by calcPieChartRadius() to scale pie chart size
 
@@ -1381,7 +1381,7 @@ function createAreaMarkerResizeDiv(sliderValue) {
         const slider = L.DomUtil.create('input', 'area-marker-resize-slider', areaMarkerResizeDiv);
         slider.type = 'range';
         slider.min = 0.05;
-        slider.max = 2.0;
+        slider.max = 5.0;
         slider.step = 0.05;
         slider.value = sliderValue;
         L.DomEvent.disableClickPropagation(slider);

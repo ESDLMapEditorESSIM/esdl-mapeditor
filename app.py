@@ -23,12 +23,12 @@ from datetime import datetime
 from warnings import warn
 
 import requests
-from structlog.contextvars import bind_contextvars, clear_contextvars
-from flask import Response, redirect, render_template, request, send_from_directory, session, url_for, g
+from flask import Response, redirect, render_template, request, send_from_directory, session, url_for
 from flask_oidc import OpenIDConnect
 from flask_oidc.model import User
 from flask_socketio import emit
 from pyecore.ecore import EDate
+from structlog.contextvars import bind_contextvars, clear_contextvars
 
 import src.esdl_config as esdl_config
 import src.settings as settings
@@ -43,9 +43,9 @@ from extensions.activity_context import ActivityContextExtension
 from extensions.application_context import ApplicationContextExtension
 from extensions.bag import BAG
 from extensions.boundary_service import BoundaryService
-from extensions.dice_workflow.dice_workflow import DiceWorkflow
-from extensions.data_manager.data_manager import DataManager
 from extensions.data_manager import db
+from extensions.data_manager.data_manager import DataManager
+from extensions.dice_workflow.dice_workflow import DiceWorkflow
 from extensions.es_statistics import ESStatisticsService
 from extensions.esdl_api import ESDL_API
 from extensions.esdl_browser import ESDLBrowser
@@ -59,12 +59,14 @@ from extensions.heatnetwork import HeatNetwork
 from extensions.ibis import IBISBedrijventerreinen
 from extensions.mapeditor_settings import MAPEDITOR_UI_SETTINGS, MapEditorSettings
 from extensions.open_id_integration import OpenIDIntegration
+from extensions.ownership.ownership import Ownership
 from extensions.pico_rooftoppv_potential import PICORooftopPVPotential
 from extensions.port_profile_viewer import PortProfileViewer
 from extensions.profiles import Profiles
+from extensions.residential_area.residential_area import ResidentialArea
 from extensions.session_manager import del_session, get_project_manager, get_session, \
     get_session_for_esid, schedule_session_clean_up, set_project_manager, set_session, \
-    set_session_for_esid, valid_session, load_sessions_from_disk
+    set_session_for_esid, valid_session
 from extensions.settings_storage import SettingsStorage
 from extensions.shapefile_converter import ShapefileConverter
 from extensions.spatial_operations import SpatialOperations
@@ -77,9 +79,9 @@ from src.assets_to_be_added import AssetsToBeAdded
 from src.custom_icons import CustomIcons
 from src.datalayer_api import DataLayerAPI
 from src.edr_client import EDRClient
+from src.esdl2inlineprofile import ESDL2InlineProfile
 from src.esdl2shapefile import ESDL2Shapefile
 from src.esdl_file_io import ESDLFileIO
-from src.esdl2inlineprofile import ESDL2InlineProfile
 from src.esdl_helper import asset_state_to_ui, generate_profile_info, get_asset_and_coord_from_port_id, \
     get_asset_from_port_id, get_connected_to_info, get_port_profile_info, get_tooltip_asset_attrs, \
     update_carrier_conn_list, add_spatial_attributes
@@ -110,8 +112,6 @@ from src.version import __long_version__ as mapeditor_long_version
 from src.version import __version__ as mapeditor_version
 from src.wms_layers import WMSLayers
 from utils.datetime_utils import parse_date
-from extensions.residential_area.residential_area import ResidentialArea
-from extensions.ownership.ownership import Ownership
 
 print('MapEditor version {}'.format(mapeditor_version))
 print('MapEditor git describe {}'.format(mapeditor_long_version))
@@ -376,9 +376,15 @@ def logout_user():
     Logs out the user by removing the session cookie and clearing the project.
     """
     oidc.logout()
-    pm = get_project_manager()
-    if pm:
-        pm.clear_project()
+    try:
+        pm = get_project_manager()
+        if pm:
+            # can't clear completely, because otherwise set_active_variant does not work anymore
+            pm.clear_project(add_empty_variant=True)
+    except KeyError:
+        # in case user is not logged in / restarting mapeditor from editor
+        pass
+
 
 
 """
