@@ -252,7 +252,7 @@ def before_request():
     # Store session id
     session['client_id'] = request.cookies.get(app.config['SESSION_COOKIE_NAME'])  # get cookie id
 
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+    request_id = app.request_counter.increment()
     user_email = get_session("user-email")
 
     # Bind context variables for logging. These are logged for all log statements inside this request.

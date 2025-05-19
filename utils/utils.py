@@ -13,6 +13,7 @@
 #      TNO
 
 import re
+import threading
 import time
 from contextlib import contextmanager
 from functools import wraps
@@ -103,3 +104,19 @@ def timed_context(name):
 #     print("%s other: %.1f KiB" % (len(other), size / 1024))
 #     total = sum(stat.size for stat in top_stats)
 #     print("Total allocated size: %.1f KiB" % (total / 1024))
+
+class ThreadSafeCounter:
+    """A thread-safe counter that can be incremented atomically."""
+
+    def __init__(self):
+        self._value = 0
+        self._lock = threading.Lock()
+
+    def increment(self):
+        with self._lock:
+            self._value += 1
+            return self._value
+
+    def get_value(self):
+        with self._lock:
+            return self._value
