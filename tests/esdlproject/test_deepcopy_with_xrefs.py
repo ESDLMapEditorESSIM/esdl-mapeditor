@@ -11,7 +11,7 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-
+import os
 import unittest
 
 from pyecore.resources import ResourceSet, URI
@@ -97,22 +97,27 @@ class DeepCopyTest(unittest.TestCase):
 
 
     def test_deepcopy_with_project_issue(self):
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        esdl_dir = os.path.join(os.path.dirname(current_dir), 'esdl')
+
         pm = ProjectManager()
-        pm.add_energy_system(URI('../esdl/SimpleES.esdl'))
+        pm.add_energy_system(URI(os.path.join(esdl_dir, 'SimpleES.esdl')))
+        # TODO: The line below causes a KeyError.
         pm.delete_variant(pm.active_variant.variantCollection)
-        pm.add_energy_system(URI('../esdl/SimpleES.esdl'))
+        pm.add_energy_system(URI(os.path.join(esdl_dir, 'SimpleES.esdl')))
         pm.debug()
         s = pm.save()
-        with open('../esdl/deepcopy_test.project', "w") as f:
+
+        with open(os.path.join(esdl_dir, 'deepcopy_test.project'), "w") as f:
             f.write(s)
 
         pm = ProjectManager()
         pm.delete_variant(pm.active_variant.variantCollection)
-        pm.load(URI('../esdl/deepcopy_test.project'))
+        pm.load(URI(os.path.join(esdl_dir, 'deepcopy_test.project')))
         pm.debug()
         es = pm.project.variantCollection[0].energysystemRef
         resource = es.eResource
-        resource.save(URI('../esdl/vc_test.esdl'))
+        resource.save(URI(os.path.join(esdl_dir, 'vc_test.esdl')))
 
 
 

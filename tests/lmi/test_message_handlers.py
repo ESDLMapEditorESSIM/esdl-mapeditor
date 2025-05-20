@@ -13,8 +13,8 @@ import src.tno.live_model_interface.lmi_listener  # noqa Import the module to pa
 
 
 class TestOnPmRefreshRequest(unittest.TestCase):
-    @patch('src.tno.live_model_interface.lmi_listener.managed_sessions', new_callable=dict)
-    @patch('src.tno.live_model_interface.lmi_listener.send_rabbitmq_message', autospec=True)
+    @patch('src.tno.live_model_interface.api.managed_sessions', new_callable=dict)
+    @patch('src.tno.live_model_interface.api.send_rabbitmq_message', autospec=True)
     def test_on_pm_refresh_request(self, mock_send_rabbitmq_message, mock_managed_sessions):
         # Arrange
         client1_pm = ProjectManager()
