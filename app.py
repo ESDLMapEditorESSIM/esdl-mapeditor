@@ -66,7 +66,7 @@ from extensions.profiles import Profiles
 from extensions.residential_area.residential_area import ResidentialArea
 from extensions.session_manager import del_session, get_project_manager, get_session, \
     get_session_for_esid, schedule_session_clean_up, set_project_manager, set_session, \
-    set_session_for_esid, valid_session
+    set_session_for_esid, valid_session, has_session_key
 from extensions.settings_storage import SettingsStorage
 from extensions.shapefile_converter import ShapefileConverter
 from extensions.spatial_operations import SpatialOperations
@@ -252,6 +252,15 @@ def before_request():
     # Store session id
     session['client_id'] = request.cookies.get(app.config['SESSION_COOKIE_NAME'])  # get cookie id
 
+    # make access to session variables only available when they are present
+    if request.endpoint in ['index', 'oidc_auth.authorize', 'oidc_auth.login']:
+        # don't add context vars to the structlog request context at all (this is not available)
+        return
+    elif request.endpoint in ['serve_static', 'auth_status', 'editor']:
+        if not has_session_key('user-email'):
+            # only add user to the structlog request context when logged in
+            return
+
     request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
     user_email = get_session("user-email")
 
@@ -261,6 +270,10 @@ def before_request():
         request_id=request_id,
         client_id=session['client_id'],
     )
+    if has_session_key('user-email'):
+        logger.debug(f"Request: {request.endpoint}", path=request.path)
+    else:
+        logger.warn(f"Request without login information: {request.endpoint}", path=request.path)
 
 
 @app.route('/')
@@ -380,8 +393,9 @@ def logout_user():
         pm = get_project_manager()
         if pm:
             # can't clear completely, because otherwise set_active_variant does not work anymore
-            pm.clear_project(add_empty_variant=True)
-    except KeyError:
+            logger.error("Clearing project!!")
+            pm.clear_project(add_empty_energysystem=True)
+    except KeyError as e:
         # in case user is not logged in / restarting mapeditor from editor
         pass
 
@@ -405,6 +419,7 @@ def auth_status():
                 set_session('jwt-token', openid.get_access_token())
                 return {'valid': True, 'reason': "Refreshed"}
         else:
+            logger.debug("Logout user: Token expired or not available")
             logout_user()
             return {'valid': False,
                     'reason': "Token expired or not available",
@@ -3225,7 +3240,7 @@ def process_file_command(message):
 # ---------------------------------------------------------------------------------------------------------------------
 def initialize_app():
     session.permanent = True
-    logger.info('Client connected: {}'.format(request.sid))
+    logger.info('Client connected, socket.io ID: {}'.format(request.sid))
 
     pm = get_project_manager()
     pm.add_change_listener(INCREMENTAL_UI_LISTENER_ID, change_handler)
@@ -3258,16 +3273,17 @@ def connect(*args):
     else:
         logger.debug('- Old socketio id={}, new socketio id={}'.format(None, request.sid))
     session['id'] = request.sid
-    set_session('socketio_sid', request.sid)
 
     # Client ID is used to retrieve session variables in handler_manager
     # So this is a very important session variable!!
     if 'client_id' in session:
         logger.debug('- Client id: {}'.format(session['client_id']))
+        set_session('socketio_sid', request.sid)
     else:
         logger.debug('- No client id in session')
     if not valid_session():
         send_alert("Session has timed out, please refresh")
+
 
 
 def get_qau_information():

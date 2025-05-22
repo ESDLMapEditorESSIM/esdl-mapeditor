@@ -249,6 +249,15 @@ class MyTestCase(unittest.TestCase):
         print(v.id, v.eURIFragment())
         self.assertTrue(v.id == id)
 
+    def test_create_delete_variants(self):
+        pm = ProjectManager()
+        pm.init_empty_project()
+        print("PM created with empty project, now deleting")
+        pm.clear_project(add_empty_energysystem=True)
+        #pm.debug()
+
+
+
 
 if __name__ == '__main__':
     unittest.main()

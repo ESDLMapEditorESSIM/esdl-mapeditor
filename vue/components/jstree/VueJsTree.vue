@@ -185,6 +185,7 @@ watchEffect(() => {
   // Refresh tree with new data.
   if (props.data && getTree() && getTree().refresh) {
     getTree().settings.core.data = props.data;
+    console.log("Refreshing tree with new data");
     getTree().refresh(true, true);
   }
 });

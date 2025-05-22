@@ -561,7 +561,8 @@ class ProjectManager:
         variants: list[Variant] = []
         for vc in self.project.variantCollection:
             vc: VariantCollection = vc
-            self.get_variant_list(vc.variant, variants)
+            if vc.variant:
+                self.get_variant_list(vc.variant, variants)
         return variants
 
     def get_energy_systems(self) -> list[esdl.EnergySystem]:
@@ -584,6 +585,7 @@ class ProjectManager:
         :param es_id: the id of the energy system to remove
         :return: the removed variant or None if no variant was found with the given id
         """
+        # TODO: refactor this to not iterate over all variants and create a snapshot for each variant first...
         variants: list[Variant] = self.get_variants()
         for v in variants:
             es = self.get_or_create_variant_snapshot(v)
@@ -669,16 +671,16 @@ class ProjectManager:
             if vc.variant:
                 return vc.variant
 
-    def clear_project(self, add_empty_variant: bool = True):
+    def clear_project(self, add_empty_energysystem: bool = True):
         """
         Removes all VariantCollections and subvariants from the project. Any changes are abandoned.
         """
+        self.debug(dump_project=True)
         for vc in self.project.variantCollection:
             self.delete_variant(vc)
         self.project.variantCollection = []
-        if add_empty_variant:
-            new_collection = self.create_empty_variant_collection()
-            self.set_active_variant(new_collection.variant)
+        if add_empty_energysystem:
+            self.init_empty_project()
 
     def delete_variant(self, variant: Union[VariantCollection, Variant]):
         """
@@ -717,15 +719,15 @@ class ProjectManager:
             if isinstance(parent, VariantCollection):
                 parent.variant = None
                 # also delete VariantCollection, as this is the only variant in the variant collection
-                self.delete_variant(parent)
+                #self.delete_variant(parent, auto_update_active_variant)
+                logger.warn("- Check if VariantCollection should be deleted as well")
             else:
                 parent.variant.remove(variant)
 
         if variant in get_variant_path_list(self.active_variant):  # or get_variant_collection(variant) == variant:
-            # TODO reset active variant to other variant and check if there is at least 1 variant
             logger.warn("Deleted variant was active variant. Please set a new active variant")
-            #self.active_variant = None
-            self.set_active_variant(self._select_new_active_variant())
+            self.active_variant = None
+            #self.set_active_variant(self._select_new_active_variant())
 
 
     @timed

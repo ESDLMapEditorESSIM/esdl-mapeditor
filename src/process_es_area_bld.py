@@ -20,10 +20,8 @@ from sys import getsizeof
 from threading import Lock
 
 import shapely
-from flask import session
 from flask_socketio import emit
 from shapely import MultiPoint
-from typing import Dict
 
 from esdl import esdl
 from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEnergySystem, ESDLQuantityAndUnits
@@ -1198,7 +1196,7 @@ def process_energy_system(force_update_es_id=None, zoom=True, only_process_es_id
             emit('set_active_layer_id', pm.get_active_energy_system().id)
             emit_active_esdl_project()
 
-            logger.info('session variables set', session=session)
+            #logger.info('session variables set', session=session)
         except Exception:
             logger.exception("Exception while processing energy system")
     finally:

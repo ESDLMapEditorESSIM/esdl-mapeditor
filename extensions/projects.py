@@ -13,10 +13,13 @@
 #      TNO
 
 import base64
+import re
+from datetime import datetime
 from typing import TypedDict
 
 from flask import Blueprint, jsonify, request, session
 
+import esdl
 import src.log as log
 from esdl.processing.string_uri import StringURI
 from esdlproject import ESDLProject
@@ -26,7 +29,7 @@ from src.app import executor, socketio
 from src.process_es_area_bld import process_energy_system
 from src.tno.live_model_interface.api import send_project_manager_to_lmi_async, send_delete_variant_message_to_lmi
 from src.tno.projects.core import create_new_project_manager
-from src.tno.projects.emits import emit_active_esdl_project, emit_clear_frontend_esdls, emit_clear_ui
+from src.tno.projects.emits import emit_active_esdl_project
 from src.tno.projects.types import serialize_esdl_project
 from src.tno.undoredo.emits import emit_update_undo_redo_stack
 
@@ -172,11 +175,33 @@ def delete_variant(message: DeleteVariantRequest):
     pm = get_project_manager()
     variant = pm.get_variant_by_id(message['id'])
     if variant is not None:
-        pm.delete_variant(variant)
+        vc_variants = []
+        pm.get_variant_list(variant, vc_variants)
+        # only set active variant when this is not the last variant in the list
+        auto_update = len(vc_variants) > 1 or len(pm.project.variantCollection) > 1
+        if variant.variantCollection:
+            # if the variant is a child of a VariantCollection, delete the VariantCollection too
+            pm.delete_variant(variant.variantCollection)  # this will delete all child variants too
+        else:
+            pm.delete_variant(variant)
+
+    # in case the user wants to delete the last variant, initialize an empty project
+    if len(pm.get_variants()) == 0:
+        pm.init_empty_project()
+
+    if not pm.get_active_variant() or auto_update:
+        # if the active variant was deleted, set the parent variant as active
+        if variant.parentVariant:
+            logger.debug("Setting parent variant as active variant", variant_name=variant.parentVariant.name)
+            pm.set_active_variant(variant.parentVariant)
+        else:
+            logger.debug("Selecting first variant as active variant", variant_name=variant.name)
+            pm.set_active_variant(pm._select_new_active_variant())
 
     emit_active_esdl_project()
-    es = pm.get_active_energy_system()
-    executor.submit(process_energy_system, force_update_es_id=es.id)
+    # No need to process the energy system, as the set_active_variant will check for changes
+    #es = pm.get_active_energy_system()
+    #executor.submit(process_energy_system, force_update_es_id=es.id)
     send_delete_variant_message_to_lmi(variant)
 
 
@@ -193,8 +218,20 @@ def rename_variant(message: RenameVariantRequest):
     pm = get_project_manager()
     variant = pm.get_variant_by_id(message["id"])
     variant.name = message["name"]
+    # set InstanceDate if the new Variant name contains a year
+    year_re = re.compile(r".*(20\d\d).*")
+    match = year_re.match(variant.name)
+    if match:
+        ct = pm.get_change_tracker_for_variant(variant)
+        with ct.stack.track_changes(label="Set instance year"):
+            year = match.group(1)
+            if variant.snapshotRef:
+                instance = variant.snapshotRef.instance[0]
+                instance.date = esdl.InstanceDate(date=datetime(year=int(year), month=1, day=1))
+
     if variant.snapshotRef:
-        variant.snapshotRef.name = f'{pm.project.name} - {variant.name}'
+        # also rename the ESDL snapshot and give it the same name as the variant
+        variant.snapshotRef.name = variant.name
     send_project_manager_to_lmi_async(only_send_for_client_id=session['client_id'])
 
 class FlattenVariantRequest(TypedDict):

@@ -554,6 +554,7 @@ class Profiles:
         return_code, profile_list = edr_client.get_EDR_profiles_list(field_map=field_map, include_esdl=True)
 
         if return_code == 200:
+            logger.info(f"- Retrieved {len(profile_list['item_list'])} profiles from the EDR.")
             for p in profile_list["item_list"]:
                 if not p["id"].startswith("/edr/Public/Profiles"):
                     continue

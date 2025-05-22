@@ -17,6 +17,7 @@ class SerializedVariant(TypedDict):
 
 class SerializedESDLProject(TypedDict):
     name: str
+    id: str
     description: str
     variants: list[SerializedVariant]
     active_variant_id: str | None
@@ -29,6 +30,7 @@ def serialize_esdl_project(pm: ProjectManager, project: ESDLProject) -> Serializ
     """
     return dict(
         name=project.name,
+        id="main_project",
         description=project.description,
         variants=[serialize_variant(pm, collection.variant) for collection in project.variantCollection],
         active_variant_id=pm.active_variant.id if pm.active_variant else None,

@@ -193,6 +193,15 @@ def del_session(key):
         if key in managed_sessions[client_id]:
             del managed_sessions[client_id][key]
 
+def has_session_key(key) -> bool:
+    """Check if a session key in managed sessions is available, returns False when not"""
+    global managed_sessions
+    client_id = session["client_id"]
+    if client_id not in managed_sessions:
+        return False
+    else:
+        return key in managed_sessions[client_id]
+
 
 def clean_up_sessions():
     global managed_sessions

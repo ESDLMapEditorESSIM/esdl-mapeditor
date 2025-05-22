@@ -73,7 +73,7 @@ const treeData = computed(() => {
     }
 
     const projectData = {
-      text: esdlProject.value.name, type: 'project', state: {opened: true},
+      text: esdlProject.value.name, id: esdlProject.value.id, type: 'project', state: {opened: true},
       children: [...variantJstreeDatas],
       a_attr: {
         "class": "no_checkbox"
@@ -217,16 +217,34 @@ class VariantTreeSpec {
         'label': 'Remove Variant',
         'icon': 'fa fa-trash-o',
         'action': function () {
+// the jstree component gets fck'd up when updating the data directly
+// in the vue component, while this code is still running.
+// get_selection() and get_checked() return the wrong data.
+// also select_node and check_node do not work as expected.
+// This whole component should be refactored imho.
           const msg = {id: node.original.id};
           const loaderScope = "delete_variant"
           window.show_loader(loaderScope)
-
+          disableEsdl(node.original.esId);
+          let checked_nodes = get_checked_nodes();
+          checked_nodes = checked_nodes.filter(n => n.id !== node.id);
           socket.value.emit("delete_variant", msg, () => {
             window.hide_loader(loaderScope)
+
+            if (checked_nodes.length === 0) {
+              console.log(enabledEsdlIdList.value)
+              if (enabledEsdlIdList.value[0]) {
+                console.log("Select first enabledESDL", enabledEsdlIdList.value[0]);
+                getTree().check_node(enabledEsdlIdList.value[0]);
+              } else if (node.parent != null && node.parent !== "#" && !node.parent.startsWith("main_project")) {
+                console.log("Select parent node", node.parent);
+                getTree().check_node(node.parent);
+              }
+            }
           })
           // TODO: remove this when new layer control is ready
           window.remove_esdl_layer_from_ui(node.original.id);  // remove from old layer control layer and esdl_list
-          window.add_layer_control(); // hard update the old layer control
+          //window.add_layer_control(); // hard update the old layer control
         }
       },
       'flatten': {
@@ -258,15 +276,17 @@ const eventHandlersByName = {
   'select_node.jstree': function (e, data, treeElement) {
     const type = data.node.type;
     const original = data.node.original;
-    if (data.event.button == 2) {
+    if (data.event.button === 2) {
       // on right click do not switch to other variant, but only show context menu
       return;
     }
     if (type === 'variant') {
       const tree = treeElement.jstree(true);
       // The below also triggers the check_node handler, which handles visibility.
-      tree.check_node(data.node);
+      console.log("Select node", data.node);
+      tree.check_node(data.node.id);
       if (!original.active) {
+        console.log("select_node: set active variant");
         setActiveVariant(original.id, original.esId);
         // window.add_layer_control(); // hard update the old layer control
       }
@@ -277,19 +297,22 @@ const eventHandlersByName = {
     const original = data.node.original;
     if (type === 'variant') {
       if (original.esId in window.esdl_list) {
+        console.log("check_node: enableESDL:", data);
         enableEsdl(original.esId);
         // When holding ctrl key, do not hide other variants.
       } else {
         // We have no way to just get the energy system without activating it right now. I don't think it's a problem.
+        console.log("check_node: set active variant");
         setActiveVariant(original.id, original.esId)
       }
       if (!data.event || !data.event.ctrlKey) {
         // if event and ctrlKey + click do not hide other variants
-        hideOtherVariantsInTree(data.node);
+        uncheckOtherVariantsInTree(data.node);
         // If any of the others were active, make this one active as it would be the only one left checked.
-        if (!original.active) {
-          setActiveVariant(original.id, original.esId);
-        }
+        // if (!original.active) {
+        //   console.log("check_node: set active variant no data.event", data, e);
+        //   setActiveVariant(original.id, original.esId);
+        // }
       }
     } else if (type === 'base_layer') {
       const baseLayer = getBaseLayerByLabel(original.text);
@@ -301,6 +324,7 @@ const eventHandlersByName = {
     const type = data.node.type;
     const original = data.node.original;
     if (type === 'variant') {
+      console.log("uncheck_node: disableESDL", data);
       disableEsdl(original.esId);
     } else if (type === 'base_layer') {
       const baseLayer = getBaseLayerByLabel(original.text);
@@ -308,6 +332,17 @@ const eventHandlersByName = {
     }
   }
 };
+
+/**
+ * Get the actual checked nodes, getTree().get_checked() returns bogus data in 3.2.1 and 3.3.17
+ * @returns {[]} array of checked node ids
+ */
+function get_checked_nodes() {
+  let checked_nodes = Object.values( getTree()._model.data )
+      .filter(n => (n.type ==='variant' && n.state.checked === true));
+  console.log("get_checked_nodes", checked_nodes);
+  return checked_nodes;
+}
 
 function get_base_layers_control_tree_data() {
   let children = [];
@@ -343,12 +378,14 @@ function get_base_layers_control_tree_data() {
   return group;
 }
 
-function hideOtherVariantsInTree(node) {
-  let checked_nodes = getTree().get_checked(true);
-  for(const checked_node of checked_nodes) {
-    if (checked_node.type === 'variant' && checked_node.id !== node.id) {
-      getTree().uncheck_node(checked_node.id);
-      hideEsdlLayerFromMap(checked_node.id);
+function uncheckOtherVariantsInTree(node) {
+  //let checked_nodes = get_checked_nodes();
+  let nodes = getTree()._model.data;
+  for(const key in nodes) {
+    if (nodes[key].type === 'variant' && nodes[key].id !== node.id && nodes[key].state.checked === true) {
+      console.log("uncheckOtherVariantsInTree: uncheck node", nodes[key].id);
+      getTree().uncheck_node(key);
+      hideEsdlLayerFromMap(key);
     }
   }
 }
@@ -359,7 +396,7 @@ function selectOnlyOneBaseLayer(node) {
   const parent = node.parent;
   const children = getTree().get_node(parent).children;
   for (const child of children) {
-    if (child != selected) {
+    if (child !== selected) {
       getTree().uncheck_node(child);      
     }
   }
