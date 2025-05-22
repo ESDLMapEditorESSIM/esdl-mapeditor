@@ -15,28 +15,31 @@
 """
 Only import this folder when starting the app (e.g. not when testing, otherwise circular imports)
 """
+from typing import cast
 
-from flask_socketio import SocketIO
-
+from flask import Flask
 from flask_executor import Executor
 from flask_session import Session
+from flask_socketio import SocketIO
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from extensions.session_manager import delete_sessions_on_disk, load_sessions_from_disk
 from src import settings
 from src.log import get_logger
-from flask import Flask
-from werkzeug.middleware.proxy_fix import ProxyFix
-
-from src.settings import is_prod, PERSIST_SESSIONS, DEFAULT_PROJECT_PATH
+from src.settings import PERSIST_SESSIONS
+from utils.utils import ThreadSafeCounter
 
 logger = get_logger(__name__)
 
 socketio = SocketIO()
 executor = Executor()
 
+class EDSLMapEditorApp(Flask):
+    request_counter: ThreadSafeCounter
 
-def create_app(name):
-    app = Flask(name)
+
+def create_app(name) ->  EDSLMapEditorApp:
+    app = cast(EDSLMapEditorApp, Flask(name))
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
     app.config['SECRET_KEY'] = b'\xc3g\x19\xbf\x8e\xa0\xe7\xc8\x9a/\xae%\x04g\xbe\x9f\xaex\xb5\x8c\x81f\xaf`' #os.urandom(24)   #'secret!'
     app.config['SESSION_COOKIE_NAME'] = 'ESDL-WebEditor-session'
@@ -78,5 +81,7 @@ def create_app(name):
 
     from src.tno.live_model_interface.lmi_listener import start_live_model_interface_thread
     start_live_model_interface_thread(app)
+
+    app.request_counter = ThreadSafeCounter()
 
     return app

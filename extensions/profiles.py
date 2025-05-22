@@ -16,6 +16,7 @@ import copy
 import csv
 import datetime
 import locale
+import threading
 from io import StringIO
 from uuid import uuid4
 
@@ -36,7 +37,7 @@ from extensions.settings_storage import SettingType, SettingsStorage
 from src.edr_client import EDRClient
 from src.roles import is_mapeditor_admin
 from utils.datetime_utils import parse_date
-from utils.utils import str2float
+from utils.utils import str2float, timed
 
 logger = log.get_logger(__name__)
 
@@ -59,7 +60,9 @@ class Profiles:
         self.csv_files = dict()
         self.register()
 
-        self.EDR_profiles_cache = self.generate_EDR_profiles_list()
+        self.EDR_profiles_cache = dict()
+        # Do this in the background cause it takes long.
+        threading.Thread(target=self.update_edr_profiles_cache, daemon=True).start()
 
         if settings.profile_database_config['host'] is None or settings.profile_database_config['host'] == "":
             logger.error("Profile database is not configured. Aborting...")
@@ -78,6 +81,17 @@ class Profiles:
             logger.error("ERROR: Only one Profiles object can be instantiated")
         else:
             profiles = self
+
+    @timed
+    def update_edr_profiles_cache(self):
+        """Generate EDR profiles list."""
+        logger.info("Starting generation of EDR profiles cache")
+        try:
+            edr_profiles = self.generate_EDR_profiles_list()
+            self.EDR_profiles_cache = edr_profiles
+            logger.info("EDR profiles cache generated successfully", num_profiles=len(edr_profiles))
+        except Exception:
+            logger.exception("Error generating EDR profiles cache")
 
     @staticmethod
     def get_instance():

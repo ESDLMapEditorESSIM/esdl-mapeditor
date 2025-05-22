@@ -170,7 +170,7 @@ def get_session(key=None, client_id=None, default_value=None):
         else:
             try:
                 return managed_sessions[client_id][key]
-            except:
+            except KeyError:
                 if default_value:
                     managed_sessions[key] = default_value
                     return default_value

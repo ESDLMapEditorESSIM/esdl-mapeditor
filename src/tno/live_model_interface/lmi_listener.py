@@ -16,6 +16,7 @@ import uuid
 from datetime import datetime, timezone
 from threading import Thread
 
+from flask import Flask
 from pika import BasicProperties
 from pika.exchange_type import ExchangeType
 from pika.spec import Basic
@@ -205,7 +206,7 @@ def on_live_model_interface_message(channel, basic_deliver: Basic.Deliver, prope
         logger.exception("Failed to process live model interface message")
 
 
-def start_live_model_interface_thread(app):
+def start_live_model_interface_thread(app: Flask):
     """Start the RabbitMQ thread."""
     global LMI_THREAD
     global LOCAL_APP

@@ -261,7 +261,7 @@ def before_request():
             # only add user to the structlog request context when logged in
             return
 
-    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+    request_id = app.request_counter.increment()
     user_email = get_session("user-email")
 
     # Bind context variables for logging. These are logged for all log statements inside this request.
@@ -393,7 +393,7 @@ def logout_user():
         pm = get_project_manager()
         if pm:
             # can't clear completely, because otherwise set_active_variant does not work anymore
-            logger.error("Clearing project!!")
+            logger.info("Clearing project!")
             pm.clear_project(add_empty_energysystem=True)
     except KeyError as e:
         # in case user is not logged in / restarting mapeditor from editor
@@ -3273,17 +3273,16 @@ def connect(*args):
     else:
         logger.debug('- Old socketio id={}, new socketio id={}'.format(None, request.sid))
     session['id'] = request.sid
+    set_session('socketio_sid', request.sid)
 
     # Client ID is used to retrieve session variables in handler_manager
     # So this is a very important session variable!!
     if 'client_id' in session:
         logger.debug('- Client id: {}'.format(session['client_id']))
-        set_session('socketio_sid', request.sid)
     else:
         logger.debug('- No client id in session')
     if not valid_session():
         send_alert("Session has timed out, please refresh")
-
 
 
 def get_qau_information():
