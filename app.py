@@ -420,7 +420,8 @@ def auth_status():
                 return {'valid': True, 'reason': "Refreshed"}
         else:
             logger.debug("Logout user: Token expired or not available")
-            logout_user()
+            # logout_user() # this also removes the project!
+            # oidc.logout()  # check if this fixes the session issue
             return {'valid': False,
                     'reason': "Token expired or not available",
                     'redirect_uri': url_for("oidc_auth.logout", next='/editor')}
