@@ -2339,6 +2339,121 @@ def process_command(message):
                     else:
                         emit('port_profile_info', {'port_id': port_id, 'profile_info': []})
 
+    # TODO: clean up and move to other place
+    if message['cmd'] == 'get_asset_constraint':
+        asset_id = message['asset_id']
+        asset: esdl.Asset = esh.get_by_id(active_es_id, asset_id)
+        asset_constraints = []
+
+        if asset:
+            constraints = asset.constraint
+            if len(constraints):
+                for c in constraints:
+                    # TODO: support range constraint
+                    if isinstance(c, esdl.ProfileConstraint):
+                        max_profile_info = None
+                        if c.maximum and isinstance(c.maximum, esdl.InfluxDBProfile):
+                            max_profile_info = generate_profile_info([c.maximum])[0]
+                        # TODO: support minimum
+                        # min_profile_info = None
+                        # if c.minimum and isinstance(c.minimum, esdl.InfluxDBProfile):
+                        #     min_profile_info = generate_profile_info([c.minimum])
+                        c_attr = {
+                            "id": c.id,
+                            "name": c.name,
+                            "description": c.description,
+                            "attributeReference": c.attributeReference,
+                            "type": "Profile constraint", # TODO: remove this hard coded value (now only to support frontend display)
+                            "maximum": max_profile_info
+                        }
+                        asset_constraints.append(c_attr)
+                
+        return {'asset_id': asset_id, 'constraint': asset_constraints}
+    
+    # TODO: clean up and move to other place
+    if message['cmd'] == 'set_asset_constraint':
+        asset_id = message['asset_id']
+        asset: esdl.Asset = esh.get_by_id(active_es_id, asset_id)
+        asset_constraints = message['constraint']
+
+        # TODO: check clean up
+        asset.constraint.clear()
+        
+        if asset and len(asset_constraints):
+            for c in asset_constraints:
+                # TODO: support range constraint
+                constraint = esdl.ProfileConstraint()
+                constraint.id = c['id']
+                constraint.name = c['name']
+                constraint.description = c['description']
+                constraint.attributeReference = c['attributeReference']
+
+                if c['maximum']:
+                    id = c['maximum']['id']
+                    profile_uiname = c['maximum']['uiname']
+                    multiplier = c['maximum']['multiplier']
+                    predefined_qau_name = c['maximum']["type"] # TODO: name?
+
+                    # TODO: clean up and extract below into a function
+                    profiles = Profiles.get_instance().get_profiles()['profiles']
+                    for pkey in profiles:
+                        p = profiles[pkey]
+                        if p['profile_uiname'] == profile_uiname:
+                            esdl_profile = esdl.InfluxDBProfile()
+                            esdl_profile.id = id
+                            esdl_profile.multiplier = str2float(multiplier)
+                            esdl_profile.measurement = p['measurement']
+                            esdl_profile.field = p['field']
+                            if 'host' in p and p['host']:
+                                esdl_profile.host = p['host']
+                                if 'port' in p and p['port']:
+                                    esdl_profile.port = int(p['port'])
+                            else:
+                                esdl_profile.host = settings.profile_database_config['protocol'] + "://" + \
+                                    settings.profile_database_config['host']
+                                esdl_profile.port = int(settings.profile_database_config['port'])
+
+                            esdl_profile.database = p['database']
+                            esdl_profile.filters = settings.profile_database_config['filters']
+
+                            if 'start_datetime' in p:
+                                dt = parse_date(p['start_datetime'])
+                                if dt:
+                                    esdl_profile.startDate = EDate.from_string(str(dt))
+                                else:
+                                    send_alert('Invalid datetime format')
+                            if 'end_datetime' in p:
+                                dt = parse_date(p['end_datetime'])
+                                if dt:
+                                    esdl_profile.endDate = EDate.from_string(str(dt))
+                                else:
+                                    send_alert('Invalid datetime format')
+
+                    for pqau in esdl_config.esdl_config['predefined_quantity_and_units']:
+                        if pqau['description'].lower() == predefined_qau_name.lower():
+                            predefined_qau_id = pqau['id']
+                            try:
+                                # check if predefined qau is already present in the ESDL
+                                qau = esh.get_by_id(active_es_id, predefined_qau_id)
+                            except KeyError:
+                                qau = ESDLQuantityAndUnits.build_qau_from_dict(pqau)
+                                esi_qau = ESDLQuantityAndUnits.get_or_create_esi_qau(esh, active_es_id)
+                                esi_qau.quantityAndUnit.append(qau)
+                                esh.add_object_to_dict(active_es_id, qau)
+                                #qau.id = str(uuid.uuid4()) # generate new id for predifined qua otherwise double ids appear
+                            break
+                    # make a reference instead of a direct link
+                    qau_ref = esdl.QuantityAndUnitReference(reference=qau)
+                    esdl_profile.profileQuantityAndUnit = qau_ref
+
+                    constraint.maximum = esdl_profile
+
+                asset.constraint.append(constraint)
+
+        # TODO: refine resp.
+        return {'asset_id': asset_id, 'res': 'success'}
+
+
     if message['cmd'] == 'add_profile_to_port':
         port_id = message['port_id']
         profile_class = message['profile_class']
