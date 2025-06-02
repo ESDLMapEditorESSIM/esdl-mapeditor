@@ -26,7 +26,7 @@ from extensions.ownership.ownership_messages import (
     OwnershipParty,
     GetPartiesResp,
 )
-from extensions.session_manager import get_handler, get_session
+from extensions.session_manager import get_handler
 import src.log as log
 
 
@@ -41,21 +41,21 @@ class Ownership:
     def register(self):
         logger.info("Registering Ownership extension")
 
-        @self.flask_app.route("/ownership/parties", methods=["GET"])
-        def _ownership_get_parties() -> Response:
-            parties: List[OwnershipParty] = self.get_parties_list()
+        @self.flask_app.route("/ownership/<string:es_id>/parties", methods=["GET"])
+        def _ownership_get_parties(es_id: str) -> Response:
+            parties: List[OwnershipParty] = self.get_parties_list(es_id)
             return jsonify(asdict(GetPartiesResp(parties))), 200
 
-        @self.flask_app.route("/ownership/assets", methods=["GET"])
-        def _ownership_get_assets() -> Response:
-            assets: List[OwnershipAsset] = self.get_esdl_assets()
+        @self.flask_app.route("/ownership/<string:es_id>/assets", methods=["GET"])
+        def _ownership_get_assets(es_id: str) -> Response:
+            assets: List[OwnershipAsset] = self.get_esdl_assets(es_id)
             return jsonify(asdict(GetAssetsResp(assets))), 200
 
-        @self.flask_app.route("/ownership/parties", methods=["POST"])
-        def _ownership_add_party() -> Response:
+        @self.flask_app.route("/ownership/<string:es_id>/parties", methods=["POST"])
+        def _ownership_add_party(es_id: str) -> Response:
             try:
                 party_info: OwnershipParty = request.get_json()
-                self.add_party(party_info)
+                self.add_party(es_id, party_info)
                 return (
                     jsonify({"message": "Successfully added a new ownership party."}),
                     200,
@@ -64,41 +64,40 @@ class Ownership:
                 return jsonify({"error": str(e)}), 500
 
         @self.flask_app.route(
-            "/ownership/parties/<string:party_id>", methods=["DELETE"]
+            "/ownership/<string:es_id>/parties/<string:party_id>", methods=["DELETE"]
         )
-        def _ownership_remove_party(party_id: str) -> Response:
+        def _ownership_remove_party(es_id: str, party_id: str) -> Response:
             try:
-                self.remove_party(party_id)
+                self.remove_party(es_id, party_id)
                 return "", 204
             except Exception as e:
                 return jsonify({"error": str(e)}), 500
 
         @self.flask_app.route(
-            "/ownership/assignment/<string:party_id>", methods=["POST"]
+            "/ownership/<string:es_id>/assignment/<string:party_id>", methods=["POST"]
         )
-        def _ownership_assignment(party_id: str) -> Response:
+        def _ownership_assignment(es_id: str, party_id: str) -> Response:
             try:
                 assignment: Assignment = request.get_json()
                 if not assignment:
                     return jsonify({"error": "Invalid input"}), 400
 
-                self.assign_ownership(party_id, assignment)
+                self.assign_ownership(es_id, party_id, assignment)
                 return jsonify({"message": "Ownership assignment successful."}), 200
             except Exception as e:
                 return jsonify({"error": str(e)}), 500
 
-    def get_es(self) -> esdl.EnergySystem:
+    def get_es(self, es_id: str) -> esdl.EnergySystem:
         esh = get_handler()
-        active_es_id = get_session("active_es_id")
-        es = esh.get_energy_system(active_es_id)
+        es = esh.get_energy_system(es_id)
 
         if es is None:
-            raise ValueError("EnergySystem can't be found.")
+            raise ValueError(f"EnergySystem with id {es_id} can't be found.")
 
         return es
 
-    def add_party(self, party_info: OwnershipParty) -> None:
-        es = self.get_es()
+    def add_party(self, es_id: str, party_info: OwnershipParty) -> None:
+        es = self.get_es(es_id)
 
         if es.parties is None:
             # If there is no Parties collection in the EnergySystem yet, create one
@@ -122,8 +121,8 @@ class Ownership:
 
         es.parties.party.append(party)
 
-    def remove_party(self, party_id: str) -> None:
-        es = self.get_es()
+    def remove_party(self, es_id: str, party_id: str) -> None:
+        es = self.get_es(es_id)
         parties = es.parties
 
         if parties:
@@ -133,8 +132,8 @@ class Ownership:
                     # This ensures the reference party of asset.isOwnedby is also cleaned up.
                     p.delete(recursive=True)
 
-    def get_parties_list(self) -> List[OwnershipParty]:
-        es = self.get_es()
+    def get_parties_list(self, es_id: str) -> List[OwnershipParty]:
+        es = self.get_es(es_id)
         parties = es.parties
 
         parties_list: List[OwnershipParty] = []
@@ -149,8 +148,8 @@ class Ownership:
                 parties_list.append(party)
         return parties_list
 
-    def get_esdl_assets(self) -> List[OwnershipAsset]:
-        es = self.get_es()
+    def get_esdl_assets(self, es_id: str) -> List[OwnershipAsset]:
+        es = self.get_es(es_id)
         top_area = es.instance[0].area
 
         assets_list: List[OwnershipAsset] = []
@@ -170,22 +169,25 @@ class Ownership:
                 )
         return assets_list
 
-    def assign_ownership(self, party_id: str, assignment: Assignment) -> None:
+    def assign_ownership(
+        self, es_id: str, party_id: str, assignment: Assignment
+    ) -> None:
         try:
             for a_id in assignment["assigned_asset_ids"]:
-                self.assign_asset_ownership(a_id, party_id)
+                self.assign_asset_ownership(es_id, a_id, party_id)
 
             for a_id in assignment["revoked_asset_ids"]:
-                self.assign_asset_ownership(a_id, None)
+                self.assign_asset_ownership(es_id, a_id, None)
         except Exception as e:
             raise Exception(f"Error in assigning ownership: {str(e)}")
 
-    def assign_asset_ownership(self, asset_id: str, party_id: Optional[str]) -> None:
+    def assign_asset_ownership(
+        self, es_id: str, asset_id: str, party_id: Optional[str]
+    ) -> None:
         esh = get_handler()
-        active_es_id = get_session("active_es_id")
-        es = esh.get_energy_system(active_es_id)
+        es = esh.get_energy_system(es_id)
 
-        asset: esdl.Asset = esh.get_by_id(active_es_id, asset_id)
+        asset: esdl.Asset = esh.get_by_id(es_id, asset_id)
 
         if party_id is not None:
             party: esdl.Party = [p for p in es.parties.party if p.id == party_id][0]
