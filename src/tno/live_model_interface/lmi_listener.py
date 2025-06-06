@@ -139,7 +139,6 @@ def on_pm_refresh_request(message: LmiMessage):
                 activate_live_model_interface(lmi["lmi_id"], client_id)
 
 
-
 def on_new_variant(message: NewVariantMessage):
     """
     Handle a new variant message from the live model interface.

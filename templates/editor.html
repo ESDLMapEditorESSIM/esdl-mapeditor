@@ -629,7 +629,7 @@
                     updatefun({type: 'client_connected'});
                 }
                 window.PubSubManager.broadcast('SOCKET_CONNECTED', socket);
-                auth_status(true); // Check immediately if we have an autorized session
+                auth_status(true); // Check immediately if we have an authorized session
             });
 
             socket.on('hide_loader', function() {

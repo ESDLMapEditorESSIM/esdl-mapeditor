@@ -10,7 +10,7 @@ export async function checkAndRefreshAuthStatus() {
     if (response.ok) {
         const session = await response.json();
         if (!session.valid) {
-            const answer = confirm("Session has expired, reauthentication is necessary.\n\nPress Ok to go to the login page.");
+            const answer = confirm("Session has expired, re-authentication is necessary.\n\nPress Ok to go to the login page.");
             if (answer) {
                 window.location = session.redirect_uri;
             }

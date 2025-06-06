@@ -17,7 +17,7 @@
 // Keeps polling the auth_status endpoint to check if the authentication is still valid
 // every minute
 // set  dont_reschedule to true to disable rescheduling this function.
-let auth_status = function(dont_reschedule) {
+function auth_status(dont_reschedule) {
     $.get('/auth_status')
         .done(function (session) {
             console.log('Session status:', session);
@@ -30,15 +30,17 @@ let auth_status = function(dont_reschedule) {
             if (!session.valid) {
                 const answer = confirm("Session has expired, re-authentication is necessary.\nPress Ok to reload the page");
                 if (answer) {
-                    show_loader();
-                    console.log('Redirecting to: ', session.redirect_uri);
+                    window.show_loader();
+                    console.log('Redirecting to: ', uri);
                     window.location.reload();
                 }
             }
         })
         .fail(function (data) {
-            console.log('Failed to check status, reauthentication necessary', data)
-            if (!dont_reschedule) setTimeout(auth_status, 60000);
+            console.error('Failed to check status, re-authentication necessary', data)
+            if (!dont_reschedule) {
+                setTimeout(auth_status, 60000);
+            }
         });
-};
-//auth_status(); @see app.py where this check is implemented
+}
+auth_status();

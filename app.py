@@ -419,7 +419,7 @@ def auth_status():
                 set_session('jwt-token', openid.get_access_token())
                 return {'valid': True, 'reason': "Refreshed"}
         else:
-            logger.debug("Logout user: Token expired or not available")
+            logger.info("Logout user: Token expired or not available")
             # logout_user() # this also removes the project!
             # oidc.logout()  # check if this fixes the session issue
             return {'valid': False,
