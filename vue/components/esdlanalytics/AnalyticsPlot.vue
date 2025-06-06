@@ -77,10 +77,14 @@ onMounted(() => {
 	plotDiv.value.on('plotly_relayout', (eventData) => {
 		// Only update newLayoutRanges when zoom in/out or pan on subset of data
 		let newLayoutRanges = null;
-		if (eventData['xaxis.range[0]'] && eventData['xaxis.range[1]'] && eventData['yaxis.range[0]'], eventData['yaxis.range[1]']) {
-			newLayoutRanges = {
-				x: [eventData['xaxis.range[0]'], eventData['xaxis.range[1]']],
-				y: [eventData['yaxis.range[0]'], eventData['yaxis.range[1]']]
+
+		if (eventData['xaxis.range[0]'] && eventData['xaxis.range[1]']) {
+			newLayoutRanges = { x: [eventData['xaxis.range[0]'], eventData['xaxis.range[1]']] };
+
+			// Check for any y-axis ranges dynamically; and optionally add y ranges
+			const yRanges = Object.keys(eventData).filter(key => key.startsWith('yaxis') && key.includes('range'));
+			if (yRanges.length > 1) {
+				newLayoutRanges['y'] = yRanges.map(rangeKey => eventData[rangeKey]);
 			}
 		}
 		emit('onRelayout', newLayoutRanges)

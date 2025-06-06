@@ -169,6 +169,18 @@
                   </a-button>
                 </a-tooltip>
               </a-row>
+              <!-- Only show subplot toggle when more than one dataset is selected and with profile data -->
+              <a-row 
+                v-if="chartType==='chart' && isProfileVariable && datasetSelected.length > 1"
+                style="align-items: center; padding-top: 12px;"
+              >
+                <a-switch
+                  v-model:checked="profileSubplotView"
+                  size="small"
+                  @change="onProfileSubplotView"
+                />
+                <a-typography-paragraph style="padding-left: 8px; margin-bottom: 0px;">Display in subplots</a-typography-paragraph>
+              </a-row>
               <!-- TODO: show load duration curve -->
               <a-row v-if="profileVizTypeSelected === 'Aggregated'">
                 <a-typography-title :level="5">Aggregation interval</a-typography-title>
@@ -447,6 +459,7 @@ const initOptions = {
   profileDataRangeSelected: [],
   profileVizTypeSelected: profileVizTypes[0],
   profileDownsampling: true,
+  profileSubplotView: false,
   profileAggIntervalSelected: profileAggIntervals[0],
   profileAggFuncSelected: profileAggFuncs[0],
   groupbyOptions: [],
@@ -500,6 +513,7 @@ const profileDataRanges = ref(appliedOptions.profileDataRanges);
 const profileDataRangeSelected = ref(appliedOptions.profileDataRangeSelected);
 const profileVizTypeSelected = ref(appliedOptions.profileVizTypeSelected);
 const profileDownsampling = ref(appliedOptions.profileDownsampling);
+const profileSubplotView = ref(appliedOptions.profileSubplotView);
 const profileAggIntervalSelected = ref(appliedOptions.profileAggIntervalSelected);
 const profileAggFuncSelected = ref(appliedOptions.profileAggFuncSelected);
 const groupbyOptions = ref(appliedOptions.groupbyOptions);
@@ -630,6 +644,10 @@ const onSelectProfileVizType = () => {
 const onProfileDownsampling = () => {
   updateTrace();
 };
+
+const onProfileSubplotView = () => {
+  updateTrace();
+}
 
 /**
  * Triggered to update profileDataRangeSelected state when newLayoutRanges is emitted from 
@@ -985,9 +1003,10 @@ const updateTrace = async() => {
   // Conditionally updates profile data query options.
   if (queryProfileData) {
     options['profile'] = {
+        viz_type: profileVizTypeSelected.value,
         data_range: profileDataRangeSelected.value !== null ? 
           profileDataRangeSelected.value.map(dt => formatAsDateTimeStr(dt)) : [],
-        viz_type: profileVizTypeSelected.value,
+        subplot_view: profileSubplotView.value
       };
     if (profileDownsampling.value) {
       options['profile']['max_datapoints'] = profileMaxDataPoints;
@@ -1055,30 +1074,53 @@ const disabledDate = (current) => {
  const profileTraceHandler = (traces) => {
   const colorscale = generateColorscale(paletteSelected.value, traces.length);
   const isAggregated = profileVizTypeSelected.value === 'Aggregated';
+  const displaySubplots = profileSubplotView.value;
+  const subplotGroups = [...new Set(traces.map((t) => t['legendgroup']))];
+
+  let grid = {};
+  // Display profiles in stacked subplots
+  if (displaySubplots) {
+    grid = {
+      rows: subplotGroups.length,
+      columns: 1,
+      pattern: 'coupled',
+      roworder: 'bottom to top'
+    }
+  }
+
   traces.forEach((t, idx) => {
     t.type = isAggregated ? 'bar' : 'scatter';
     t.mode = isAggregated ? null : 'lines';
     t.text = (isAggregated && showBarNumbers.value) ? t.y.map(y => y.toFixed(1)) : "";
     t.marker = {color: colorscale[idx % colorscale.length]};
+
+    const axisId = subplotGroups.findIndex(g => g === t['legendgroup']);
+    if (displaySubplots && axisId >= 0) {
+      t.xaxis = 'x'; // share x axis
+      t.yaxis = `y${axisId + 1}`;
+    }
   });
 
   const profileLayout = {
     title: variableSelected.value,
-    xaxis: {
-      automargin: true,
-    },
-    yaxis: {
-      title: variableOptions.value[variableSelected.value].unit,
-      automargin: true,
-    },
-    legend: {
-      groupclick: 'toggleitem',
-    },
+    xaxis: { automargin: true },
+    legend: { groupclick: 'toggleitem' },
+    grid: grid,
     barmode: (isAggregated && [1, 2].includes(dataGrouping.value))? 'relative' : 'group',
     barnorm: (isAggregated && dataGrouping.value === 2) ? 'percent' : '',
     showlegend: true,
     autosize: true,
   };
+
+  // Define multiple y-axes dynamically
+  subplotGroups.forEach((_, idx) => {
+    profileLayout[`yaxis${idx + 1}`] = {
+      title: variableOptions.value[variableSelected.value].unit,
+      automargin: true,
+      anchor: 'x'  // Ensure all y-axes are anchored to the same x-axis
+    };
+  });
+
 
   return {
     traces: traces,
