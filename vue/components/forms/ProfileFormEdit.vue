@@ -45,7 +45,6 @@
           v-model:value="profileForm.type"
           :options="profileQaUOptions"
           allow-clear
-          @change="testChange"
           @mouseleave="removeTooltipPopup"
         />
       </a-form-item>
@@ -132,9 +131,6 @@ const castProfileInfoToFormData = (profileInfo) => {
   return displayedFormData;
 }
 
-const testChange = () => {
-  console.debug(profileForm.type)
-}
 
 watch(() => props.visible, () => {
   if (props.visible) {
@@ -249,7 +245,6 @@ const listPredefQaU = () => {
 			label: profileQaU["predefined_qau"][q]["description"]
 		})
 	}
-
 	return options;
 }
 

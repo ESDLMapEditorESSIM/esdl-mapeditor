@@ -88,6 +88,14 @@ esdl_config = {
             "physicalQuantity": "POWER",
             "unit": "VOLT_AMPERE",
         },
+        # NOTE: To support NWN profile constraint requirement.
+        # TODO: Remove this quick and dirty implementation after the refinement.
+        {
+            "id": "57174dc5-4f95-43dc-af15-311d29c8b207",
+            "description": "Power in %",
+            "physicalQuantity": "POWER",
+            "unit": "PERCENT",
+        },
         {
             "id": "6279c72a-228b-4c2c-8924-6b794c81778c",
             "description": "Reactive power in VAR",
