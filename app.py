@@ -271,7 +271,8 @@ def before_request():
         client_id=session['client_id'],
     )
     if has_session_key('user-email'):
-        logger.debug(f"Request: {request.endpoint}", path=request.path)
+        if request.endpoint != 'serve_static':
+            logger.debug(f"Request: {request.endpoint}", path=request.path)
     else:
         logger.warn(f"Request without login information: {request.endpoint}", path=request.path)
 

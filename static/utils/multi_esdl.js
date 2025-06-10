@@ -262,7 +262,6 @@ function show_esdl_layer_on_map(es_id, layer_name, parent_esdl_layer) {
         if (parent_esdl_layer) {
             const parent_layer = esdl_list[es_id].layers[parent_esdl_layer];
             parent_layer.eachLayer(function (layer) {
-                console.log(layer, layer_name)
                 // ...check if it is the checked grouped area item
                 if (layer.options.group_name === layer_name) {
                     // if it is not already on the map, add it to the map
@@ -273,8 +272,12 @@ function show_esdl_layer_on_map(es_id, layer_name, parent_esdl_layer) {
             });
         } else {
             const layer = esdl_list[es_id].layers[layer_name];
-            if (!map.hasLayer(layer)) {
-                layer.addTo(map);
+            if (layer) {
+                if (!map.hasLayer(layer)) {
+                    layer.addTo(map);
+                }
+            } else {
+                console.warn("Unknown layer", es_id, layer_name)
             }
         }
     } else {

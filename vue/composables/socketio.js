@@ -29,7 +29,7 @@ PubSubManager.subscribe(MessageNames.SOCKET_CONNECTED, (msg, incomingSocket) => 
     socket.value = incomingSocket;
     if (isDebug()) {
         incomingSocket.onAny((event, ...args) => {
-            console.log(`<<< ${event}`);
+            console.debug(`<<< ${event} (args: ${args}`);
         });
     }
 });

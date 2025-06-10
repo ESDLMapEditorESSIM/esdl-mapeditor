@@ -226,7 +226,7 @@ export function useWmsLayers() {
     };
 
     const clearWmsLayers = () => {
-        for (const [key, value] of Object.entries(globalWmsLayerList.value['layers'])) {
+        for (const [key,] of Object.entries(globalWmsLayerList.value['layers'])) {
             deactivateWmsLayer(key)
         }
     };

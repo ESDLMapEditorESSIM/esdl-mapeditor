@@ -15,7 +15,6 @@ import Sectors from '@/apps/Sectors.vue';
 import AboutBox from '@/apps/AboutBox.vue';
 import ReleaseNotes from '@/apps/ReleaseNotes.vue';
 import {useReleaseNotes} from "./composables/releaseNotes";
-import ModelContext from "@/apps/ModelContext.vue";
 import SearchAssets from '@/apps/SearchAssets.vue';
 import AssetFeedback from '@/apps/AssetFeedback.vue';
 import AssetTableEditor from '@/apps/AssetTableEditor.vue';
