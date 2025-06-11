@@ -830,7 +830,7 @@
                         marker.esid = es_id;
                         marker.name = list[i][1];
                         marker.type = list[i][3];
-                        marker.ports = list[i][8];                        
+                        marker.ports = list[i][8];
 
                         set_building_handlers(marker);
                         set_marker_port_handlers(marker);  // for exposed port assets
@@ -1244,7 +1244,7 @@
                     layer.title = layer.type + ': ' + name;
                     layer.ports = ports;
                     if (layer instanceof L.Marker) {
-                        
+
                         if (layer.asspot) {
                             // for normal assets (also updates the contextmenu items)
                             // these have the asspot property
@@ -1560,8 +1560,16 @@
 {% endif %}
                                     <li><a class="dropdown-item" href="#" onclick="export_as_shapefiles(this, '.');">
                                         <div class="menu-icon" style="font-size: 12px;"><i class="fa fa-file-export"></i></div>Export as shapefiles</a></li>
+                                    <li class="dropdown-item" style="pointer-events: none">
+                                        <div style="border-bottom: 1px solid #ccc"></div>
+                                    </li>
                                     <li><a class="dropdown-item" href="#" onclick="export_as_inline_profile(this, '.');">
-                                        <div class="menu-icon" style="font-size: 12px;"><i class="fa fa-cloud-download-alt"></i></div>Export with in-line profiles</a></li>
+                                        <div class="menu-icon" style="font-size: 12px;"><i class="fa fa-cloud-download-alt"></i></div>Export ESDL with in-line profiles</a>
+                                    </li>
+{#                                    Disabled for main until we figure out how to cleanly import these files. #}
+{#                                    <li><a class="dropdown-item" href="#" onclick="document.querySelector('.inputImportInlineFile').click();">#}
+{#                                        <div class="menu-icon" style="font-size: 12px;"><i class="fa fa-cloud-download-alt"></i></div>Import ESDL with in-line profiles</a>#}
+{#                                    </li>#}
                                 </ul>
                             </li>
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">Edit</a>
@@ -1714,6 +1722,7 @@
         <div id="ctrl" style="float: right; position: relative; padding:3px;">
             <input class="inputFile" type="file" style="display: none;" onchange="load_esdl_files(event);" onclick="this.value=null;" multiple>
             <input class="inputImportFile" type="file" style="display: none;" onchange="import_ESDL(event);" onclick="this.value=null;">
+{#            <input class="inputImportInlineFile" type="file" style="display: none;" onchange="import_esdl_with_inline_profiles(event);" onclick="this.value=null;">#}
 
 {% if edr_enabled %}
             <button id="edr-asset-btn" onclick="edr_asset_window();" title="EDR assets" class="ui-button ui-widget ui-corner-all">EDR assets</button>
@@ -1795,8 +1804,8 @@
     // handle contextmenu in some corner cases. See port_handlers.js when right-clicking on a port to show context menu
     map.on('contextmenu.show', function (e) {
         remove_tooltip();
-    });    
-    map.on('contextmenu.hide', function (e) {       
+    });
+    map.on('contextmenu.hide', function (e) {
         // See port_handlers.js when right-clicking on a port to show context menu
         // the port_marker and highlighted connections need to be reset, but
         if (e.contextmenu.active_port_marker) {

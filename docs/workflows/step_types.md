@@ -350,6 +350,7 @@ Example config for sending an ESDL to an external model:
     "id": "74c9d1a2-c92a-46ed-a7e4-9931971cdd28",
     "description": "",
     "name": "",
+    "button_label": "Run Essim Calculation",
     "headers": {
       "User-Agent": "ESDL Mapeditor/1.0",
       "Accept": "application/json",
@@ -450,6 +451,7 @@ Example config for loading an ESDL from an external model run:
     "id": "x1c9d1a2-c92a-46qd-a7e4-9931971cbb33",
     "name": "Load ESDL results",
     "description": "The results should have been loaded in the MapEditor",
+    "button_label": "Go back to results",
     "auto": true,
     "type": "",
     "external_model": "essim",

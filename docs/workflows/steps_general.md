@@ -24,9 +24,12 @@ There are general workflow step parameters which are the same for each workflow 
 - `config`  
   parameters specific for the chosen workflow `type`, described in the [Step Types](step_types.md) page
 - `button_text`  
-  button txt, if not provided no button will be displayed
+  button text: if not provided, no button will be displayed
 - `data`  
   where to get/send data, see [data](#data)
+- `reload_on_esdl_activation`  
+  boolean option to reload the input data when another ESDL is selected, `false` when not provided, implemented for the
+  `json-form2`, `select`, `text` types.
 - `next_step`  
   workflow step id to which the workflow moves on submit, alternatively rules and conditions are possible,
   see [next_step](#next_step)

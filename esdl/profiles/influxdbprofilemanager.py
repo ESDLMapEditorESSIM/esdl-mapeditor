@@ -237,7 +237,7 @@ class InfluxDBProfileManager(ProfileManager):
 
             return " AND ".join(filter_list)
 
-    def get_esdl_influxdb_profile(self, measurement: str, field_names: list, tags: dict = None):
+    def get_esdl_influxdb_profile(self, measurement: str, field_names: list, tags: dict = None, profile_type: str = None):
         """
         Creates an esdl.InfluxDBProfile instance (or a list of instances) that refers to the data in the database.
         Is called by load_influxdb and save_influxdb
@@ -245,6 +245,7 @@ class InfluxDBProfileManager(ProfileManager):
         :param measurement: name of the InfluxDB measurement where the data must be written to
         :param field_names: list of the fields that should be written to InfluxDB
         :param tags: dictionary with tags and tag values, that should be used when writing this data to InfluxDB
+        :param profile_type: the type of the profile, defaults to None (deprecated, use QuantityAndUnits instead)
         :return: an esdl.InfluxDBProfile instance or a list of esdl.InfluxDBProfile instances in case multiple fields
                  were specified, with proper references to the data in the database
         """
@@ -260,6 +261,7 @@ class InfluxDBProfileManager(ProfileManager):
                 filters=InfluxDBProfileManager._create_esdl_filters_from_tags_dict(tags),
                 startDate=EDate.from_string(self.start_datetime.strftime('%Y-%m-%dT%H:%M:%S.%f%z')),
                 endDate=EDate.from_string(self.end_datetime.strftime('%Y-%m-%dT%H:%M:%S.%f%z')),
+                profileType=profile_type,
             )
             profile_list.append(esdl_profile)
 
@@ -268,13 +270,14 @@ class InfluxDBProfileManager(ProfileManager):
         else:
             return profile_list
 
-    def save_influxdb(self, measurement: str, field_names: list, tags: dict = None):
+    def save_influxdb(self, measurement: str, field_names: list, tags: dict = None, profile_type: str = None):
         """
         Saves profile information to InfluxDB
 
         :param measurement: name of the InfluxDB measurement where the data must be written to
         :param field_names: list of the fields that should be written to InfluxDB
         :param tags: dictionary with tags and tag values, that should be used when writing this data to InfluxDB
+        :param profile_type: the type of the profile, defaults to None (deprecated, use QuantityAndUnits instead)
         :return: an esdl.InfluxDBProfile instance or a list of esdl.InfluxDBProfile instances in case multiple fields
                  were specified, with proper references to the data in the database
         """
@@ -310,7 +313,7 @@ class InfluxDBProfileManager(ProfileManager):
 
         if json_body:
             self.influxdb_client.write_points(points=json_body, database=self.database_settings.database, batch_size=100)
-            return self.get_esdl_influxdb_profile(measurement, field_names, tags)
+            return self.get_esdl_influxdb_profile(measurement, field_names, tags=tags, profile_type=profile_type)
 
         else:
             return None

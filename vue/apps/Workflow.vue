@@ -6,18 +6,16 @@
           type="link"
           @click="goToPreviousStep()"
         >
-          <i class="fas fa-long-arrow-alt-left small-icon" />
+          <i class="fas fa-long-arrow-alt-left icon" />
         </a-button>
       </template>
 
       <a-dropdown>
-        <a class="ant-dropdown-link" @click.prevent>
-          <a-button type="text" @click.prevent>
-            <template #icon>
-              <MenuOutlined />
-            </template>
-          </a-button>
-        </a>
+        <a-button type="text" @click.prevent>
+          <template #icon>
+            <i class="fas fa-bars icon" />
+          </template>
+        </a-button>
         <template #overlay>
           <a-menu>
             <a-menu-item v-if="currentWorkflow.name" disabled>
@@ -47,7 +45,7 @@
           </a-menu>
         </template>
       </a-dropdown>
-      <span style="color: var(--gray); vertical-align: sub; margin-left: 20px;">{{ activeEnergySystemTitle }}</span>
+      <span style="color: var(--gray); margin-left: 20px;">{{ activeEnergySystemTitle }}</span>
     </div>
 
     <template v-if="showPreviousSteps()">
@@ -73,6 +71,7 @@
     />
     <WorkflowSelect
       v-else-if="currentWorkflow.workflowStep.type === WorkflowStepTypes.SELECT"
+      :key="currentWorkflow.workflowStep.name"
       :workflow-step="currentWorkflow.workflowStep"
     />
     <WorkflowTable
@@ -162,7 +161,6 @@ import {default as WorkflowJsonForm2} from "@/components/workflow/WorkflowJsonFo
 import {default as WorkflowCallJsFunction} from "@/components/workflow/WorkflowCallJsFunction";
 import {default as WorkflowCompositeStep} from "@/components/workflow/WorkflowCompositeStep.vue";
 import WorkflowDataIO from "@/components/workflow/WorkflowDataIO.vue";
-import {MenuOutlined} from "@ant-design/icons-vue";
 import {MessageNames, PubSubManager} from "@/bridge";
 import {useEsdlLayers} from "@/composables/esdlLayers";
 import {ref} from "vue";
