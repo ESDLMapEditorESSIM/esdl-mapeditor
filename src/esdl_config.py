@@ -17,7 +17,7 @@ EPS_WEB_HOST = os.getenv("EPS_WEB_HOST", "http://epsweb:3401")
 ESDL_AGGREGATOR_HOST = os.getenv("ESDL_AGGREGATOR_HOST", "http://esdl-aggregator:3490")
 ESDL_UPLOAD_PROFILES_HOST = os.getenv("ESDL_UPLOAD_PROFILES_HOST", "http://mapeditor-upload-profiles:4003")
 ESDL_COST_SERVICE_HOST = os.getenv("ESDL_COST_SERVICE_HOST", "http://mapeditor-cost-service:4004")
-FLEX_BACKEND_HOST = os.getenv("FLEX_BACKEND_HOST", "http://flexscan:7200")
+FLEX_BACKEND_HOST = os.getenv("FLEX_BACKEND_HOST", "http://localhost:7200")
 FLEX_FRONTEND_HOST = os.getenv("FLEX_FRONTEND_HOST", "http://localhost:7201")
 
 esdl_config = {
@@ -1459,8 +1459,14 @@ esdl_config = {
                                                 {"const": "kosten", "title": "costs"},
                                             ],
                                         },
+                                        "start_date": {"format": "date", "type": "string"},
+                                        "end_date": {
+                                            "format": "date",
+                                            "type": "string",
+                                            "title": "End Date (including this day)",
+                                        },
                                     },
-                                    "required": ["run_name", "optimization_goal"],
+                                    "required": ["run_name", "optimization_goal", "start_date", "end_date"],
                                 }
                             },
                             "to_state": {},
@@ -1494,6 +1500,8 @@ esdl_config = {
                             "state_params": {
                                 "run_name": "run_name",
                                 "optimization_goal": "optimization_goal",
+                                "start_date": "start_date",
+                                "end_date": "end_date",
                                 "hub_elect_network_id": "selected_hub.id",
                             },
                         },
@@ -1506,7 +1514,7 @@ esdl_config = {
                                 "Accept": "application/json",
                                 "Content-Type": "application/json",
                             },
-                            "url": "http://localhost:7200/flex/start",
+                            "url": f"{FLEX_BACKEND_HOST}/flex/start",
                             "http_method": "post",
                             "type": "send_esdl",
                             "send_email_in_post_body_parameter": "user_name",
@@ -1521,6 +1529,18 @@ esdl_config = {
                                     "name": "optimization_goal",
                                     "description": "Optimization goal",
                                     "parameter_name": "optimization_goal",
+                                    "location": "body",
+                                },
+                                {
+                                    "name": "start_date",
+                                    "description": "Start date",
+                                    "parameter_name": "start_date",
+                                    "location": "body",
+                                },
+                                {
+                                    "name": "end_date",
+                                    "description": "End date",
+                                    "parameter_name": "end_date",
                                     "location": "body",
                                 },
                                 {
@@ -1543,6 +1563,7 @@ esdl_config = {
                                     "action": "save_model_run",
                                     "external_model_name": "flexscan",
                                     "external_model_id_response_param": "phase2_execution_id",
+                                    "external_model_logs_response_param": "error",
                                     "run_name_state_param": "run_name",
                                 }
                             ],
@@ -1564,10 +1585,11 @@ esdl_config = {
                             "model_run_result_polling": {
                                 "query_list": [
                                     {
-                                        "url": "http://localhost:7200/flex/<MODEL_JOB_ID>/progress",
+                                        "url": f"{FLEX_BACKEND_HOST}/flex/<MODEL_JOB_ID>/progress",
                                         "response_mapping": {
                                             "status": "status",
                                             "progress_fraction": "progress_fraction",
+                                            "output_esdl": "output_esdl_base64",
                                         },
                                         "model_specific_response_mapping": {
                                             "flexscan_results_url": "flexscan_results_url",
@@ -1595,10 +1617,11 @@ esdl_config = {
                             "model_short_name": "flexscan",
                             "has_feedback_messages": False,
                             "result_external_link": {
-                                "description": "View Results dashboard",
+                                "description": "View flexscan dashboard",
                                 "value_database_key": "model_specific_output.flexscan_results_url",
                             },
-                            "delete_result_url": "http://localhost:7200/flex/<MODEL_JOB_ID>/results",
+                            "delete_result_url": f"{FLEX_BACKEND_HOST}/flex/<MODEL_JOB_ID>/results",
+                            "load_input_esdl": True,
                         },
                         "data": {
                             "from_socket": {

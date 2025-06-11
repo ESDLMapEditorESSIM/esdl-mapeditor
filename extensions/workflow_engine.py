@@ -116,10 +116,12 @@ class WorkflowStep:
         if not maximum_wait_seconds:
             maximum_wait_seconds = QUERY_POLLING_DEFAULT_MAXIMUM_WAIT_SECONDS
 
+        # run query(ies) until SUCCEEDED or maximum wait time reached
         nr_of_retries = 0
         while True:
             updated_values = dict(model_specific_output=dict())
             for query_config in config["query_list"]:
+                # update values with query response (if parsing error: abort and log error)
                 if not self.update_values_from_query(updated_values, query_config):
                     return False
 
@@ -204,6 +206,7 @@ class WorkflowStep:
                 return True
             else:
                 logger.error(f"Unexpected query status code '{resp.status_code}' from url '{url}'.")
+                return False
         except Exception as e:
             logger.error(f"Error while getting external model run results: {str(e)}")
             return False
@@ -289,6 +292,8 @@ class WorkflowEngine:
                 if init_data["type"] == "esdl_service":
                     esdl_service_ok, esdl_service_result, _ = self.esdl_services.call_esdl_service(init_data)[0]
 
+                    if not esdl_service_result:
+                        raise RuntimeError("Error calling service")
                     esdl_service_result["model_run_doc"]["is_owner"] = (
                         esdl_service_result["model_run_doc"]["user"] == user_email
                     )
@@ -338,13 +343,13 @@ class WorkflowEngine:
                 self.toast_notifications.send(
                     ToastNotification(
                         title=f"Error running '{run_name}'.",
-                        description="Is the input ESDL ok?",
+                        description="Please check the selected ESDL and model service",
                         type=NotificationType.ERROR,
                     )
                 )
 
     def run_sequence(self, sequence_data: SequenceData, first_step) -> None:
-        logger.info(f"Running workflow sequence for run '{sequence_data.run_name}")
+        logger.info(f"Running workflow sequence for run '{sequence_data.run_name}'")
 
         next_step = first_step
         run_succeeded = False
@@ -366,7 +371,7 @@ class WorkflowEngine:
             ):
                 next_step = step_config["workflow_engine"]["workflow_engine_next_step"]
             else:
-                next_step = None
+                next_step = None  # stop workflow sequence
 
         # finish workflow sequence
         logger.info(
@@ -376,6 +381,7 @@ class WorkflowEngine:
             title = f"Run '{sequence_data.run_name}' succeeded."
             notification_type = NotificationType.SUCCESS
         else:
+            self.external_models_storage.update_model_run(sequence_data.run_id, {STATUS: RunStatus.ERROR.value})
             title = f"Run '{sequence_data.run_name}' failed."
             notification_type = NotificationType.ERROR
         self.toast_notifications.send_from_outside_request_context(
