@@ -442,7 +442,7 @@ class ESDLServices:
                 for result_config in service["result"]:
                     try:
                         result = self._process_service_result(esh, url_response, input_data, result_config, service,
-                                                              service_params, state_params, active_es_id)
+                                                              service_params, state_params, active_es_id, body)
                         if result:
                             results.append(result)
                     except Exception as e:
@@ -467,7 +467,7 @@ class ESDLServices:
             return [(False, None, None)]
 
     def _process_service_result(self, esh, url_response: Response, input_data, result_config, service: dict,
-                                service_params: dict, state_params, active_es_id: str) -> None | Tuple[
+                                service_params: dict, state_params, active_es_id: str, body: dict[str, Any]) -> None | Tuple[
         bool, str | dict | None, dict | None]:
         """
         Process the result of an ESDL service call. This can be adding an ESDL object to the current EnergySystem, printing
@@ -796,7 +796,7 @@ class ESDLServices:
             return True, {"message": message}, None
         elif result_config["action"] == "download_file":
             # Needs json_field to be set to the field in the response that contains the file.
-            response_with_file = r.json()[result_config["json_field"]]
+            response_with_file = url_response.json()[result_config["json_field"]]
             filename = result_config["filename"]
             content_type = result_config["content_type"]
             return True, {"file": response_with_file, "filename": filename, "content_type": content_type}, None
