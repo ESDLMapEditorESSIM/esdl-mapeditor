@@ -690,7 +690,7 @@ Example config:
 ## `workflow-engine-monitor`
 
 A workflow component that specifies a workflow engine step. It contains actions to be done in by the workflow engine.
-So far there are twp actions available: `model_run_result_polling` and `model_run_result_polling`.
+So far there are twp actions available: `model_run_result_polling` and `model_run_show_results`.
 It can also be displayed in the frontend in which case it will only follow the progress of a workflow engine sequence.
 The workflow engine will run this step regardless of whether it is displayed. There is no input or output data
 involved.  
@@ -708,7 +708,7 @@ The available options:
     - `status_mapping`: how to map the external model statuses to mapeditor statuses.
     - `retry_interval_seconds`: how often to poll.
     - `maximum_wait_seconds`: maximum polling time.
-- `model_run_result_polling`: show run results: a list of database item keys to show the value of.
+- `model_run_show_results`: show run results: a list of database item keys to show the value of.
   A list of row items is each needed each of which can contain:
     - `value_database_key`: the mongodb key for which to show the value (can be nested with dot)
     - `description`: optional, if present this description will be printed in front of the value
