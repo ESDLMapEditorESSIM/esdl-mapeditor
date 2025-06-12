@@ -1,10 +1,16 @@
 <template>
-  <p>Run name: {{ runName }}</p>
+  <h2>Run name: {{ runName }}</h2>
   <div v-for="(stepProgress, key) in stepsProgress" :key="key">
     <hr>
-    <p>{{ stepProgress["name"] }}</p>
-    <a-progress :percent="getProgressPercent(stepProgress)" :status="getProgressStatus(stepProgress)" />
-    <p>Status: {{ stepProgress["status"] }}</p>
+    <h3>{{ stepProgress["name"] }}</h3>
+    <a-progress
+      v-if="stepProgress['progress_fraction'] !== null"
+      :percent="getProgressPercent(stepProgress)"
+      :status="getProgressStatus(stepProgress)"
+    />
+    <p v-if="stepProgress['status'] !== null">Status: {{ stepProgress["status"] }}</p>
+    <!-- eslint-disable vue/no-v-html -->
+    <p v-if="stepProgress['message'] !== null" v-html="stepProgress['message']" />
   </div>
   <a-button
     v-if="stepParams.nextStepTrigger === WorkflowNextStepTriggerOptions.BUTTON_CLICK && stepParams.buttonText"
