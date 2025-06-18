@@ -210,7 +210,7 @@ class ETMInterface:
             for row in reader:
                 self.municipalities_bld_info[row['gm_code']] = row
 
-        logger.debug(f"ETM plugin read {len(self.municipalities_bld_info)} municipalities from input file")
+        logger.debug(f"ETM plugin read {len(self.municipalities_bld_info)} municipality building stats from input file")
 
     def request_sankey_info_municipality(self, municipality_code):
         if municipality_code not in self.etm_municipalities:

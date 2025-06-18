@@ -65,7 +65,7 @@ class ESDLFileIO:
                 self.clear_mapeditor_ui()
 
                 esh = get_handler()
-                self.executor.submit(self.call_process_energy_system, esh)  # run in seperate thread
+                self.executor.submit(self.call_process_energy_system, esh, True)  # run in seperate thread
 
     def send_alert(self, message):
         logger.warning(message)
@@ -99,5 +99,13 @@ class ESDLFileIO:
             self.send_alert("Error opening {}. Exception is: {}".format(filename, e))
 
     @staticmethod
-    def call_process_energy_system(esh):
-        process_energy_system(esh, filename=None, es_title=None, app_context=None, force_update_es_id=None, zoom=True)
+    def call_process_energy_system(esh, load_animation=False):
+        process_energy_system(
+            esh,
+            filename=None,
+            es_title=None,
+            app_context=None,
+            force_update_es_id=None,
+            zoom=True,
+            load_animation=load_animation
+        )

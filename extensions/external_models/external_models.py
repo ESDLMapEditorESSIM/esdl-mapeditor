@@ -113,6 +113,7 @@ class ExternalModels:
             esdl_object_name_field = model_run_info.get("esdl_object_name_field")
             excel_sheets_per_table = model_run_info.get("excel_sheets_per_table")
             influxdb_host_override = model_run_info.get("influxdb_host_override")
+            influxdb_port_override = model_run_info.get("influxdb_port_override")
 
             run_data = self.external_models_storage.get_model_run(run_id)
 
@@ -133,7 +134,9 @@ class ExternalModels:
 
             influxdb_client = None
             try:
-                influxdb_client = Profiles.connect_to_animation_profiles_database(es.id, es.id, influxdb_host_override)
+                influxdb_client = Profiles.connect_to_animation_profiles_database(
+                    es.id, es.id, influxdb_host_override, influxdb_port_override
+                )
                 # Query to get the list of measurements in the database
                 measurements_query = "SHOW MEASUREMENTS"
                 measurements_result = influxdb_client.query(measurements_query)

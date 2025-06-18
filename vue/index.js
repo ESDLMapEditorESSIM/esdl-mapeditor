@@ -10,6 +10,7 @@ import ObjectProperties from '@/apps/ObjectProperties.vue';
 import EDRAssets from '@/apps/EDRAssets.vue';
 import EnvironmentalProfiles from '@/apps/EnvironmentalProfiles.vue';
 import AddEditWmsLayer from '@/apps/AddEditWmsLayer.vue';
+import SpatialVisualization from '@/apps/SpatialVisualization.vue';
 import Carriers from '@/apps/Carriers.vue';
 import Sectors from '@/apps/Sectors.vue';
 import AboutBox from '@/apps/AboutBox.vue';
@@ -155,6 +156,10 @@ window.add_edit_wms_layer = (object_id) => {
     newObject(object_id);
     mountSidebarComponent(AddEditWmsLayer)
 }
+
+window.open_spatial_visualization = () => {
+    mountSidebarComponent(SpatialVisualization);
+};
 
 createVueLControl(ActiveLongProcess, {position: 'bottomright'});
 // mountApp(ToggleActiveLongProcess, '#vue_toggle_long_process_view');

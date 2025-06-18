@@ -14,7 +14,7 @@
 </template>
 
 <script setup="props">
-import {onMounted, ref, watch} from "vue";
+import {onMounted, onUnmounted, ref, watch} from "vue";
 import {useWorkflow, WorkflowNextStepTriggerOptions} from "@/composables/workflow";
 
 const props = defineProps({
@@ -28,11 +28,24 @@ const props = defineProps({
 /** @type {import('vue').Ref<StepParameters|null>} */
 const stepParams = ref({});
 
+let subscriptionId = null;
+
 onMounted(() => {
   init();
   watch(props.workflowStep.workflowTrigger, () => {
     init();
   });
+    if (stepParams.value.reloadOnEsdlActivation) {
+    subscriptionId = PubSubManager.subscribe(MessageNames.SELECT_ACTIVE_LAYER, () => {
+      init();
+    });
+  }
+});
+
+onUnmounted(() => {
+  if (subscriptionId !== null) {
+    PubSubManager.unsubscribe(subscriptionId);
+  }
 });
 
 const text = ref("");
@@ -50,6 +63,11 @@ const updateData = (data) => {
 
 const init = async () => {
   stepParams.value = getWorkflowStepParameters(props.workflowStep);
-  await getInputData(stepParams.value.data, updateData);
+  try {
+    await getInputData(stepParams.value.data, updateData);
+  } catch (error) {
+    console.error("Error fetching input data:", error);
+    updateData("Error fetching input data.");
+  }
 };
 </script>

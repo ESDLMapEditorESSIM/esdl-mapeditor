@@ -73,6 +73,7 @@ class EnergySystemHandler:
     def _new_resource_set(self):
         """Resets the resourceset (e.g. when loading a new file)"""
         self.rset = ResourceSet()
+        self.esid_uri_dict = {}  # clean up the esid_uri_dict
         self.resource = None
         self._set_resource_factories()
 
@@ -135,22 +136,29 @@ class EnergySystemHandler:
             parse_info = tmp_resource.get_parse_information()
         # At this point, the model instance is loaded!
         # self.energy_system = self.resource.contents[0]
-        self.validate(es=tmp_resource.contents[0])
+        energy_system = tmp_resource.contents[0]
+        if energy_system.id in self.esid_uri_dict:
+            energy_system.id = str(uuid4())
+            logger.warning(f"Detected duplicate Energy System Id for {uri.normalize()}, adapting to a new one: {energy_system.id}")
+            # a small hack to convey this information to the user in the frontend, as parse_info will be displayed
+            parse_info.append(f"Warning: The EnergySystem ID of \n{uri.plain} \nwith name '{energy_system.name}' \nwas already in use, a new one has been generated. \n"
+                              f"\nWhen saving this new ID will be used.")
+        self.validate(es=energy_system)
         if isinstance(uri, str):
-            self.esid_uri_dict[tmp_resource.contents[0].id] = uri
+            self.esid_uri_dict[energy_system.id] = uri
         else:
-            self.esid_uri_dict[tmp_resource.contents[0].id] = uri.normalize()
+            self.esid_uri_dict[energy_system.id] = uri.normalize()
         # Edwin: recursive moet hier toch False zijn?? immers elke resource heeft zijn eigen uuid_dict
         # Ewoud: precies, dus in False veranderd
-        self.add_object_to_dict(tmp_resource.contents[0].id, tmp_resource.contents[0], False)
-        return tmp_resource.contents[0], parse_info
+        self.add_object_to_dict(energy_system.id, energy_system, False)
+        return energy_system, parse_info
 
-    def load_from_string(self, esdl_string, name='from_string'):
+    def load_from_string(self, esdl_string, name='from_string', new_id=None):
         """
-        Loads an energy system from a string and adds it to a *new* resourceSet
+        Loads an energy system from a string and adds it to a *new* resourceSet, throwing away all loaded ES!
         :returns: EnergySystem and the parse warnings as a tuple (es, parse_info)
          """
-        if name == '':
+        if not name:
             name = str(uuid4())
         uri = StringURI(name+'.esdl', esdl_string)
         self._new_resource_set()
@@ -158,6 +166,8 @@ class EnergySystemHandler:
         try:
             self.resource.load()
             self.energy_system = self.resource.contents[0]
+            if new_id:
+                self.energy_system.id = new_id
             parse_info = []
             if isinstance(self.resource, XMLResource):
                 parse_info = self.resource.get_parse_information()
@@ -186,6 +196,21 @@ class EnergySystemHandler:
         self.validate(es=external_energy_system)
         return external_energy_system, parse_info
 
+    def add_es_to_resource_set(self, es: esdl.EnergySystem, uri: URI):
+        """
+        Adds an externally loaded energy system with uri to the current ResourceSet
+        :param es: EnergySystem to add to the ResourceSet
+        :param uri: URI used to identify this energy system in the ResourceSet
+        """
+        resource = es.eResource
+        if resource is None:
+            logger.error("No resource set for energy system: {}".format(es.name))
+            return
+        self.rset.resources[uri.normalize()] = resource
+        resource.decoders.remove(resource.resource_set)
+        resource.resource_set = self.rset
+        resource.decoders.insert(0, self.rset)
+
     def add_from_string(self, name: str, esdl_string: str, overwrite_existing: bool = True) -> (esdl.EnergySystem, []):
         """
         Loads an energy system from a string and adds it to the *existing* resourceSet if it doesn't exist yet.
@@ -199,7 +224,7 @@ class EnergySystemHandler:
 
         :returns: EnergySystem and the parse warnings as a tuple (es, parse_info)
         """
-        es, parse_info = self.load_external_string(esdl_string)
+        es, parse_info = self.load_external_string(esdl_string, name=name)
         # If the EnergySystem was successfully parsed from the esdl_string
         if es:
             # If the EnergySystem ID is already known in the esid_uri_dict
@@ -211,10 +236,13 @@ class EnergySystemHandler:
 
                     # Add the already processed EnergySystem (es) to a new resource in the existing resourceSet
                     uri = StringURI(name + '_' + str(uuid4()) + '.esdl')
-                    resource = self.rset.create_resource(uri)
-                    resource.contents.append(es)
+                    # manually add resource to the resource set. Otherwise when moving an es to a different resource,
+                    # the references still point to the old resource creating to_string.esdl#ab12-cd34.. links.
+                    self.add_es_to_resource_set(es, uri)
                     self.esid_uri_dict[es.id] = uri.normalize()
-                    self.add_object_to_dict(es.id, es, True)
+                    # recursive id adding is not necessary here, as we move the just loaded resource
+                    # including its uuid_dict to the new resource set.
+                    self.add_object_to_dict(es.id, es, False)
 
                     return es, parse_info
                 else:
@@ -361,7 +389,8 @@ class EnergySystemHandler:
             es_list.append(self.rset.resources[key].contents[0])
         return es_list
 
-    def validate(self, es):
+    @staticmethod
+    def validate(es):
         if es is not None:
             if es.id is None:
                 es.id = str(uuid4())

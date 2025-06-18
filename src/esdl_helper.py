@@ -34,6 +34,9 @@ def generate_profile_info(profile_list, only_of_type: str = None):
     profile_info_list = []
     for profile in profile_list:
         profile_class = type(profile).__name__
+        if only_of_type and profile_class != only_of_type:
+            continue
+
         qau = profile.profileQuantityAndUnit
         if isinstance(qau, esdl.QuantityAndUnitReference):
             qau = qau.reference
@@ -44,13 +47,9 @@ def generate_profile_info(profile_list, only_of_type: str = None):
         profile_name = profile.name
         profile_id = profile.id
         if profile_class == 'SingleValue':
-            if only_of_type and profile_class != only_of_type:
-                break
             value = profile.value
             profile_info_list.append({'id': profile_id, 'class': 'SingleValue', 'value': value, 'type': profile_type, 'uiname': profile_name})
         if profile_class == 'InfluxDBProfile':
-            if only_of_type and profile_class != only_of_type:
-                break
             database = profile.database
             multiplier = profile.multiplier
             measurement = profile.measurement
@@ -65,8 +64,6 @@ def generate_profile_info(profile_list, only_of_type: str = None):
                 profile_name = field
             profile_info_list.append({'id': profile_id, 'class': 'InfluxDBProfile', 'multiplier': multiplier, 'type': profile_type, 'uiname': profile_name})
         if profile_class == 'DateTimeProfile':
-            if only_of_type and profile_class != only_of_type:
-                break
             profile_info_list.append({'id': profile_id, 'class': 'DateTimeProfile', 'type': profile_type, 'uiname': profile_name})
 
     return profile_info_list

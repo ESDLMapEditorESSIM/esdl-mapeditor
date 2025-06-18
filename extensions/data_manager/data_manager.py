@@ -17,11 +17,12 @@ from enum import Enum
 from typing import Any, TypedDict, List, Dict, Optional, Sequence, Iterable, Tuple
 import json
 import re
+import math
 from urllib.parse import urlparse
 
 from flask import Flask
 from flask_socketio import SocketIO
-from sqlalchemy import select, delete, column, literal_column, func
+from sqlalchemy import select, delete, column
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text, func
 from sqlalchemy.exc import IntegrityError
@@ -33,6 +34,8 @@ import esdl
 from esdl.processing.ESDLAsset import get_asset_capability_type
 from esdl.processing.ESDLQuantityAndUnits import unit_to_string
 from esdl.profiles.influxdbprofilemanager import InfluxDBProfileManager, ConnectionSettings
+from extensions.data_manager.db_interaction import create_db_tables, get_db_driver_type, DriverType, create_db, drop_db, \
+    drop_db_tables
 from extensions.profiles import Profiles
 from extensions.data_manager import db
 from extensions.data_manager.data_manager_message import (ChartType,
@@ -44,7 +47,6 @@ from extensions.data_manager.data_manager_message import (ChartType,
                                                           QueryRequestBody,
                                                           ProfileVizType,
                                                           ProfileAggInterval)
-from extensions.data_manager.db_interaction import create_db, drop_db
 from extensions.data_manager.db_model import DataSet, Variable, DataType, Data, BaseModel
 from extensions.session_manager import get_handler, get_session
 from src import settings
@@ -85,7 +87,6 @@ def filter_none(input_list: Sequence) -> List:
     return [x for x in input_list if x is not None]
 
 def update_kpi_metadata(kpi: esdl.KPI, data: Data):
-    print('Handle KPI ', kpi.name)
     labels = {}
     kpis_container = kpi.eContainer()
     level_cnt: int = 0
@@ -292,13 +293,18 @@ def handle_static_profile(profile: esdl.StaticProfile, ds: DataSet, variable_nam
 
     return d, qau, variable_name
 
-def preprocess_column(column_name: str, db_engine_driver: str = "sqlite") -> Any:
+def preprocess_column(column_name: str) -> Any:
+    if 'sqlite' in settings.SQLALCHEMY_DATABASE_URI:
+        db_engine_driver = DriverType.SQLITE
+    else:
+        db_engine_driver = DriverType.POSTGRES
+
     if '/' in column_name:
         key_name = column_name.split('/')[1]
-        if db_engine_driver == "sqlite":
+        if db_engine_driver == DriverType.SQLITE:
             return func.json_extract(Data.labels, f"$.{key_name}").label(column_name)
         else:
-            return Data.labels[key_name].astext.label(column_name)
+            return func.jsonb_extract_path_text(Data.labels, key_name).label(column_name)
     else:
         return column(column_name)
     
@@ -326,7 +332,7 @@ def get_profile_influxdb_settings(profile: esdl.InfluxDBProfile, profiles_settin
     # Ensure host part only (without http:// or https://) 
     host = urlparse(profile.host).netloc if profile.host.startswith(('http://', 'https://')) else profile.host
     try:
-        influxdb_client = InfluxDBClient(host=host, port=profile.port, ssl=True, verify_ssl=True)
+        influxdb_client = InfluxDBClient(host=host, port=profile.port, ssl=True, verify_ssl=True, retries=1, timeout=2)
         db = influxdb_client.get_list_database()
         if db:
             return ConnectionSettings(
@@ -396,16 +402,22 @@ class DataManager:
     def register(self):
         logger.info("Registering DataManager extension")
         sqllogger = logging.getLogger("sqlalchemy.engine")
-        sqllogger.setLevel(logging.INFO)
+        sqllogger.setLevel(logging.WARNING)
         logger.info(f"Connecting to Data Manager database using: {settings.SQLALCHEMY_DATABASE_URI}")
         self.flask_app.config.update({"SQLALCHEMY_DATABASE_URI": settings.SQLALCHEMY_DATABASE_URI})
         db.init_app(self.flask_app)  # init SQLAlchemy
 
         # init database
         with self.flask_app.app_context():
-            drop_db(db_url=self.flask_app.config["SQLALCHEMY_DATABASE_URI"],
-                    app_instance_path=self.flask_app.instance_path)
-            create_db(self.flask_app.config["SQLALCHEMY_DATABASE_URI"])
+            db_driver_type = get_db_driver_type()
+            if db_driver_type == DriverType.SQLITE:
+                drop_db(db_url=self.flask_app.config["SQLALCHEMY_DATABASE_URI"],
+                        app_instance_path=self.flask_app.instance_path)
+                create_db(self.flask_app.config["SQLALCHEMY_DATABASE_URI"])
+            else:
+                # The sqlite approach doesn't work well with Postgres, so just dropping the tables.
+                drop_db_tables()
+                create_db_tables()
 
         @self.socketio.on("datamanager/metadata/add_update", namespace="/esdl")
         def _add_or_update_metadata(params: Dict) -> str:
@@ -443,7 +455,7 @@ class DataManager:
 
             # TODO: return rounded query values
             if req_body.profile:
-                return self.query_influxdb_profile(db.session, options=req_body) 
+                return self.query_influxdb_profile(db.session, options=req_body)
             else:
                 return self.query(db.session, options=req_body)
 
@@ -456,7 +468,7 @@ class DataManager:
 
         :return: List of database entries to add to the database (BaseModel subclasses)
         """
-
+        logger.info(f"Processing ESDL {es.name} [{es.id}]")
         data_list: List[BaseModel] = []
         variables: Dict[str, Variable] = {}
 
@@ -474,7 +486,6 @@ class DataManager:
             is_profile_variable = None
 
             if isinstance(eobj, esdl.SingleValue) or isinstance(eobj, esdl.TimeSeriesProfile):
-                logger.debug(f"Handling {eobj.eClass.name}/{eobj.name}")
                 # single value profile
                 # profile: esdl.SingleValue = eobj
                 d, qau, variable_name = handle_static_profile(eobj, ds, variable_name)
@@ -571,6 +582,13 @@ class DataManager:
                     qau = esdl.QuantityAndUnitType(physicalQuantity=esdl.PhysicalQuantityEnum.LENGTH,
                                                    unit=esdl.UnitEnum.METRE, description="Length in m")
 
+            # Process asset ownership label
+            if isinstance(eobj, esdl.Asset):
+                d.labels = d.labels if d.labels is not None else {}
+                d.labels["Ownership"] = "Unassigned"
+                if eobj.isOwnedBy is not None:
+                    d.labels["Ownership"] = eobj.isOwnedBy.name
+
             # variable_name and qau and d should be defined here
             if not variable_name:
                 #variable_name = eobj.name if hasattr(eobj, 'name') else None
@@ -621,8 +639,9 @@ class DataManager:
             unique_technology = filter_none(session.scalars(select(Data.technology).distinct().where(Data.variable_id == v.id).order_by(Data.technology)).all())
             unique_year = filter_none(session.scalars(select(Data.year).distinct().where(Data.variable_id == v.id).order_by(Data.year)).all())
 
-            # A workaround to extract Data.labels column (JSON) keys in SQLite as SQLite does not support json_object_keys 
-            if db.engine.url.drivername == 'sqlite':
+            # A workaround to extract Data.labels column (JSON) keys in SQLite as SQLite does not support json_object_keys
+            db_driver_type = get_db_driver_type()
+            if db_driver_type == DriverType.SQLITE:
                 keys_query = text("""
                     SELECT DISTINCT json_each.key AS keys
                     FROM Data, json_each(Data.labels)
@@ -630,10 +649,15 @@ class DataManager:
                 """)
                 keys_list = session.execute(keys_query, {'variable_id': v.id}).scalars().all()
             else:
-                keys_list = session.scalars(select(literal_column("json_object_keys(labels)").label("keys")).distinct().select_from(Data).where(Data.variable_id == v.id)).all()
-        
+                # PostgreSQL version using text() for raw SQL
+                keys_query = text("""
+                    SELECT DISTINCT jsonb_object_keys(labels) AS keys
+                    FROM "data"
+                    WHERE variable_id = :variable_id
+                """)
+                keys_list = session.execute(keys_query, {'variable_id': v.id}).scalars().all()
+
             for key in keys_list:
-                print("-", key)
                 #options_per_label_key = session.scalars(select(literal_column("labels->>'"+key+"'").label("options")).distinct().select_from(Data).where(Data.variable_id == v.id)).all()
                 options_per_label_key = filter_none(session.scalars(select(Data.labels[key].as_string().label("options")).distinct().select_from(Data).where(Data.variable_id == v.id)).all())
                 filter_options[key] = FilterOptions(options=options_per_label_key, column="labels", key=key)
@@ -907,6 +931,12 @@ class DataManager:
         chart_type = options.chart_type
         viz_type = options.profile['viz_type']
         data_range = options.profile['data_range']
+
+        max_datapoints = options.profile.get('max_datapoints')
+        agg_interval = options.profile.get('agg_interval')
+        agg_func = options.profile.get('agg_func')
+
+        logger.info(f"Querying influxdb profile traces with {vars(options)}")
         
         resp = { "data_range": [], "traces": [], "errors": [], "error_msg": "" }
 
@@ -915,13 +945,22 @@ class DataManager:
 
         # group_by_param = [DataSet.name] + [preprocess_column(group) for group in group_by]
 
+        # Handle JSON type query according to the db drive type.
+        db_driver_type = get_db_driver_type()
+        if db_driver_type == DriverType.SQLITE:
+            query_profile_id = func.json_extract(Data.labels, '$.profile_id').label('profile_id')
+            query_flow_direction = func.json_extract(Data.labels, '$.Flow direction').label('flow_direction')
+        else:
+            query_profile_id = func.jsonb_extract_path_text(Data.labels, 'profile_id').label('profile_id')
+            query_flow_direction = func.jsonb_extract_path_text(Data.labels, 'Flow direction').label('flow_direction')
+
         # energy_system_id and profile_id are required to derive the profile using esh.get_by_id()
         query = session.query(Data,
                               Data.node.label('attached_node'),
                               DataSet.name,
                               DataSet.energy_system_id,
-                              func.json_extract(Data.labels, '$.profile_id').label('profile_id'),
-                              func.json_extract(Data.labels, '$.Flow direction').label('flow_direction'))\
+                              query_profile_id,
+                              query_flow_direction)\
             .join(Variable, Variable.id == Data.variable_id).join(DataSet, Data.dataset_id == DataSet.id)\
             .where(Variable.name == variable_name)\
             .where(Variable.dataset_id.in_(dataset_ids))\
@@ -976,6 +1015,14 @@ class DataManager:
                     start_date = profile.startDate
                     end_date = profile.endDate
 
+                groupby_interval_sec = None
+                if max_datapoints:
+                    time_delta_sec = (end_date - start_date).total_seconds()
+                    # To round to common (readable) interval: 1s, 30s, 1m, 30m, 1h, 6h, 12h, 1d
+                    common_intervals = [1, 30, 60, 1800, 3600, 21600, 43200, 86400]
+                    interval_sec = math.ceil(time_delta_sec / max_datapoints)
+                    groupby_interval_sec = min(common_intervals, key=lambda x: abs(x - interval_sec))
+
                 try:
                     prof_manager = InfluxDBProfileManager(influxdb_settings)
                     prof_manager.load_influxdb(
@@ -984,8 +1031,10 @@ class DataManager:
                         from_datetime=start_date,
                         to_datetime=end_date,
                         filters=query_filters,
+                        groupby_interval_sec=groupby_interval_sec
                     )
-                    datetime_profile = prof_manager.get_esdl_datetime_profile(profile_name=profile.name)
+                    # profile_data_list: a list of lists, with each list structure to be [datetime, field value, ...]
+                    datetime_profile = prof_manager.profile_data_list
                 except Exception as e:
                     err = f"Error retrieving {profile.host}:{profile.port} {profile_label} profile: {e}"
                     resp['errors'].append(err)
@@ -993,14 +1042,17 @@ class DataManager:
                     continue
 
                 data = []
-                for d in datetime_profile.element.items:
-                    d: esdl.ProfileElement
-                    date: datetime = d.from_
-                    value = d.value * profile.multiplier
+                for d in datetime_profile:
+                    # skip when value is None (this can occur when downsampling is applied)
+                    if d[1] is None:
+                        continue
+
+                    date: datetime = d[0]
+                    value = d[1] * profile.multiplier
                     data.append((date, value))
 
                 if viz_type == ProfileVizType.AGGREGATED.value:
-                    viz_data = aggregate_profile_data(data, options.profile['agg_interval'], options.profile['agg_func'])
+                    viz_data = aggregate_profile_data(data, agg_interval, agg_func)
                 else:
                     datetimes = [date.strftime(dt_str_format) for date, _ in data]
                     values = [value for _, value in data]
@@ -1046,8 +1098,7 @@ class DataManager:
 
         traces = []
         
-        logger.info(f"Querying {chart_type.value} chart traces with dataset_ids: \
-                    {dataset_ids}, variable: {variable_name}, group_by: {group_by}, and filters: {filters}")
+        logger.info(f"Querying {chart_type.value} traces with {vars(options)}")
                 
         if len(group_by) == 0:
             group_by = ['year']

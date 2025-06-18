@@ -30,6 +30,8 @@ const props = defineProps({
 	}
 });
 
+const emit = defineEmits(['onRelayout']);
+
 const plotDiv = ref(null);
 
 const config = { 
@@ -71,6 +73,22 @@ onMounted(() => {
 	}
 	config.toImageButtonOptions['filename'] = props.layout?.title?.text || "Untitled chart";
 	Plotly.newPlot(plotDiv.value, props.trace, props.layout, config);
+
+	plotDiv.value.on('plotly_relayout', (eventData) => {
+		// Only update newLayoutRanges when zoom in/out or pan on subset of data
+		let newLayoutRanges = null;
+
+		if (eventData['xaxis.range[0]'] && eventData['xaxis.range[1]']) {
+			newLayoutRanges = { x: [eventData['xaxis.range[0]'], eventData['xaxis.range[1]']] };
+
+			// Check for any y-axis ranges dynamically; and optionally add y ranges
+			const yRanges = Object.keys(eventData).filter(key => key.startsWith('yaxis') && key.includes('range'));
+			if (yRanges.length > 1) {
+				newLayoutRanges['y'] = yRanges.map(rangeKey => eventData[rangeKey]);
+			}
+		}
+		emit('onRelayout', newLayoutRanges)
+	})
 });
 
 onUpdated(() => {

@@ -156,6 +156,22 @@
       </a-space>
     </a-card>
 
+    <!------------------------------------>
+    <!-- PriorityStrategy                -->
+    <!------------------------------------>
+    <a-card
+      v-if="selected=='PriorityStrategy'"
+    >
+      <a-space
+        direction="vertical"
+      >
+        Priority:
+        <FancyNumberEdit
+          v-model:value="priority"
+        />
+      </a-space>
+    </a-card>
+
     <a-space>
       <a-button
         type="primary"
@@ -217,6 +233,7 @@ export default {
         {label: 'Curtailment strategy', value: 'CurtailmentStrategy'},
         {label: 'Driven by profile', value: 'DrivenByProfile'},
         {label: 'PID Controller', value: 'PIDController'},
+        {label: 'Priority strategy', value: 'PriorityStrategy'},
       ],
       ports: [
       ],
@@ -241,6 +258,7 @@ export default {
       pid_sensor_list: [
       ], 
       pid_setpoint: 0,
+      priority: 0,
       msg: "",
       isLoading: true,
       storage_strategy_feedback: ""
@@ -313,6 +331,9 @@ export default {
               this.profile_table_data = profile_info.list;
             }
           }
+          if (res['controlStrategy']['type'] == 'PriorityStrategy') {
+            this.priority = res['controlStrategy']['priority']
+          }
         } else {
           this.selected = 'None'
         }
@@ -383,6 +404,9 @@ export default {
       }
       if (result.type == 'DrivenByProfile') {
         result.profile = this.build_profile_info();
+      }
+      if (result.type == 'PriorityStrategy') {
+        result.priority = this.priority;
       }
       return result;
     },

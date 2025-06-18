@@ -33,7 +33,7 @@ from extensions.external_models.external_models_storage import (
     MODEL_SPECIFIC_OUTPUT,
     RunStatus,
 )
-from src.tno.shared.util import get_nested_dict_value, parse_string_with_parameters
+from src.tno.shared.util import get_nested_dict_value, parse_string_with_parameters, pretty_print_html
 from extensions.session_manager import get_session, get_all_session_ids_for_user
 from src.esdl_services import ESDLServices
 import src.log as log
@@ -50,8 +50,8 @@ class StepProgress:
     """Workflow Engine Step Progress data."""
 
     name: str
-    status: str
-    progress_fraction: float
+    status: str | None
+    progress_fraction: float | None
     message: str | None = None
 
     def as_dict(self) -> dict:
@@ -93,12 +93,18 @@ class WorkflowStep:
 
         :return: True if completed successfully
         """
-        step_progress = StepProgress(name=self.step_config.get("monitor_name"), status="STARTED", progress_fraction=0)
+        step_progress = StepProgress(
+            name=self.step_config.get("monitor_name"), status=RunStatus.SUBMITTED.value, progress_fraction=0
+        )
         self.sequence_data.steps_progress.append(step_progress)
 
         if "model_run_result_polling" in self.step_config["config"]:
             return self.action_model_run_result_polling(
                 step_progress, self.step_config["config"]["model_run_result_polling"]
+            )
+        elif "model_run_show_results" in self.step_config["config"]:
+            return self.action_model_run_show_results(
+                step_progress, self.step_config["config"]["model_run_show_results"]
             )
         # TODO implement other actions
         else:
@@ -183,6 +189,37 @@ class WorkflowStep:
                     f" model run '{self.sequence_data.run_id}' could not be found."
                 )
                 return False
+
+    def action_model_run_show_results(self, step_progress: StepProgress, config: list) -> bool:
+        model_run_data = self.models_storage.get_model_run(self.sequence_data.run_id)
+
+        text = ""
+        for row_config in config:
+            if "description" in row_config:
+                text += f"{row_config['description']}: "
+            value = pretty_print_html(get_nested_dict_value(model_run_data, row_config["value_database_key"]), "&emsp;")
+            if "link_text" in row_config:
+                value = f"<a href=\"{value}\" target=\"_blank\">{row_config['link_text']}</a>"
+            text += f"<b>{value}</b><br>"
+
+        step_progress.status = None
+        step_progress.progress_fraction = None
+        step_progress.message = text
+
+        connected_user_client_ids = get_all_session_ids_for_user(self.sequence_data.user_email)
+        if len(connected_user_client_ids) > 0:
+            for client_id in connected_user_client_ids:
+                self.socketio.emit(
+                    "wfe_sequence_progress",
+                    {
+                        "wfe_sequence_id": self.sequence_data.id,
+                        "run_name": self.sequence_data.run_name,
+                        "steps_progress": [pr.as_dict() for pr in self.sequence_data.steps_progress],
+                    },
+                    namespace="/esdl",
+                    room=client_id,
+                )
+        return True
 
     def update_values_from_query(self, updated_values: dict, query_config: dict):
         url = parse_string_with_parameters(query_config["url"], self.sequence_data.as_dict())
@@ -287,7 +324,7 @@ class WorkflowEngine:
             try:
                 # run initial workflow step inside request context to enable for instance selected ESDL loading
                 if init_data["type"] == "esdl_service":
-                    esdl_service_ok, esdl_service_result, _ = self.esdl_services.call_esdl_service(init_data)
+                    esdl_service_ok, esdl_service_result, _ = self.esdl_services.call_esdl_service(init_data)[0]
 
                     esdl_service_result["model_run_doc"]["is_owner"] = (
                         esdl_service_result["model_run_doc"]["user"] == user_email
