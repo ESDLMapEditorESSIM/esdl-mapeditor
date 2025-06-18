@@ -155,7 +155,7 @@ class EnergySystemHandler:
 
     def load_from_string(self, esdl_string, name='from_string', new_id=None):
         """
-        Loads an energy system from a string and adds it to a *new* resourceSet
+        Loads an energy system from a string and adds it to a *new* resourceSet, throwing away all loaded ES!
         :returns: EnergySystem and the parse warnings as a tuple (es, parse_info)
          """
         if not name:
@@ -196,6 +196,21 @@ class EnergySystemHandler:
         self.validate(es=external_energy_system)
         return external_energy_system, parse_info
 
+    def add_es_to_resource_set(self, es: esdl.EnergySystem, uri: URI):
+        """
+        Adds an externally loaded energy system with uri to the current ResourceSet
+        :param es: EnergySystem to add to the ResourceSet
+        :param uri: URI used to identify this energy system in the ResourceSet
+        """
+        resource = es.eResource
+        if resource is None:
+            logger.error("No resource set for energy system: {}".format(es.name))
+            return
+        self.rset.resources[uri.normalize()] = resource
+        resource.decoders.remove(resource.resource_set)
+        resource.resource_set = self.rset
+        resource.decoders.insert(0, self.rset)
+
     def add_from_string(self, name: str, esdl_string: str, overwrite_existing: bool = True) -> (esdl.EnergySystem, []):
         """
         Loads an energy system from a string and adds it to the *existing* resourceSet if it doesn't exist yet.
@@ -221,13 +236,13 @@ class EnergySystemHandler:
 
                     # Add the already processed EnergySystem (es) to a new resource in the existing resourceSet
                     uri = StringURI(name + '_' + str(uuid4()) + '.esdl')
-                    resource = self.rset.create_resource(uri)
-                    resource.contents.append(es)
+                    # manually add resource to the resource set. Otherwise when moving an es to a different resource,
+                    # the references still point to the old resource creating to_string.esdl#ab12-cd34.. links.
+                    self.add_es_to_resource_set(es, uri)
                     self.esid_uri_dict[es.id] = uri.normalize()
-                    # TODO: this should not be necessary, but as we load the ESDL using the
-                    # self.load_external_string(), the uuid_dict is not copied to the new resource...
-                    # this call iterates through the whole ESDL again, which is slow for large ESDLs
-                    self.add_object_to_dict(es.id, es, True)
+                    # recursive id adding is not necessary here, as we move the just loaded resource
+                    # including its uuid_dict to the new resource set.
+                    self.add_object_to_dict(es.id, es, False)
 
                     return es, parse_info
                 else:
