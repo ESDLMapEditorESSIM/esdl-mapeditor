@@ -257,7 +257,7 @@ function set_marker_handlers(marker) {
                 text: 'Set carrier',
                 icon: 'icons/SetCarrier.png',
                 callback: function(e) {
-                    select_carrier_menu(asset_id, "");
+                    select_carrier_menu(asset_id, "", marker.esid);
                 }
             });
             marker.options.contextmenuItems.push({
@@ -484,7 +484,7 @@ function set_line_handlers(line) {
         text: 'Set carrier',
         icon: 'icons/SetCarrier.png',
         callback: function(e) {
-            select_carrier_menu(line_id, "");
+            select_carrier_menu(line_id, "", line.esid);
         }
     });
 

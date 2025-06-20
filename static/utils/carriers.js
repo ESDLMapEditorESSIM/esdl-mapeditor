@@ -268,17 +268,24 @@ function select_carrier(asset_id, port_id) {
     socket.emit('command', {cmd: 'set_carrier', asset_id: asset_id, port_id: port_id, carrier_id: selected_value});
 }
 
-function select_carrier_menu(asset_id, port_id) {
+function select_carrier_menu(asset_id, port_id, optional_es_id) {
     // use asset_id or port_id
+    // es_id is optional, if not defined, active_layer_id is used
     sidebar_ctr = sidebar.getContainer();
 
     sidebar_ctr.innerHTML = '<h1>Carriers:</h1>';
 
-    carrier_list = get_carrier_list(active_layer_id);
+    // use optional es_id if present to make sure this also works in the building editor,
+    // otherwise use active_layer_id
+    let es_id = optional_es_id;
+    if (!es_id) {
+        es_id = active_layer_id;
+    }
+    carrier_list = get_carrier_list(es_id);
     if (carrier_list) {
-        var size;
+        let size;
         if (carrier_list.length < 4) { size = 4; } else { size = carrier_list.length; }
-        select = '<select id="carrier_select" size="'+size+'" onchange="select_carrier(\''+asset_id+'\', \''+port_id+'\');" style="width: 300px;">';
+        let select = '<select id="carrier_select" size="'+size+'" onchange="select_carrier(\''+asset_id+'\', \''+port_id+'\');" style="width: 300px;">';
         for (i=0; i<carrier_list.length; i++) {
             // id, name
             select += '<option value="' + carrier_list[i]['id'] +

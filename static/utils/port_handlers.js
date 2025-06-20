@@ -201,7 +201,7 @@ function set_marker_port_handlers(marker) {
                         callback: function (e) {
                             // don't send asset id, only port_id to allow 
                             // setting carrier on assets with multiple ports
-                            select_carrier_menu("", ports[p].id);
+                            select_carrier_menu("", ports[p].id, marker.esid);
                         },
                         hideOnSelect: true
                     });

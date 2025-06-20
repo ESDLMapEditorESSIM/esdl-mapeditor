@@ -1024,6 +1024,7 @@ def process_energy_system(
 
                 set_session_for_esid(es.id, 'conn_list', conn_list)
                 set_session_for_esid(es.id, 'asset_list', asset_list)
+                set_session_for_esid(es.id, 'building_list', building_list)
                 set_session_for_esid(es.id, 'area_bld_list', area_bld_list)
 
                 # Display animation if time series data for 'Pipe' or 'ElectricityCable' available

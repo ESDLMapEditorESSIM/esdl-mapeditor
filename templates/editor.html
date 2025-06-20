@@ -909,7 +909,13 @@
             socket.on('clear_connections', function(message) {
                 let id = active_layer_id;
                 if (message && message.id) {
+                    if (!bld_edit_id && message.id !== id) {
+                        // attempt to clear connections of building editor,
+                        // while it is not open.
+                        return;
+                    }
                     id = message.id;
+
                     console.log("Clear connections for id:", id);
                 }
                 console.log('clear_connections', id)
@@ -926,7 +932,13 @@
 
                 es_bld_id = es_id;
                 if (add_to_building) {
-                   es_bld_id = bld_edit_id; // global variable indicating the currently edited building
+                    if (bld_edit_id) {
+                        es_bld_id = bld_edit_id; // global variable indicating the currently edited building
+                    } else {
+                        // Building editor is not open, so we cannot add these connections
+                        console.warn("Building editor is not open, cannot update connections", connections);
+                        return
+                    }
                 }
 
                 let carrier_info_mapping = get_carrier_info_mapping(es_id);
@@ -939,7 +951,7 @@
                     var coords = [con['from-asset-coord'], con['to-asset-coord']];
                     var title = '';
 
-                    if (con['from-port-carrier'] == con['to-port-carrier']) {
+                    if (con['from-port-carrier'] === con['to-port-carrier']) {
                         linewidth = 2;
                         if (con['from-port-carrier']) {          // same carrier specified
                             linecolor = carrier_info_mapping[con['from-port-carrier']]['color'];
@@ -997,7 +1009,7 @@
                             }
                        });
                     }
-                    // TODO: Should this be es_bld_is instead of es_id
+                    // TODO: Should this be es_bld_id instead of es_id
                     line.es_id = es_id;
                     line.id = con['from-port-id'] + con['to-port-id']
                     line.from_port_id = con['from-port-id'];
@@ -1239,6 +1251,7 @@
             // update an asset - called after adding and removing ports
             // currently only updates the ports for the context menu
             socket.on('update_asset', function(asset_update) {
+                //console.log("Update asset", asset_update);
                 let asset_id = asset_update['asset_id'];
                 let name = asset_update['name'];
                 let ports = asset_update['ports'];

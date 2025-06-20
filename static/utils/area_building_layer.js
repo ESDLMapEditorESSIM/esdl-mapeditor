@@ -933,9 +933,8 @@ function set_building_contextmenu(layer, id) {
         contextmenuItems: [],
         contextmenuInheritItems: false
     });
-
     layer.options.contextmenuItems.push({
-        text: 'Building ESDL contents',
+        text: 'Open ' + layer.type + ' contents',
         icon: resource_uri + 'icons/BuildingContents.png',
         callback: function(e) { edit_building_contents(e, id); }
     });
@@ -946,7 +945,7 @@ function set_building_contextmenu(layer, id) {
         callback: function(e) { remove_building(layer); }
     });
     layer.options.contextmenuItems.push({
-        text: 'Edit building properties',
+        text: 'Edit ESDL properties',
         icon: resource_uri + 'icons/Edit.png',
         callback: function(e) { esdl_browser.open_browser_with_event(e, id); }
     });
