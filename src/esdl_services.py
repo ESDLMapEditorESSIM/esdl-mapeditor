@@ -17,7 +17,7 @@ import copy
 import json
 import urllib.parse
 import uuid
-from typing import Any, Dict, List, Tuple
+from typing import Any, Tuple
 
 import requests
 from flask import Flask
@@ -153,7 +153,7 @@ class ESDLServices:
 
             return None
 
-    def get_user_settings(self, user: str) -> List[Dict[str, Any]]:
+    def get_user_settings(self, user: str) -> list[dict[str, Any]]:
         """Get the user services from the settings storage."""
         if self.settings_storage.has_user(user, ESDL_SERVICES_CONFIG):
             esdl_services_settings = self.settings_storage.get_user(user, ESDL_SERVICES_CONFIG)
@@ -162,9 +162,9 @@ class ESDLServices:
             self.settings_storage.set_user(user, ESDL_SERVICES_CONFIG, esdl_services_settings)
         return esdl_services_settings
 
-    def get_role_based_services(self, roles: List[str]) -> List[Dict[str, Any]]:
+    def get_role_based_services(self, roles: list[str]) -> list[dict[str, Any]]:
         """Get the services available for this user role from the config."""
-        role_based_esdl_services: Dict[str, Any] = esdl_config.esdl_config["role_based_esdl_services"]
+        role_based_esdl_services: dict[str, Any] = esdl_config.esdl_config["role_based_esdl_services"]
         selected_services = list()
         for role in roles:
             role_services = role_based_esdl_services.get(role, [])
@@ -179,10 +179,12 @@ class ESDLServices:
     def set_user_settings(self, user: str, settings):
         self.settings_storage.set_user(user, ESDL_SERVICES_CONFIG, settings)
 
-    def get_user_services_list(self, user: str, roles: List[str] = []) -> List[Dict[str, Any]]:
+    def get_user_services_list(self, user: str, roles: list[str] = None) -> list[dict[str, Any]]:
         """
         Get the full list of services for this user with the given roles. Both user and roles come from Keycloak.
         """
+        if roles is None:
+            roles = []
         srvs_list = self.get_user_settings(user)
         # store the user services list in session for later use
         set_session("services_list", srvs_list)
@@ -193,7 +195,7 @@ class ESDLServices:
             if "required_role" in service and service["required_role"] not in roles:
                 final_services_list.remove(service)
 
-        service_ids: List[str] = [service["id"] for service in final_services_list]
+        service_ids: list[str] = [service["id"] for service in final_services_list]
         # Get role based services and add them, unless a service with matching ID exists.
         role_based_services = self.get_role_based_services(roles)
         for role_based_service in role_based_services:
@@ -446,16 +448,8 @@ class ESDLServices:
                 results = []
                 for result_config in service["result"]:
                     try:
-                        result = self._process_service_result(
-                            esh,
-                            url_response,
-                            input_data,
-                            result_config,
-                            service,
-                            service_params,
-                            state_params,
-                            active_es_id,
-                        )
+                        result = self._process_service_result(esh, url_response, input_data, result_config, service,
+                                                              service_params, state_params, active_es_id, body)
                         if result:
                             results.append(result)
                     except Exception as e:
@@ -479,27 +473,20 @@ class ESDLServices:
             logger.exception("Error accessing external ESDL service: " + str(e))
             return [(False, None, None)]
 
-    def _process_service_result(
-        self,
-        esh,
-        url_response: Response,
-        input_data,
-        result_config,
-        service: dict,
-        service_params: dict,
-        state_params,
-        active_es_id: str,
-    ) -> None | Tuple[bool, str | dict | None, dict | None]:
+    def _process_service_result(self, esh, url_response: Response, input_data, result_config, service: dict,
+                                service_params: dict, state_params, active_es_id: str, body: dict[str, Any]) -> None | Tuple[
+        bool, str | dict | None, dict | None]:
         """
         Process the result of an ESDL service call. This can be adding an ESDL object to the current EnergySystem, printing
         the result, or adding assets to the main area.
 
-        :param esh:
-        :param r:
-        :param result_config:
-        :param service:
+        :param esh: The ES handler.
+        :param url_response: The response from the service call.
+        :param result_config: The service result configuration, which defines what to do with the result.
+        :param service: The service configuration.
         :param service_params:
-        :param active_es_id:
+        :param active_es_id: The ID of the currently active EnergySystem.
+        :param body: The body of the request sent to the service.
         :return: None or a tuple with a boolean indicating success, a message, and a dictionary with additional information.
         """
         if "model_short_name" in result_config:
@@ -631,6 +618,7 @@ class ESDLServices:
                         area_to_be_added_to = area
 
                     area_shape = None
+                    possible_locations = None
                     # TODO add similar mode and emit animation possible
                     if "mode" in result_config and result_config["mode"] == "give_coordinates":
                         # The assets that will be added must be placed on a grid within the area boundary
@@ -642,7 +630,7 @@ class ESDLServices:
 
                     for asset_str in asset_str_list:
                         asset = ESDLAsset.load_asset_from_string(asset_str)
-                        if area_shape:
+                        if area_shape and possible_locations:
                             # The asset gets a random location from the list of possible locations
                             asset.geometry = choose_location(possible_locations).get_esdl()
 
@@ -807,7 +795,7 @@ class ESDLServices:
             return True, {"message": message}, None
         elif result_config["action"] == "download_file":
             # Needs json_field to be set to the field in the response that contains the file.
-            response_with_file = r.json()[result_config["json_field"]]
+            response_with_file = url_response.json()[result_config["json_field"]]
             filename = result_config["filename"]
             content_type = result_config["content_type"]
             return True, {"file": response_with_file, "filename": filename, "content_type": content_type}, None

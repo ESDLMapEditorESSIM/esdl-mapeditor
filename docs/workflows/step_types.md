@@ -211,6 +211,7 @@ Example config:
 This Workflow step shows a table of all runs for an external model with run actions. There is also a filter to only show
 run from a specific project or group.
 The following run actions are available:
+
 - Load result
 - View feedback (if `has_feedback_messages`)
 - View details
@@ -689,13 +690,16 @@ Example config:
 ## `workflow-engine-monitor`
 
 A workflow component that specifies a workflow engine step. It contains actions to be done in by the workflow engine.
-So far there is only one action available: `model_run_result_polling`.
+So far there are twp actions available: `model_run_result_polling` and `model_run_show_results`.
 It can also be displayed in the frontend in which case it will only follow the progress of a workflow engine sequence.
-The workflow engine will run this step regardless of whether it is displayed. There is no input or output data involved.
+The workflow engine will run this step regardless of whether it is displayed. There is no input or output data
+involved.  
+A possible next action can be invoked upon completion of the step using the `workflow_engine`,
+`workflow_engine_next_step` key, see example below.
 
 #### `config` options
 
-As montioned so far there is one option:
+The available options:
 
 - `model_run_result_polling`: poll status/result endpoint(s) of an external model to track a model run progress and
   finally obtain the results. Several things are needed for this:
@@ -704,54 +708,81 @@ As montioned so far there is one option:
     - `status_mapping`: how to map the external model statuses to mapeditor statuses.
     - `retry_interval_seconds`: how often to poll.
     - `maximum_wait_seconds`: maximum polling time.
+- `model_run_show_results`: show run results: a list of database item keys to show the value of.
+  A list of row items is each needed each of which can contain:
+    - `value_database_key`: the mongodb key for which to show the value (can be nested with dot)
+    - `description`: optional, if present this description will be printed in front of the value
+    - `link_text`: optional, this will convert the value into a link with the provided `link_text`.
 
-Example config:
+Example config for two consecutive steps: first follow the progress and on completion show results:
 
 ```json
-{
-  "id": "retrieve_run_progress_results",
-  "monitor_name": "Running Essim Calculation...",
-  "type": "workflow-engine-monitor",
-  "config": {
-    "model_run_result_polling": {
-      "query_list": [
-        {
-          "url": "http://localhost:8112/essim/simulation/<MODEL_JOB_ID>",
-          "response_mapping": {
-            "status": "status.state",
-            "progress_fraction": "status.description"
-          },
-          "model_specific_response_mapping": {
-            "scenarioID": "scenarioID",
-            "simRunDate": "simRunDate",
-            "dashboardURL": "dashboardURL"
-          },
-          "esdl_encoding": "base64_encoded",
-          "status_mapping": {
-            "SUBMITTED": [
-              "CREATED"
-            ],
-            "RUNNING": [
-              "RUNNING"
-            ],
-            "SUCCEEDED": [
-              "COMPLETE"
-            ],
-            "CANCELLED": [
-              "CANCELLED"
-            ],
-            "ERROR": [
-              "TIMEOUT",
-              "ERROR"
-            ]
+[
+  {
+    "id": "retrieve_run_progress_results",
+    "monitor_name": "Running Essim Calculation...",
+    "type": "workflow-engine-monitor",
+    "config": {
+      "model_run_result_polling": {
+        "query_list": [
+          {
+            "url": "http://localhost:8112/essim/simulation/<MODEL_JOB_ID>",
+            "response_mapping": {
+              "status": "status.state",
+              "progress_fraction": "status.description"
+            },
+            "model_specific_response_mapping": {
+              "scenarioID": "scenarioID",
+              "simRunDate": "simRunDate",
+              "dashboardURL": "dashboardURL"
+            },
+            "esdl_encoding": "base64_encoded",
+            "status_mapping": {
+              "SUBMITTED": [
+                "CREATED"
+              ],
+              "RUNNING": [
+                "RUNNING"
+              ],
+              "SUCCEEDED": [
+                "COMPLETE"
+              ],
+              "CANCELLED": [
+                "CANCELLED"
+              ],
+              "ERROR": [
+                "TIMEOUT",
+                "ERROR"
+              ]
+            }
           }
+        ],
+        "retry_interval_seconds": 2,
+        "maximum_wait_seconds": 3600
+      }
+    },
+    "workflow_engine": {
+      "workflow_engine_next_step": "show_run_results"
+    }
+  },
+  {
+    "id": "show_run_results",
+    "monitor_name": "Essim Result",
+    "type": "workflow-engine-monitor",
+    "config": {
+      "model_run_show_results": [
+        {
+          "description": "essim ID",
+          "value_database_key": "model_specific_output.scenarioID"
+        },
+        {
+          "value_database_key": "model_specific_output.dashboardURL",
+          "link_text": "Open dashboard"
         }
-      ],
-      "retry_interval_seconds": 2,
-      "maximum_wait_seconds": 3600
+      ]
     }
   }
-}
+]
 ```
 
 ## `composite`
