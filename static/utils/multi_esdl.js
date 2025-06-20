@@ -342,7 +342,7 @@ function get_area_kpi_list(es_id) {
 }
 
 function get_carrier_style_class_name(carrier_mapping) {
-    return 'car_' + carrier_mapping.name.replace(/[^a-z]/ig, ''); // only a-z in class name, no spaces
+    return 'car_' + carrier_mapping.name.replace(/[^a-z0-9]/ig, ''); // only a-z and 0-9 in class name, no spaces
 }
 
 /**

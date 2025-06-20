@@ -807,12 +807,20 @@ def update_asset_connection_locations(asset: esdl.Asset, lat, lon):
     active_es_id = get_session('active_es_id')
     conn_list = get_session_for_esid(active_es_id, 'conn_list')
     # TODO deal with assets in buildings and assets in compound assets (issue #165)
-    ass_id = asset.id
-    for c in conn_list:
-        if c['from-asset-id'] == ass_id:
-            c['from-asset-coord'] = (lat, lon)
-        if c['to-asset-id'] == ass_id:
-            c['to-asset-coord'] = (lat, lon)
+
+    if isinstance(asset, (esdl.CompoundAsset, esdl.AbstractBuilding)):
+        internal_asset_ids = [a.id for a in asset.asset] + [asset.id]
+        for c in conn_list:
+            if c['from-asset-id'] in internal_asset_ids:
+                c['from-asset-coord'] = (lat, lon)
+            if c['to-asset-id'] in internal_asset_ids:
+                c['to-asset-coord'] = (lat, lon)
+    else:
+        for c in conn_list:
+            if c['from-asset-id'] == asset.id:
+                c['from-asset-coord'] = (lat, lon)
+            if c['to-asset-id'] == asset.id:
+                c['to-asset-coord'] = (lat, lon)
 
     emit('clear_connections')   # clear current active layer connections
     add_to_building = False
@@ -1158,7 +1166,15 @@ def update_coordinates(message):
                 a[5] = [coords['lat'], coords['lng']]
                 break # ready searching
 
-        if isinstance(object, (esdl.EnergyAsset, esdl.AbstractBuilding)):
+        building_list = get_session_for_esid(active_es_id, 'building_list')
+        for b in building_list:
+            if b[2] == obj_id:
+                # note: index 4 here for building objects
+                print("Building_list update coords", b)
+                b[4] = [coords['lat'], coords['lng']]
+                break
+
+        if isinstance(object, esdl.ConnectableAsset):
             # Update locations of connections on moving assets
             update_asset_connection_locations(object, coords['lat'], coords['lng'])
 
@@ -1909,29 +1925,52 @@ def process_command(message):
 
     if message['cmd'] == 'remove_object':
         # removes asset or potential from EnergySystem
+        # frontend has already removed connections from the map, but not connections to buildings/compoundAssets
+        # here we need to remove the connections from the conn_list and remove them from buildings/CA's
         obj_id = message['id']
         if obj_id:
-            # asset = ESDLAsset.find_asset(es_edit.instance[0].area, obj_id)
-            # asset can also be any other object in ESDL
             asset = esh.get_by_id(active_es_id, obj_id)
             if isinstance(asset, esdl.ExposedPortsAsset):
                 # Update drop down list with areas and buildings
                 remove_ab_from_area_bld_list(asset.id, area_bld_list)
                 emit('area_bld_list', {'es_id': active_es_id, 'area_bld_list': area_bld_list})
-            if asset:
-                # Try to remove control strategy for EnergyAssets (and not for buildings)
-                if isinstance(asset, esdl.EnergyAsset):
-                    remove_control_strategy_for_asset(asset.id)
-            ESDLAsset.remove_object_from_energysystem(es_edit, obj_id)
-            esh.remove_object_from_dict(es_edit.id, asset, True)
-            # remove from asset dict
+
+            # Try to remove control strategy for EnergyAssets (and not for buildings)
+            if isinstance(asset, esdl.EnergyAsset) and asset.controlStrategy:
+                remove_control_strategy_for_asset(asset.id)
+            # update asset, building and connections cache
             asset_list = get_session_for_esid(active_es_id, 'asset_list')
             asset_list[:] = [a for a in asset_list if a[3] != obj_id] # filter list in place
+            building_list = get_session_for_esid(active_es_id, 'building_list')
+            building_list[:] = [a for a in building_list if a[2] != obj_id] # filter list in place
             conn_list = get_session_for_esid(active_es_id, 'conn_list')
-            conn_list[:] = [c for c in conn_list
+            if isinstance(asset, esdl.ExposedPortsAsset):
+                # if connections linked to internal buildings/compound assets remove them
+                internal_ids = [a.id for a in asset.asset] + [asset.id]
+                conn_list[:] = [c for c in conn_list
+                                if not ((c['from-asset-id'] in internal_ids) or (c['to-asset-id'] in internal_ids))]
+            else:
+                conn_list[:] = [c for c in conn_list
                             if not ((c['from-asset-id'] == obj_id) or (c['to-asset-id'] == obj_id))]  # xor: filter list in place
+            parent_container = asset.containingBuilding or asset.containingAsset
+            if parent_container:  # building or compoundAsset
+                # update main map connections
+                emit("clear_connections", {'id': active_es_id})  # clear current active layer connections
+                emit(
+                    "add_connections",
+                    {"es_id": active_es_id, "conn_list": conn_list, "add_to_building": False},
+                )
+            # now delete the asset
+            ESDLAsset.remove_object_from_energysystem(es_edit, obj_id)
+            esh.remove_object_from_dict(es_edit.id, asset, True)
+            if parent_container:
+                # update ports of the parent asset (in case it contained exposed ports).
+                emit(
+                    "update_asset",
+                    create_update_asset_message(parent_container, create_asset_port_message(parent_container)),
+                )
         else:
-            send_alert('Asset or potential without an id cannot be removed')
+            send_alert("Asset or potential without an id cannot be removed")
 
     if message['cmd'] == 'add_note':
         id = message['id']
@@ -3036,6 +3075,13 @@ def process_command(message):
             exposed_port_asset.port.remove(port)
         else:
             exposed_port_asset.port.append(port)
+
+        building_list = get_session_for_esid(active_es_id, 'building_list')
+        for bld in building_list:
+            if bld[2] == building_id:
+                # update port list
+                bld[8] = create_asset_port_message(exposed_port_asset)
+                break
 
         # update building icon on the main map
         emit('update_asset', create_update_asset_message(exposed_port_asset))
