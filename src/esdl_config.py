@@ -19,6 +19,7 @@ ESDL_UPLOAD_PROFILES_HOST = os.getenv("ESDL_UPLOAD_PROFILES_HOST", "http://maped
 ESDL_COST_SERVICE_HOST = os.getenv("ESDL_COST_SERVICE_HOST", "http://mapeditor-cost-service:4004")
 FLEX_BACKEND_HOST = os.getenv("FLEX_BACKEND_HOST", "http://localhost:7200")
 FLEX_FRONTEND_HOST = os.getenv("FLEX_FRONTEND_HOST", "http://localhost:7201")
+ESSIM_BACKEND_HOST = os.getenv("ESSIM_BACKEND_HOST", "http://essim-engine:8112")
 
 esdl_config = {
     "control_strategies": [
@@ -469,7 +470,7 @@ esdl_config = {
                         "value_field": "id",
                     },
                     "data": {
-                        "from_url": {"url": "http://essim-engine:8112/essim/simulation/kpiModules/"},
+                        "from_url": {"url": f"{ESSIM_BACKEND_HOST}/essim/simulation/kpiModules/"},
                         "to_state": {},
                         "output_wrapper_variable": "selected_kpis",
                     },
@@ -500,7 +501,7 @@ esdl_config = {
                             "Accept": "application/json",
                             "Content-Type": "application/json",
                         },
-                        "url": "http://essim-engine:8112/essim/simulation",
+                        "url": f"{ESSIM_BACKEND_HOST}/essim/simulation",
                         "http_method": "post",
                         "type": "send_esdl",
                         "send_email_in_post_body_parameter": "user_name",
@@ -572,7 +573,7 @@ esdl_config = {
                         "model_run_result_polling": {
                             "query_list": [
                                 {
-                                    "url": "http://essim-engine:8112/essim/simulation/<MODEL_JOB_ID>",
+                                    "url": f"{ESSIM_BACKEND_HOST}/essim/simulation/<MODEL_JOB_ID>",
                                     "response_mapping": {
                                         "status": "status.state",
                                         "progress_fraction": "status.description",
@@ -884,9 +885,9 @@ esdl_config = {
                                 "type": "header",
                             },
                             {
-                                "name": "Run Energy System Simulator",
+                                "name": "Run Essim",
                                 "type": "primary",
-                                "next_step": "run-essim",
+                                "next_step": "essim",
                             },
                         ],
                     },
@@ -1430,7 +1431,7 @@ esdl_config = {
                     },
                     {
                         "id": "flex-scan-phase-2",
-                        "name": "Flex scan phase 2",
+                        "name": "Flex Scan phase 2",
                         "type": "composite",
                         "config": {
                             "step_ids": [
@@ -1654,16 +1655,443 @@ esdl_config = {
                         },
                     },
                     {
-                        "id": "run-essim",
-                        "name": "Run ESSIM",
-                        "description": "",
-                        "type": "text",
+                        "id": "essim",
+                        "name": "Essim",
+                        "type": "composite",
+                        "config": {
+                            "step_ids": [
+                                "select_name_and_time_step_essim",
+                                "select_simulation_period_essim",
+                                "select_custom_period_essim",
+                                "start_run_essim",
+                                "runs_table_essim"
+                            ]
+                        },
+                        "next_step": "essim"
+                    },
+                    {
+                        "id": "select_name_and_time_step_essim",
+                        "type": "json-form2",
                         "data": {
                             "from_config": {
-                                "text": "An ESSIM run for the selected ESDL layer can be started via the ESSIM button on the left side of the ESDL Map Editor",
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "run_name": {
+                                            "type": "string",
+                                            "minLength": 3,
+                                            "title": "Name"
+                                        },
+                                        "time_step": {
+                                            "type": "string",
+                                            "oneOf": [
+                                                {
+                                                    "const": "1h",
+                                                    "title": "1 hour"
+                                                },
+                                                {
+                                                    "const": "15m",
+                                                    "title": "15 minutes"
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "run_name",
+                                        "time_step"
+                                    ]
+                                },
+                                "uischema": {
+                                    "elements": [
+                                        {
+                                            "scope": "#/properties/run_name",
+                                            "type": "Control"
+                                        },
+                                        {
+                                            "scope": "#/properties/time_step",
+                                            "type": "Control"
+                                        }
+                                    ],
+                                    "type": "VerticalLayout"
+                                },
+                                "formData": {
+                                    "time_step": "1h"
+                                }
                             },
+                            "to_state": {}
                         },
+                        "next_step": "essim",
+                        "next_step_trigger": "input_change"
                     },
+                    {
+                        "id": "select_simulation_period_essim",
+                        "name": "",
+                        "description": "Please select the simulation period:",
+                        "type": "select",
+                        "config": {
+                            "placeholder": "Select simulation period",
+                            "multiple": False,
+                            "label_fields": [
+                                "description"
+                            ],
+                            "value_field": "id"
+                        },
+                        "data": {
+                            "from_config": [
+                                {
+                                    "id": "year2019",
+                                    "description": "Year 2019",
+                                    "formData": {
+                                        "start_time": "2019-01-01T00:00:00+0100",
+                                        "end_time": "2020-01-01T00:00:00+0100"
+                                    },
+                                    "schema": {
+                                        "properties": {
+                                            "start_time": {
+                                                "format": "date-time",
+                                                "type": "string"
+                                            },
+                                            "end_time": {
+                                                "format": "date-time",
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "start_time",
+                                            "end_time"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "uischema": {
+                                        "elements": [
+                                            {
+                                                "scope": "#/properties/start_time",
+                                                "type": "Control",
+                                                "options": {
+                                                    "readonly": True
+                                                }
+                                            },
+                                            {
+                                                "scope": "#/properties/end_time",
+                                                "type": "Control",
+                                                "options": {
+                                                    "readonly": True
+                                                }
+                                            }
+                                        ],
+                                        "type": "VerticalLayout"
+                                    }
+                                },
+                                {
+                                    "id": "year2019",
+                                    "description": "Year 2023",
+                                    "formData": {
+                                        "start_time": "2023-01-01T00:00:00+0100",
+                                        "end_time": "2024-01-01T00:00:00+0100"
+                                    },
+                                    "schema": {
+                                        "properties": {
+                                            "start_time": {
+                                                "format": "date-time",
+                                                "type": "string"
+                                            },
+                                            "end_time": {
+                                                "format": "date-time",
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "start_time",
+                                            "end_time"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "uischema": {
+                                        "elements": [
+                                            {
+                                                "scope": "#/properties/start_time",
+                                                "type": "Control",
+                                                "options": {
+                                                    "readonly": True
+                                                }
+                                            },
+                                            {
+                                                "scope": "#/properties/end_time",
+                                                "type": "Control",
+                                                "options": {
+                                                    "readonly": True
+                                                }
+                                            }
+                                        ],
+                                        "type": "VerticalLayout"
+                                    }
+                                },
+                                {
+                                    "id": "custom",
+                                    "description": "custom period",
+                                    "formData": {},
+                                    "schema": {
+                                        "properties": {
+                                            "start_time": {
+                                                "format": "date-time",
+                                                "type": "string"
+                                            },
+                                            "end_time": {
+                                                "format": "date-time",
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "start_time",
+                                            "end_time"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "uischema": {
+                                        "elements": [
+                                            {
+                                                "scope": "#/properties/start_time",
+                                                "type": "Control"
+                                            },
+                                            {
+                                                "scope": "#/properties/end_time",
+                                                "type": "Control"
+                                            }
+                                        ],
+                                        "type": "VerticalLayout"
+                                    }
+                                }
+                            ],
+                            "to_state": {},
+                            "output_wrapper_variable": "selected_simulation_period_essim"
+                        },
+                        "next_step": "essim",
+                        "next_step_trigger": "input_change"
+                    },
+                    {
+                        "id": "select_custom_period_essim",
+                        "name": "",
+                        "type": "json-form2",
+                        "config": {
+                            "data_from_variable": "selected_simulation_period_essim"
+                        },
+                        "data": {
+                            "from_state": {
+                                "selected_simulation_period_essim": "selected_simulation_period_essim"
+                            },
+                            "to_state": {}
+                        },
+                        "next_step": "essim",
+                        "next_step_trigger": "input_change"
+                    },
+                    {
+                        "id": "start_run_essim",
+                        "name": "",
+                        "description": "",
+                        "type": "esdl-service",
+                        "config": {
+                            "state_params": {
+                                "run_name": "run_name",
+                                "start_time": "start_time",
+                                "end_time": "end_time",
+                                "time_step": "time_step"
+                            },
+                            "datetimes_convert_Z": True
+                        },
+                        "service": {
+                            "id": "74c9d1a2-c92a-46ed-a7e4-9931971cdd28",
+                            "description": "",
+                            "name": "",
+                            "headers": {
+                                "User-Agent": "ESDL Mapeditor/1.0",
+                                "Accept": "application/json",
+                                "Content-Type": "application/json"
+                            },
+                            "url": f"{ESSIM_BACKEND_HOST}/essim/simulation",
+                            "http_method": "post",
+                            "type": "send_esdl",
+                            "send_email_in_post_body_parameter": "user_name",
+                            "query_parameters": [
+                                {
+                                    "name": "simulationDescription",
+                                    "description": "Simulation name",
+                                    "parameter_name": "run_name",
+                                    "location": "body"
+                                },
+                                {
+                                    "name": "startDate",
+                                    "description": "start date",
+                                    "parameter_name": "start_time",
+                                    "location": "body"
+                                },
+                                {
+                                    "name": "endDate",
+                                    "description": "end date",
+                                    "parameter_name": "end_time",
+                                    "location": "body"
+                                },
+                                {
+                                    "name": "timeStep",
+                                    "description": "time step",
+                                    "parameter_name": "time_step",
+                                    "location": "body"
+                                },
+                                {
+                                    "name": "influxURL",
+                                    "description": "influx url",
+                                    "value": "http://influxdb:8086",
+                                    "location": "body"
+                                },
+                                {
+                                    "name": "user",
+                                    "description": "Essim user",
+                                    "value": "mapeditor",
+                                    "location": "body"
+                                }
+                            ],
+                            "body": "json_text",
+                            "body_config": {
+                                "type": "json",
+                                "parameters": [
+                                    {
+                                        "type": "esdl",
+                                        "encoding": "base64_encoded",
+                                        "parameter": "esdlContents"
+                                    },
+                                    {
+                                        "type": "esdl_id",
+                                        "parameter": "scenarioID"
+                                    }
+                                ]
+                            },
+                            "result": [
+                                {
+                                    "code": 200,
+                                    "action": "save_model_run",
+                                    "external_model_name": "essim",
+                                    "external_model_id_response_param": "id",
+                                    "run_name_state_param": "run_name"
+                                }
+                            ],
+                            "with_jwt_token": False,
+                            "state_params": True
+                        },
+                        "button_text": "Start model run",
+                        "next_step": "essim",
+                        "workflow_engine": {
+                            "run_name": "state_params.run_name",
+                            "workflow_engine_next_step": "retrieve_run_progress_results"
+                        }
+                    },
+                    {
+                        "id": "retrieve_run_progress_results",
+                        "monitor_name": "Running Essim Calculation...",
+                        "type": "workflow-engine-monitor",
+                        "config": {
+                            "model_run_result_polling": {
+                                "query_list": [
+                                    {
+                                        "url": f"{ESSIM_BACKEND_HOST}/essim/simulation/<MODEL_JOB_ID>",
+                                        "response_mapping": {
+                                            "status": "status.state",
+                                            "progress_fraction": "status.description"
+                                        },
+                                        "model_specific_response_mapping": {
+                                            "scenarioID": "scenarioID",
+                                            "simRunDate": "simRunDate",
+                                            "dashboardURL": "dashboardURL"
+                                        },
+                                        "esdl_encoding": "base64_encoded",
+                                        "status_mapping": {
+                                            "SUBMITTED": [
+                                                "CREATED"
+                                            ],
+                                            "RUNNING": [
+                                                "RUNNING"
+                                            ],
+                                            "SUCCEEDED": [
+                                                "COMPLETE"
+                                            ],
+                                            "CANCELLED": [
+                                                "CANCELLED"
+                                            ],
+                                            "ERROR": [
+                                                "TIMEOUT",
+                                                "ERROR"
+                                            ]
+                                        }
+                                    }
+                                ],
+                                "retry_interval_seconds": 2,
+                                "maximum_wait_seconds": 3600
+                            }
+                        }
+                    },
+                    {
+                        "id": "runs_table_essim",
+                        "name": "Results overview",
+                        "description": "",
+                        "type": "table-external-model",
+                        "config": {
+                          "model_short_name": "essim",
+                          "has_feedback_messages": False,
+                          "result_animation": {
+                            "filter_on_tag": {
+                              "tag_name": "simulationRun",
+                              "value_database_key": "model_job_id"
+                            }
+                          },
+                          "result_external_link": {
+                            "description": "Open Dashboard",
+                            "value_database_key": "model_specific_output.dashboardURL"
+                          },
+                          "delete_result_url": "",
+                          "time_series_xlsx_download": {
+                            "filter_on_tag": {
+                              "tag_name": "simulationRun",
+                              "value_database_key": "model_job_id"
+                            },
+                            "esdl_object_name_field": "assetName",
+                            "excel_sheets_per_table": [
+                              {
+                                "name_postfix": "PinW",
+                                "field_name_recorded_per_esdl_object": "allocationPower",
+                                "field_names_unrelated_to_esdl_objects": [
+                                  "imbalancePower"
+                                ],
+                                "exclude_values": {
+                                  "field_name": "capability",
+                                  "values_to_exclude": [
+                                    "Transport"
+                                  ]
+                                }
+                              },
+                              {
+                                "name_postfix": "EinJ",
+                                "field_name_recorded_per_esdl_object": "allocationEnergy",
+                                "field_names_unrelated_to_esdl_objects": [
+                                  "imbalanceEnergy"
+                                ],
+                                "exclude_values": {
+                                  "field_name": "capability",
+                                  "values_to_exclude": [
+                                    "Transport"
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "data": {
+                          "from_socket": {
+                            "event": "get_external_model_runs_for_user",
+                            "params": {
+                              "external_model_name": "essim"
+                            }
+                          }
+                        },
+                        "with_jwt_token": True
+                      },
                     # TODO: check if these steps can be safely removed
                     # {
                     #     # 8
