@@ -78,7 +78,8 @@ from extensions.time_dimension import TimeDimension
 from extensions.tooltip_info import TooltipInfo
 # from extensions.vesta import Vesta
 from extensions.workflow import Workflow
-from extensions.dice_workflow.dice_workflow import DiceWorkflow
+from extensions.pdtoolsuite_workflow.pdtoolsuite_workflow import PDToolsuiteWorkflow
+from extensions.pdtoolsuite_workflow.cost_information import CostInformation
 from src.asset_draw_toolbar import AssetDrawToolbar
 from src.assets_to_be_added import AssetsToBeAdded
 from src.datalayer_api import DataLayerAPI
@@ -107,6 +108,7 @@ from src.model_contexts import ModelContexts
 from src.wms_layers import WMSLayers
 from src.table_editor import TableEditor
 from src.esdl_file_io import ESDLFileIO
+from src.esdl_file_import import ESDLFileImport
 from src.release_notes import ReleaseNotes
 from src.custom_icons import CustomIcons
 from src.kpi_dashboard import KPIDashboard
@@ -195,6 +197,11 @@ Session(app)
 
 executor = Executor(app)
 
+@executor.job
+def call_process_energy_system(esh, filename=None, es_title=None, app_context=None, force_update_es_id=None, zoom=True):
+    process_energy_system(esh, filename=filename, es_title=es_title, app_context=app_context, force_update_es_id=force_update_es_id, zoom=zoom)
+
+
 #extensions
 schedule_session_clean_up()
 toast_notifications = ToastNotifications(app, socketio)
@@ -212,7 +219,8 @@ essim = ESSIM(app, socketio, executor, essim_kpis, settings_storage)
 ESSIMSensitivity(app, socketio, settings_storage, essim)
 # Vesta(app, socketio, settings_storage)
 Workflow(app, socketio, settings_storage, executor)
-DiceWorkflow(app, socketio, executor, settings_storage)
+PDToolsuiteWorkflow(app, socketio, executor, settings_storage, call_process_energy_system)
+CostInformation(app)
 ESStatisticsService(app, socketio)
 MapEditorSettings(app, socketio, settings_storage)
 edr_client = EDRClient(app, socketio, settings_storage)
@@ -231,6 +239,7 @@ AssetsToBeAdded(app, socketio)
 AssetDrawToolbar(app, socketio, settings_storage)
 TableEditor(app, socketio, esdl_doc, settings_storage)
 ESDLFileIO(app, socketio, executor)
+ESDLFileImport(app, socketio, executor)
 ReleaseNotes(app, socketio, settings_storage)
 ESDL2Shapefile(app)
 ESDL2InlineProfile(app)
@@ -2998,7 +3007,8 @@ def process_command(message):
     if message['cmd'] == 'remove_energysystem':
         remove_es_id = message['remove_es_id']
         es_info_list = get_session("es_info_list")
-        del es_info_list[remove_es_id]  # update es info list too
+        if remove_es_id in es_info_list:
+            del es_info_list[remove_es_id]  # update es info list too
         clear_session_key_for_esid(remove_es_id, 'shape_dictionary')
         clear_session_key_for_esid(remove_es_id, 'conn_list')
         clear_session_key_for_esid(remove_es_id, 'asset_list')
@@ -3034,34 +3044,38 @@ def query_esdl_services(params):
     esh = get_handler()
     logger.debug('calling service')
     try:
-        esdl_service_ok, esdl_service_result, backend_action = esdl_services.call_esdl_service(params)
+        results = esdl_services.call_esdl_service(params)
+        logger.debug('ESDL service results: {}'.format(results))
     except Exception as exc:
         logger.exception("Exception when querying ESDL service")
         esdl_service_ok = False
         esdl_service_result = str(exc)
+        results = [esdl_service_ok, esdl_service_result, None]
 
-    logger.debug('emitting result to browser')
-    esdl_service_result_post_esdl_load = None
-    if esdl_service_ok:
-        if esdl_service_result is not None:
-            if backend_action and "run_after_esdl_loaded" in backend_action and backend_action["run_after_esdl_loaded"]:
-                esdl_service_result_post_esdl_load = esdl_service_result  # emit after ESDL has been loaded
+    for result in results:
+        esdl_service_ok, esdl_service_result, backend_action = result
+        logger.debug('emitting result to browser')
+        esdl_service_result_post_esdl_load = None
+        if esdl_service_ok:
+            if esdl_service_result is not None:
+                if backend_action and "run_after_esdl_loaded" in backend_action and backend_action["run_after_esdl_loaded"]:
+                    esdl_service_result_post_esdl_load = esdl_service_result  # emit after ESDL has been loaded
             else:
                 emit('esdl_service_result', esdl_service_result)
-    else:
-        message = 'Error calling service'
-        if isinstance(esdl_service_result, str):
-            message += ': ' + esdl_service_result
-        send_alert(message)
+        else:
+            message = 'Error calling service'
+            if isinstance(esdl_service_result, str):
+                message += ': ' + esdl_service_result
+            send_alert(message)
 
-    # If call_esdl_service results indicate a certain EnergySystem MUST be (re-)processed, force it here
-    force_update_es_id = None
-    if backend_action:
-        if "force_update_es_id" in backend_action:
-            force_update_es_id = backend_action["force_update_es_id"]
+        # If call_esdl_service results indicate a certain EnergySystem MUST be (re-)processed, force it here
+        force_update_es_id = None
+        if backend_action:
+            if "force_update_es_id" in backend_action:
+                force_update_es_id = backend_action["force_update_es_id"]
 
-    # logger.debug('processing energy system')
-    call_process_energy_system.submit(
+        # logger.debug('processing energy system')
+        call_process_energy_system.submit(
         esh, force_update_es_id=force_update_es_id, result_post_esdl_load=esdl_service_result_post_esdl_load
     )
 
@@ -3106,33 +3120,34 @@ def process_file_command(message):
         set_session('active_es_id', es.id)
         set_session('es_filename', filename)
 
-    if message['cmd'] == 'import_esdl_from_file':
-        file_content = message['file_content']
-        filename = message['filename']
-        load_animation = False
-        if "load_animation" in message:
-            load_animation = message['load_animation']
-        esh = get_handler()
-
-        try:
-            try:
-                imported_es, parse_info = esh.add_from_string(name=filename, esdl_string=file_content,
-                                                              overwrite_existing=False)
-
-                if len(parse_info) > 0:
-                    info = ''
-                    for line in parse_info:
-                        info += line + "\n"
-                    send_alert("Warnings while opening {}:\n\n{}".format(filename, info))
-                call_process_energy_system.submit(esh, filename, load_animation=load_animation)  # run in seperate thread
-                set_session('active_es_id', imported_es.id)
-                set_session('es_filename', filename)
-            except EnergySystemWithSameIdExists:
-                send_alert('An EnergySystem with the same EnergySystem ID was already loaded. Remove this existing ' +
-                           'EnergySystem first and then try to import again')
-        except Exception as e:
-            logger.error("Error loading {}: {}".format(filename, e))
-            send_alert('Error interpreting ESDL from file - Exception: ' + str(e))
+    # TODO: remove when import through post is stable
+    # if message['cmd'] == 'import_esdl_from_file':
+    #     file_content = message['file_content']
+    #     filename = message['filename']
+    #     load_animation = False
+    #     if "load_animation" in message:
+    #         load_animation = message['load_animation']
+    #     esh = get_handler()
+    #
+    #     try:
+    #         try:
+    #             imported_es, parse_info = esh.add_from_string(name=filename, esdl_string=file_content,
+    #                                                           overwrite_existing=False)
+    #
+    #             if len(parse_info) > 0:
+    #                 info = ''
+    #                 for line in parse_info:
+    #                     info += line + "\n"
+    #                 send_alert("Warnings while opening {}:\n\n{}".format(filename, info))
+    #             call_process_energy_system.submit(esh, filename, load_animation=load_animation)  # run in seperate thread
+    #             set_session('active_es_id', imported_es.id)
+    #             set_session('es_filename', filename)
+    #         except EnergySystemWithSameIdExists:
+    #             send_alert('An EnergySystem with the same EnergySystem ID was already loaded. Remove this existing ' +
+    #                        'EnergySystem first and then try to import again')
+    #     except Exception as e:
+    #         logger.error("Error loading {}: {}".format(filename, e))
+    #         send_alert('Error interpreting ESDL from file - Exception: ' + str(e))
 
     # Do not store file_content in logging database
     if 'file_content' in message:

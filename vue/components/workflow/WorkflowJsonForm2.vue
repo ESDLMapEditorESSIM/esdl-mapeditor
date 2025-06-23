@@ -23,7 +23,7 @@
 </template>
 
 <script setup="props">
-import {onMounted, ref, watch} from "vue";
+import {onMounted, onUnmounted, ref, watch} from "vue";
 import {useWorkflow, WorkflowNextStepTriggerOptions} from "@/composables/workflow";
 import {JsonForms} from "@jsonforms/vue";
 import Ajv from "ajv";
@@ -55,6 +55,8 @@ const dataToSubmit = {};
 const isLoading = ref(true);
 const jsonFormDataReceived = ref(false);
 
+let subscriptionId = null;
+
 const {
   getWorkflowStepParameters,
   goToStep,
@@ -69,6 +71,17 @@ onMounted(() => {
   watch(props.workflowStep.workflowTrigger, () => {
     init();
   });
+  if (stepParams.value.reloadOnEsdlActivation) {
+    subscriptionId = PubSubManager.subscribe(MessageNames.SELECT_ACTIVE_LAYER, () => {
+      init();
+    });
+  }
+});
+
+onUnmounted(() => {
+  if (subscriptionId !== null) {
+    PubSubManager.unsubscribe(subscriptionId);
+  }
 });
 
 const updateData = (jsonFormData) => {

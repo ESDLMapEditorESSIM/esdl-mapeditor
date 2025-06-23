@@ -17,15 +17,16 @@
         :disabled="!isAllInputValid()"
         @click="onSubmit"
       >
-        {{ stepParams.buttonText }}
+        {{ stepParams.buttonText || "Submit" }}
       </a-button>
     </a-form-item>
   </a-form>
 </template>
 
 <script setup="props">
-import {onMounted, ref} from "vue";
+import {onMounted, onUnmounted, ref, watch} from "vue";
 import {useWorkflow, WorkflowNextStepTriggerOptions} from "@/composables/workflow";
+import {MessageNames, PubSubManager} from "@/bridge";
 
 const props = defineProps({
   workflowStep: {
@@ -43,6 +44,7 @@ const options = ref([]);
 const placeholder = ref("Select");
 const form = ref([]);
 const mode = ref("");
+let subscriptionId = null;
 
 const selectStatus = ref("error");
 
@@ -60,6 +62,20 @@ let choicesByValue;
 
 onMounted(() => {
   init();
+  watch(props.workflowStep.workflowTrigger, () => {
+    init();
+  });
+  if (stepParams.value.reloadOnEsdlActivation) {
+    subscriptionId = PubSubManager.subscribe(MessageNames.SELECT_ACTIVE_LAYER, () => {
+      init();
+    });
+  }
+});
+
+onUnmounted(() => {
+  if (subscriptionId !== null) {
+    PubSubManager.unsubscribe(subscriptionId);
+  }
 });
 
 const onSubmit = async () => {
@@ -88,6 +104,7 @@ const updateInputState = () => {
 };
 
 const updateData = async (data) => {
+  console.debug("Updating data", data)
   if (data != null) {
     let choices;
     // Choices data can be found as an attribute in a dict or is directly returned as a list
@@ -102,7 +119,24 @@ const updateData = async (data) => {
 
     options.value = choices.map((choice) => {
       const label_list = stepParams.value.config.label_fields
-          .map((label_field) => choice[label_field]).filter((value) => value);
+          .map((label_field) => {
+            if (typeof label_field === "string") {
+              return choice[label_field];
+            } else {
+              const label = label_field.label;
+              const default_value = label_field.default;
+              const value = choice[label];
+              const value_map = label_field.map;
+              if (value_map && value in value_map) {
+                return value_map[value];
+              } else if (default_value) {
+                return default_value;
+              } else {
+                console.warn("Value not found in value_map: ", value, value_map);
+                return value;
+              }
+            }
+          }).filter((value) => value);
       const label = label_list.join(" - ");
       return {
         label: label,
