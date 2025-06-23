@@ -537,7 +537,6 @@ class DataManager:
             elif isinstance(eobj, esdl.Producer) or isinstance(eobj, esdl.Consumer) or isinstance(eobj, esdl.Conversion):
                 power = eobj.power
                 d = Data(dataset=ds, value=power)
-                d.region = eobj.area.name
                 d.labels = {'Power': power, 'State': eobj.state.name}
                 d.node = eobj.name or eobj.id
                 d.technology = eobj.eClass.name
@@ -547,11 +546,18 @@ class DataManager:
                 variable_name = "Power (W)"
                 qau = esdl.QuantityAndUnitType(physicalQuantity=esdl.PhysicalQuantityEnum.POWER,
                                                unit=esdl.UnitEnum.WATT, description="Power in W")
+                # Handle compound asset
+                if eobj.containingBuilding or eobj.containingAsset:
+                    container_asset = eobj.eContainer()
+                    area = container_asset.area
+                    d.region = area.name
+                    d.labels['Parent asset'] = container_asset.name
+                else:
+                    d.region = eobj.area.name
 
             elif isinstance(eobj, esdl.Storage) or isinstance(eobj, esdl.Transport):
                 capacity = eobj.capacity
                 d = Data(dataset=ds, value=capacity)
-                d.region = eobj.area.name
                 d.labels = {'Capacity': capacity, 'State': eobj.state.name}
                 d.node = eobj.name or eobj.id
                 d.technology = eobj.eClass.name
@@ -571,7 +577,6 @@ class DataManager:
                     length = eobj.length
                     diameter = eobj.diameter.name  # e.g. DN250
                     d = Data(dataset=ds, value=length)
-                    d.region = eobj.area.name
                     d.labels = {'Diameter': diameter, 'State': eobj.state.name}
                     d.node = eobj.name or eobj.id
                     d.technology = eobj.eClass.name
@@ -581,6 +586,14 @@ class DataManager:
                     variable_name = "Pipe Length (m)"
                     qau = esdl.QuantityAndUnitType(physicalQuantity=esdl.PhysicalQuantityEnum.LENGTH,
                                                    unit=esdl.UnitEnum.METRE, description="Length in m")
+                # Handle compound asset
+                if eobj.containingBuilding or eobj.containingAsset:
+                    container_asset = eobj.eContainer()
+                    area = container_asset.area
+                    d.region = area.name
+                    d.labels['Parent asset'] = container_asset.name
+                else:
+                    d.region = eobj.area.name
 
             # Process asset ownership label
             if isinstance(eobj, esdl.Asset):
