@@ -507,6 +507,11 @@ class ProjectManager:
         #print(changes_list)
         self.apply_changes_to_variant(changes_list, variant, False)
 
+        # set the ES name to the name of the variant (in case it is overwritten by a parent change
+        snapshot = self.get_variant_snapshot(variant)
+        if snapshot:
+            snapshot.name = variant.name
+
     def apply_changes_to_variant(self, change_list: List[AbstractChange], target_variant: Variant, record_changes: bool):
         es = self.get_or_create_variant_snapshot(target_variant)
         resource = es.eResource

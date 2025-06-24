@@ -230,6 +230,7 @@ def rename_variant(message: RenameVariantRequest):
                 instance.date = esdl.InstanceDate(date=datetime(year=int(year), month=1, day=1))
 
     if variant.snapshotRef:
+        # don't track this change as when changing a parent variant name, this variant name will also change...
         # also rename the ESDL snapshot and give it the same name as the variant
         variant.snapshotRef.name = variant.name
     send_project_manager_to_lmi_async(only_send_for_client_id=session['client_id'])
