@@ -148,8 +148,6 @@ class UndoRedoCommandStack:
                 acquired = self.recording_lock.acquire(timeout=10)
                 if not acquired:
                     raise TimeoutError("Could not acquire recording lock (even by forcing)")
-            else:
-                raise TimeoutError("Could not acquire recording lock")
         self._update_context(change_context)
         logger.debug(f"=== start recording: {label} =====================================")
         self._recording = True
