@@ -23,7 +23,7 @@ import {updateGlobalWmsLayerList, useWmsLayers, WMS_LAYERS_GROUP_NAME} from "./w
 import {useEsdlLayers} from "./esdlLayers";
 import {useSocketIO} from "./socketio";
 
-const {subscribe} = useSocketIO();
+const {subscribe, socket} = useSocketIO();
 
 const {getWmsLayerList, hideWmsLayer, showWmsLayer} = useWmsLayers();
 const {enabledEsdlIdList, hideEsdlLayerFromMap, showEsdlLayerOnMap} = useEsdlLayers();
@@ -68,6 +68,7 @@ const visibleLayerGroups = ref([]);
 
 // Cache for layer order within groups.
 const layerOrderCache = ref({});
+const layerVisibilityCache = ref({});
 
 function getLayerType(layer) {
     const wmsLayers = getWmsLayerList().layers;
@@ -113,7 +114,7 @@ subscribe("on_wms_layer_feature_resp", (resp) => {
  * @returns {string} WMS GetFeatureInfo URL of the event location
  */
 const constructWmsLayerGetFeatureInfoUrl = (wmsServiceUrl, layerName, evLatLng) => {
-    const url = wmsServiceUrl +
+    return wmsServiceUrl +
         "?service=WMS&version=1.1.1&request=GetFeatureInfo&layers=" + layerName +
         "&styles=&bbox=" + map.getBounds().toBBoxString() +
         "&height=" + map.getSize().y + "&width=" + map.getSize().x +
@@ -121,7 +122,6 @@ const constructWmsLayerGetFeatureInfoUrl = (wmsServiceUrl, layerName, evLatLng) 
         "&info_format=application/json&srs=EPSG:4326" +
         "&x=" + Math.round(map.latLngToContainerPoint(evLatLng).x) +
         "&y=" + Math.round(map.latLngToContainerPoint(evLatLng).y);
-    return url;
 };
 
 /**
@@ -300,9 +300,14 @@ export function useVisibleLayers(map, socket) {
      * Add a visible layer to the list.
      * @param {VisibleLayer} layer - The layer to add.
      * @param {string} groupId - The ID of the group to add the layer to.
+     * @param {boolean} updateMap - Whether to update the map. Set to false if part of bulk operation.
      */
-    const addToVisibleLayerList = (layer, groupId) => {
-        layer.visible = true;
+    const addToVisibleLayerList = (layer, groupId, updateMap = true) => {
+        if (layer.id in layerVisibilityCache.value) {
+            layer.visible = layerVisibilityCache.value[layer.id];
+        } else {
+            layer.visible = true;
+        }
         // Add the layer to the group.
         const group = visibleLayerGroups.value.find(group => group.id === groupId);
         if (group) {
@@ -316,7 +321,9 @@ export function useVisibleLayers(map, socket) {
         } else {
             console.warn(`Group with ID ${groupId} not found.`);
         }
-        updateVisibleLayersOrderOnMap()
+        if (layer.visible) {
+            showVisibleLayer(layer.id, updateMap);
+        }
     };
 
     /**
@@ -341,7 +348,12 @@ export function useVisibleLayers(map, socket) {
 
             if (sublayers) {
                 sublayers.forEach(sublayer => {
-                    addToVisibleLayerList(sublayer, groupId);
+                    addToVisibleLayerList(sublayer, groupId, false);
+                });
+                sublayers.forEach(sublayer => {
+                    if (!sublayer.visible) {
+                        hideVisibleLayer(sublayer.id);
+                    }
                 });
             }
             if (layerOrderCache.value[groupId]) {
@@ -424,7 +436,7 @@ export function useVisibleLayers(map, socket) {
                 console.error(`Unknown layer type: ${layerType}`);
             }
         });
-    }, 300);
+    }, 100);
 
     const layerIsVisible = (layerId) => {
         for (const visibleLayer of getVisibleLayerList()) {
@@ -446,8 +458,9 @@ export function useVisibleLayers(map, socket) {
     /**
      * Hides a visible layer from the map.
      * @param layerId
+     * @param updateMap Whether or not to update the map directly. Set this to false if you are doing a bulk operation.
      */
-    const hideVisibleLayer = (layerId) => {
+    const hideVisibleLayer = (layerId, updateMap = true) => {
         const layerToHide = getVisibleLayerList().find(
             layer => layer.id === layerId
         );
@@ -470,22 +483,27 @@ export function useVisibleLayers(map, socket) {
         }
 
         layerToHide.visible = false;
-        updateVisibleLayersOrderOnMap();
+        layerVisibilityCache.value[layerId] = false;
+        if (updateMap) {
+            updateVisibleLayersOrderOnMap();
+        }
     };
 
     const hideAllVisibleLayers = () => {
         getVisibleLayerList().slice().reverse().forEach(
-            layer => hideVisibleLayer(layer.id)
+            layer => hideVisibleLayer(layer.id, false)
         )
+        updateVisibleLayersOrderOnMap();
     };
 
     const showAllVisibleLayers = () => {
         getVisibleLayerList().slice().reverse().forEach(
-            layer => showVisibleLayer(layer.id)
+            layer => showVisibleLayer(layer.id, false)
         )
+        updateVisibleLayersOrderOnMap();
     };
 
-    const showVisibleLayer = (layerId) => {
+    const showVisibleLayer = (layerId, updateMap = true) => {
         const layerToShow = getVisibleLayerList().find(
             layer => layer.id === layerId
         );
@@ -499,7 +517,11 @@ export function useVisibleLayers(map, socket) {
             if (group) {
                 group.layers.forEach(layer => {
                     if (layer.parent_esdl_layer === layerToShow.description) {
-                        showVisibleLayer(layer.id);
+                        if (layer.visible) {
+                            showVisibleLayer(layer.id, updateMap);
+                        } else {
+                            hideVisibleLayer(layer.id, updateMap);
+                        }
                     }
                 });
             }
@@ -507,7 +529,11 @@ export function useVisibleLayers(map, socket) {
             console.error(`Unknown layer type: ${layerType}`);
         }
         layerToShow.visible = true;
-        updateVisibleLayersOrderOnMap();
+        layerVisibilityCache.value[layerId] = true;
+        if (updateMap) {
+            console.debug("Updating map")
+            updateVisibleLayersOrderOnMap();
+        }
     }
 
     /**
@@ -563,11 +589,12 @@ export function useVisibleLayers(map, socket) {
             const isGroupVisible = group.visible;
             group.layers.forEach((layer) => {
                 if (isGroupVisible) {
-                    hideVisibleLayer(layer.id);
+                    hideVisibleLayer(layer.id, false);
                 } else {
-                    showVisibleLayer(layer.id);
+                    showVisibleLayer(layer.id, false);
                 }
             });
+            updateVisibleLayersOrderOnMap();
         } else {
             console.warn(`Group with id ${groupId} not found.`);
         }

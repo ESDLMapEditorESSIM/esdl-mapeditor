@@ -135,7 +135,7 @@ function addContextMenuServices(activityContext) {
                     foundService.location = "map_context_menu"
                     enabledMapContextMenus.value.push(foundService.id);
                 } else if (contextMenuService.location === "building") {
-                    addBuildingContextMenuItem(foundService['name'], window.resource_uri + 'icons/service.png', function (e, id) {
+                    addBuildingContextMenuItem(foundService['name'], window.resource_uri + 'icons/service.png', function () {
                         window.show_service_settings(foundServiceIdx)
                     });
                     enabledBuildingContextMenus.value.push(foundService.name);
@@ -149,7 +149,7 @@ function addContextMenuServices(activityContext) {
 }
 
 export function useActivityContext() {
-    const {enabledEsdlIdList, hideEsdlLayerAllEsdls, showEsdlLayerAllEsdls} = useEsdlLayers();
+const {hideEsdlLayerAllEsdls, showEsdlLayerAllEsdls} = useEsdlLayers();
 
     /**
      * Activate the given activity context. This will update the activeActivityContext and show the WMS layers

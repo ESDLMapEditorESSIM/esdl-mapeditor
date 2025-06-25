@@ -15,17 +15,12 @@
  */
 
 import {ref} from "vue";
-import {useWmsLayers} from "@/composables/wmsLayers";
 
 const activeModelContext = ref('standard')
 const visibleModelContext = ref(false)
 const modelContexts = ref([])
 
 export function useModelContext() {
-    function activateModelContext(activityContext) {
-        activeModelContext.value = activityContext
-    }
-
     const fetchModelContexts = () => {
         window.socket.emit('model_contexts_get_mode_info', function (res) {
             activeModelContext.value = res['current_mode']
