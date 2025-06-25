@@ -61,7 +61,8 @@ class UndoRedoCommandStack:
     """
     #stack: list[HighLevelChange]
 
-    def __init__(self, variant: ep.Variant, resource: XMLResource, max_stack_length: int = -1, change_handler=None):
+    def __init__(self, variant: ep.Variant, resource: XMLResource, max_stack_length: int = -1, change_handler=None,
+                 conflict_handler = None):
         # The actual changes. Right now it is a list of pyEcore commands.
         self.variant = variant
         self.resource = resource  # target resource to apply and undo changes to
@@ -76,6 +77,7 @@ class UndoRedoCommandStack:
         self.max_stack_length = max_stack_length
         self.last_changed: datetime = datetime.min.replace(tzinfo=timezone.utc)
         self.change_handler = change_handler
+        self.conflict_handler = conflict_handler
         # post_process_list keeps track of notifications that cannot be processed directly (e.g. missing references)
         self.post_process_list: List[Notification] = []
         self.change_context: ChangeContext = ChangeContext(source=ChangeSource.INTERNAL, resource=self.resource)
@@ -148,8 +150,6 @@ class UndoRedoCommandStack:
                 acquired = self.recording_lock.acquire(timeout=10)
                 if not acquired:
                     raise TimeoutError("Could not acquire recording lock (even by forcing)")
-            else:
-                raise TimeoutError("Could not acquire recording lock")
         self._update_context(change_context)
         logger.debug(f"=== start recording: {label} =====================================")
         self._recording = True
@@ -221,10 +221,10 @@ class UndoRedoCommandStack:
         self._combine_multiple_changes = False  # this triggers that the HighLevelChange is added to the stack
         if self._hlc is not None and len(self._hlc.change) > 0:
             # filter out eOpposite relations that are double (e.g. connectedTo)
-            filtered, _ = filterDoubleConnectedTo(self._hlc.change)
-            if len(filtered) != len(self._hlc.change):
-                logger.debug(f"=== Filtered {len(self._hlc.change) - len(filtered)} connectedTo relations")
-            self._hlc.change = filtered
+            #filtered, _ = filterDoubleConnectedTo(self._hlc.change)
+            #if len(filtered) != len(self._hlc.change):
+            #    logger.debug(f"=== Filtered {len(self._hlc.change) - len(filtered)} connectedTo relations")
+            #self._hlc.change = filtered
             post_process_high_level_change(self._hlc)
             # self.push() requires that _recording is True and _combine_multiple_changes is False
             # in order to push this HighLevelChange to the stack
@@ -249,12 +249,12 @@ class UndoRedoCommandStack:
 
     def add_undo_step(self, label=None):
         """
-        TODO: Is this used? If so, what for?
-        Ewoud: This (can be) used when a large action is taken and you want to split it up in several undo steps
+        This (can be) used when a large action is taken and you want to split it up in several undo steps
         e.g. an single user action that can be split up: load geometries, get ETM data for these geometries and calculate KPIs
         """
         if self._hlc is not None:
             self._combine_multiple_changes = False
+            post_process_high_level_change(self._hlc)
             self.push(self._hlc)
             self._combine_multiple_changes = True
         self._hlc = ep.HighLevelChange(label=label, changedAt=datetime.now(timezone.utc))
@@ -297,9 +297,9 @@ class UndoRedoCommandStack:
         self.stack_index = min(index, len(self.stack) - 1)
         self.last_changed = datetime.now(timezone.utc)
         if isinstance(abstract_change, ep.HighLevelChange):
-            logger.debug(f"Pushed {abstract_change.label} to the stack")
+            logger.debug(f"Pushed '{abstract_change.label}' to the stack")
         else:
-            logger.debug(f"Pushed {abstract_change} to the stack")
+            logger.debug(f"Pushed '{abstract_change}' to the stack")
             logger.error(f"ERROR: a DetailedChange is added to the stack, this is not supported and "
                          f"means there is an error or race condition somewhere that triggers this behaviour")
 
@@ -323,9 +323,9 @@ class UndoRedoCommandStack:
             with self.pause_recording():
                 if isinstance(self.next_top, ep.HighLevelChange):
                     for change in self.next_top.change:
-                        applyChange(change, self.resource)
+                        applyChange(change, self.resource, self.variant, self.conflict_handler)
                 else:
-                    applyChange(self.next_top, self.resource)
+                    applyChange(self.next_top, self.resource, self.variant, self.conflict_handler)
                 self.last_changed = datetime.now(timezone.utc)
             self.stack_index += 1
         else:
@@ -350,9 +350,9 @@ class UndoRedoCommandStack:
                 # self.top.undo()
                 if isinstance(self.top, ep.HighLevelChange):
                     for change in reversed(self.top.change):
-                        undoChange(change, self.resource)
+                        undoChange(change, self.resource, self.variant, self.conflict_handler)
                 else:
-                    undoChange(self.top, self.resource)
+                    undoChange(self.top, self.resource, self.variant, self.conflict_handler)
                 self.stack_index -= 1
             else:
                 logger.debug("Cannot undo")
@@ -393,6 +393,8 @@ def post_process_high_level_change(high_level_change: HighLevelChange):
     if len(doubles) > 0:
         logger.debug(f"Filter doubles: removed {doubles}")
     for change in doubles:
+        if not change.eContainer():
+            logger.error(f"Cant delete {change}")
         change.delete()  # this works because of ecore! :-)
 
 
@@ -747,7 +749,7 @@ class Tracker:
 
 
 class ChangeTracker:
-    def __init__(self, change_handler=None):
+    def __init__(self, change_handler=None, conflict_handler=None):
         """
 
         Parameters
@@ -758,6 +760,7 @@ class ChangeTracker:
         """
         self.trackers = []
         self.change_handler = change_handler
+        self.conflict_handler = conflict_handler
 
     def new_tracker(self, variant: ep.Variant, eobj: EObject = None, resource: Resource = None) -> Tracker:
         """
@@ -787,7 +790,7 @@ class ChangeTracker:
             raise Exception("Can't create new tracker: Resource is None")
 
         logger.debug("undo.py: Tracking changes for resource with URI {}".format(resource.uri.plain))
-        stack = UndoRedoCommandStack(variant=variant, resource=resource, change_handler=self.change_handler)
+        stack = UndoRedoCommandStack(variant=variant, resource=resource, change_handler=self.change_handler, conflict_handler=self.conflict_handler)
         ro = ResourceObserver(changes_stack=stack)
         ro.observe(resource)
         tracker: Tracker = Tracker(resource, stack, ro)

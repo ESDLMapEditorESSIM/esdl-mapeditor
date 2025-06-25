@@ -17,6 +17,7 @@ from esdl.resources.project_resource import ProjectResource
 from esdl.resources.xmlresource import XMLResource, ProjectManagerResourceType
 from esdl.undo import ChangeTracker, Tracker, UndoRedoCommandStack, ChangeContext
 from esdlproject import ESDLProject, HighLevelChange, Variant, VariantCollection, AbstractChange
+from esdlproject.MergeConflictHandler import MergeConflictHandler
 from esdlproject.change_handler import applyChange
 from esdlproject.variant_api import get_parent_variant, get_variant_path_list
 from utils.utils import timed, timed_context
@@ -125,6 +126,9 @@ class ProjectManager:
     # Dict for all variant collections, key is the variant collection id. We need this because we juggle with the
     # energysystemRef while saving, which leads to race conditions.
     variant_collection_resources: dict[str, XMLResource]
+    # conflict handler for merge conflicts
+    conflict_handler: MergeConflictHandler
+
 
     lock: threading.Lock
 
@@ -142,7 +146,8 @@ class ProjectManager:
         self.lock = threading.Lock()
         self.active_variant_lock = threading.Lock()
         self.rset = self.__create_resource_set()
-        self.change_tracker = ChangeTracker(change_handler=self.change_handler)
+        self.conflict_handler = MergeConflictHandler()
+        self.change_tracker = ChangeTracker(change_handler=self.change_handler, conflict_handler=self.conflict_handler)
 
         if uri:
             self.load(uri)
@@ -525,7 +530,7 @@ class ProjectManager:
                 try:
                     logger.debug(f"Apply variant change: High level change {high_level_change.label}")
                     for change in high_level_change.change:
-                        applyChange(change, resource)
+                        applyChange(change, resource, target_variant, self.conflict_handler)
                 finally:
                     if record_changes:
                         tracker.stack.stop_recording()
@@ -654,7 +659,6 @@ class ProjectManager:
             variant.snapshotRef = snapshot
             snapshot.name = variant.name  # overwrite name of ES to match the variant name
             snapshot.id = variant.id  # str(uuid4())  # generate a new energy system id for this variant
-
             #snapshot_resource.uuid_dict = dict(es.eResource.uuid_dict) # copy uuid_dict to speed up lookups by id
             #update_uuid_dict(snapshot_resource.contents[0])
             snapshot_resource.uuid_dict[snapshot.id] = snapshot

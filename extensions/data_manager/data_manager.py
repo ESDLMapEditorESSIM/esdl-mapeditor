@@ -105,7 +105,7 @@ def update_kpi_metadata(kpi: esdl.KPI, data: Data):
     elif isinstance(container, esdl.Area):
         # area KPI
         data.region = container.name
-        labels['Area type'] = container.type.name
+        labels['Area scope'] = container.scope.name
 
     if len(labels) > 0:
         data.labels = labels
@@ -183,7 +183,7 @@ def handle_profile(profile: esdl.GenericProfile, ds: DataSet, variable_name: str
         d.sector = asset.sector.name if asset.sector else None
         d.node = asset.name or asset.id
         d.region = area.name
-        labels['Area type'] = area.type.name
+        labels['Area scope'] = area.scope.name
         d.technology = asset.eClass.name
 
 

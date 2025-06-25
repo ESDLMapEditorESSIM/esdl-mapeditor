@@ -72,6 +72,8 @@ def patch_esdl():
         #lambda x: f'<{x.eClass.name} ownerFragment="{x.ownerFragment}", feature="{x.feature}", stringValue="{x.stringValue}", previousValue="{x.previousValue}", objectFragment="{x.objectFragment}">'
     esdlproject.HighLevelChange.__repr__ = \
         lambda x: f'<{x.eClass.name} label="{x.label}", len(change)={len(x.change)}>'
+    esdlproject.Variant.__repr__ = \
+        lambda x: f'<{x.eClass.name} name="{x.name}">'
 
     def attr_string(e: EObject):
         cls: EClass = e.eClass

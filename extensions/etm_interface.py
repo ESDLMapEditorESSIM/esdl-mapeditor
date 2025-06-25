@@ -103,14 +103,19 @@ class ETMInterface:
                                 area_with_scope_municipality_found = True
 
                                 emit("update-etm-query-log", f"Query ETM for area {sub_area.name} ({sub_area.id})")
+                                logger.info(f"Query ETM for area {sub_area.name} ({sub_area.id})")
                                 etm_sankey_data = self.request_sankey_info_municipality(sub_area.id)
                                 if etm_sankey_data:
                                     if not self.etm_sankey:
+                                        logger.info(f"Initiating ETMSankeyToESDL object for area {sub_area.name} ({sub_area.id})")
                                         self.etm_sankey = ETMSankeyToESDL(etm_sankey_data)
                                     else:
+                                        logger.info(f"replacing ETMSankeyToESDL data with data from area {sub_area.name} ({sub_area.id})")
                                         self.etm_sankey.set_etm_data(etm_sankey_data)
                                     at_least_one_etm_query_succeeded = True
+                                    logger.info(f"Start processing ETM Sankey data results for area {sub_area.name} ({sub_area.id})")
                                     self.process_data_and_add_to_area(pm, active_es_id, sub_area)
+                                    logger.info(f"Done processing ETM Sankey data results for area {sub_area.name} ({sub_area.id})")
                                 else:
                                     emit("update-etm-query-log", f"- ETM scenario for {sub_area.name} could not be created")
                             else:
@@ -265,6 +270,8 @@ class ETMInterface:
                 etm_sankey_data = list()
                 for row in reader:
                     etm_sankey_data.append(row)
+
+                logger.info(f"ETM Sankey data for {self.etm_municipalities[municipality_code]} with id {scenario_id} contains {len(etm_sankey_data)} elements")
 
                 return etm_sankey_data
             else:

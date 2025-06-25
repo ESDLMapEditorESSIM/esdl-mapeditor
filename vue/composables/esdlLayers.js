@@ -81,7 +81,6 @@ export function useEsdlLayers() {
             sublayers.push(visibleEsdlLayer);
         });
         createVisibleLayerGroup(es_id, es.title, sublayers);
-        showEsdlLayerOnMap(es_id);
     }
 
     /**

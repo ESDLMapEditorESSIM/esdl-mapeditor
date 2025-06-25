@@ -2,7 +2,6 @@ import {ref} from "vue";
 import {getattrd} from "../utils/utils";
 import {v4 as uuidv4} from 'uuid';
 import {nextStepsSchemaValidator} from "../utils/workflowSchemas";
-import workflow from "../apps/Workflow.vue";
 
 export const WorkflowStepTypes = Object.freeze({
     CHOICE: 'choice',
@@ -156,7 +155,7 @@ export function useWorkflow() {
 
     const deletePersistedWorkflow = (uuid) => {
         window.show_loader();
-        window.socket.emit('/workflow/delete', {workflow_id: uuid}, function(msg) {
+        window.socket.emit('/workflow/delete', {workflow_id: uuid}, function() {
             window.hide_loader();
             loadSavedWorkflows();
         });
