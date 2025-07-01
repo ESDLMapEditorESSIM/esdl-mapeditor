@@ -518,13 +518,7 @@ const setActions = () => {
     actions.value.push(
         {
           "title": LOAD_INPUT_ESDL,
-          "icon": "fas fa-sign-in-alt",
-          "enabled": {
-            "dataIndex": "status",
-            "values": [
-              "SUCCEEDED"
-            ]
-          }
+          "icon": "fas fa-sign-in-alt"
         }
     );
   }
