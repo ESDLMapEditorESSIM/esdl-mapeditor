@@ -320,26 +320,22 @@ asset_list = {
     },
     "CHESS": {
         "Producer": [
-            "GenericProducer",
+            "HeatProducer",
             "GeothermalSource",
             "ResidualHeatSource",
         ],
         "Consumer": [
-            "GenericConsumer",
             "HeatingDemand",
         ],
         "Storage": [
             "HeatStorage",
+            "ATES",
         ],
         "Conversion": [
-            "GasHeater",
             "HeatPump",
         ],
         "Transport": [
             "Pipe",
-            "Pump",
-            "Valve",
-            "CheckValve",
             "HeatExchange"
         ]
     }
