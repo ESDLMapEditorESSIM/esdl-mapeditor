@@ -354,11 +354,12 @@ class ExternalModels:
             form_data[RUN_NAME] = model_run_data[RUN_NAME]
             ui_elements.append(dict(type="Control", scope=f"#/properties/{RUN_NAME}"))
 
-            properties[USER_GROUP_PATHS] = dict(
-                type="array", title="user groups", uniqueItems=True, items=dict(type="string", enum=user_group_paths)
-            )
-            form_data[USER_GROUP_PATHS] = model_run_data[USER_GROUP_PATHS]
-            ui_elements.append(dict(type="Control", scope=f"#/properties/{USER_GROUP_PATHS}"))
+            if user_group_paths:
+                properties[USER_GROUP_PATHS] = dict(
+                    type="array", title="user groups", uniqueItems=True, items=dict(type="string", enum=user_group_paths)
+                )
+                form_data[USER_GROUP_PATHS] = model_run_data[USER_GROUP_PATHS]
+                ui_elements.append(dict(type="Control", scope=f"#/properties/{USER_GROUP_PATHS}"))
 
             info_keys = [MODEL_NAME, USER, STATUS, RUN_ID, SUBMITTED_TO_EXTERNAL_MODEL_AT]
             for key, value in model_run_data.items():

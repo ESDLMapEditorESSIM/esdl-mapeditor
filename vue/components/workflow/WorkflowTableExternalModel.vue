@@ -343,32 +343,40 @@ const getProgressPercent = (record, column) => {
   return isNaN(progress) ? 0 : Math.round(100 * progress);
 };
 
+const buildTreeFromPaths = (paths) => {
+  const root = [];
+  for (const path of paths) {
+    const parts = path.replace(/^\/+/, '').split('/');  // remove initial slash and split
+    let currentLevel = root;
+    let currentPath = '';
+    for (const part of parts) {
+      currentPath += '/' + part;
+      let existing = currentLevel.find(node => node.label === part);
+      if (!existing) {
+        existing = {
+          value: currentPath,
+          label: part,
+          children: []
+        };
+        currentLevel.push(existing);
+      }
+      currentLevel = existing.children;
+    }
+  }
+  return root;
+}
+
 const init = async () => {
   stepParams.value = getWorkflowStepParameters(props.workflowStep);
   await getInputData(stepParams.value.data, handleData);
 
-  window.socket.emit("get_user_group_paths", (user_group_paths) => {
-        const organizations = [];
-        const projects = [];
-        for (const user_group_path of user_group_paths) {
-          if (user_group_path.startsWith("/Organizations")) {
-            organizations.push({
-              value: user_group_path,
-              label: user_group_path.replace("/Organizations/", "")
-            });
-          } else if (user_group_path.startsWith("/Projects")) {
-            projects.push({
-              value: user_group_path,
-              label: user_group_path.replace("/Projects/", "")
-            });
-          }
-        }
-        userGroupsForUser.value = [
-          {value: "my_runs", label: "my runs"},
-          {value: "Organizations", label: "Organizations", children: organizations},
-          {value: "Projects", label: "Projects", children: projects}
-        ];
+  window.socket.emit("get_user_group_paths", (userGroupPaths) => {
+      userGroupsForUser.value = [{value: "my_runs", label: "my runs"}];
+      if (userGroupPaths.length > 0) {
+        userGroupsForUser.value = userGroupsForUser.value.concat(buildTreeFromPaths(userGroupPaths));
       }
+      console.log( "userGroupsForUser", userGroupsForUser.value)
+    }
   );
 
   window.socket.off('wfe_update_model_run');
