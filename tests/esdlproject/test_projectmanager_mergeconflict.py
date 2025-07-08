@@ -65,6 +65,7 @@ class test_merge_conflict(unittest.TestCase):
         es = pm.get_active_energy_system()
         v1 = pm.get_active_variant()
         v1.name = "Variant1"
+        es.name = "Variant1"
         v1_ct = pm.get_change_tracker_for_variant(pm.get_active_variant())
         v1_ct.stack.start_recording(label="Setup areas")
         main_area = es.instance[0].area
@@ -112,29 +113,31 @@ class test_merge_conflict(unittest.TestCase):
         #pm.debug(dump_project=True)
         # add to second variant
         pm.set_active_variant(v2a)
-        v2_ct = pm.get_change_tracker_for_variant(v2a)
-        v2_ct.stack.start_recording(label="add WindTurbine")
+        v2a_ct = pm.get_change_tracker_for_variant(v2a)
+        v2a_ct.stack.start_recording(label="add WindTurbine")
         wt = esdl.WindTurbine(name="WindTurbine1", id="wt1")
         wt.port.append(esdl.OutPort(name="wt1_op1", id="wt1_op1"))
-        v2_es = pm.get_active_energy_system()
-        v2_area3 = v2_es.instance[0].area.area[2]  # area1 in variant v2
-        v2_area3.asset.append(wt)
-        get_by_id_t(wt, "wt1_op1", esdl.OutPort).connectedTo.append(get_by_id(wt, "t1_ip1"))  # connect wt to t1_ip1
+        v2a_es = pm.get_active_energy_system()
+        v2a_area3 = v2a_es.instance[0].area.area[2]  # area1 in variant v2
+        v2a_area3.asset.append(wt)
+        get_by_id_t(wt, "wt1_op1", esdl.OutPort).connectedTo.append(get_by_id(wt, "t3_ip1"))  # connect wt to t3_ip1
 
-        self.assertEqual(len(v2_area3.asset), 2) # Check that area1 in variant v2 has 2 assets (t1 and wt)
+        self.assertEqual(len(v2a_area3.asset), 2) # Check that area3 in variant v2 has 2 assets (t1 and wt)
         self.assertEqual(len(get_by_id_t(wt, "wt1_op1", esdl.OutPort).connectedTo), 1)  # Check that wt1_op1 is connected to t1_ip1
 
-        v2_ct.stack.add_undo_step(label="move wind turbine to area2")
-        v2_area2 = v2_es.instance[0].area.area[1]  # area2 in variant v2
-        v2_area2.asset.append(wt) # moves it from area1 to area2
-        get_by_id_t(wt, "wt1_op1", esdl.OutPort).connectedTo.remove(get_by_id(wt, "t1_ip1"))  # disconnect wt from t1_ip1
+        v2a_ct.stack.add_undo_step(label="move wind turbine to area2")
+        v2a_area2 = v2a_es.instance[0].area.area[1]  # area2 in variant v2
+        v2a_area2.asset.append(wt) # moves it from area1 to area2
+        get_by_id_t(wt, "wt1_op1", esdl.OutPort).connectedTo.remove(get_by_id(wt, "t3_ip1"))  # disconnect wt from t3_ip1
         get_by_id_t(wt, "wt1_op1", esdl.OutPort).connectedTo.append(get_by_id(wt, "t2_ip1"))  # connect wt to t2_ip1
-        v2_ct.stack.stop_recording()
+        v2a_ct.stack.stop_recording()
 
-        self.assertEqual(len(v2_area2.asset), 2)  # Check that area1 in variant v2 has 2 assets (t1 and wt)
+        self.assertEqual(len(v2a_area2.asset), 2)  # Check that area1 in variant v2a has 2 assets (t1 and wt)
         self.assertEqual(len(get_by_id_t(wt, "t2_ip1", esdl.InPort).connectedTo),1)  # Check t2_ip1 has a connection
         self.assertEqual(get_by_id_t(wt, "t2_ip1", esdl.InPort).connectedTo[0], get_by_id_t(wt, "wt1_op1", esdl.OutPort))  # Check t2_ip1 has a connection to wt1_op1
-
+        # clean up to make sure we don't get memory leaks during this test.
+        del v2a_ct, v2a_area3, v2a_area2
+        del v2a_es, wt
 
         # move energy demand in variant v1 to area2
         pm.set_active_variant(v1)
@@ -150,7 +153,7 @@ class test_merge_conflict(unittest.TestCase):
         self.assertEqual(len(get_by_id_t(es, "t2_op1", esdl.OutPort).connectedTo),1)  # Check t2_ip1 has a connection
         self.assertEqual(get_by_id_t(es, "t2_op1", esdl.OutPort).connectedTo[0], get_by_id_t(es, "ed1_ip1", esdl.OutPort))  # Check t2_ip1 has a connection to wt1_op1
 
-        pm.debug(dump_project=True)
+        #pm.debug(dump_project=True)
         # now activate variant v2a and see merge conflict if no merge conflict handler is used
         pm.set_active_variant(v2a)
         es = pm.get_active_energy_system()
@@ -175,10 +178,7 @@ class test_merge_conflict(unittest.TestCase):
         self.assertEqual(get_by_id_t(es, "t2_op1", esdl.OutPort).connectedTo[0], get_by_id_t(es, "ed1_ip1", esdl.InPort))  # Check t2_op1 has a connection to ed1_ip1
         self.assertEqual(0, len(get_by_id_t(es, "t1_op1", esdl.OutPort).connectedTo))  # Check t1_op1 has no connections
         self.assertEqual(0, len(get_by_id_t(es, "t1_ip1", esdl.OutPort).connectedTo))  # Check t1_ip1 has no connections
-        pm.debug(dump_project=True)
-
-        #exit(1)
-
+        #pm.debug(dump_project=True)
 
         # create a new variant on based on v1, call it v2b
         v2b = Variant(name="Variant2b", id="variant2b")
@@ -255,26 +255,38 @@ class test_merge_conflict(unittest.TestCase):
 
         # let's undo "Move wind turbine to area2" to see if the merge conflict resolution can be undo-ed.
         # (i.e. move the windturbine back to area3)
-        print(v2_ct.stack.stack)
-        v2_ct.stack.undo()
+        v2a_ct = pm.get_change_tracker_for_variant(v2a)
+        print(v2a_ct.stack.stack)
+        #import objgraph
+        #objgraph.show_refs(pm)
+        v2a_ct.stack.undo()
         es = pm.get_active_energy_system()
+
+        #time.sleep(1)
         print(f'assets in area1: {get_by_id_t(es, "area1", esdl.Area).asset}')
         print(f'assets in area2: {get_by_id_t(es, "area2", esdl.Area).asset}')
         print(f'assets in area3: {get_by_id_t(es, "area3", esdl.Area).asset}')
-        print(f't2_op1 connectedTo: {get_by_id_t(es, "t2_op1", esdl.OutPort).connectedTo}')
-        print(f't2_ip1 connectedTo: {get_by_id_t(es, "t2_ip1", esdl.InPort).connectedTo}')
         print(f't1_op1 connectedTo: {get_by_id_t(es, "t1_op1", esdl.OutPort).connectedTo}')
         print(f't1_ip1 connectedTo: {get_by_id_t(es, "t1_ip1", esdl.InPort).connectedTo}')
+        print(f't2_op1 connectedTo: {get_by_id_t(es, "t2_op1", esdl.OutPort).connectedTo}')
+        print(f't2_ip1 connectedTo: {get_by_id_t(es, "t2_ip1", esdl.InPort).connectedTo}')
+        print(f't3_op1 connectedTo: {get_by_id_t(es, "t3_op1", esdl.OutPort).connectedTo}')
+        print(f't3_ip1 connectedTo: {get_by_id_t(es, "t3_ip1", esdl.InPort).connectedTo}')
         print(f'ed1_ip1 connectedTo: {get_by_id_t(es, "ed1_ip1", esdl.InPort).connectedTo}')
         print(f'wt1_op1 connectedTo: {get_by_id_t(es, "wt1_op1", esdl.OutPort).connectedTo}')
-        
+        #print(pm.active_energy_system_to_string())
+        #pm.debug(dump_project=True)
+
+        # check if WT is in area3
+
         self.assertEqual(len(get_by_id_t(es, "area1", esdl.Area).asset), 1)  # Check that area1 in variant v2a has 2 assets (t1 and ed)
         self.assertEqual(len(get_by_id_t(es, "area2", esdl.Area).asset), 2)  # Check that area2 in variant v2a has 2 assets (t2 and wt)
         self.assertEqual(len(get_by_id_t(es, "area3", esdl.Area).asset), 2)  # Check that area2 in variant v2a has 2 assets (t2 and wt)
         self.assertEqual(len(get_by_id_t(es, "t3_ip1", esdl.InPort).connectedTo), 1)  # Check t3_ip1 has a connection
         self.assertEqual(get_by_id_t(es, "t3_ip1", esdl.InPort).connectedTo[0],
                          get_by_id_t(es, "wt1_op1", esdl.OutPort))  # Check t3_ip1 has a connection to wt1_op1
-        # check if ED is in area1
+
+
 
 
 if __name__ == '__main__':

@@ -16,7 +16,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional, Any, List
+from typing import Optional, Any, List, Callable
 
 from flask import Flask
 from pyecore.ecore import EObject, EStructuralFeature, EReference, EAttribute
@@ -313,7 +313,7 @@ class UndoRedoCommandStack:
         return self.next_top is not None
 
     def redo(self):
-        if self._combine_multiple_changes is True:
+        if self._recording and self._combine_multiple_changes:
             logger.debug("Cannot redo while recording combined commands")
             return
 
@@ -335,7 +335,7 @@ class UndoRedoCommandStack:
         return self.top is not None and len(self) > 0
 
     def undo(self):
-        if self._combine_multiple_changes is True:
+        if self._recording and self._combine_multiple_changes:
             logger.debug("Cannot undo while recording combined commands")
             return
 
@@ -758,9 +758,9 @@ class ChangeTracker:
         generated when changing the monitored resource (by using new_tracker())
 
         """
-        self.trackers = []
-        self.change_handler = change_handler
-        self.conflict_handler = conflict_handler
+        self.trackers: List[Tracker] = []
+        self.change_handler: Callable = change_handler
+        self.conflict_handler: Callable = conflict_handler
 
     def new_tracker(self, variant: ep.Variant, eobj: EObject = None, resource: Resource = None) -> Tracker:
         """
@@ -835,10 +835,10 @@ class ChangeTracker:
         if tracker:
             logger.debug(f"Removing tracker {tracker}")
             self.trackers.remove(tracker)
+            del tracker
             return
 
         for t in list(self.trackers):
-            t: Tracker = t
             if (stack is not None and t.stack is stack) or (resource is not None and t.resource is resource):
                 logger.debug(f"Removing tracker {t}")
                 del t.stack
@@ -846,6 +846,7 @@ class ChangeTracker:
                 del t.observer
                 del t.resource # needed?
                 self.trackers.remove(t)
+                del t
 
 
     def reset(self):
@@ -854,9 +855,8 @@ class ChangeTracker:
         -------
         """
         for t in list(self.trackers):
-            t: Tracker
             # make sure all references to stack items are removed.
-            t.stack.stack.clear()
+            t.stack.stack = None
             t.resource = None
             t.observer = None
         self.trackers.clear()
