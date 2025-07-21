@@ -14,7 +14,6 @@
 
 import base64
 import re
-from datetime import datetime
 from typing import TypedDict
 
 from flask import Blueprint, jsonify, request, session
@@ -227,7 +226,7 @@ def rename_variant(message: RenameVariantRequest):
             year = match.group(1)
             if variant.snapshotRef:
                 instance = variant.snapshotRef.instance[0]
-                instance.date = esdl.InstanceDate(date=datetime(year=int(year), month=1, day=1))
+                instance.date = esdl.InstanceYear(year=year)
 
     if variant.snapshotRef:
         # don't track this change as when changing a parent variant name, this variant name will also change...

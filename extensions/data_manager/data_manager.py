@@ -346,6 +346,8 @@ class DataManager:
             if isinstance(first_instance.date, esdl.InstanceDate):
                 instance_datetime: datetime = first_instance.date.date
                 year = instance_datetime.year
+            elif isinstance(first_instance.date, esdl.InstanceYear):
+                year = first_instance.date.year
 
         ds = DataSet(name=es.name, energy_system_id=es.id, created_by=owner, description=es.description, model="Unknown")
 
