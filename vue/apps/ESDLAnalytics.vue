@@ -1093,6 +1093,9 @@ const disabledDate = (current) => {
     t.mode = isAggregated ? null : 'lines';
     t.text = (isAggregated && showBarNumbers.value) ? t.y.map(y => y.toFixed(1)) : "";
     t.marker = {color: colorscale[idx % colorscale.length]};
+    if (t.name.length >= 25) {
+      t.name = t.name.replace(new RegExp(`(.{1,${25}})`, 'g'), '$1<br>');
+    }
 
     const axisId = subplotGroups.findIndex(g => g === t['legendgroup']);
     if (displaySubplots && axisId >= 0) {
@@ -1140,6 +1143,9 @@ const barChartTraceHandler = (traces) => {
     t.type = 'bar';
     t.text = showBarNumbers.value ? t.y.map(y => y.toFixed(1)) : "";
     t.marker = {color: colorscale[idx % colorscale.length]};
+    if (t.name.length >= 25) {
+      t.name = t.name.replace(new RegExp(`(.{1,${25}})`, 'g'), '$1<br>');
+    }
   });
 
   const barChartLayout = {

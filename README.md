@@ -155,7 +155,7 @@ this to the remote repository.
 | ESSIM_URL                     | endpoint of the ESSIM instance                                                      | ESSIM interface             | None                           | 
 | ESSIM_LOADFLOW_URL            | alternative endpoint of the ESSIM instance with loadflow software connected         | ESSIM interface             | None                           |
 | ESSIM_INFLUX_URL              | directly communicated to ESSIM, used to create the datasource in Grafana            | ESSIM interface             | None                           |
-| ESSIM_MAPEDITOR_INFLUX_URL    |                                                                                     | DICE workflow               | ESSIM_INFLUX_URL               |
+| ESSIM_MAPEDITOR_INFLUX_URL    |                                                                                     | PD Toolsuite workflow       | ESSIM_INFLUX_URL               |
 | ESSIM_GRAFANA_URL             | not used at the moment, used to be part of http body to ESSIM                       |                             | None                           |
 | ESSIM_DATABASE_HOST           | used for downloading ESSIM results from the MapEditor, used for load duration curve | ESSIM interface, ESSIM_KPIs | None                           |
 | ESSIM_DATABASE_PORT           | used for downloading ESSIM results from the MapEditor, used for load duration curve | ESSIM interface, ESSIM_KPIs | 8086                           | 

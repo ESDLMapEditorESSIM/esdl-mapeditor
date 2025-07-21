@@ -8,17 +8,19 @@
 </template>
 
 <script setup="props">
-import {default as WorkflowEpsInspectResult} from './custom/eps/WorkflowEpsInspectResult.vue';
-import {default as WorkflowEpsService} from './custom/eps/WorkflowEpsService.vue';
-import {default as EpsCreateProject} from './custom/eps/EpsCreateProject.vue';
-import {default as EpsSelectMeasures} from './custom/eps/EpsSelectMeasures.vue';
-import {default as EpsCustomMeasures} from './custom/eps/EpsCustomMeasures.vue';
-import {default as DiceExportEssim} from './custom/dice/DiceExportESSIM.vue';
-import {default as DiceGenerateProfileTemplate} from './custom/dice/DiceGenerateProfileTemplate.vue';
-import {default as DiceUploadProfiles} from './custom/dice/DiceUploadProfiles.vue';
+import {default as WorkflowEpsInspectResult} from './custom/pdtoolsuite/eps/WorkflowEpsInspectResult.vue';
+import {default as WorkflowEpsService} from './custom/pdtoolsuite/eps/WorkflowEpsService.vue';
+import {default as EpsCreateProject} from './custom/pdtoolsuite/eps/EpsCreateProject.vue';
+import {default as EpsSelectMeasures} from './custom/pdtoolsuite/eps/EpsSelectMeasures.vue';
+import {default as EpsCustomMeasures} from './custom/pdtoolsuite/eps/EpsCustomMeasures.vue';
+import {default as PDToolsuiteGenerateProfileTemplate} from './custom/pdtoolsuite/PDToolsuiteGenerateProfileTemplate.vue';
+import {default as PDToolsuiteUploadProfiles} from './custom/pdtoolsuite/PDToolsuiteUploadProfiles.vue';
 import {default as DemoCustomComponent} from './custom/DemoCustomComponent.vue';
-import {default as WorkflowFlexScanInspectPhase1} from './custom/flexscan/WorkflowFlexScanInspectPhase1.vue';
-import {default as WorkflowFlexScanImportEPS} from './custom/flexscan/WorkflowFlexScanImportEPS.vue';
+import {default as WorkflowFlexScanInspectPhase1} from './custom/pdtoolsuite/flexscan/WorkflowFlexScanInspectPhase1.vue';
+import {default as WorkflowFlexScanImportEPS} from './custom/pdtoolsuite/flexscan/WorkflowFlexScanImportEPS.vue';
+import {default as PDToolsuiteInitEnergyHub} from "@/components/workflow/custom/pdtoolsuite/PDToolsuiteInitEnergyHub.vue";
+import {default as CostInformationGenerateTemplate} from './custom/pdtoolsuite/cost-information/CostInformationGenerateTemplate.vue';
+import {default as CostInformationUploadTemplate} from './custom/pdtoolsuite/cost-information/CostInformationUploadTemplate.vue';
 
 const components = {
   "eps-inspect-result": WorkflowEpsInspectResult,
@@ -26,12 +28,14 @@ const components = {
   "eps-create-project": EpsCreateProject,
   "eps-select-measures": EpsSelectMeasures,
   "eps-custom-measures": EpsCustomMeasures,
-  "dice-export-essim": DiceExportEssim,
-  "dice-generate-profile-template": DiceGenerateProfileTemplate,
-  "dice-upload-profiles": DiceUploadProfiles,
+  "pdtoolsuite-init-energy-hub": PDToolsuiteInitEnergyHub,
+  "pdtoolsuite-generate-profile-template": PDToolsuiteGenerateProfileTemplate,
+  "pdtoolsuite-upload-profiles": PDToolsuiteUploadProfiles,
   "flexscan-inspect-phase1": WorkflowFlexScanInspectPhase1,
   "flexscan-import-eps": WorkflowFlexScanImportEPS,
   "demo-custom": DemoCustomComponent,
+  "cost-information-generate-template": CostInformationGenerateTemplate,
+  "cost-information-upload-template": CostInformationUploadTemplate,
 };
 const props = defineProps({
   workflowStep: {

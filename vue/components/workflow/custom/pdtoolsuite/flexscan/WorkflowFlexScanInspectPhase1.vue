@@ -11,7 +11,7 @@
 
 <script setup="props">
 import {defineProps} from "vue";
-import {useWorkflow} from "../../../../composables/workflow.js";
+import {useWorkflow} from "../../../../../composables/workflow.js";
 
 const workflowStep = props.workflowStep;
 const { getFromState } = useWorkflow();

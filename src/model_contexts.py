@@ -171,19 +171,13 @@ model_contexts_config = {
             ],
             "Producer": [
                 "power",
-                "prodType"
             ],
             "Storage": [
-                "capacity",
                 "maxChargeRate",
                 "maxDischargeRate",
             ],
-#            "Transport": [  # no capacity required for CHESS/Wanda
-#                "capacity"
-#            ],
             "Conversion": [
                 "power",
-                "efficiency"
             ],
             # ===========================
             #  Transport assets
@@ -197,10 +191,7 @@ model_contexts_config = {
             ],
             "Pipe": [
                 "diameter",
-                "innerDiameter",
-                "outerDiameter",
                 "length",
-                "material"
             ],
             "CheckValve": [
                 "flowCoefficient",
@@ -217,18 +208,35 @@ model_contexts_config = {
                 "quantityAndUnit"
             ],
             "HeatExchange": [
-                "heatTransferCoefficient",
-                "diameterPrimarySide",
-                "diameterSecundarySide",
-                "lengthPrimarySide",
-                "lengthSecundarySide",
-                "roughnessPrimarySide",
-                "roughnessSecundarySide"
+                "efficiency",
+                "capacity",
+                # "heatTransferCoefficient",
+                # "diameterPrimarySide",
+                # "diameterSecundarySide",
+                # "lengthPrimarySide",
+                # "lengthSecundarySide",
+                # "roughnessPrimarySide",
+                # "roughnessSecundarySide"
             ],
+            # ===========================
+            #  Storage assets
+            # ===========================
             "HeatStorage": [
+                "capacity",
                 "fillLevel",
-                "maxStorageTemperature",
-                "minStorageTemperature"
+                "volume",
+            ],
+            "ATES": [
+                "aquiferTopDepth",
+                "aquiferThickness",
+                "aquiferMidTemperature",
+                "aquiferNetToGross",
+                "aquiferPorosity",
+                "aquiferPermeability",
+                "aquiferAnisotropy",
+                "salinity",
+                "wellCasingSize",
+                "wellDistance"
             ],
             # ===========================
             #  Conversion assets
@@ -320,26 +328,22 @@ asset_list = {
     },
     "CHESS": {
         "Producer": [
-            "GenericProducer",
+            "HeatProducer",
             "GeothermalSource",
             "ResidualHeatSource",
         ],
         "Consumer": [
-            "GenericConsumer",
             "HeatingDemand",
         ],
         "Storage": [
             "HeatStorage",
+            "ATES",
         ],
         "Conversion": [
-            "GasHeater",
             "HeatPump",
         ],
         "Transport": [
             "Pipe",
-            "Pump",
-            "Valve",
-            "CheckValve",
             "HeatExchange"
         ]
     }

@@ -20,7 +20,7 @@
     </template>
   </a-tree>
   <p v-else>
-    Please right-click on a building in an unmodified EPS ESDL and select "Show EPS results" to view detailed information.
+    Please right-click on a building in a baseline EPS ESDL and select "Show EPS results" to view detailed EPS output information for this building.
   </p>
 </template>
 
@@ -28,9 +28,9 @@
 import {onUnmounted, ref} from "vue";
 // eslint-disable-next-line no-unused-vars
 import {BuildOutlined, HomeOutlined, NumberOutlined, TeamOutlined,} from "@ant-design/icons-vue";
-import {useWorkflow} from "../../../../composables/workflow.js";
-import {useEsdlBuildings} from "../../../../composables/esdlBuildings.js";
-import {workflowGetData} from "../../utils/api.js";
+import {useWorkflow} from "@/composables/workflow";
+import {useEsdlBuildings} from "@/composables/esdlBuildings";
+import {workflowGetData} from "../../../utils/api.js";
 
 const { getFromState } = useWorkflow();
 const { addBuildingContextMenuItem, removeBuildingContextMenuItem } = useEsdlBuildings();
@@ -104,7 +104,10 @@ class TreeEntryDefinition {
     if (this.render_func) {
       value = this.render_func(data);
     } else {
-      value = data[this.key];
+      value = data[this.key] || "Onbekend";
+      if (value === "Unknown") {
+        value = "Onbekend";
+      }
     }
     return `${this.name}: ${value}`;
   }
@@ -147,6 +150,7 @@ const generatePandEntry = (data, baseKey) => {
     "check_bouwlagen",
     "check_hoogte",
     "check_vbo_compleet",
+    "check_pand_compleet",
     "lst_adres_huisletter",
     "lst_adres_huisnummer",
     "lst_adres_plaats",
@@ -292,6 +296,17 @@ const generateTreeEntries = (data, treeEntryDefinitions, baseKey) => {
   return children;
 };
 
+const readableKeyMapping = {
+  "pv": "PV",
+  "co2": "CO2",
+  "Lst bedrijf sbi": "Lijst Bedrijf SBI",
+  "incl": "incl.",
+  "kwh": "kWh",
+  "wtw": "WTW",
+  "vbo": "VBO",
+  "investeringskosten totaal KIA": "Investeringskosten totaal incl. KIA"
+}
+
 /**
  * Generate generic key value entries from the results.
  */
@@ -304,10 +319,22 @@ const generateResultsEntry = (resultsData, excludeKeys, baseKey) => {
       continue;
     }
     const resultKey = [baseKey, idx].join("-");
-    // eslint-disable-next-line no-undef
-    const readableKey = _.startCase(key);
+    // Uppercase the start of the string and replace the underscore with a space.
+    let readableKey = key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, " ");
+    // Check if any term in the readableKeyMapping is in the readableKey. If so, replace that term.
+    for (const [term, replacement] of Object.entries(readableKeyMapping)) {
+      if (readableKey.includes(term)) {
+        readableKey = readableKey.replace(term, replacement);
+      }
+    }
+
+    let readableValue = value || "Onbekend";
+    // The value is a string here. Check if it is a number and then format it as such.
+    if (!isNaN(readableValue)) {
+      readableValue = parseFloat(readableValue).toLocaleString("nl-NL");
+    }
     const resultEntry = {
-      title: `${readableKey}: ${value}`,
+      title: `${readableKey}: ${readableValue}`,
       key: resultKey,
     };
     resultEntries.push(resultEntry);
@@ -330,6 +357,9 @@ const renderAddress = (
   house_letter,
   house_addition
 ) => {
+  if (!street_name || !house_number) {
+    return "Onbekend";
+  }
   let address = `${street_name} ${house_number}`;
   if (house_letter) {
     address += ` ${house_letter}`;

@@ -46,7 +46,7 @@ def parse_string_with_parameters(string: str, params_dict: dict) -> str:
     """
     replace_args = re.findall(r"<.*?>", string)
     for replace_arg in replace_args:
-        string = string.replace(replace_arg, params_dict[replace_arg[1:-1].lower()])
+        string = string.replace(replace_arg, str(params_dict[replace_arg[1:-1].lower()]))
     return string
 
 

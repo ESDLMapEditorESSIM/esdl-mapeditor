@@ -820,8 +820,15 @@ def find_area_location_based(esh, active_es_id, geometry):
     obj_geometry_shape = Shape.create(geometry)
     areas_that_contain_obj = list()
 
+    es = esh.get_energy_system(es_id=active_es_id)
     for key in shape_dictionary.keys():
         area_shp = shape_dictionary[key]
+        # Check if this area_shp is part of the currently active ESDL.
+        top_area = es.instance[0].area
+        found_area = ESDLEnergySystem.find_area(top_area, key)
+        if not found_area:
+            continue
+
         if area_shp.shape.contains(obj_geometry_shape.shape):
             areas_that_contain_obj.append(key)
 
@@ -1026,10 +1033,10 @@ def process_energy_system(
                             },
                         )
 
-                # TODO: update asset_list???
-                es_info_list[es.id] = {
-                    "processed": True
-                }
+                    # TODO: update asset_list???
+                    es_info_list[es.id] = {
+                        "processed": True
+                    }
 
                 # If one energysystem is added (by calling an external service or via the API) the active_es_id (backend) and
                 # active_layer_id (frontend) are not synchronized. As a temporary fix the following lines are added.

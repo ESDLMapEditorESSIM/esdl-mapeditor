@@ -65,7 +65,7 @@ export default {
             let item = {
               edr_asset_id: EDRAssets.value[j].value,
               edr_asset_name: EDRAssets.value[j].label,
-              edr_asset_type: EDRAssets.value[j].asset_type,
+              edr_asset_type: EDRAssets.value[j].item_type,
             };
             edr_asset_list.push(item);
             break;
@@ -94,12 +94,12 @@ export default {
       const path = '/edr_assets';
       axios.get(path)
         .then((res) => {
-          // console.log(res);
-          for (let i=0; i<res['data']['asset_list'].length; i++) {
-            res['data']['asset_list'][i].key = res['data']['asset_list'][i].value;
-            res['data']['asset_list'][i].title = res['data']['asset_list'][i].label;
+          console.log(res);
+          for (let i=0; i<res['data']['item_list'].length; i++) {
+            res['data']['item_list'][i].key = res['data']['item_list'][i].value;
+            res['data']['item_list'][i].title = res['data']['item_list'][i].label;
           }
-          EDRAssets.value = res['data']['asset_list'];
+          EDRAssets.value = res['data']['item_list'];
 
           window.socket.emit('load_asset_draw_toolbar_edr_assets', (edr_assets) => {
             for (let i=0; i<edr_assets.length; i++) {

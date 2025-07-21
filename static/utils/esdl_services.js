@@ -270,6 +270,10 @@ function process_service_results(results) {
         }
     }
 
+    if ('file' in results) {
+        window.download_binary_file_from_base64_str_with_type(results.file, results.filename, results.content_type);
+    }
+
     if (!('show_asset_results' in results) && !('asset_feedback' in results) &&
         !('show_url' in results) && !('message' in results)) {
         sidebar.hide();
