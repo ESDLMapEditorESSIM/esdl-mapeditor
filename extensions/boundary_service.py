@@ -11,6 +11,7 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+from enum import Enum
 
 from flask import Flask
 from flask_socketio import SocketIO, emit
@@ -32,6 +33,7 @@ from extensions.settings_storage import SettingsStorage
 from src.shape import Shape
 import src.settings as settings
 import src.log as log
+from utils.utils import str2float
 
 logger = log.get_logger(__name__)
 
@@ -65,6 +67,13 @@ boundary_service_mapping = {
 #create a cache for the boundary service
 boundary_cache = dict()
 DEFAULT_BOUNDARIES_YEAR = 2019
+
+
+class ServiceAreaDataType(Enum):
+    """Type of service area data, either VIVET DSO data or CapaciteitsKaart data"""
+
+    VIVET_DSO_data = "VIVET_DSO_data"
+    Capaciteitskaart_data = "Capaciteitskaart_data"
 
 
 def is_valid_boundary_id(id):
@@ -192,6 +201,7 @@ class BoundaryService:
             initialize_ES = info["initialize_ES"]
             add_boundary_to_ESDL = info["add_boundary_to_ESDL"]
             add_service_area_info = info["add_service_area_info"]
+            add_service_area_ck_info = info["add_service_area_ck_info"]
             add_station_info = info["add_station_info"]
             use_capacity_data_for = info["use_capacity_data_for"]
 
@@ -281,7 +291,7 @@ class BoundaryService:
 
                 if initialize_ES:
                     # If "Add supply area DSO" is checked, also put the other areas in a logical group
-                    if add_service_area_info:
+                    if add_service_area_info or add_service_area_ck_info:
                         cbs_area_logical_group = esdl.Area(id=str(uuid.uuid4()), name="CBS gebieden",
                                                            logicalGroup=True)
                         area.area.append(cbs_area_logical_group)
@@ -355,7 +365,7 @@ class BoundaryService:
                     for st in stations:
                         stations_dict[st["station"]] = st
 
-                    if not add_service_area_info:
+                    if not (add_service_area_info or add_service_area_ck_info):
                         # If stations were requested but not the supply areas, add the stations to the main area
                         for st in stations:
                             transformer = self.create_esdl_station(st)
@@ -364,9 +374,10 @@ class BoundaryService:
                             # pm.add_object_to_dict(active_es_id, transformer.port[0])
                             # pm.add_object_to_dict(active_es_id, transformer.port[1])
 
-            if add_service_area_info:
+            if add_service_area_info or add_service_area_ck_info:
+                type = ServiceAreaDataType.VIVET_DSO_data if add_station_info else ServiceAreaDataType.Capaciteitskaart_data
                 service_areas = self.get_service_area_from_service(
-                    esdl.AreaScopeEnum.from_string(str.upper(scope)), str.upper(identifier))
+                    esdl.AreaScopeEnum.from_string(str.upper(scope)), str.upper(identifier), type)
 
                 if service_areas:
                     service_area_logical_group = esdl.Area(id=str(uuid.uuid4()), name="Verzorgingsgebieden", logicalGroup=True)
@@ -375,12 +386,33 @@ class BoundaryService:
 
                     for sar in service_areas:
                         service_area = esdl.Area()
-                        service_area.id = str(uuid.uuid4())
+                        # Capaciteitskaart data has IDs in the dataset, for the VIVET DSO data we creaate our own IDs
+                        service_area.id = sar["id"] if "id" in sar else str(uuid.uuid4())
                         service_area.name = sar["station"]
                         service_area.scope = esdl.AreaScopeEnum.from_string("SERVICE_AREA")
 
                         geometry = ESDLGeometry.create_geometry_from_geom(sar["geom"])
                         service_area.geometry = geometry
+
+                        # For capaciteitskaart data, there are no stations yet, so we add relevant capacity information as Area KPIs
+                        if "aanwezige_transportcapaciteit_afname" in sar and "aanwezige_transportcapaciteit_invoeding" in sar:
+                            KPIs = esdl.KPIs(id=str(uuid.uuid4()))
+                            ata_KPI = esdl.DoubleKPI(id=str(uuid.uuid4()), name="aanwezige_transportcapaciteit_afname", value=str2float(sar["aanwezige_transportcapaciteit_afname"]))
+                            ata_KPI.quantityAndUnit = esdl.QuantityAndUnitType(
+                                description="Power in MW",
+                                physicalQuantity=esdl.PhysicalQuantityEnum.POWER,
+                                unit=esdl.UnitEnum.WATT,
+                                multiplier=esdl.MultiplierEnum.MEGA
+                            )
+                            ati_KPI = esdl.DoubleKPI(id=str(uuid.uuid4()), name="aanwezige_transportcapaciteit_invoeding", value=str2float(sar["aanwezige_transportcapaciteit_invoeding"]))
+                            ati_KPI.quantityAndUnit = esdl.QuantityAndUnitType(
+                                description="Power in MW",
+                                physicalQuantity=esdl.PhysicalQuantityEnum.POWER,
+                                unit=esdl.UnitEnum.WATT,
+                                multiplier=esdl.MultiplierEnum.MEGA
+                            )
+                            KPIs.kpi.extend([ata_KPI, ati_KPI])
+                            service_area.KPIs = KPIs
 
                         service_area_logical_group.area.append(service_area)
                         pm.add_object_to_dict(active_es_id, service_area)
@@ -514,24 +546,33 @@ class BoundaryService:
         else:
             return None
 
-    def get_service_area_from_service(self, scope, scope_id):
+    def get_service_area_from_service(self, scope, scope_id, type):
         """
          :param scope: any of the following: zipcode, neighbourhood, district, municipality, energyregion, province, country
          :param id: the identifier of the 'scope'
+         :param type: the type of service area data to use, can be 'SA' (for VIVET) or 'CK' (for CapaciteitsKaart)
          :return: list of supply areas in the indicated 'scope'
          """
         if is_valid_boundary_id(scope_id):
             time.sleep(0.01)  # yield a little concurrency when running this in a thread
 
+            logger.info(f"Checking for SA_{scope_id} in boundary cache...")
             if "SA_" + scope_id in boundary_cache:
                 # print('Retrieve boundary from cache', str(year)+id)
                 # res_boundary = copy.deepcopy(boundary_cache[id])   # this doesn't solve messing up cache
                 # return res_boundary
+                logger.info(f"SA_{scope_id} in boundary cache, returning from cache")
                 return boundary_cache["SA_" + scope_id]
+            else:
+                logger.info("Not found, using boundary service to find information")
 
             try:
+                if type == ServiceAreaDataType.VIVET_DSO_data:
+                    endpoint = 'service_area'
+                else:
+                    endpoint = 'service_area_ck'
                 url = 'http://' + settings.boundaries_config["host"] + ':' + settings.boundaries_config["port"] + \
-                      settings.boundaries_config["path_service_areas"] + '/service_area/' + \
+                      settings.boundaries_config["path_service_areas"] + '/' + endpoint + '/' + \
                       boundary_service_mapping[scope.name] + '/' + scope_id
                 # print('Retrieve from boundary service', id)
                 r = requests.get(url)

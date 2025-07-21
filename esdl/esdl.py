@@ -18,8 +18,7 @@ CommodityEnum = EEnum('CommodityEnum', literals=[
 AreaScopeEnum = EEnum('AreaScopeEnum', literals=['UNDEFINED', 'BUILDING', 'STREET', 'ZIPCODE', 'NEIGHBOURHOOD', 'DISTRICT',
                       'VILLAGE', 'CITY', 'MUNICIPALITY', 'REGION', 'PROVINCE', 'STATE', 'COUNTRY', 'CONTINENT', 'SERVICE_AREA'])
 
-ProfileTypeEnum = EEnum('ProfileTypeEnum', literals=['UNDEFINED', 'SOLARIRRADIANCE_IN_W_PER_M2', 'WINDSPEED_IN_M_PER_S', 'STATEOFCHARGE_IN_WS', 'ENERGY_IN_WH', 'ENERGY_IN_KWH', 'ENERGY_IN_MWH', 'ENERGY_IN_GWH', 'ENERGY_IN_J', 'ENERGY_IN_KJ', 'ENERGY_IN_MJ', 'ENERGY_IN_GJ', 'ENERGY_IN_TJ',
-                        'ENERGY_IN_PJ', 'TEMPERATURE_IN_C', 'TEMPERATURE_IN_K', 'POWER_IN_W', 'POWER_IN_KW', 'POWER_IN_MW', 'POWER_IN_GW', 'POWER_IN_TW', 'MONEY_IN_EUR', 'MONEY_IN_KEUR', 'MONEY_IN_MEUR', 'PERCENTAGE', 'MONEY_IN_EUR_PER_KW', 'MONEY_IN_EUR_PER_KWH', 'VOLUME_IN_M3', 'VOLUME_IN_LITERS'])
+ProfileTypeEnum = EEnum('ProfileTypeEnum', literals=['UNDEFINED', 'INPUT', 'OUTPUT'])
 
 DurationUnitEnum = EEnum('DurationUnitEnum', literals=[
                          'SECOND', 'MINUTE', 'HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR'])
@@ -103,8 +102,8 @@ MultiplierEnum = EEnum('MultiplierEnum', literals=['NONE', 'ATTO', 'FEMTO', 'PIC
 PhysicalQuantityEnum = EEnum('PhysicalQuantityEnum', literals=['UNDEFINED', 'ENERGY', 'POWER', 'VOLTAGE', 'PRESSURE', 'TEMPERATURE', 'EMISSION', 'COST', 'TIME', 'LENGTH', 'DISTANCE', 'IRRADIANCE',
                              'SPEED', 'STATE_OF_CHARGE', 'VOLUME', 'AREA', 'POWER_REACTIVE', 'COMPOSITION', 'FLOW', 'STATE', 'HEAD', 'POSITION', 'COEFFICIENT', 'WEIGHT', 'FORCE', 'CURRENT', 'RELATIVE_HUMIDITY', 'DIRECTION'])
 
-UnitEnum = EEnum('UnitEnum', literals=['NONE', 'JOULE', 'WATTHOUR', 'WATT', 'VOLT', 'BAR', 'PSI', 'DEGREES_CELSIUS', 'KELVIN', 'GRAM', 'EURO', 'DOLLAR', 'SECOND', 'MINUTE', 'QUARTER', 'HOUR', 'DAY',
-                 'WEEK', 'MONTH', 'YEAR', 'METRE', 'SQUARE_METRE', 'CUBIC_METRE', 'LITRE', 'WATTSECOND', 'ARE', 'HECTARE', 'PERCENT', 'VOLT_AMPERE', 'VOLT_AMPERE_REACTIVE', 'PASCAL', 'NEWTON', 'AMPERE', 'DEGREES'])
+UnitEnum = EEnum('UnitEnum', literals=['NONE', 'JOULE', 'WATTHOUR', 'WATT', 'VOLT', 'BAR', 'PSI', 'DEGREES_CELSIUS', 'KELVIN', 'GRAM', 'EURO', 'DOLLAR', 'SECOND', 'MINUTE', 'QUARTER', 'HOUR', 'DAY', 'WEEK',
+                 'MONTH', 'YEAR', 'METRE', 'SQUARE_METRE', 'CUBIC_METRE', 'LITRE', 'WATTSECOND', 'ARE', 'HECTARE', 'PERCENT', 'VOLT_AMPERE', 'VOLT_AMPERE_REACTIVE', 'PASCAL', 'NEWTON', 'AMPERE', 'DEGREES', 'TONNE'])
 
 TimeUnitEnum = EEnum('TimeUnitEnum', literals=[
                      'NONE', 'SECOND', 'MINUTE', 'QUARTER', 'HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR'])
@@ -172,6 +171,11 @@ BufferDistanceTypeEnum = EEnum('BufferDistanceTypeEnum', literals=[
 PowerPlantTypeEnum = EEnum('PowerPlantTypeEnum', literals=['UNDEFINED', 'STEAM_TURBINE', 'INTERNAL_COMBUSTION', 'COMBINED_CYCLE_GAS_TURBINE', 'OPEN_CYCLE_GAS_TURBINE',
                            'INTEGRARED_COMBUSTION_COMBINED_CYCLE', 'SUPER_CRITICAL_STEAM_TURBINE', 'NUCLEAR_2ND_GENERATION', 'NUCLEAR_3RD_GENERATION', 'NUCLEAR_4TH_GENERATION', 'WASTE_INCENERATION'])
 
+DatabaseTypeEnum = EEnum('DatabaseTypeEnum', literals=[
+                         'UNDEFINED', 'SQL', 'POSTGRESQL', 'MYSQL', 'MSSQL', 'DUCKDB', 'INFLUXDB', 'TIMESCALE'])
+
+FileTypeEnum = EEnum('FileTypeEnum', literals=['UNDEFINED', 'CSV', 'EXCEL', 'PARQUET', 'NETCDF'])
+
 
 class EnergySystem(EObject, metaclass=MetaEClass):
     """This is the main class to describe an EnergySystem in ESDL. Each energy system description should start with this class. More information about ESDL and the Energy System can be found in the gitbook at https://energytransition.gitbook.io/esdl/"""
@@ -188,8 +192,9 @@ class EnergySystem(EObject, metaclass=MetaEClass):
     parties = EReference(ordered=True, unique=True, containment=True, derived=False)
     services = EReference(ordered=True, unique=True, containment=True, derived=False)
     templates = EReference(ordered=True, unique=True, containment=True, derived=False)
+    group = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
 
-    def __init__(self, *, name=None, description=None, geographicalScope=None, sector=None, measures=None, instance=None, energySystemInformation=None, parties=None, services=None, id=None, version=None, templates=None, esdlVersion=None):
+    def __init__(self, *, name=None, description=None, geographicalScope=None, sector=None, measures=None, instance=None, energySystemInformation=None, parties=None, services=None, id=None, version=None, templates=None, esdlVersion=None, group=None):
         # if kwargs:
         #    raise AttributeError('unexpected arguments: {}'.format(kwargs))
 
@@ -233,6 +238,9 @@ class EnergySystem(EObject, metaclass=MetaEClass):
 
         if templates is not None:
             self.templates = templates
+
+        if group:
+            self.group.extend(group)
 
 
 class Area(EObject, metaclass=MetaEClass):
@@ -546,8 +554,9 @@ class EnergySystemInformation(EObject, metaclass=MetaEClass):
     notes = EReference(ordered=True, unique=True, containment=True, derived=False)
     matters = EReference(ordered=True, unique=True, containment=True, derived=False)
     environmentalProfiles = EReference(ordered=True, unique=True, containment=True, derived=False)
+    dataconfigurations = EReference(ordered=True, unique=True, containment=True, derived=False)
 
-    def __init__(self, *, carriers=None, profiles=None, dataSources=None, mobilityFuelInformation=None, quantityAndUnits=None, sectors=None, id=None, buildingUsageInformation=None, notes=None, matters=None, environmentalProfiles=None):
+    def __init__(self, *, carriers=None, profiles=None, dataSources=None, mobilityFuelInformation=None, quantityAndUnits=None, sectors=None, id=None, buildingUsageInformation=None, notes=None, matters=None, environmentalProfiles=None, dataconfigurations=None):
         # if kwargs:
         #    raise AttributeError('unexpected arguments: {}'.format(kwargs))
 
@@ -585,6 +594,9 @@ class EnergySystemInformation(EObject, metaclass=MetaEClass):
 
         if environmentalProfiles is not None:
             self.environmentalProfiles = environmentalProfiles
+
+        if dataconfigurations is not None:
+            self.dataconfigurations = dataconfigurations
 
 
 @abstract
@@ -709,8 +721,9 @@ class CostInformation(EObject, metaclass=MetaEClass):
     variableMaintenanceCosts = EReference(
         ordered=True, unique=True, containment=True, derived=False)
     developmentCosts = EReference(ordered=True, unique=True, containment=True, derived=False)
+    decommissioningCosts = EReference(ordered=True, unique=True, containment=True, derived=False)
 
-    def __init__(self, *, investmentCosts=None, installationCosts=None, fixedOperationalAndMaintenanceCosts=None, marginalCosts=None, variableOperationalAndMaintenanceCosts=None, id=None, discountRate=None, variableOperationalCosts=None, fixedMaintenanceCosts=None, fixedOperationalCosts=None, variableMaintenanceCosts=None, developmentCosts=None, name=None, description=None, referenceYear=None):
+    def __init__(self, *, investmentCosts=None, installationCosts=None, fixedOperationalAndMaintenanceCosts=None, marginalCosts=None, variableOperationalAndMaintenanceCosts=None, id=None, discountRate=None, variableOperationalCosts=None, fixedMaintenanceCosts=None, fixedOperationalCosts=None, variableMaintenanceCosts=None, developmentCosts=None, name=None, description=None, referenceYear=None, decommissioningCosts=None):
         # if kwargs:
         #    raise AttributeError('unexpected arguments: {}'.format(kwargs))
 
@@ -760,6 +773,9 @@ class CostInformation(EObject, metaclass=MetaEClass):
 
         if developmentCosts is not None:
             self.developmentCosts = developmentCosts
+
+        if decommissioningCosts is not None:
+            self.decommissioningCosts = decommissioningCosts
 
 
 class StringItem(EObject, metaclass=MetaEClass):
@@ -1955,6 +1971,101 @@ class BufferDistance(EObject, metaclass=MetaEClass):
             self.distance = distance
 
 
+class Group(EObject, metaclass=MetaEClass):
+    """Logical grouping of elements in an EnergySystem. Can be used to indicate which assets belong to a certain Plan"""
+    id = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    name = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    description = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    member = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
+
+    def __init__(self, *, id=None, name=None, description=None, member=None):
+        # if kwargs:
+        #    raise AttributeError('unexpected arguments: {}'.format(kwargs))
+
+        super().__init__()
+
+        if id is not None:
+            self.id = id
+
+        if name is not None:
+            self.name = name
+
+        if description is not None:
+            self.description = description
+
+        if member:
+            self.member.extend(member)
+
+
+@abstract
+class AbstractGroupMember(EObject, metaclass=MetaEClass):
+    """An abstract class representing a member of a group"""
+    id = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    name = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    description = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+
+    def __init__(self, *, id=None, name=None, description=None):
+        # if kwargs:
+        #    raise AttributeError('unexpected arguments: {}'.format(kwargs))
+
+        super().__init__()
+
+        if id is not None:
+            self.id = id
+
+        if name is not None:
+            self.name = name
+
+        if description is not None:
+            self.description = description
+
+
+@abstract
+class AbstractDataConfiguration(EObject, metaclass=MetaEClass):
+    """Defines a data configuration (a file or database configuration) with a name and ID. ID can be used to match or override specific settings of a DatabaseConfiguration in the client."""
+    name = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    id = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+
+    def __init__(self, *, name=None, id=None):
+        # if kwargs:
+        #    raise AttributeError('unexpected arguments: {}'.format(kwargs))
+
+        super().__init__()
+
+        if name is not None:
+            self.name = name
+
+        if id is not None:
+            self.id = id
+
+
+class DataConfigurations(EObject, metaclass=MetaEClass):
+    """Defines a list of configurations to connect to data tables stored in databases or files for retrieving profile information. E.g. when profiles are stored in a relational database, a DatabaseConfiguration can be used to point DataTableProfiles to a specific database or file."""
+    id = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    name = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    description = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    configurations = EReference(ordered=True, unique=True,
+                                containment=True, derived=False, upper=-1)
+
+    def __init__(self, *, configurations=None, id=None, name=None, description=None):
+        # if kwargs:
+        #    raise AttributeError('unexpected arguments: {}'.format(kwargs))
+
+        super().__init__()
+
+        if id is not None:
+            self.id = id
+
+        if name is not None:
+            self.name = name
+
+        if description is not None:
+            self.description = description
+
+        if configurations:
+            self.configurations.extend(configurations)
+
+
 class InPort(Port):
     """Represents a port with a positive energy direction into the asset, e.g. for a Consumer. See Port for more details"""
     connectedTo = EReference(ordered=True, unique=True, containment=False, derived=False, upper=-1)
@@ -2921,6 +3032,76 @@ class DataSourceList(AbstractDataSource):
             self.dataSource.extend(dataSource)
 
 
+class InstanceYear(AbstractInstanceDate):
+    """Describes the year of the validity of the data that is used in this instance """
+    year = EAttribute(eType=EInt, unique=True, derived=False, changeable=True)
+
+    def __init__(self, *, year=None, **kwargs):
+
+        super().__init__(**kwargs)
+
+        if year is not None:
+            self.year = year
+
+
+class Plan(AbstractGroupMember):
+    """Plan (e.g. a policy plan) with references to its elements (assets, services, ...)"""
+    element = EReference(ordered=True, unique=True, containment=False, derived=False, upper=-1)
+
+    def __init__(self, *, element=None, **kwargs):
+
+        super().__init__(**kwargs)
+
+        if element:
+            self.element.extend(element)
+
+
+class DatabaseConfiguration(AbstractDataConfiguration):
+    """Defines a configuration to access a database that contains one or more tables that is described by one or more TableBasedProfiles, in terms of the name of the database, its type and host and port. Host an port are optional and can also be defined by the client application and can be looked up by the ID of this database definition. TLS defines if the connection is secured by TLS/SSL.
+Username and password required to connect to the database are to be provided by the client application, as it should not be stored in an ESDL."""
+    database = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    type = EAttribute(eType=DatabaseTypeEnum, unique=True, derived=False, changeable=True)
+    host = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    port = EAttribute(eType=EInt, unique=True, derived=False, changeable=True)
+    tls = EAttribute(eType=EBoolean, unique=True, derived=False, changeable=True)
+
+    def __init__(self, *, database=None, type=None, host=None, port=None, tls=None, **kwargs):
+
+        super().__init__(**kwargs)
+
+        if database is not None:
+            self.database = database
+
+        if type is not None:
+            self.type = type
+
+        if host is not None:
+            self.host = host
+
+        if port is not None:
+            self.port = port
+
+        if tls is not None:
+            self.tls = tls
+
+
+class FileConfiguration(AbstractDataConfiguration):
+    """Configures an uri to a file that can be used for one or more TableBasedProfiles. Path can be a file location or an uri that defines how to find this file, e.g. using https:// or s3:// to identify the protocol scheme.
+Keep in mind that for portability one should not refer to local files that others cannot access. In those cases a (public) database should be used, e.g. the EDR."""
+    uri = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    type = EAttribute(eType=FileTypeEnum, unique=True, derived=False, changeable=True)
+
+    def __init__(self, *, uri=None, type=None, **kwargs):
+
+        super().__init__(**kwargs)
+
+        if uri is not None:
+            self.uri = uri
+
+        if type is not None:
+            self.type = type
+
+
 class Insulation(Asset):
     """Describes insulation that can be added to a building. The relation with the heat consumption is not defined and requires manual modelling"""
     thermalInsulation = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
@@ -3052,7 +3233,7 @@ class URIProfile(ExternalProfile):
 
 
 @abstract
-class DatabaseProfile(ExternalProfile):
+class LegacyAbstractDatabaseProfile(ExternalProfile):
     """Describes the fields of a generic database-based profile"""
     host = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     port = EAttribute(eType=EInt, unique=True, derived=False, changeable=True)
@@ -3118,11 +3299,12 @@ class ElectricityCommodity(Commodity):
 
 
 class Range(StaticProfile):
-    """Defines a range between two values"""
+    """Defines a range between two values. Optionally a mid value can be specified as for example a mean value or most plausible value."""
     minValue = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
     maxValue = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
+    midValue = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
 
-    def __init__(self, *, minValue=None, maxValue=None, **kwargs):
+    def __init__(self, *, minValue=None, maxValue=None, midValue=None, **kwargs):
 
         super().__init__(**kwargs)
 
@@ -3131,6 +3313,9 @@ class Range(StaticProfile):
 
         if maxValue is not None:
             self.maxValue = maxValue
+
+        if midValue is not None:
+            self.midValue = midValue
 
 
 class SolarPotential(Potential):
@@ -3604,6 +3789,56 @@ class ConnectableAsset(Asset):
         super().__init__(**kwargs)
 
 
+class DataTableProfile(ExternalProfile):
+    """Define timeseries data based on a data table structure, such as relational databases or file formats that store data in a table-like structure such as Parquet or Excel files.
+The information defined in this data table should be sufficient to build a query using one of the supported database or file types (see AbstractDataConfiguration)."""
+    tableName = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    columnName = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    datetimeColumnName = EAttribute(eType=EString, unique=True,
+                                    derived=False, changeable=True, default_value='datetime')
+    filter = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    schema = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    configuration = EReference(ordered=True, unique=True, containment=False, derived=False)
+
+    def __init__(self, *, tableName=None, columnName=None, datetimeColumnName=None, filter=None, schema=None, configuration=None, **kwargs):
+
+        super().__init__(**kwargs)
+
+        if tableName is not None:
+            self.tableName = tableName
+
+        if columnName is not None:
+            self.columnName = columnName
+
+        if datetimeColumnName is not None:
+            self.datetimeColumnName = datetimeColumnName
+
+        if filter is not None:
+            self.filter = filter
+
+        if schema is not None:
+            self.schema = schema
+
+        if configuration is not None:
+            self.configuration = configuration
+
+
+class ProfileConstraint(Constraint):
+    """Allow to specify a certain constraint as a profile (varying over time)"""
+    minimum = EReference(ordered=True, unique=True, containment=True, derived=False)
+    maximum = EReference(ordered=True, unique=True, containment=True, derived=False)
+
+    def __init__(self, *, minimum=None, maximum=None, **kwargs):
+
+        super().__init__(**kwargs)
+
+        if minimum is not None:
+            self.minimum = minimum
+
+        if maximum is not None:
+            self.maximum = maximum
+
+
 @abstract
 class EnergyAsset(ConnectableAsset):
     """An abstract class that describes a connectable Asset using ports. EnergyAssets main subclasses contain the 5 capability type: Producer, Consumer, Storage, Conversion and Transport """
@@ -3667,7 +3902,7 @@ class AggregatorService(EnergyService):
         super().__init__(**kwargs)
 
 
-class InfluxDBProfile(DatabaseProfile):
+class InfluxDBProfile(LegacyAbstractDatabaseProfile):
     """Describes a profile based on a measurement and field as part of an InfluxDB timeseries query"""
     measurement = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     field = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
@@ -4095,6 +4330,18 @@ class CompoundAsset(ExposedPortsAsset):
 
         if asset:
             self.asset.extend(asset)
+
+
+class PriorityStrategy(ControlStrategy):
+    """A control strategy to specify a (relative) priority for an asset"""
+    priority = EAttribute(eType=EInt, unique=True, derived=False, changeable=True)
+
+    def __init__(self, *, priority=None, **kwargs):
+
+        super().__init__(**kwargs)
+
+        if priority is not None:
+            self.priority = priority
 
 
 class Battery(Storage):
