@@ -182,7 +182,7 @@ def handle_profile(profile: esdl.GenericProfile, ds: DataSet, variable_name: str
             labels['Parent asset'] = container_asset.name
         d.sector = asset.sector.name if asset.sector else None
         d.node = asset.name or asset.id
-        d.region = area.name
+        d.region = area.name or area.id
         labels['Area type'] = area.type.name
         d.technology = asset.eClass.name
 
@@ -221,7 +221,7 @@ def handle_profile(profile: esdl.GenericProfile, ds: DataSet, variable_name: str
                 labels['Parent asset'] = container_asset.name
             d.sector = asset.sector.name if asset.sector else None
             d.node = asset.name or asset.id
-            d.region = area.name
+            d.region = area.name or area.id
             d.technology = asset.eClass.name
         d.labels = labels
     # else:
@@ -481,10 +481,10 @@ class DataManager:
     def find_region(self, eobj:esdl.Asset, labels: dict):
         if not eobj.area:  # asset is in a AbstractBuilding or compoundAsset
             parent = eobj.containingAsset or eobj.containingBuilding
-            region = parent.area.name
+            region = parent.area.name or parent.area.id
             labels['Area scope'] = parent.area.scope.name
         else:
-            region = eobj.area.name
+            region = eobj.area.name or eobj.area.id
             labels['Area scope'] = eobj.area.scope.name
         return region
 

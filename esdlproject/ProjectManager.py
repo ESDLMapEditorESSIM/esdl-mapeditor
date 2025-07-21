@@ -74,7 +74,7 @@ def load_external_string(esdl_string, name='external_string') -> Tuple[esdl.Ener
     return external_energy_system, parse_info
 
 
-def update_energy_system_version(self, es: EnergySystem) -> str:
+def update_energy_system_version(es: EnergySystem) -> str:
     """
     Increments the version of this Energy System and returns it
 

@@ -15,8 +15,9 @@
 from flask import Flask
 from flask_executor import Executor
 from flask_socketio import SocketIO
-from extensions.session_manager import get_project_manager
+
 import src.log as log
+from extensions.session_manager import get_project_manager
 from src.merge import ESDLMerger
 from src.process_es_area_bld import process_energy_system
 
@@ -49,5 +50,4 @@ class ESDLMerge:
                                                                                                   esdl_destination_id))
 
                 self.merger.merge(es_destination, es_source)
-                self.executor.submit(process_energy_system, esh=pm, filename=None,
-                                     force_update_es_id=esdl_destination_id)
+                self.executor.submit(process_energy_system, force_update_es_id=esdl_destination_id)

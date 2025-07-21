@@ -39,6 +39,7 @@ from esdl.processing.ESDLEcore import instantiate_type
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from esdl.undo import UndoRedoCommandStack
 from esdl.undo_wrapper import undo_record_changes
+from esdlproject.ProjectManager import update_energy_system_version
 from extensions.activity_context import ActivityContextExtension
 from extensions.application_context import ApplicationContextExtension
 from extensions.bag import BAG
@@ -483,15 +484,12 @@ def logout():
 def download_esdl():
     """Sends the current ESDL file to the browser as an attachment"""
     pm = get_project_manager()
-    active_es_id = get_session('active_es_id')
 
     try:
-        #stream = esh.to_bytesio()
         my_es = pm.get_active_energy_system()
-        # TODO: Version increment
-        # esh.update_version(es_id=active_es_id)
-        # if my_es.esdlVersion is None or my_es.esdlVersion == '':
-        #     my_es.esdlVersion = esdl_doc.get_esdl_version()
+        update_energy_system_version(my_es)
+        if my_es.esdlVersion is None or my_es.esdlVersion == '':
+             my_es.esdlVersion = esdl_doc.get_esdl_version()
         try:
             name = my_es.name
         except Exception:
@@ -3146,7 +3144,7 @@ def process_file_command(message):
         del_session("conn_list")
         del_session("asset_list")
         del_session("area_bld_list")
-        call_process_energy_system.submit(filename)
+        call_process_energy_system.submit()
 
         del_session('store_item_metadata')
         emit('store_item_metadata', {})
