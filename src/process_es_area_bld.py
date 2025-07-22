@@ -232,7 +232,7 @@ def update_asset_geometries_shape(area, shape, show_assets_without_location=Fals
     possible_locations = None
     if shape:
         num_assets_in_area = len(area.asset)
-        if num_assets_in_area > 0:
+        if num_assets_in_area > 0 and show_assets_without_location:
             possible_locations = calc_possible_locations_in_area(shape, num_assets_in_area)
 
     # TODO: An area with a building, with buildingunits (!) with assets is not supported yet
