@@ -38,6 +38,7 @@
           <label>Select a predefined ETM scenario: </label>
           <a-select
             v-model:value="selected_scenario_id"
+            style="width: 100%"
           >
             <a-select-option
               v-for="scenario in scenario_list"
@@ -56,7 +57,7 @@
         </a-space>
       </a-collapse-panel>
       <a-collapse-panel key="manual" header="Manual scenario ID" collapsible="disabled">
-        <p>{{ text }}</p>
+        <p>Not implemented yet</p>
       </a-collapse-panel>
     </a-collapse>
 

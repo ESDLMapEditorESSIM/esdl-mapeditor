@@ -1,6 +1,6 @@
 <template>
   <!-- Dialog header -->
-  <a-row style="height: 60px;">
+  <a-row style="height: 60px; padding-left: 0.5em;">
     <h2 style="font-weight: bold; font-size: 2rem">ESDL Analytics</h2>
   </a-row>
   <!-- Dialog content -->
@@ -23,6 +23,7 @@
             <a-tab-pane key="data" tab="Data Selection">
               <a-row>
                 <a-typography-title :level="5">Available variants</a-typography-title>
+                <p style="font-size: small;">Select which variants need to be analysed for comparision.</p>
                 <div class="variant-tree-container">
                   <vue-js-tree
                     v-if="treeData != null"
@@ -38,21 +39,20 @@
                   </div>
                 </div>
               </a-row>
-              <a-row>
-                <a-typography-title :level="5">Dataset</a-typography-title>
-                <a-select
-                  v-model:value="datasetSelected"
-                  :options="datasetOptions"
-                  :disabled="datasetOptions.length === 0"
-                  :placeholder="datasetSelectPlaceholder"
-                  mode="multiple"
-                  style="width: 100%"
-                  @change="onSelectDataset"
-                  @mouseleave="removeTooltipPopup"
-                />
-              </a-row>
+
 
               <a-col style="padding-top: 24px; padding-bottom: 16px;">
+                <a-row style="padding-bottom: 8px;">
+                  <a-col :span="12"><p>Target Energy Unit:</p></a-col>
+                  <a-col :span="12">
+                    <a-select
+                        style="width: 100%"
+                        size="small"
+                        v-model:value="energyUnit"
+                        :options="energyUnitOptions"
+                    />
+                  </a-col>
+                </a-row>
                 <a-row style="padding-bottom: 8px;">
                   <a-button
                     :disabled="variantIdsSelected.length === 0 || isSyncingMetaData"
@@ -72,7 +72,7 @@
                     </a-tooltip>
                   </a-button>
                 </a-row>
-                <a-row>
+                <a-row style="padding-bottom: 8px;">
                   <a-button
                     :disabled="isDeletingMetaData || datasetOptions.length === 0"
                     block
@@ -88,6 +88,21 @@
                   </a-button>
                 </a-row>
               </a-col>
+
+              <a-row>
+                <a-typography-title :level="5">Datasets to compare</a-typography-title>
+                <a-select
+                  v-model:value="datasetSelected"
+                  :options="datasetOptions"
+                  :disabled="datasetOptions.length === 0"
+                  :placeholder="datasetSelectPlaceholder"
+                  mode="multiple"
+                  style="width: 100%"
+                  @change="onSelectDataset"
+                  @mouseleave="removeTooltipPopup"
+                />
+              </a-row>
+
             </a-tab-pane>
 
             <!-- Tab 2: Visualization Settings -->
@@ -267,24 +282,24 @@
 </template>
 
 <script setup>
-import {ref, h, onMounted, onUnmounted, computed} from 'vue';
-import { notification } from 'ant-design-vue';
+import {computed, h, onMounted, onUnmounted, ref} from 'vue';
+import {notification} from 'ant-design-vue';
 import {
   BarChartOutlined,
   DeleteOutlined,
   EditOutlined,
   InfoCircleOutlined,
   LoadingOutlined,
-	MenuFoldOutlined,
-	MenuUnfoldOutlined,
-  UploadOutlined,
-	SaveOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+  SaveOutlined,
   SyncOutlined,
-	TableOutlined }
-from "@ant-design/icons-vue";
+  TableOutlined,
+  UploadOutlined
+} from "@ant-design/icons-vue";
 import AnalyticsPlot from '../components/esdlanalytics/AnalyticsPlot.vue';
 import VueJsTree from '../components/jstree/VueJsTree.vue';
-import { useESDLProjects } from "@/composables/esdlProjects";
+import {useESDLProjects} from "@/composables/esdlProjects";
 
 const { esdlProject, getESDLProject } = useESDLProjects();
 
@@ -369,6 +384,20 @@ const colorPalettes = [
   { label: 'Rainbow', value: 'Rainbow', sample: window.palette('tol-rainbow', sampleColorCount) }
 ];
 const paletteSelected = ref(colorPalettes[0]);
+
+const energyUnitOptions = [
+  { label: 'PJ', value: 'PJ' },
+  { label: 'TJ', value: 'TJ' },
+  { label: 'GJ', value: 'GJ' },
+	{ label: 'MJ', value: 'MJ' },
+	{ label: 'J', value: 'J' },
+	{ label: 'TWh', value: 'TWh' },
+	{ label: 'GWh', value: 'GWh' },
+	{ label: 'MWh', value: 'MWh' },
+	{ label: 'kWh', value: 'kWh' },
+	{ label: 'No conversion', value: 'None' },
+];
+const energyUnit = ref(energyUnitOptions[0].value );
 
 const onSelectPalette = () => {
   updateTrace();
@@ -690,7 +719,7 @@ const onSyncBtnClick = async() => {
 
       try {
         displayNotification("info", `Adding ${esTitle} [${esId}] into the database.`);
-        const reqBody = { es_id: esId };
+        const reqBody = { es_id: esId, energyUnit: energyUnit.value };
         const resp = await modifyMetadata('add_update', reqBody);
         displayNotification(resp.status, resp.message);
       } catch (error) {
@@ -915,6 +944,8 @@ const barChartTraceHandler = (traces) => {
     yaxis: {
       title: variableOptions.value[variableSelected.value].unit,
       automargin: true,
+      exponentformat: "SI", // see https://github.com/plotly/plotly.py/issues/4787 for values larger than Giga...
+      //ticksuffix: variableOptions.value[variableSelected.value].unit,
     },
     barmode: [1, 2].includes(dataGrouping.value) ? 'stack' : 'group',
     barnorm: dataGrouping.value === 2 ? 'percent' : '',

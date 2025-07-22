@@ -264,9 +264,9 @@ def convert_unit(value: float, source_quantity_unit: esdl.UnitEnum, target_quant
                 elif conversion['type'] == 'ADDITION':
                     return value + conversion['value']
             else:
-                UnitException(f"No mapping available from {source_quantity_unit.name} to {target_quantity_unit.name}")
+                raise UnitException(f"No mapping available from {source_quantity_unit.name} to {target_quantity_unit.name}")
         else:
-            UnitException(f"Cannot convert {source_quantity_unit.name} into {target_quantity_unit.name}")
+            raise UnitException(f"Cannot convert {source_quantity_unit.name} into {target_quantity_unit.name}")
 
 
 class UnitException(Exception):
