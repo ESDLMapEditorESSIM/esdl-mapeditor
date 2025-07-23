@@ -1,48 +1,56 @@
 <template>
   <a-modal
     :open="props.visible"
-    title="InfluxDB Profile"
+    :title="`Profile Editor${props.profileTag ? ` - ${props.profileTag}` : ''}`"
     @cancel="onCancel"
   >
     <template #footer>
       <a-button @click="onCancel">Cancel</a-button>
       <a-button type="primary" :disabled="invalidForm" @click="onSave">Save</a-button>
     </template>
-    <a-form
-      ref="profileFormRef"
-      layout="vertical"
-      :model="profileForm"
-    >
+    <a-form ref="profileFormRef" layout="vertical" :model="profileForm">
       <a-form-item label="ID">
         <a-input v-model:value="profileForm.id" disabled />
       </a-form-item>
       <a-form-item label="Class">
         <a-input v-model:value="profileForm.class" disabled />
       </a-form-item>
-      <a-form-item label="Profile" required :rules="[{ required: true, type: 'object' }]">
+      <a-form-item
+        label="Profile"
+        required
+        :rules="[{ required: true, type: 'object' }]"
+      >
         <a-select
-          v-model:value="profileForm.uiname"
+          v-model:value="profileForm.profile"
           :options="profileOptions"
           allow-clear
           @mouseleave="removeTooltipPopup"
         />
       </a-form-item>
-      <!-- TODO: value or multiplier -->
-      <a-form-item label="Multiplier" required :rules="[{ required: true, type: 'number' }]">
-        <a-input-number v-model:value="profileForm.multiplier" style="width: 100%;" />
+      <a-form-item
+        label="Multiplier"
+        required
+        :rules="[{ required: true, type: 'number' }]"
+      >
+        <a-input-number
+          v-model:value="profileForm.multiplier"
+          style="width: 100%"
+        />
       </a-form-item>
-      <!-- TODO: support dropdown -->
       <a-form-item label="Unit type">
-        <a-input placeholder="Predefined quantity and units" disabled />
-        <!-- <a-select
+        <a-select
           v-model:value="profileForm.unitType"
           :options="unitTypeOptions"
           disabled
-        /> -->
+        />
       </a-form-item>
-      <a-form-item label="Quantity and unit" required :rules="[{ required: true, type: 'object' }]">
+      <a-form-item
+        label="Quantity and unit"
+        required
+        :rules="[{ required: true, type: 'object' }]"
+      >
         <a-select
-          v-model:value="profileForm.type"
+          v-model:value="profileForm.qau"
           :options="profileQaUOptions"
           allow-clear
           @mouseleave="removeTooltipPopup"
@@ -53,200 +61,176 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, watch, computed } from 'vue';
-import { v4 as uuidv4 } from 'uuid';
+import { ref, reactive, onMounted, watch, computed } from "vue";
+import { v4 as uuidv4 } from "uuid";
 
 // to prevent stuck popup on UI
-const removeTooltipPopup = () => { window.jquery(".ui-tooltip-content").parents('div').remove();};
+const removeTooltipPopup = () => {
+  window.jquery(".ui-tooltip-content").parents("div").remove();
+};
 
 const props = defineProps({
   visible: {
     type: Boolean,
-    default: false
+    default: false,
+  },
+  profileTag: {
+    type: String,
+    default: null,
   },
   // Existing profile info for further editing;
   profileInfo: {
     type: Object,
-    default: null
+    default: null,
   },
 });
 
 const emit = defineEmits(["onSave", "onCancel"]);
 
-// TODO:
-// Make sure form validation is working properly
+const ProfileClass = Object.freeze({
+  INFLUXDB: "InfluxDBProfile",
+});
 
+const UnitType = Object.freeze({
+  PREDEFINED: "Predefined quantity and units",
+});
 
-// TODO
-// Global variables
-const profilePlugin = window.profiles_plugin;
-const profileQaU = window.quantity_and_units_info;
+const unitTypeOptions = Object.entries(UnitType).map(([_, label]) => ({
+  value: label,
+  label: label,
+}));
 
 const profileFormRef = ref(null);
 
-// State - Profile
 const profileOptions = ref([]);
-// TODO: make it dynamic
-// const unitTypeOptions = ref([{value: 'Predefined quantity and units', label: 'Predefined quantity and units'}])
 const profileQaUOptions = ref([]);
 
 const initProfileForm = {
-  id: '',
-  class: 'InfluxDBProfile', // TODO: replace hard coded value to support other constraint
-  uiname: null,
+  id: null,
+  class: ProfileClass.INFLUXDB,
+  profile: null,
   multiplier: null,
-  // unitType: unitTypeOptions.value[0], // TODO: now default to the first element; make it dynamic; name?
-	type: null // TODO: rename?
+  // default to the predefined unit type until other types are supported in the future
+  unitType: unitTypeOptions[0],
+  qau: null,
 };
 
 const profileForm = reactive({ ...initProfileForm });
 
 onMounted(() => {
-	profileOptions.value = listProfileOptions();
-	profileQaUOptions.value = listPredefQaU();
-})
-
-const initializeProfileForm = () => {
-  if (props.profileInfo) {
-    const displayedFormData = castProfileInfoToFormData(props.profileInfo);
-    Object.assign(profileForm, { ...displayedFormData });
-  } else {
-    Object.assign(profileForm, { ...initProfileForm });
-    profileForm.id = uuidv4();
-  }
-};
-
-const castProfileInfoToFormData = (profileInfo) => {
-  const pQaULabel = profileInfo.type;
-  
-  const displayedFormData = {
-    id: profileInfo.id,
-    class: 'InfluxDBProfile',
-    uiname: getOptionObjByValue(profileOptions.value, profileInfo.uiname),
-    multiplier: profileInfo.multiplier,
-    // unitType: unitTypeOptions.value[0],
-    type: getOptionObjByLabel(profileQaUOptions.value, pQaULabel) // TODO: rename?
-  }
-  console.debug(displayedFormData);
-  return displayedFormData;
-}
-
-
-watch(() => props.visible, () => {
-  if (props.visible) {
-    initializeProfileForm();
-  } else {
-    resetForm();
-  }
-
-  console.debug(profileForm);
-})
+  profileOptions.value = listProfileOptions();
+  profileQaUOptions.value = listPredefQaU();
+});
 
 // Reset form to the initial state
 const resetForm = () => {
   Object.assign(profileForm, { ...initProfileForm });
-}
+  profileForm.id = uuidv4();
+};
+
+/**
+ * Cast the given profileInfo object into profileForm accepted data.
+ *
+ * @param {Object} profileInfo profile object passed from the parent component.
+ */
+const castProfileInfoToFormData = (profileInfo) => {
+  profileForm.id = profileInfo.id;
+  profileForm.profile = profileInfo.displayed_name;
+  profileForm.multiplier = profileInfo.multiplier;
+  profileForm.qau = profileInfo.qau_description;
+};
+
+watch(
+  () => props.visible,
+  () => {
+    // Reset form to ensure no existing data is left on dialog open and close.
+    resetForm();
+
+    if (props.visible && props.profileInfo) {
+      castProfileInfoToFormData(props.profileInfo);
+    }
+  },
+);
 
 const invalidForm = computed(() => {
-  return profileForm.uiname === null || 
-         profileForm.type === null ||
-         profileForm.multiplier === null
-})
+  return (
+    profileForm.profile === null ||
+    profileForm.multiplier === null ||
+    profileForm.qau === null
+  );
+});
 
 const onSave = () => {
-  const uinameValue = profileForm.uiname.value || profileForm.uiname;
-  const pQaUValue = profileForm.type.value || profileForm.type;
-
   const formData = {
-    id: profileForm.id || uuidv4(),
-    class: 'InfluxDBProfile',
-    uiname: getOptionObjByValue(profileOptions.value, uinameValue),
+    id: profileForm.id,
+    profile_class: profileForm.class,
+    displayed_name: profileForm.profile,
     multiplier: profileForm.multiplier,
-    // unitType: unitTypeOptions.value[0],
-    type: getOptionObjByValue(profileQaUOptions.value, pQaUValue)
-  }
+    qau_description: profileForm.qau,
+  };
 
-  emit("onSave", formData);
+  emit("onSave", {
+    tag: props.profileTag,
+    data: formData,
+  });
 };
 
 const onCancel = () => {
   emit("onCancel");
 };
 
+// ------------------------------------------- //
+// -------------- Util functions ------------- //
+// ------------------------------------------- //
 
-// Util functions
-const getOptionObjByValue = (optionObjs, optionValue) => {
-  const optionObj = optionObjs
-    .flatMap(opt => opt.options ?? [opt]) // Flatten grouped options if applicable
-    .find(opt => opt.value.toLowerCase() === optionValue.toLowerCase());
-  return optionObj || null;
-}
-
-// TODO: combine with above
-const getOptionObjByLabel = (optionObjs, optionLabel) => {
-  const optionObj = optionObjs
-    .flatMap(opt => opt.options ?? [opt]) // Flatten grouped options if applicable
-    .find(opt => opt.label.toLowerCase() === optionLabel.toLowerCase());
-  return optionObj || null;
-}
-
-// TODO
-// const validateAndSubmit = () => {
-//   profileFormRef.value.validate()
-//     .then(() => {
-//       console.log("Form is valid, proceed with submission!");
-//       // Proceed to emit or save the data
-//     })
-//     .catch(() => {
-//       console.log("Validation failed, please fill required fields.");
-//     });
-// };
-
-// TODO: clean up
 const listProfileOptions = () => {
-	const options = [];
-	const profileGroups = profilePlugin['profiles_list']['groups'];
-	const profileInfo = Object.entries(profilePlugin['profiles_list']['profiles']);
-	
-	profileGroups.forEach((gr) => {
-		const groupLabel = gr['name'];
-		let groupProfiles = []
+  const options = [];
 
-		for (let pr=0; pr < profileInfo.length; pr++) {
-			if (gr.setting_type == profileInfo[pr][1].setting_type) {
-				if (
-					profileInfo[pr][1].setting_type == 'project' && 
-					profileInfo[pr][1].project_name != gr.project_name
-				) {
-						continue;
-					}
+  const profilePlugin = window.profiles_plugin;
+  const profileGroups = profilePlugin["profiles_list"]["groups"];
+  const profileInfo = Object.entries(
+    profilePlugin["profiles_list"]["profiles"],
+  );
 
-				groupProfiles.push({
-					value: profileInfo[pr][1].profile_uiname,
-					label: profileInfo[pr][1].profile_uiname
-				})
-			}
-		}
+  profileGroups.forEach((gr) => {
+    const groupLabel = gr["name"];
+    const groupProfiles = [];
 
-		options.push({
-			label: groupLabel,
-			options: groupProfiles
-		})
-	})
+    for (let pr = 0; pr < profileInfo.length; pr++) {
+      if (gr.setting_type == profileInfo[pr][1].setting_type) {
+        if (
+          profileInfo[pr][1].setting_type == "project" &&
+          profileInfo[pr][1].project_name != gr.project_name
+        ) {
+          continue;
+        }
 
-	return options;
-}
+        groupProfiles.push({
+          value: profileInfo[pr][1]["profile_uiname"],
+          label: profileInfo[pr][1]["profile_uiname"],
+        });
+      }
+    }
+
+    options.push({
+      label: groupLabel,
+      options: groupProfiles,
+    });
+  });
+
+  return options;
+};
 
 const listPredefQaU = () => {
-	const options = [];
-	for (let q=0; q<profileQaU["predefined_qau"].length; q++) {
-		options.push({
-			value: profileQaU["predefined_qau"][q]["id"],
-			label: profileQaU["predefined_qau"][q]["description"]
-		})
-	}
-	return options;
-}
+  const options = [];
+  const profileQaU = window.quantity_and_units_info;
 
-
+  for (let q = 0; q < profileQaU["predefined_qau"].length; q++) {
+    options.push({
+      value: profileQaU["predefined_qau"][q]["description"],
+      label: profileQaU["predefined_qau"][q]["description"],
+    });
+  }
+  return options;
+};
 </script>
