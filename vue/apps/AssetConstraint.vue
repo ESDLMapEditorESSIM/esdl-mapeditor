@@ -7,8 +7,11 @@
     <!-- Header -->
     <a-row>
       <a-typography-title :level="3">
-        <!-- TODO: replace with chain logo -->
-        <i class="fa fa-compress" />
+        <img
+          src="/static/icons/Chain.png"
+          alt="Asset Constraint Icon"
+          style="width: 24px; height: 24px;"
+        >
         Asset Constraint
       </a-typography-title>
     </a-row>
@@ -25,9 +28,8 @@
         @change="onSelectSegment"
       />
       <br>
-      <!------------- CONSTRAINTS ------------->
+      <!------------- LIST CONSTRAINTS ------------->
       <div v-if="activeSegment === SegmentOptions.CONSTRAINTS" style="width: 100%;">
-        <!-- TODO: fix UI -->
         <a-col v-if="constraints.length">
           <a-table
             :data-source="constraints"
@@ -63,69 +65,120 @@
         </a-col>
       </div>
 
-      <!------------- ADD_CONSTRAINT ------------->
+      <!------------- ADD CONSTRAINT ------------->
       <div v-if="activeSegment === SegmentOptions.ADD_CONSTRAINT" style="width: 100%;">
-        <!-- TODO: make it a child component -->
         <a-card>
           <a-form layout="vertical">
+            <a-form-item label="Constraint Type">
+              <a-select
+                v-model:value="formData.type"
+                :options="Object.entries(ConstraintType).map(([_, label]) => ({
+                  value: label,
+                  label: label,
+                }))"
+                :disabled="currentConstraint !== null"
+                @change="onSelectConstraintType"
+              />
+            </a-form-item>
+
+            <!------------- Constraint base properties ------------->
             <a-form-item label="ID">
               <a-input v-model:value="formData.id" disabled />
             </a-form-item>
-
             <a-form-item label="Name" required>
               <a-input v-model:value="formData.name" placeholder="Constraint name" />
             </a-form-item>
-              
             <a-form-item label="Description">
               <a-input 
                 v-model:value="formData.description" 
                 placeholder="Describe the purpose of this constraint"
               />
             </a-form-item>
-              
             <a-form-item label="Attribute Reference">
               <a-select
                 v-model:value="formData.attributeReference"
-                :options="[ { 
-                  value: 'power', 
-                  label: 'power' 
-                } ]"
+                :options="attributeReferenceOptions"
                 allow-clear
               />
             </a-form-item>
 
-            <a-form-item label="Maximum">
-              <a-row v-if="formData.maximum !== null">
-                <a-col :span="20">
-                  <p v-if="formData.maximum.uiname && formData.maximum.type">
-                    {{ `${formData.maximum.uiname || formData.maximum.uiname.label} [${formData.maximum.type || formData.maximum.type.label}]` }}
-                  </p>
-                </a-col>
-                <a-col :span="4">
-                  <div class="action-buttons">
-                    <a-button type="text" size="small">
-                      <edit-outlined @click="onEditConstraintMinMax" />
-                    </a-button>
-                    <a-button type="text" size="small" danger @click="onDeleteConstraintMinMax">
-                      <delete-outlined />
-                    </a-button>
-                  </div>
-                </a-col>
-              </a-row>
-              <a-button v-else block @click="openProfileModal">Add maximum</a-button>
-              <!-- TODO: now fix it to InfluxDB profile-->
+            <!-------- Profile constraint specific UI --------->
+            <a-col v-if="formData.type === ConstraintType.PROFILE">
+              <a-form-item label="Maximum">
+                <a-row v-if="formData.maximum !== null">
+                  <a-col :span="20">
+                    <p v-if="formData.maximum.displayed_name && formData.maximum.qau_description">
+                      {{ `${formData.maximum.displayed_name } [${formData.maximum.qau_description}]` }}
+                    </p>
+                  </a-col>
+                  <a-col :span="4">
+                    <div class="action-buttons">
+                      <a-button type="text" size="small">
+                        <edit-outlined @click="onEditConstraintMinMax(ProfileTag.MAX)" />
+                      </a-button>
+                      <a-button type="text" size="small" danger @click="onDeleteConstraintMinMax(ProfileTag.MAX)">
+                        <delete-outlined />
+                      </a-button>
+                    </div>
+                  </a-col>
+                </a-row>
+                <a-button v-else block @click="openProfileModal(ProfileTag.MAX)">Add maximum</a-button>
+              </a-form-item>
+              <a-form-item label="Minimum">
+                <a-row v-if="formData.minimum !== null">
+                  <a-col :span="20">
+                    <p v-if="formData.minimum.displayed_name && formData.minimum.qau_description">
+                      {{ `${formData.minimum.displayed_name } [${formData.minimum.qau_description}]` }}
+                    </p>
+                  </a-col>
+                  <a-col :span="4">
+                    <div class="action-buttons">
+                      <a-button type="text" size="small">
+                        <edit-outlined @click="onEditConstraintMinMax(ProfileTag.MIN)" />
+                      </a-button>
+                      <a-button type="text" size="small" danger @click="onDeleteConstraintMinMax(ProfileTag.MIN)">
+                        <delete-outlined />
+                      </a-button>
+                    </div>
+                  </a-col>
+                </a-row>
+                <a-button v-else block @click="openProfileModal(ProfileTag.MIN)">Add minimum</a-button>
+              </a-form-item>
               <ProfileFormEdit
                 :visible="profileModalVisible"
-                :profile-info="formData.maximum"
+                :profile-tag="activeProfileTag"
+                :profile-info="activeProfile"
                 @on-save="onSaveProfileFormData"
                 @on-cancel="onCancelProfileFormData"
               />
-            </a-form-item>
+            </a-col>
+
+            <!-------- Ranged constraint specific UI --------->
+            <a-col v-if="formData.type === ConstraintType.RANGED">
+              <a-typography-title :level="5">Range values</a-typography-title>
+              <a-form-item label="ID">
+                <a-input v-model:value="formData.range.id" disabled />
+              </a-form-item>
+              <a-form-item label="Name" required>
+                <a-input v-model:value="formData.range.name" />
+              </a-form-item>
+              <a-row>
+                <a-space direction="horizontal" style="width: 100%;">
+                  <a-form-item label="Minimum">
+                    <a-input-number v-model:value="formData.range.min_value" style="width: 100%" />
+                  </a-form-item>
+                  <a-form-item label="Maximum">
+                    <a-input-number v-model:value="formData.range.max_value" style="width: 100%" />
+                  </a-form-item>
+                </a-space>
+              </a-row>
+            </a-col>
               
             <a-button
               v-if="currentConstraint === null"
               type="primary"
               block
+              :disabled="invalidForm"
               @click="onAddConstraint"
             >
               <template #icon><plus-outlined /></template>
@@ -135,6 +188,7 @@
               v-else
               type="primary"
               block
+              :disabled="invalidForm"
               @click="onUpdateConstraint"
             >
               <template #icon><edit-outlined /></template>
@@ -148,7 +202,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onUnmounted } from 'vue';
+import { ref, reactive, onMounted, onUnmounted, computed } from 'vue';
 import {
   PlusOutlined,
   EditOutlined,
@@ -157,8 +211,10 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 import ProfileFormEdit from '@/components/forms/ProfileFormEdit.vue';
 import { useObject } from '../composables/ObjectID'
+import { useEsdlLayers } from '../composables/esdlLayers'
 
 const { currentObjectID } = useObject();
+const { getActiveEsdlLayerId } = useEsdlLayers();
 
 // ENUM
 const SegmentOptions = Object.freeze({
@@ -168,37 +224,57 @@ const SegmentOptions = Object.freeze({
 
 const ConstraintType = Object.freeze({
   PROFILE: "Profile constraint",
+  RANGED: "Ranged constraint",
 });
 
+const ProfileTag = Object.freeze({
+  MAX: "Maximum",
+  MIN: "Minimum"
+})
+
+// Default to support power; can be extended or made dynamic in the future.
+const attributeReferenceOptions = [
+  { value: 'power', label: 'power' }
+];
+
 // State
+const activeEsdlId = ref(getActiveEsdlLayerId().value);
 const assetId = ref(currentObjectID.value);
 
 const activeSegment = ref(SegmentOptions.CONSTRAINTS);
+
 const profileModalVisible = ref(false);
+const activeProfileTag = ref(null);
+const activeProfile = ref(null);
 
 const currentConstraint = ref(null);
 
-const initConstraintForm = {
-  id: '',
-  name: '',
+const initProfileConstraintForm = {
+  id: null,
+  name: 'New Profile Constraint',
   description: '',
   attributeReference: '',
-  maximum: null
+  type: ConstraintType.PROFILE,
+  maximum: null,
+  minimum: null
 };
 
-onMounted(() => {
-  console.debug('Asset Constraint component mounted');
+const initRangedConstraintForm = {
+  id: null,
+  name: 'New Ranged Constraint',
+  description: '',
+  attributeReference: '',
+  type: ConstraintType.RANGED,
+  range: {
+    id: null,
+    name: 'New Range',
+    min_value: null,
+    max_value: null,
+  }
+}
 
-  assetId.value = currentObjectID.value;
-  getAssetConstraint(assetId.value);
-});
-
-onUnmounted(() => {
-  console.debug('Asset Constraint component unmounted');
-});
-
-// Form state
-const formData = reactive({ ...initConstraintForm });
+// Form state (default to Profile Constraint)
+const formData = reactive({ ...initProfileConstraintForm });
 
 const constraints = ref([]);
 
@@ -221,70 +297,118 @@ const columns = [
   }
 ];
 
-// Methods
-const getAssetConstraint = (assetId) => {
-  console.debug("Fetching asset constraint");
-  window.socket.emit('command', {'cmd': 'get_asset_constraint', 'asset_id': assetId}, (res) => {
-    // Append or update asset.constraints to constraints state in UI
-    if (res && res.constraint.length) {
-      constraints.value = [...res.constraint];
-      // res.constraint.forEach((aConstraint) => {
-      //   const index = constraints.value.findIndex(c => c.id === aConstraint.id);
-      //   // Update
-      //   if (index !== -1) {
-      //     constraints.value[index] = { ...aConstraint };
-      //   }
-      //   // Append 
-      //   else {
-      //     constraints.value.push({...aConstraint});
-      //   }
-      // })
-      console.debug(constraints.value);
-    }
-  });
-}
+onMounted(() => {
+  console.debug('Asset Constraint component mounted');
 
-const setAssetConstraint = (assetId, constraints) => {
-  window.socket.emit('command', {'cmd': 'set_asset_constraint', 'asset_id': assetId, 'constraint': constraints}, (res) => {
-    console.debug(res);
-    if (res['res'] === 'success') {
-      getAssetConstraint(assetId);
-    }
-  });
-}
+  activeEsdlId.value = getActiveEsdlLayerId().value;
+  assetId.value = currentObjectID.value;
 
-const onSelectSegment = () => {
-	if (activeSegment.value === SegmentOptions.ADD_CONSTRAINT) {
-    // On Add constraint mode
-    if (currentConstraint.value === null) {
-      resetForm();
-      formData.id = uuidv4();
-    } else {
-      // TODO: On edit mode
+  getAssetConstraint(activeEsdlId.value, assetId.value)
+});
+
+onUnmounted(() => {
+  console.debug('Asset Constraint component unmounted');
+});
+
+const invalidForm = computed(() => {
+  return formData.name === "" ||
+         (formData.type === ConstraintType.RANGED && formData.range.name === "");
+})
+
+const getAssetConstraint = async (esId, assetId) => {
+  try {
+    const response = await fetch(`/asset_constraint/${esId}/${assetId}`);
+    const assetConstraint = await response.json();
+    if (assetConstraint && assetConstraint.constraints.length) {
+      constraints.value = [...assetConstraint.constraints];
     }
-  }
-  if (activeSegment.value === SegmentOptions.CONSTRAINTS) {
-    if (currentConstraint.value !== null) {
-      currentConstraint.value = null;
-      resetForm();
-    }
+  } catch (error) {
+    console.error(error);
   }
 };
 
-const openProfileModal = () => {
+const setAssetConstraint = async (esId, assetId, constraints) => {
+  try {
+    const response = await fetch(`/asset_constraint/${esId}/${assetId}`, {
+      method: "POST",
+      body: JSON.stringify(constraints),
+      headers: { "Content-type": "application/json; charset=UTF-8" }
+    });
+    const result = await response.json();
+
+    if (response.status === 200) {
+      getAssetConstraint(esId, assetId);
+    } else {
+      console.error(response.status, result.message);
+    }
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+const resetForm = () => {
+  // Deep clone since initRangedConstraintForm is a nested object.
+  const newForm = JSON.parse(JSON.stringify(
+    formData.type === ConstraintType.RANGED
+      ? initRangedConstraintForm
+      : initProfileConstraintForm
+  ));
+  
+  newForm.id = uuidv4();
+  if (formData.type === ConstraintType.RANGED) {
+    newForm.range.id = uuidv4();
+  }
+
+  // Clear all existing keys
+  Object.keys(formData).forEach(key => {
+    delete formData[key];
+  });
+
+  Object.assign(formData, newForm);
+};
+
+const onSelectConstraintType = () => {
+  resetForm();
+};
+
+const onSelectSegment = () => {
+  // On 'Add' constraint mode
+	if (activeSegment.value === SegmentOptions.ADD_CONSTRAINT
+    && currentConstraint.value === null
+  ) {
+    resetForm();
+  }
+  if (activeSegment.value === SegmentOptions.CONSTRAINTS && currentConstraint.value !== null) {
+    currentConstraint.value = null;
+    resetForm();
+  }
+};
+
+const openProfileModal = (profileTag) => {
+  if (profileTag === ProfileTag.MAX) {
+    activeProfile.value = formData.maximum;
+    activeProfileTag.value = ProfileTag.MAX;
+  } 
+  if (profileTag === ProfileTag.MIN) {
+    activeProfile.value = formData.minimum;
+    activeProfileTag.value = ProfileTag.MIN;
+  }
 	profileModalVisible.value = true;
 }
 
 const closeProfileModal = () => {
+  activeProfileTag.value = null;
+  activeProfile.value = null;
   profileModalVisible.value = false;
 }
 
-const onSaveProfileFormData = (profileFormObj) => {
-  formData.maximum = { 
-    ...profileFormObj,
-    type: profileFormObj.type.label,
-    uiname: profileFormObj.uiname.label
-   };
+const onSaveProfileFormData = (profileFormData) => {
+  if (profileFormData.tag === ProfileTag.MAX) {
+    formData.maximum = profileFormData.data;
+  } 
+  if (profileFormData.tag === ProfileTag.MIN) {
+    formData.minimum = profileFormData.data;
+  }
   closeProfileModal();
 }
 
@@ -292,31 +416,22 @@ const onCancelProfileFormData = () => {
   closeProfileModal();
 }
 
-const onEditConstraintMinMax = () => {
-  openProfileModal();
+const onEditConstraintMinMax = (profileTag) => {
+  openProfileModal(profileTag);
 }
 
-const onDeleteConstraintMinMax = () => {
-  formData.maximum = null;
+const onDeleteConstraintMinMax = (profileTag) => {
+  if (profileTag === ProfileTag.MAX) {
+    formData.maximum = null;
+  } 
+  if (profileTag === ProfileTag.MIN) {
+    formData.minimum = null;
+  }
 }
 
-const resetForm = () => {
-  Object.assign(formData, { ...initConstraintForm });
-}
-
-const onAddConstraint = () => {
-  const newConstraint = {
-    id: formData.id,
-    name: formData.name,
-    type: ConstraintType.PROFILE,
-    description: formData.description,
-    attributeReference: formData.attributeReference,
-    maximum: formData.maximum
-  };
-  
-  constraints.value.push(newConstraint);
-
-  setAssetConstraint(assetId.value, constraints.value)
+const onAddConstraint = () => {  
+  constraints.value.push({...formData});
+  setAssetConstraint(activeEsdlId.value, assetId.value, constraints.value)
 
   currentConstraint.value = null;
   resetForm();
@@ -328,15 +443,12 @@ const onAddConstraint = () => {
 const onEditConstraint = (constraint) => {
   // Switch to add constraint segment
   activeSegment.value = SegmentOptions.ADD_CONSTRAINT;
-
   currentConstraint.value = constraint;
-  
-  // Populate form data
-  formData.id = constraint.id;
-  formData.name = constraint.name;
-  formData.description = constraint.description;
-  formData.attributeReference = constraint.attributeReference;
-  formData.maximum = constraint.maximum;
+
+  // Reset to ensure formData structure matches the corresponding ConstraintType
+  resetForm()
+
+  Object.assign(formData, { ...constraint });
 };
 
 const onUpdateConstraint = () => {
@@ -344,18 +456,12 @@ const onUpdateConstraint = () => {
   
   const index = constraints.value.findIndex(c => c.id === currentConstraint.value.id);
   if (index !== -1) {
-    constraints.value[index] = {
-      ...constraints.value[index],
-      name: formData.name,
-      description: formData.description,
-      attributeReference: formData.attributeReference,
-      maximum: formData.maximum
-    };
+    constraints.value[index] = {...formData};
   }
 
-  setAssetConstraint(assetId.value, constraints.value)
-
+  setAssetConstraint(activeEsdlId.value, assetId.value, constraints.value)
   currentConstraint.value = null;
+
   resetForm();
   
   // Switch to constraints segment
@@ -364,12 +470,9 @@ const onUpdateConstraint = () => {
 
 const onDeleteConstraint = (id) => {
   constraints.value = constraints.value.filter(c => c.id !== id);
-
-  setAssetConstraint(assetId.value, constraints.value)
-
+  setAssetConstraint(activeEsdlId.value, assetId.value, constraints.value)
   currentConstraint.value = null;
 };
-
 
 </script>
 
