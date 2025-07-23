@@ -1590,6 +1590,7 @@ esdl_config = {
                                         "response_mapping": {
                                             "status": "status",
                                             "progress_fraction": "progress_fraction",
+                                            "logs": "logs",
                                             "output_esdl": "output_esdl_base64",
                                         },
                                         "model_specific_response_mapping": {
@@ -1597,9 +1598,10 @@ esdl_config = {
                                         },
                                         "esdl_encoding": "base64_encoded",
                                         "status_mapping": {
+                                            "SUBMITTED": ["SUBMITTED"],
                                             "RUNNING": ["RUNNING"],
                                             "SUCCEEDED": ["SUCCEEDED"],
-                                            "CANCELLED": ["CANCELLED"],
+                                            "WARNING": ["WARNING"],
                                             "ERROR": ["ERROR"],
                                         },
                                     }
