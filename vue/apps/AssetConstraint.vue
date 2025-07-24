@@ -159,7 +159,11 @@
                     </div>
                   </a-col>
                 </a-row>
-                <a-button v-else block @click="openProfileModal(ProfileTag.MAX)">
+                <a-button
+                  v-else
+                  block
+                  @click="openProfileModal(ProfileTag.MAX)"
+                >
                   Add maximum
                 </a-button>
               </a-form-item>
@@ -195,7 +199,11 @@
                     </div>
                   </a-col>
                 </a-row>
-                <a-button v-else block @click="openProfileModal(ProfileTag.MIN)">
+                <a-button
+                  v-else
+                  block
+                  @click="openProfileModal(ProfileTag.MIN)"
+                >
                   Add minimum
                 </a-button>
               </a-form-item>
@@ -223,12 +231,14 @@
                     <a-input-number
                       v-model:value="formData.range.min_value"
                       style="width: 100%"
+                      :step="0.1"
                     />
                   </a-form-item>
                   <a-form-item label="Maximum">
                     <a-input-number
                       v-model:value="formData.range.max_value"
                       style="width: 100%"
+                      :step="0.1"
                     />
                   </a-form-item>
                 </a-space>
@@ -269,6 +279,7 @@ import {
   EditOutlined,
   DeleteOutlined,
 } from "@ant-design/icons-vue";
+import { notification } from "ant-design-vue";
 import { v4 as uuidv4 } from "uuid";
 import ProfileFormEdit from "@/components/forms/ProfileFormEdit.vue";
 import { useObject } from "../composables/ObjectID";
@@ -379,10 +390,8 @@ const invalidForm = computed(() => {
 const getAssetConstraint = async (esId, assetId) => {
   try {
     const response = await fetch(`/asset_constraint/${esId}/${assetId}`);
-    const assetConstraint = await response.json();
-    if (assetConstraint && assetConstraint.constraints.length) {
-      constraints.value = [...assetConstraint.constraints];
-    }
+    const assetConstraints = await response.json();
+    constraints.value = [...assetConstraints];
   } catch (error) {
     console.error(error);
   }
@@ -395,13 +404,20 @@ const setAssetConstraint = async (esId, assetId, constraints) => {
       body: JSON.stringify(constraints),
       headers: { "Content-type": "application/json; charset=UTF-8" },
     });
-    const result = await response.json();
 
-    if (response.status === 200) {
-      getAssetConstraint(esId, assetId);
-    } else {
-      console.error(response.status, result.message);
+    if (response.status !== 200) {
+      const result = await response.text();
+      console.error(response.status, result);
+      notification["error"]({
+        message: "Error",
+        description:
+          "An error occurred when adding or updating the asset constraint. Your changes will not be saved.",
+        placement: "bottomRight",
+        duration: 8,
+      });
     }
+
+    getAssetConstraint(esId, assetId);
   } catch (error) {
     console.error(error);
   }
@@ -496,14 +512,16 @@ const onDeleteConstraintMinMax = (profileTag) => {
   }
 };
 
-const onAddConstraint = () => {
+const onAddConstraint = async () => {
   constraints.value.push({ ...formData });
-  setAssetConstraint(activeEsdlId.value, assetId.value, constraints.value);
+  await setAssetConstraint(
+    activeEsdlId.value,
+    assetId.value,
+    constraints.value,
+  );
 
   currentConstraint.value = null;
   resetForm();
-
-  // Switch to constraints segment
   activeSegment.value = SegmentOptions.CONSTRAINTS;
 };
 
@@ -518,7 +536,7 @@ const onEditConstraint = (constraint) => {
   Object.assign(formData, { ...constraint });
 };
 
-const onUpdateConstraint = () => {
+const onUpdateConstraint = async () => {
   if (!currentConstraint.value) return;
 
   const index = constraints.value.findIndex(
@@ -528,18 +546,25 @@ const onUpdateConstraint = () => {
     constraints.value[index] = { ...formData };
   }
 
-  setAssetConstraint(activeEsdlId.value, assetId.value, constraints.value);
+  await setAssetConstraint(
+    activeEsdlId.value,
+    assetId.value,
+    constraints.value,
+  );
+
   currentConstraint.value = null;
-
   resetForm();
-
-  // Switch to constraints segment
   activeSegment.value = SegmentOptions.CONSTRAINTS;
 };
 
-const onDeleteConstraint = (id) => {
+const onDeleteConstraint = async (id) => {
   constraints.value = constraints.value.filter((c) => c.id !== id);
-  setAssetConstraint(activeEsdlId.value, assetId.value, constraints.value);
+  await setAssetConstraint(
+    activeEsdlId.value,
+    assetId.value,
+    constraints.value,
+  );
+
   currentConstraint.value = null;
 };
 </script>
