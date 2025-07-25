@@ -449,37 +449,39 @@ class DataManager:
             # TODO other distributions
             #elif isinstance(distribution, esdl.FromToDistribution):
             elif isinstance(eobj, esdl.Producer) or isinstance(eobj, esdl.Consumer) or isinstance(eobj, esdl.Conversion):
-                power = eobj.power
-                d = Data(dataset=ds, value=power)
-                d.labels = {'Power': power, 'State': eobj.state.name}
-                d.region = self.find_region(eobj, d.labels)
-                d.node = eobj.name or eobj.id
-                d.technology = eobj.eClass.name
-                d.sector = eobj.sector.name if eobj.sector else None
-                if len(eobj.port) > 0:
-                    d.input = eobj.port[0].carrier.name if eobj.port[0].carrier else None
-                variable_name = "Power (W)"
-                qau = esdl.QuantityAndUnitType(physicalQuantity=esdl.PhysicalQuantityEnum.POWER,
-                                               unit=esdl.UnitEnum.WATT, description="Power in W")
+                if eobj.eIsSet('power'): # only add if value is set, not adding for default value of 0.0
+                    power = eobj.power
+                    d = Data(dataset=ds, value=power)
+                    d.labels = {'Power': power, 'State': eobj.state.name}
+                    d.region = self.find_region(eobj, d.labels)
+                    d.node = eobj.name or eobj.id
+                    d.technology = eobj.eClass.name
+                    d.sector = eobj.sector.name if eobj.sector else None
+                    if len(eobj.port) > 0:
+                        d.input = eobj.port[0].carrier.name if eobj.port[0].carrier else None
+                    variable_name = "Power (W)"
+                    qau = esdl.QuantityAndUnitType(physicalQuantity=esdl.PhysicalQuantityEnum.POWER,
+                                                   unit=esdl.UnitEnum.WATT, description="Power in W")
 
             elif isinstance(eobj, esdl.Storage) or isinstance(eobj, esdl.Transport):
-                capacity = eobj.capacity
-                d = Data(dataset=ds, value=capacity)
-                d.labels = {'Capacity': capacity, 'State': eobj.state.name}
-                d.region = self.find_region(eobj, d.labels)
-                d.node = eobj.name or eobj.id
-                d.technology = eobj.eClass.name
-                d.sector = eobj.sector.name if eobj.sector else None
-                if len(eobj.port) > 0:
-                    d.input = eobj.port[0].carrier.name if eobj.port[0].carrier else None
-                if isinstance(eobj, esdl.Storage):
-                    variable_name = "Capacity (J)"
-                    qau = esdl.QuantityAndUnitType(physicalQuantity=esdl.PhysicalQuantityEnum.ENERGY,
-                                                   unit=esdl.UnitEnum.JOULE, description="Capacity in J")
-                else:
-                    variable_name = "Capacity (W)"
-                    qau = esdl.QuantityAndUnitType(physicalQuantity=esdl.PhysicalQuantityEnum.POWER,
-                                                   unit=esdl.UnitEnum.WATT, description="Capacity in W")
+                if eobj.eIsSet('capacity'):
+                    capacity = eobj.capacity
+                    d = Data(dataset=ds, value=capacity)
+                    d.labels = {'Capacity': capacity, 'State': eobj.state.name}
+                    d.region = self.find_region(eobj, d.labels)
+                    d.node = eobj.name or eobj.id
+                    d.technology = eobj.eClass.name
+                    d.sector = eobj.sector.name if eobj.sector else None
+                    if len(eobj.port) > 0:
+                        d.input = eobj.port[0].carrier.name if eobj.port[0].carrier else None
+                    if isinstance(eobj, esdl.Storage):
+                        variable_name = "Capacity (J)"
+                        qau = esdl.QuantityAndUnitType(physicalQuantity=esdl.PhysicalQuantityEnum.ENERGY,
+                                                       unit=esdl.UnitEnum.JOULE, description="Capacity in J")
+                    else:
+                        variable_name = "Capacity (W)"
+                        qau = esdl.QuantityAndUnitType(physicalQuantity=esdl.PhysicalQuantityEnum.POWER,
+                                                       unit=esdl.UnitEnum.WATT, description="Capacity in W")
 
                 if isinstance(eobj, esdl.Pipe):
                     length = eobj.length

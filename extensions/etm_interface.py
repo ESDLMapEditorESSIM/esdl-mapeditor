@@ -805,7 +805,7 @@ class ETMSankeyToESDL:
                     elif asset_class_name in self.local_production_assets:
                         local_production += value
 
-        kpi_name = "Local production vs. consumption [%]"
+        kpi_name = "Local production vs. consumption [PJ]"
         kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
         kpi.quantityAndUnit = esdl.QuantityAndUnitType(
             physicalQuantity=esdl.PhysicalQuantityEnum.ENERGY,
@@ -1165,7 +1165,9 @@ class ETMSankeyToESDL:
         # Add KPI with peak demand power value
         kpi_name = "Peak demand power per cluster [MW]"
         kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
-        kpi.quantityAndUnit = build_qau_from_unit_string("MW")
+        mw_qau = build_qau_from_unit_string("MW")
+        mw_qau.physicalQuantity = esdl.PhysicalQuantityEnum.POWER
+        kpi.quantityAndUnit = mw_qau
         kpi.distribution = esdl.StringLabelDistribution(name=kpi_name)
         for cluster_name, peak_energy in peak_demand_energy_per_hour.items():
             power = peak_energy / 3600 * 1e9
@@ -1176,7 +1178,9 @@ class ETMSankeyToESDL:
         # Add KPI with peak production power value
         kpi_name = "Peak production power per cluster [MW]"
         kpi = esdl.DistributionKPI(id=str(uuid4()), name=kpi_name)
-        kpi.quantityAndUnit = build_qau_from_unit_string("MW")
+        mw_qau = build_qau_from_unit_string("MW")
+        mw_qau.physicalQuantity = esdl.PhysicalQuantityEnum.POWER
+        kpi.quantityAndUnit = mw_qau
         kpi.distribution = esdl.StringLabelDistribution(name=kpi_name)
         for cluster_name, peak_energy in peak_production_energy_per_hour.items():
             power = peak_energy / 3600 * 1e9
@@ -1189,7 +1193,7 @@ class ETMSankeyToESDL:
         self.add_kpis(area)
 
     def add_kpis(self, area):
-        area.KPIs = esdl.KPIs(id=str(uuid4()), description="ETM KPIs present_year")
+        area.KPIs = esdl.KPIs(id=str(uuid4()), description="ETM KPIs " + self.year_source)
         self.add_energy_balance_kpi(area)
         self.add_clustered_demand_kpi(area)
         self.add_local_production_kpi(area)

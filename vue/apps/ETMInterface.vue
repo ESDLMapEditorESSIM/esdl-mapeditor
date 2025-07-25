@@ -31,14 +31,14 @@
     </a-card>
 
     <a-collapse v-model:activeKey="activePanel">
-      <a-collapse-panel key="ETM_scenarios" header="ETM scenarios">
+      <a-collapse-panel key="ETM_scenarios" header="ETM scenarios" >
         <a-space
           direction="vertical"
         >
           <label>Select a predefined ETM scenario: </label>
           <a-select
             v-model:value="selected_scenario_id"
-            style="width: 100%"
+            style="width: 300px;"
           >
             <a-select-option
               v-for="scenario in scenario_list"
