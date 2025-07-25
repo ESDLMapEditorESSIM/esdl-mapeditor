@@ -33,11 +33,11 @@ class ProfileConstraintMsg(ConstraintBase):
     minimum: Optional[InfluxDBProfileMsg]
 
 
-# TODO: add mid_value and interpolation_method?
 class RangeMsg(TypedDict):
     id: str
     name: str
     min_value: Optional[float]
+    mid_value: Optional[float]
     max_value: Optional[float]
 
 

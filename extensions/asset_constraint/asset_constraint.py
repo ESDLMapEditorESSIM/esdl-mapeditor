@@ -141,9 +141,9 @@ class AssetConstraint:
             range_msg = RangeMsg(
                 id=constraint.range.id,
                 name=constraint.range.name,
-                # TODO: range minValue and maxValue default to 0.0 even it is not assigned?
-                min_value=None if constraint.range.minValue == 0 else constraint.range.minValue,
-                max_value=None if constraint.range.maxValue == 0 else constraint.range.maxValue,
+                min_value=constraint.range.minValue if constraint.range.eIsSet('minValue') else None,
+                mid_value=constraint.range.midValue if constraint.range.eIsSet('midValue') else None,
+                max_value=constraint.range.maxValue if constraint.range.eIsSet('maxValue') else None,
             )
 
         ranged_constraint_msg = RangedConstraintMsg(
@@ -249,6 +249,8 @@ class AssetConstraint:
 
         if constraintMsg["range"]["min_value"] is not None:
             c.range.minValue = float(constraintMsg["range"]["min_value"])
+        if constraintMsg["range"]["mid_value"] is not None:
+            c.range.midValue = float(constraintMsg["range"]["mid_value"])
         if constraintMsg["range"]["max_value"] is not None:
             c.range.maxValue = float(constraintMsg["range"]["max_value"])
 

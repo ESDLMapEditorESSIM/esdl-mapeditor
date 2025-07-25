@@ -234,6 +234,13 @@
                       :step="0.1"
                     />
                   </a-form-item>
+                  <a-form-item label="Mid-value">
+                    <a-input-number
+                      v-model:value="formData.range.mid_value"
+                      style="width: 100%"
+                      :step="0.1"
+                    />
+                  </a-form-item>
                   <a-form-item label="Maximum">
                     <a-input-number
                       v-model:value="formData.range.max_value"
@@ -339,6 +346,7 @@ const initRangedConstraintForm = {
     id: null,
     name: "New Range",
     min_value: null,
+    mid_value: null,
     max_value: null,
   },
 };

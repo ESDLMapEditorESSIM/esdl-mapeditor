@@ -2350,7 +2350,6 @@ def process_command(message):
                     else:
                         emit('port_profile_info', {'port_id': port_id, 'profile_info': []})
 
-
     if message['cmd'] == 'add_profile_to_port':
         port_id = message['port_id']
         profile_class = message['profile_class']
