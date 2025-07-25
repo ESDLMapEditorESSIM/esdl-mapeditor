@@ -127,6 +127,8 @@ class ProjectManager:
     variant_collection_resources: dict[str, XMLResource]
 
     lock: threading.Lock
+    # needed to deal with race conditions when saving a project and saving a esdl at the same time
+    save_resource_lock: threading.Lock
 
     def __init__(self, uri: URI = None, create_empty_variant = True):
         """
@@ -134,13 +136,15 @@ class ProjectManager:
         If using uri to load a project, use StringURI(uri, text) to load a text string
         """
         patch_esdl()
-        # TODO: Add these to patch_esdl or to the pyecore model.
+        # TODO: Add these to patch_esdl or to the ecore model.
+        # setting transient here make sure these references are not serialized in the XML
         Variant.snapshotRef.transient = True
         VariantCollection.energysystemRef.transient = True
         self.change_listeners = dict()
         self.variant_activation_timestamps = dict()
         self.lock = threading.Lock()
         self.active_variant_lock = threading.Lock()
+        self.save_resource_lock = threading.Lock()
         self.rset = self.__create_resource_set()
         self.change_tracker = ChangeTracker(change_handler=self.change_handler)
 
@@ -741,30 +745,36 @@ class ProjectManager:
         Saves the current project by storing the active esdl in the project base variant and storing the current changes
         in the active variant and then returning the project description as a string for storage
 
+        Note: this function does a 'nasty' trick. When loading a project each variant collection is stored in separate
+        XMLResources. The energysystemRef points to the actual energy system.
+        This is needed to make sure IDs from the different energy systems (e.g. they might be based on one another)
+        don't collide. When saving a project, the contents of each XMLResource should become part of the
+        VariantCollection again by setting the energysystem reference of the VariantCollection.
+        After saving this should be reverted.
+
         :returns: XML string of the project
         """
         # For that it clones the active energy system and puts it in the project
         # first store the active ES in the active BV
         logger.info("Saving project to string.")
+        with self.save_resource_lock:  # make sure we don't get a race condition during swapping with multiple threads active
+            # Go through all variant collections and variants and empty the snapshotRef. Store this in the
+            # variant_snapshot_refs dict to restore it after we are done saving.
+            for variantCollection in self.project.variantCollection:
+                # collection_resource = self.get_variant_collection_resource(variantCollection)
+                variantCollection.energysystem = variantCollection.energysystemRef
+                # Find all variants in the variant collection
 
-        # Go through all variant collections and variants and empty the snapshotRef. Store this in the
-        # variant_snapshot_refs dict to restore it after we are done saving.
-        for variantCollection in self.project.variantCollection:
-            # collection_resource = self.get_variant_collection_resource(variantCollection)
-            variantCollection.energysystem = variantCollection.energysystemRef
-            # Find all variants in the variant collection
+            uri = StringURI(uri=f"to_string_{str(uuid4())}.project")
+            self.project_resource.save(output=uri)
+            project_as_string = uri.getvalue()
 
-        uri = StringURI(uri=f"to_string_{str(uuid4())}.project")
-        self.project_resource.save(output=uri)
-        project_as_string = uri.getvalue()
-
-        # Reset everything (use reference instead of energysystem containment relations)
-        for variantCollection in self.project.variantCollection:
-            collection_resource = self.get_variant_collection_resource(variantCollection)
-            # use set_content() here instead of append, somehow eResource does not get updated otherwise
-            # TODO: Why is this so important here? If I remove it, everything breaks. But it seems like it shouldn't happen at all here!
-            collection_resource.set_content(variantCollection.energysystem)
-            variantCollection.energysystem = None
+            # Reset everything (use reference instead of energysystem containment relations)
+            for variantCollection in self.project.variantCollection:
+                collection_resource = self.get_variant_collection_resource(variantCollection)
+                # use set_content() here instead of append, somehow eResource does not get updated otherwise
+                collection_resource.set_content(variantCollection.energysystem)
+                variantCollection.energysystem = None
 
         return project_as_string
 
@@ -871,7 +881,7 @@ class ProjectManager:
         It will include references to other ESDL resources.
 
         For a full contained version of this project use save(). This will serialize also the referenced energy
-        systems of EnergySystemProxys inline in this project. This allows it to be passed on to others to load this project
+        systems of VariantCollections inline in this project. This allows it to be passed on to others to load this project
         using the load() function
         """
         if isinstance(self.project_resource.uri, StringURI):
@@ -906,8 +916,9 @@ class ProjectManager:
     def energy_system_to_string(self, es_id: str) -> str:
         """
         """
-        resource = self.get_energy_system_resource_by_id(es_id)
-        return resource_as_string(resource)
+        with self.save_resource_lock:
+            resource = self.get_energy_system_resource_by_id(es_id)
+            return resource_as_string(resource)
 
     def get_energy_system_resource_by_id(self, es_id: str) -> Optional[Resource]:
         """
@@ -972,7 +983,9 @@ class ProjectManager:
 
         """
         for uri, resource in self.rset.resources.items():
-            if hasattr(resource.contents[0], 'id') and resource.contents[0].id == es_id:
+            if not resource.contents: # when using in parallel with pm.save() a race condition could occur. Now fixed.
+                logger.error(f"No resource contents: {uri}, {resource.contents}, {resource}, race condition?")
+            if resource.contents and hasattr(resource.contents[0], 'id') and resource.contents[0].id == es_id:
                 return resource.contents[0]
         self.debug()
         raise Exception(f"EnergySystem ID es_id {es_id} not found in ResourceSet")
@@ -1128,6 +1141,10 @@ def resource_as_string(resource: Resource):
     """
     Get the string representation of the given resource. If the resource is a StringURI, the value of the StringURI
     is returned. Otherwise, the resource is saved to a StringURI and the value of the StringURI is returned.
+
+    Note: this function is not thread-safe, e.g. when run in parallel with pm.save() and the save_resource_lock of the
+    ProjectManager is not used this might fail. When using the appropriate ProjectManager methods
+    (e.g. pm.energy_system_to_string()) thread-safety is assured using a lock in the ProjectManager.
 
     :param resource: the resource to get the string representation for
     :return: the string representation of the given resource
