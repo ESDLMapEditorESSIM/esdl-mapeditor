@@ -23,8 +23,8 @@
 
 <script setup="props">
 import { ref } from "vue";
-import { genericErrorHandler } from "../../../../../utils/errors.js";
-import { useWorkflow } from "../../../../../composables/workflow.js";
+import { genericErrorHandler } from "@/utils/errors";
+import { useWorkflow } from "@/composables/workflow";
 // eslint-disable-next-line no-unused-vars
 import { default as NextOrClose } from "../../../NextOrClose.vue";
 import { workflowGetJsonForm } from "../../../utils/api.js";
@@ -51,7 +51,7 @@ const props = defineProps({
   },
 });
 
-const { getParamsFromState, goToStep } = useWorkflow();
+const { getParamsFromState, goToStep, getState } = useWorkflow();
 const workflowStep = props.workflowStep;
 
 let formData = { };
@@ -79,6 +79,8 @@ const getJsonForm = async () => {
   const request_params = getParamsFromState(
     workflowStep.target["request_params"]
   );
+  console.log(getState());
+  console.log("Request params:", request_params);
   request_params["url"] = workflowStep.url;
   const queryString = new URLSearchParams(request_params).toString();
 

@@ -1016,16 +1016,28 @@ esdl_config = {
                         "id": "select-existing-project-for-run-eps",
                         "name": "Select existing project",
                         "description": "",
-                        "type": "select-query",
+                        "type": "select",
                         "multiple": False,
-                        "source": {
-                            "url": f"{EPS_WEB_HOST}/api/projects/",
-                            "http_method": "get",
+                        "target_variable": "project",
+
+                        "config": {
+                            "multiple": False,
                             "choices_attr": "projects",
-                            "label_fields": ["name"],
+                            "label_fields": [
+                                "id",
+                                "name"
+                            ],
                             "value_field": "id",
                         },
-                        "target_variable": "project",
+                        "data": {
+                            "from_url": {
+                                "url": f"{EPS_WEB_HOST}/api/projects/",
+                                "method": "GET",
+                                "headers": {"Accept": "application/json"},
+                            },
+                            "to_state": {},
+                            "output_wrapper_variable": "project",
+                        },
                         "next_step": "run-the-eps",
                     },
                     {
