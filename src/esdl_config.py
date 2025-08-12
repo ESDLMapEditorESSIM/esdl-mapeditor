@@ -1376,60 +1376,55 @@ esdl_config = {
                     {
                         "id": "run-energy-hub-configurator",
                         "name": "Run Energy Hub Configurator",
-                        "description": "",
-                        "type": "text",
-                        "data": {
-                            "from_config": {
-                                "text": """
-                                For the energy hub configured in an ESDL layer, the economical optimal collective battery specifications can be calculated with the EHC, together with the corresponding business case.
-                                Currently the EHC only accepts ESDL files with in-line placed energy profiles. Please, first make sure the correct ESDL layer is selected. Then the required ESDL file can be obtained from the 'File' menu in the top-left corner of the screen. Within this menu, select the 'Export ESDL with in-line profiles' option. The resulting ESDL file can be used by the EHC.
-                            """,
+                        "description": "For the energy hub configured in an ESDL layer, the economical optimal collective battery specifications can be calculated with the EHC, together with the corresponding business case. As result of this step, a new ESDL layer will be created with the EHC results, and a business case Excel will be downloaded to your browser automatically.",
+                        "type": "service",
+                        "service": {
+                            "id": "9bd2f969-f240-4b26-ace5-2e03fbc04b13",
+                            "name": "Run Energy Hub Configurator",
+                            "headers": {
+                                "Accept": "application/esdl+xml",
+                                "User-Agent": "ESDL Mapeditor/0.1",
                             },
-                        },
+                            # "url": "https://ehc.bicore.nl/auth-test",
+                            "url": "https://ehc.bicore.nl/process",
+                            # "url": "http://localhost:8111/dice_workflow/mock",
+                            "http_method": "post",
+                            "type": "",
+                            "body_config": {
+                                "type": "json",
+                                "profiles": "inline",
+                                "parameters": [
+                                    {
+                                        "type": "esdl",
+                                        "parameter": "esdl",
+                                        "encoding": "base64_encoded",
+                                    },
+                                    {
+                                        "type": "value",
+                                        "parameter": "email",
+                                        "value": "lars@xithing.io",
+                                    }
+                                ],
+                            },
+                            "result": [
+                                {
+                                    "action": "download_file",
+                                    "encoding": "base64_encoded",
+                                    "json_field": "esdl",
+                                    "filename": "ehc_result.esdl",
+                                    "content_type": "application/xml",
+                                },
+                                {
+                                    "action": "download_file",
+                                    "encoding": "base64_encoded",
+                                    "json_field": "business_case_excel",
+                                    "filename": "ehc_business_case.csv",
+                                    "content_type": "text/csv",
+                                },
+                            ],
+                            "with_jwt_token": True,
+                        }
                     },
-                    # {
-                    #     # 25
-                    #     # TODO: WHEN EHC IS HOSTED
-                    #     "name": "Run Energy Hub Configurator",
-                    #     "description": "For the energy hub configured in an ESDL layer, the economical optimal collective battery specifications can be calculated with the EHC, together with the corresponding business case. Currently the EHC only accepts ESDL files with in-line placed energy profiles. Please, first make sure the correct ESDL layer is selected. Then the required ESDL file can be obtained from the 'File' menu in the top-left corner of the screen. Within this menu, select the 'Export with in-line profiles' option. The resulting ESDL file can be used by the EHC.",
-                    #     "type": "service",
-                    #     "service": {
-                    #         "id": "9bd2f969-f240-4b26-ace5-2e03fbc04b13",
-                    #         "name": "Run Energy Hub Configurator",
-                    #         "headers": {
-                    #             "Accept": "application/esdl+xml",
-                    #             "User-Agent": "ESDL Mapeditor/0.1",
-                    #         },
-                    #         "url": "http://localhost:8111/pdtoolsuite_workflow/mock",
-                    #         "http_method": "post",
-                    #         "type": "",
-                    #         "body_config": {
-                    #             "type": "json",
-                    #             "profiles": "inline",
-                    #             "parameters": [
-                    #                 {
-                    #                     "type": "esdl",
-                    #                     "parameter": "esdl",
-                    #                     "encoding": "base64_encoded",
-                    #                 },
-                    #             ],
-                    #         },
-                    #         "result": [
-                    #             {
-                    #                 "action": "esdl",
-                    #                 "encoding": "base64_encoded",
-                    #                 "json_field": "esdl",
-                    #             },
-                    #             {
-                    #                 "action": "download_file",
-                    #                 "encoding": "base64_encoded",
-                    #                 "json_field": "business_case_excel",
-                    #                 "filename": "ehc_business_case.xlsx",
-                    #                 "content_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    #             },
-                    #         ],
-                    #     }
-                    # },
                     {
                         "id": "load-ehc-results",
                         "name": "Load Energy Hub Configurator results",

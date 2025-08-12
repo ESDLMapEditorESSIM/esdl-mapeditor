@@ -509,7 +509,7 @@ class ESDLServices:
                     esdlstr_base64_bytes = base64.b64decode(esdlstr_bytes)
                     esdl_response = esdlstr_base64_bytes.decode("utf-8")
 
-            es, parse_info = esh.add_from_string(service["name"], esdl_response)
+            es, parse_info = esh.add_from_string(service["name"], esdl_response, overwrite_existing=False)
             # TODO deal with parse_info?
 
             message = None
