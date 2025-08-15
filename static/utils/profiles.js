@@ -57,12 +57,9 @@ function add_profile_to_port() {
         };
 
         console.log(custom_qau);
-    } else if (qaup_type == 'profiletype') {
-        profile_type_select = document.getElementById('pt')
-        profile_type = profile_type_select.options[profile_type_select.selectedIndex].value;
     }
 
-    // profile_class: SingleValue       -- value, predefined_qau, custom_qau of profileType
+    // profile_class: SingleValue       -- value, predefined_qau, custom_qau
     // profile_class: standard_profiles -- multiplier
     if (profile_class == 'SingleValue') {
         if (qaup_type == 'predefined_qau') {
@@ -71,9 +68,6 @@ function add_profile_to_port() {
         } else if (qaup_type == 'custom_qau') {
             socket.emit('command', {cmd: 'add_profile_to_port', port_id: port_id, value: profile_mult_value,
                 profile_class: profile_class, qaup_type: qaup_type, custom_qau: custom_qau});
-        } else if (qaup_type == 'profiletype') {
-           socket.emit('command', {cmd: 'add_profile_to_port', port_id: port_id, value: profile_mult_value,
-                profile_class: profile_class, qaup_type: qaup_type, profile_type: profile_type});
         }
     } else {
         if (qaup_type == 'predefined_qau') {
@@ -82,13 +76,8 @@ function add_profile_to_port() {
         } else if (qaup_type == 'custom_qau') {
             socket.emit('command', {cmd: 'add_profile_to_port', port_id: port_id, multiplier: profile_mult_value,
                 profile_class: profile_class, qaup_type: qaup_type, custom_qau: custom_qau});
-        } else if (qaup_type == 'profiletype') {
-            socket.emit('command', {cmd: 'add_profile_to_port', port_id: port_id, multiplier: profile_mult_value,
-                profile_class: profile_class, qaup_type: qaup_type, profile_type: profile_type});
         }
     }
-    // socket.emit('command', {cmd: 'add_profile_to_port', port_id: port_id, multiplier: multiplier,
-    //     profile_type: profile_type, profile_class: profile_class_id});
 }
 
 function remove_profile_from_port(port_id, profile_id) {
@@ -129,7 +118,6 @@ function select_qau_profile_type() {
     document.getElementById('cqau_row5').style.display = 'none';
     document.getElementById('cqau_row6').style.display = 'none';
     document.getElementById('cqau_row7').style.display = 'none';
-    document.getElementById('pt_row').style.display = 'none';
     if (qaup_type == 'predefined_qau') {
        document.getElementById('qau_row').style.display = '';
     }
@@ -141,9 +129,6 @@ function select_qau_profile_type() {
        document.getElementById('cqau_row5').style.display = '';
        document.getElementById('cqau_row6').style.display = '';
        document.getElementById('cqau_row7').style.display = '';
-    }
-    if (qaup_type == 'profiletype') {
-       document.getElementById('pt_row').style.display = '';
     }
 }
 
@@ -223,10 +208,9 @@ function port_profile_info_window(port_profile_info) {
     table += '<tr id="mov_row"><td id="mult_value" width=180>Value</td>';
     table += '<td><input type="text" width="60" id="profile_mult_value" value=""></td></tr>';
 
-    table += '<tr id="type_row"><td width=180>Type</td>';
+    table += '<tr id="type_row"><td width=180>Quantity and Unit type</td>';
     table += '<td><select id="qau_profile_type" onchange="select_qau_profile_type();"><option value="predefined_qau" selected>Predefined quantity and units</option>';
     table += '<option value="custom_qau">Custom quantity and units</option>';
-    table += '<option value="profiletype">ProfileTypes (old method)</option></select>';
     table += '</td></tr>';
 
     table += '<tr id="qau_row"><td width=180>Quantity and Unit</td>';
@@ -275,12 +259,6 @@ function port_profile_info_window(port_profile_info) {
     }
     table += '</select></td></tr>';
 
-    table += '<tr id="pt_row" style="display:none"><td width=180>Profile Type</td>';
-    table += '<td><select id="pt">';
-    for (q=0; q<quantity_and_units_info["profile_type_enum_values"].length; q++) {
-        table += '<option value="'+quantity_and_units_info["profile_type_enum_values"][q]+'">'+quantity_and_units_info["profile_type_enum_values"][q]+'</option>';
-    }
-    table += '</select></td></tr>';
 
     table += '</table>'
     sidebar_ctr.innerHTML += table;
