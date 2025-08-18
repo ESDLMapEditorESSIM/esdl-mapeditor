@@ -37,10 +37,10 @@
           style="width: 100%"
         />
       </a-form-item>
-      <a-form-item label="Unit type">
+      <a-form-item label="Quantity and unit type">
         <a-select
-          v-model:value="profileForm.unitType"
-          :options="unitTypeOptions"
+          v-model:value="profileForm.qauType"
+          :options="qauTypeOptions"
           disabled
         />
       </a-form-item>
@@ -91,11 +91,12 @@ const ProfileClass = Object.freeze({
   INFLUXDB: "InfluxDBProfile",
 });
 
-const UnitType = Object.freeze({
+// NOTE: can be extended with custom qau type
+const QaUType = Object.freeze({
   PREDEFINED: "Predefined quantity and units",
 });
 
-const unitTypeOptions = Object.entries(UnitType).map(([_, label]) => ({
+const qauTypeOptions = Object.entries(QaUType).map(([_, label]) => ({
   value: label,
   label: label,
 }));
@@ -110,8 +111,8 @@ const initProfileForm = {
   class: ProfileClass.INFLUXDB,
   profile: null,
   multiplier: null,
-  // default to the predefined unit type until other types are supported in the future
-  unitType: unitTypeOptions[0],
+  // default to predefined quantity and units type
+  qauType: qauTypeOptions[0],
   qau: null,
 };
 
