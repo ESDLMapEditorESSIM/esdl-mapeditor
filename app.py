@@ -3062,6 +3062,8 @@ def query_esdl_services(params):
             if esdl_service_result is not None:
                 if backend_action and "run_after_esdl_loaded" in backend_action and backend_action["run_after_esdl_loaded"]:
                     esdl_service_result_post_esdl_load = esdl_service_result  # emit after ESDL has been loaded
+                else:
+                    emit('esdl_service_result', esdl_service_result)
             else:
                 emit('esdl_service_result', esdl_service_result)
         else:
