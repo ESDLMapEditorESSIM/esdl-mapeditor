@@ -165,6 +165,9 @@ class PDToolsuiteWorkflow:
             files = dict(energysystem=base64_es, profile_excel=profiles_upload_file)
 
             r = requests.post(url, files=files, timeout=DEFAULT_TIMEOUT)
+            if not r.ok:
+                logger.error("Error uploading profiles", status_code=r.status_code, response=r.text)
+                return jsonify(dict(error="Error uploading profiles")), r.status_code
             return jsonify(r.json())
 
         @self.flask_app.route("/pdtoolsuite_workflow/profiles/upload/progress/<process_id>", methods=["GET"])

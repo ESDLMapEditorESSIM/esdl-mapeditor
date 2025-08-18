@@ -1070,7 +1070,7 @@ esdl_config = {
                             "multiple": False,
                             "choices_attr": "executions",
                             "label_fields": [
-                                "project",
+                                "project.name",
                                 "id",
                                 {
                                     "label": "complete",
@@ -1189,80 +1189,80 @@ esdl_config = {
                         },
                     },
                     {
-                        "id": "start-flex-scan-phase-1",
-                        "name": "Start Flex Scan phase 1",
-                        "description": "",
-                        "type": "custom",
-                        "component": "flexscan-import-eps",
-                        "custom_data": {
-                            "flex_frontend_host": FLEX_FRONTEND_HOST,
-                        },
-                    },
-                    {
-                        "id": "select-flex-scan-f1-year",
-                        "name": "Select Flex Scan F1 year",
-                        "description": "Choose the year for which you want to load the Flex Scan phase 1 results. NB. Make sure to select the ESDL layer you wish to use as a baseline for the Flex Scan F1 results.",
-                        "type": "choice",
-                        "options": [
-                            {
-                                "name": "2020",
-                                "description": "",
-                                "next_step": "load-flex-scan-f1",
-                                "target_variable_value": {"year": 2020},
-                            },
-                            {
-                                "name": "2025",
-                                "description": "",
-                                "next_step": "load-flex-scan-f1",
-                                "target_variable_value": {"year": 2025},
-                            },
-                            {
-                                "name": "2030",
-                                "description": "",
-                                "next_step": "load-flex-scan-f1",
-                                "target_variable_value": {"year": 2030},
-                            },
-                        ],
-                        "target_variable": "flexscanf1",
-                    },
-                    {
-                        "id": "load-flex-scan-f1",
-                        "name": "Load Flex Scan F1",
-                        "type": "esdl-service",
-                        "config": {
-                            "state_params": {"execution_id": "execution.id", "year": "flexscanf1.year"},
-                        },
-                        "service": {
-                            "id": "f25dfd1a-525d-42db-92d6-6d358bbdfca1",
-                            "name": "Load Flex Scan phase 1 results",
-                            "headers": {
-                                "Accept": "application/json",
-                                "User-Agent": "ESDL Mapeditor/0.1",
-                                "Content-Type": "application/json",
-                            },
-                            "url": f"{FLEX_BACKEND_HOST}/executions/<execution_id>/phase1/esdl/<year>",
-                            "auto": True,
-                            "http_method": "post",
-                            "type": "send_esdl_json",
-                            "body": "base64_encoded",
-                            "result": [{"code": 200, "action": "esdl"}],
-                            "query_parameters": [
-                                {
-                                    "name": "Execution ID",
-                                    "parameter_name": "execution_id",
-                                    "location": "url",
-                                },
-                                {
-                                    "name": "Flex Scan F1 year",
-                                    "parameter_name": "year",
-                                    "location": "url",
-                                },
-                            ],
-                            "with_jwt_token": True,
-                        },
-                        "target_variable": "flexscanf1",
-                        "target_variable_value": {"loaded": True},
-                    },
+                    #     "id": "start-flex-scan-phase-1",
+                    #     "name": "Start Flex Scan phase 1",
+                    #     "description": "",
+                    #     "type": "custom",
+                    #     "component": "flexscan-import-eps",
+                    #     "custom_data": {
+                    #         "flex_frontend_host": FLEX_FRONTEND_HOST,
+                    #     },
+                    # },
+                    # {
+                    #     "id": "select-flex-scan-f1-year",
+                    #     "name": "Select Flex Scan F1 year",
+                    #     "description": "Choose the year for which you want to load the Flex Scan phase 1 results. NB. Make sure to select the ESDL layer you wish to use as a baseline for the Flex Scan F1 results.",
+                    #     "type": "choice",
+                    #     "options": [
+                    #         {
+                    #             "name": "2020",
+                    #             "description": "",
+                    #             "next_step": "load-flex-scan-f1",
+                    #             "target_variable_value": {"year": 2020},
+                    #         },
+                    #         {
+                    #             "name": "2025",
+                    #             "description": "",
+                    #             "next_step": "load-flex-scan-f1",
+                    #             "target_variable_value": {"year": 2025},
+                    #         },
+                    #         {
+                    #             "name": "2030",
+                    #             "description": "",
+                    #             "next_step": "load-flex-scan-f1",
+                    #             "target_variable_value": {"year": 2030},
+                    #         },
+                    #     ],
+                    #     "target_variable": "flexscanf1",
+                    # },
+                    # {
+                    #     "id": "load-flex-scan-f1",
+                    #     "name": "Load Flex Scan F1",
+                    #     "type": "esdl-service",
+                    #     "config": {
+                    #         "state_params": {"execution_id": "execution.id", "year": "flexscanf1.year"},
+                    #     },
+                    #     "service": {
+                    #         "id": "f25dfd1a-525d-42db-92d6-6d358bbdfca1",
+                    #         "name": "Load Flex Scan phase 1 results",
+                    #         "headers": {
+                    #             "Accept": "application/json",
+                    #             "User-Agent": "ESDL Mapeditor/0.1",
+                    #             "Content-Type": "application/json",
+                    #         },
+                    #         "url": f"{FLEX_BACKEND_HOST}/executions/<execution_id>/phase1/esdl/<year>",
+                    #         "auto": True,
+                    #         "http_method": "post",
+                    #         "type": "send_esdl_json",
+                    #         "body": "base64_encoded",
+                    #         "result": [{"code": 200, "action": "esdl"}],
+                    #         "query_parameters": [
+                    #             {
+                    #                 "name": "Execution ID",
+                    #                 "parameter_name": "execution_id",
+                    #                 "location": "url",
+                    #             },
+                    #             {
+                    #                 "name": "Flex Scan F1 year",
+                    #                 "parameter_name": "year",
+                    #                 "location": "url",
+                    #             },
+                    #         ],
+                    #         "with_jwt_token": True,
+                    #     },
+                    #     "target_variable": "flexscanf1",
+                    #     "target_variable_value": {"loaded": True},
+                    # },
                     {
                         "id": "configure-energy-infrastructure",
                         "name": "",
