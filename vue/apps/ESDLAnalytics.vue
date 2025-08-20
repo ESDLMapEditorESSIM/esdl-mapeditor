@@ -1107,6 +1107,8 @@ const disabledDate = (current) => {
   const profileLayout = {
     title: variableSelected.value,
     xaxis: { automargin: true },
+    hovermode: 'x unified',
+    hoversubplots: 'axis',
     legend: { groupclick: 'toggleitem' },
     grid: grid,
     barmode: (isAggregated && [1, 2].includes(dataGrouping.value))? 'relative' : 'group',
@@ -1158,6 +1160,7 @@ const barChartTraceHandler = (traces) => {
       title: variableOptions.value[variableSelected.value].unit,
       automargin: true,
     },
+    hovermode: 'x unified',
     barmode: [1, 2].includes(dataGrouping.value) ? 'stack' : 'group',
     barnorm: dataGrouping.value === 2 ? 'percent' : '',
     showlegend: true,
