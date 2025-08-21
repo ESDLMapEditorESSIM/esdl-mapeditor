@@ -51,8 +51,7 @@
                 {{ variableWarningMsg }}
               </span>
             </a-row>
-            <!-- TODO: support profile group by -->
-            <a-row v-if="!isProfileVariable">
+            <a-row>
               <a-typography-title :level="5">Group by</a-typography-title>
               <a-select
                 v-model:value="groupbySelected"
@@ -63,7 +62,7 @@
                   : variableSelected === null ? 'First select a variable'
                     : 'Select a category'"
                 :max-tag-count="maxGroupbySelectedCount"
-                :status="chartType === 'chart' && groupbySelected.length > maxGroupbySelectedCount ? 'warning' : ''"
+                :status="chartType === 'chart' && !isProfileVariable && groupbySelected.length > maxGroupbySelectedCount ? 'warning' : ''"
                 allow-clear
                 mode="multiple"
                 style="width: 100%"
@@ -71,11 +70,28 @@
                 @mouseleave="removeTooltipPopup"
               />
               <span
-                v-if="chartType === 'chart' && groupbySelected.length > maxGroupbySelectedCount"
+                v-if="chartType === 'chart' && !isProfileVariable && groupbySelected.length > maxGroupbySelectedCount"
                 style="color: #ffbb00; padding: 2px;"
               >
                 Grouping in a bar chart supports up to two selections only.
               </span>
+            </a-row>
+            <!-- Only applicable to profile variable -->
+            <a-row v-if="isProfileVariable" style="align-items: center;">
+              <a-typography-title :level="5">Group by aggregation</a-typography-title>
+              <a-tooltip title="Aggregates profile data according to the selected group by categories using the chosen function.">
+                <a-button size="small" type="text">
+                  <component :is="InfoCircleOutlined" style="vertical-align: 0.1rem" />
+                </a-button>
+              </a-tooltip>
+              <a-segmented
+                v-model:value="profileGroupbyAggFuncSelected"
+                :options="profileAggFuncs"
+                style="width: 100%;"
+                size="small"
+                block
+                @change="onSelectProfileGroupbyAggFunc"
+              />
             </a-row>
             <a-row>
               <a-row style="align-items: center;">
@@ -130,7 +146,7 @@
             <!----------------------------------------------->
             <!----- Profile variable - Display options ------>
             <!----------------------------------------------->
-            <a-col v-if="isProfileVariable && filterSelected.length">
+            <a-col v-if="isProfileVariable">
               <a-row>
                 <a-typography-title :level="5">Date selection</a-typography-title>
                 <a-range-picker
@@ -193,15 +209,20 @@
                   @change="onSelectProfileAggInterval"
                 />
               </a-row>
-              <a-row v-if="profileVizTypeSelected === 'Aggregated'">
+              <a-row v-if="profileVizTypeSelected === 'Aggregated'" style="align-items: center;">
                 <a-typography-title :level="5">Aggregation function</a-typography-title>
+                <a-tooltip title="Aggregates data within the selected time interval using the chosen function.">
+                  <a-button size="small" type="text">
+                    <component :is="InfoCircleOutlined" style="vertical-align: 0.1rem" />
+                  </a-button>
+                </a-tooltip>
                 <a-segmented
-                  v-model:value="profileAggFuncSelected"
+                  v-model:value="profileIntervalAggFuncSelected"
                   :options="profileAggFuncs"
                   style="width: 100%;"
                   size="small"
                   block
-                  @change="onSelectProfileAggFunc"
+                  @change="onSelectProfileIntervalAggFunc"
                 />
               </a-row>
             </a-col>
@@ -210,7 +231,7 @@
             <!---------------------------------------------------->
             <a-col
               v-if="chartType==='chart' && 
-                ((!isProfileVariable && variableSelected !== null) || (isProfileVariable && filterSelected.length))"
+                ((!isProfileVariable && variableSelected !== null) || isProfileVariable)"
             >
               <a-row style="width: 100%">
                 <a-typography-title :level="5">Color palette</a-typography-title>
@@ -460,8 +481,9 @@ const initOptions = {
   profileVizTypeSelected: profileVizTypes[0],
   profileDownsampling: true,
   profileSubplotView: false,
+  profileGroupbyAggFuncSelected: profileAggFuncs[0],
   profileAggIntervalSelected: profileAggIntervals[0],
-  profileAggFuncSelected: profileAggFuncs[0],
+  profileIntervalAggFuncSelected: profileAggFuncs[0],
   groupbyOptions: [],
   groupbySelected: [],
   filterOptions: [],
@@ -514,8 +536,9 @@ const profileDataRangeSelected = ref(appliedOptions.profileDataRangeSelected);
 const profileVizTypeSelected = ref(appliedOptions.profileVizTypeSelected);
 const profileDownsampling = ref(appliedOptions.profileDownsampling);
 const profileSubplotView = ref(appliedOptions.profileSubplotView);
+const profileGroupbyAggFuncSelected = ref(appliedOptions.profileGroupbyAggFuncSelected);
 const profileAggIntervalSelected = ref(appliedOptions.profileAggIntervalSelected);
-const profileAggFuncSelected = ref(appliedOptions.profileAggFuncSelected);
+const profileIntervalAggFuncSelected = ref(appliedOptions.profileIntervalAggFuncSelected);
 const groupbyOptions = ref(appliedOptions.groupbyOptions);
 const groupbySelected = ref(appliedOptions.groupbySelected);
 const filterOptions = ref(appliedOptions.filterOptions);
@@ -544,8 +567,9 @@ const getOptions = () => {
     profileDataRangeSelected: profileDataRangeSelected.value,
     profileVizTypeSelected: profileVizTypeSelected.value,
     profileDownsampling: profileDownsampling.value,
+    profileGroupbyAggFuncSelected: profileGroupbyAggFuncSelected.value,
     profileAggIntervalSelected: profileAggIntervalSelected.value,
-    profileAggFuncSelected: profileAggFuncSelected.value,
+    profileIntervalAggFuncSelected: profileIntervalAggFuncSelected.value,
     groupbyOptions: groupbyOptions.value,
     groupbySelected: groupbySelected.value,
     filterOptions: filterOptions.value,
@@ -688,11 +712,15 @@ const onAnalyticsPlotRelayout = (newLayoutRanges) => {
   updateTrace();
 };
 
+const onSelectProfileGroupbyAggFunc = () => {
+  updateTrace();
+};
+
 const onSelectProfileAggInterval = () => {
   updateTrace();
 };
 
-const onSelectProfileAggFunc = () => {
+const onSelectProfileIntervalAggFunc = () => {
   updateTrace();
 };
 
@@ -970,8 +998,8 @@ const updateTrace = async() => {
     return;
   }
 
-  // Only take the first two elements as group_by selections for a chart visualization.
-  const groupBySelection = chartType.value === 'chart' ? 
+  // Only take the first two elements as group_by selections for a bar chart visualization.
+  const groupBySelection = (chartType.value === 'chart' && !queryProfileData) ? 
     groupbySelected.value.slice(0, maxGroupbySelectedCount) : groupbySelected.value;
 
   let filterSelection = {};
@@ -982,14 +1010,6 @@ const updateTrace = async() => {
     }
     filterSelection[column].push(val);
   });
-
-  // Continue to query profile only when the filter is selected;
-  // Otherwise, it could lead to too many profile queries and can be slow.
-  if (queryProfileData && Object.keys(filterSelection).length === 0) {
-    currentTrace.value = [];
-    isLoadingData.value = false;
-    return;
-  }
 
   let options = {
     dataset_ids: datasetSelected.value,
@@ -1006,14 +1026,14 @@ const updateTrace = async() => {
         viz_type: profileVizTypeSelected.value,
         data_range: profileDataRangeSelected.value !== null ? 
           profileDataRangeSelected.value.map(dt => formatAsDateTimeStr(dt)) : [],
-        subplot_view: profileSubplotView.value
+        group_by_agg_func: profileGroupbyAggFuncSelected.value
       };
     if (profileDownsampling.value) {
       options['profile']['max_datapoints'] = profileMaxDataPoints;
     }
     if (profileVizTypeSelected.value === 'Aggregated') {
       options['profile']['agg_interval'] = profileAggIntervalSelected.value;
-      options['profile']['agg_func'] = profileAggFuncSelected.value;
+      options['profile']['agg_func'] = profileIntervalAggFuncSelected.value;
     }
   }
 

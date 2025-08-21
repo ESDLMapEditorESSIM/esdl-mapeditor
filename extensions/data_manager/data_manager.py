@@ -352,7 +352,7 @@ def get_profile_influxdb_settings(profile: esdl.InfluxDBProfile, profiles_settin
 
     return None
 
-def aggregate_profile_data(data: List[Tuple[datetime, float]], interval: str, agg_func: str) -> list:
+def aggregate_profile_data_by_interval(df: DataFrame, interval: str, agg_func: str) -> DataFrame:
     """
     Aggregate profile data into specified time intervals and apply the given aggregation function.
 
@@ -362,9 +362,7 @@ def aggregate_profile_data(data: List[Tuple[datetime, float]], interval: str, ag
 
     :return: A list containing two lists (interval label strings and aggregated values corresponding to each interval)
     """
-
-    df = pd.DataFrame(data, columns=["time", "value"])
-    df.set_index("time", inplace=True)
+    df.set_index("datetime", inplace=True)
 
     if interval == ProfileAggInterval.YEAR.value:
         resample_interval = "YE"
@@ -381,17 +379,15 @@ def aggregate_profile_data(data: List[Tuple[datetime, float]], interval: str, ag
         raise ValueError(f"Unsupported interval: {interval}")
     
     aggregated_data = df.resample(resample_interval).agg({'value': agg_func.lower()})
+    aggregated_data.reset_index(inplace=True)
 
     # Handle quarter-year label formatting separately
     if interval == ProfileAggInterval.QUARTER.value:
-        aggregated_data['label'] = aggregated_data.index.map(lambda x: f"Q{x.quarter}-{x.year}")
+        aggregated_data["label"] = aggregated_data["datetime"].map(lambda x: f"Q{x.quarter}-{x.year}")
     else:
-        aggregated_data['label'] = aggregated_data.index.strftime(label_format)
+        aggregated_data["label"] = aggregated_data["datetime"].dt.strftime(label_format)
 
-    result = [aggregated_data['label'].values.tolist(),
-              aggregated_data['value'].values.tolist()]
-
-    return result
+    return aggregated_data
 
 class DataManager:
     def __init__(self, flask_app: Flask, socket: SocketIO):
@@ -933,17 +929,16 @@ class DataManager:
         """
         Query influxdb profile data and perform data aggregation if specified. 
         Return a dict of data traces, data range, and error messages.
-
-        TODO: 
-        - To support groupby
         """
         dataset_ids = options.dataset_ids
         variable_name = options.variable_name
-        # group_by = options.group_by
+        group_by = options.group_by
         filters = options.filters
         chart_type = options.chart_type
+
         viz_type = options.profile['viz_type']
         data_range = options.profile['data_range']
+        group_by_agg_func = options.profile['group_by_agg_func']
 
         max_datapoints = options.profile.get('max_datapoints')
         agg_interval = options.profile.get('agg_interval')
@@ -956,24 +951,21 @@ class DataManager:
         profiles_settings = Profiles.get_instance().get_profiles_settings()
         esh = get_handler()
 
-        # group_by_param = [DataSet.name] + [preprocess_column(group) for group in group_by]
+        group_by_param = [preprocess_column(group) for group in group_by]
 
         # Handle JSON type query according to the db drive type.
         db_driver_type = get_db_driver_type()
         if db_driver_type == DriverType.SQLITE:
             query_profile_id = func.json_extract(Data.labels, '$.profile_id').label('profile_id')
-            query_flow_direction = func.json_extract(Data.labels, '$.Flow direction').label('flow_direction')
         else:
             query_profile_id = func.jsonb_extract_path_text(Data.labels, 'profile_id').label('profile_id')
-            query_flow_direction = func.jsonb_extract_path_text(Data.labels, 'Flow direction').label('flow_direction')
 
         # energy_system_id and profile_id are required to derive the profile using esh.get_by_id()
         query = session.query(Data,
-                              Data.node.label('attached_node'),
                               DataSet.name,
                               DataSet.energy_system_id,
                               query_profile_id,
-                              query_flow_direction)\
+                              *group_by_param)\
             .join(Variable, Variable.id == Data.variable_id).join(DataSet, Data.dataset_id == DataSet.id)\
             .where(Variable.name == variable_name)\
             .where(Variable.dataset_id.in_(dataset_ids))\
@@ -984,13 +976,14 @@ class DataManager:
                 query = query.where(preprocess_column(col).in_(values))
         
         profiles_datetimes = []
-        traces = []
+        profile_data = []
         profile_query = query.all()
         for result in profile_query:
             dataset_name = result.name
-            profile_label = f"{result.attached_node} ({result.flow_direction}Port)"
             es_id = result.energy_system_id
             profile_id = result.profile_id
+            group_by_values = [str(getattr(result, group)) for group in group_by]
+            group_by_categories = "-".join(group_by_values)
 
             try:
                 profile: esdl.InfluxDBProfile = esh.get_by_id(es_id, profile_id)
@@ -1004,7 +997,7 @@ class DataManager:
                 continue
 
             if not influxdb_settings:
-                err = f"Error connecting to {profile.host}:{profile.port} to query {profile_label} profile."
+                err = f"Error connecting to {profile.host}:{profile.port} to query profile ({profile_id})."
                 resp['errors'].append(err)
             else:
                 profiles_datetimes.extend([profile.startDate, profile.endDate])
@@ -1049,12 +1042,12 @@ class DataManager:
                     # profile_data_list: a list of lists, with each list structure to be [datetime, field value, ...]
                     datetime_profile = prof_manager.profile_data_list
                 except Exception as e:
-                    err = f"Error retrieving {profile.host}:{profile.port} {profile_label} profile: {e}"
+                    err = f"Error retrieving {profile.host}:{profile.port} profile ({profile_id}): {e}"
                     resp['errors'].append(err)
                     logger.error(err)
                     continue
 
-                data = []
+                datetimes, values = [], []
                 for d in datetime_profile:
                     # skip when value is None (this can occur when downsampling is applied)
                     if d[1] is None:
@@ -1062,23 +1055,18 @@ class DataManager:
 
                     date: datetime = d[0]
                     value = d[1] * profile.multiplier
-                    data.append((date, value))
 
-                if viz_type == ProfileVizType.AGGREGATED.value:
-                    viz_data = aggregate_profile_data(data, agg_interval, agg_func)
-                else:
-                    datetimes = [date.strftime(dt_str_format) for date, _ in data]
-                    values = [value for _, value in data]
-                    viz_data = [datetimes, values]
+                    datetimes.append(date)
+                    values.append(value)
 
-                trace = {
-                    "name": profile_label,
-                    "x": viz_data[0],
-                    "y": viz_data[1],
-                    "legendgroup": dataset_name,
-                    "legendgrouptitle": { "text": dataset_name }
-                }
-                traces.append(trace)
+                profile_data.append({
+                    "dataset": dataset_name,
+                    "groupby": group_by_categories,
+                    "datetime": datetimes,
+                    "value": values
+                })
+
+        traces = self.process_profile_data(profile_data, group_by_agg_func, agg_interval, agg_func)
         
         if len(profiles_datetimes):
             min_dt = (min(profiles_datetimes) - timedelta(days=1)).strftime(dt_str_format)
@@ -1145,24 +1133,71 @@ class DataManager:
             traces = self.process_bar_chart_trace(df, dataset_ids, variable_name, group_by)
 
         return { "traces": traces }
-    
+        
+    @staticmethod
+    def process_profile_data(
+        profile_data: list[dict],
+        group_by_agg_func: str,
+        agg_interval: Optional[str],
+        interval_agg_func: Optional[str]
+    ) -> list[dict]:
+        """
+        Processes profile data by applying aggregation functions across group categories
+        and optional time intervals, returning a list of trace dictionaries for visualization.
+        
+        :param profile_data: A list of dictionaries where each entry contains 'dataset', 'groupby', 'datetime', and 'value'.
+                            'datetime' and 'value' are expected to be lists of equal length.
+        :param group_by_agg_func: Aggregation function to apply across grouped data points.
+        :param agg_interval: Optional time interval for resampling profile data.
+        :param interval_agg_func: Aggregation function to apply within each time interval.
+
+        :return: A list of trace dictionaries for plotting profile data.
+        """
+        df = pd.DataFrame(profile_data)
+        traces = []
+
+        for (dataset_name, groupby), group_df in df.groupby(["dataset", "groupby"]):
+            # Flatten datetime and value list and apply aggregation within each group
+            group_df = group_df.explode(["datetime", "value"])
+            agg_df = group_df.groupby("datetime", as_index=False).agg({'value': group_by_agg_func.lower()})
+
+            if agg_interval is not None and interval_agg_func is not None:
+                agg_df = aggregate_profile_data_by_interval(agg_df, agg_interval, interval_agg_func)
+            else:
+                agg_df["label"] = agg_df["datetime"].dt.strftime(dt_str_format)
+            
+            trace_name = groupby
+            if len(groupby) == 0:
+                trace_name = group_by_agg_func
+
+            trace = {
+                "name": trace_name,
+                "x": agg_df["label"].tolist(),
+                "y": agg_df["value"].tolist(),
+                "legendgroup": dataset_name,
+                "legendgrouptitle": {"text": dataset_name},
+            }
+            traces.append(trace)
+
+        return traces
+
     @staticmethod
     def process_profile_table_trace(traces: list[dict]) -> list:
         """
         Processes profile traces and formats them into a table trace structure.
         """
-        headerValues = [['dataset'], ['asset'], ['timeperiod'], ['value']]
+        headerValues = [['dataset'], ['group by'], ['timeperiod'], ['value']]
         cellValues = []
-        datasets, asset_names, timeperiods, values = [], [], [], []
+        datasets, groupby_categories, timeperiods, values = [], [], [], []
 
         for trace in traces:
             data_counts = len(trace['x'])
             datasets.extend([trace['legendgroup'] for _ in range(data_counts)])
-            asset_names.extend([trace['name'] for _ in range(data_counts)])
+            groupby_categories.extend([trace['name'] for _ in range(data_counts)])
             timeperiods.extend([d for d in trace['x']])
             values.extend([d for d in trace['y']])
 
-        cellValues = [datasets, asset_names, timeperiods, values]
+        cellValues = [datasets, groupby_categories, timeperiods, values]
 
         trace = [{
             'header': {
