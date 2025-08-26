@@ -1188,7 +1188,7 @@ esdl_config = {
                             "with_jwt_token": True,
                         },
                     },
-                    {
+                    # {
                     #     "id": "start-flex-scan-phase-1",
                     #     "name": "Start Flex Scan phase 1",
                     #     "description": "",
