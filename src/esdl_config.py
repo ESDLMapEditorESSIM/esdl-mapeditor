@@ -759,22 +759,22 @@ esdl_config = {
                                 "enable_if_state": "execution.success",
                             },
                             # ESTIMATE FLEX ASSETS
-                            {
-                                "name": "Estimate flex assets",
-                                "type": "header",
-                            },
-                            {
-                                "name": "Start Flex Scan phase 1",
-                                "type": "primary",
-                                "next_step": "start-flex-scan-phase-1",
-                                "enable_if_state": "execution.success",
-                            },
-                            {
-                                "name": "Load FS phase 1 results",
-                                "type": "primary",
-                                "next_step": "select-flex-scan-f1-year",
-                                "enable_if_state": "execution.success",
-                            },
+                            # {
+                            #     "name": "Estimate flex assets",
+                            #     "type": "header",
+                            # },
+                            # {
+                            #     "name": "Start Flex Scan phase 1",
+                            #     "type": "primary",
+                            #     "next_step": "start-flex-scan-phase-1",
+                            #     "enable_if_state": "execution.success",
+                            # },
+                            # {
+                            #     "name": "Load FS phase 1 results",
+                            #     "type": "primary",
+                            #     "next_step": "select-flex-scan-f1-year",
+                            #     "enable_if_state": "execution.success",
+                            # },
                             # CONFIGURE ENERGY INFRASTRUCTURE
                             {
                                 "name": "Configure energy infrastructure",
