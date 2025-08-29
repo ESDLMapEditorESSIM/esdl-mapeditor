@@ -265,7 +265,7 @@ app.config.update({
     'OIDC_ID_TOKEN_COOKIE_SECURE': False,
     'OIDC_USER_INFO_ENABLED': True,
     'OIDC_OPENID_REALM': 'esdl-mapeditor',
-    'OIDC_SCOPES': 'openid email profile groups microprofile-jwt',
+    'OIDC_SCOPES': 'openid email profile microprofile-jwt',
     'OIDC_INTROSPECTION_AUTH_METHOD': 'client_secret_post',
     'OIDC_CLIENT_SECRETS': settings.OIDC_CLIENT_SECRETS
 })
