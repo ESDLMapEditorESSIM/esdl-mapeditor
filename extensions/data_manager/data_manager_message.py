@@ -52,7 +52,8 @@ class ProfileAggFunc(Enum):
 class ProfileQueryOptions:
     viz_type: ProfileVizType
     data_range: List[str]
-    group_by_agg_func: ProfileAggFunc
+    group_by_enabled: bool
+    group_by_agg_func: Optional[ProfileAggFunc]
     """Function to be applied when aggregating on group_by categories."""
     max_datapoints: Optional[int]
     """If specified, downsample profile data to approximately the given value."""

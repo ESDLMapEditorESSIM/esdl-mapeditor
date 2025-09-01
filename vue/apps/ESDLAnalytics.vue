@@ -52,11 +52,27 @@
               </span>
             </a-row>
             <a-row>
-              <a-typography-title :level="5">Group by</a-typography-title>
+              <a-row style="align-items: center">
+                <a-typography-title :level="5">Group by</a-typography-title>
+                <!-- Only applicable to profile variable -->
+                <a-row v-if="isProfileVariable" style="align-items: center;">
+                  <a-tooltip title="Toggle on to display aggregated profiles in the chart. Aggregation is based on the selected group-by options and function. If no group-by option is set, profiles are aggregated across all available profiles of the selected variable.">
+                    <a-button size="small" type="text">
+                      <component :is="InfoCircleOutlined" style="vertical-align: 0.1rem" />
+                    </a-button>
+                  </a-tooltip>
+                  <a-switch
+                    v-model:checked="profileGroupbyEnabled"
+                    size="small"
+                    style="position: absolute; right: 0px"
+                    @change="onProfileGroupbyEnabled"
+                  />
+                </a-row>
+              </a-row>
               <a-select
                 v-model:value="groupbySelected"
                 :options="groupbyOptions"
-                :disabled="datasetSelected.length === 0 || variableSelected === null" 
+                :disabled="datasetSelected.length === 0 || variableSelected === null || (isProfileVariable && !profileGroupbyEnabled)" 
                 :placeholder="
                   datasetSelected.length === 0 ? 'First select a dataset'
                   : variableSelected === null ? 'First select a variable'
@@ -75,21 +91,15 @@
               >
                 Grouping in a bar chart supports up to two selections only.
               </span>
-            </a-row>
-            <!-- Only applicable to profile variable -->
-            <a-row v-if="isProfileVariable" style="align-items: center;">
-              <a-typography-title :level="5">Group by aggregation</a-typography-title>
-              <a-tooltip title="Aggregates profile data according to the selected group by categories using the chosen function.">
-                <a-button size="small" type="text">
-                  <component :is="InfoCircleOutlined" style="vertical-align: 0.1rem" />
-                </a-button>
-              </a-tooltip>
+              <!-- Only applicable to profile variable -->
               <a-segmented
+                v-if="isProfileVariable"
                 v-model:value="profileGroupbyAggFuncSelected"
                 :options="profileAggFuncs"
-                style="width: 100%;"
+                style="width: 100%; margin-top: 6px;"
                 size="small"
                 block
+                :disabled="isProfileVariable && !profileGroupbyEnabled"
                 @change="onSelectProfileGroupbyAggFunc"
               />
             </a-row>
@@ -172,30 +182,32 @@
                 />
               </a-row>
               <a-row style="align-items: center; padding-top: 12px;">
-                <a-switch
-                  v-model:checked="profileDownsampling"
-                  size="small"
-                  :disabled="profileVizTypeSelected === 'Aggregated'"
-                  @change="onProfileDownsampling"
-                />
                 <a-typography-paragraph style="padding-left: 8px; margin-bottom: 0px;">Downsampling</a-typography-paragraph>
                 <a-tooltip :title="profileDownsampleMsg">
                   <a-button size="small" type="text">
                     <component :is="InfoCircleOutlined" style="vertical-align: 0.1rem" />
                   </a-button>
                 </a-tooltip>
+                <a-switch
+                  v-model:checked="profileDownsampling"
+                  size="small"
+                  style="position: absolute; right: 0px"
+                  :disabled="profileVizTypeSelected === 'Aggregated'"
+                  @change="onProfileDownsampling"
+                />
               </a-row>
               <!-- Only show subplot toggle when more than one dataset is selected and with profile data -->
               <a-row 
                 v-if="chartType==='chart' && isProfileVariable && datasetSelected.length > 1"
                 style="align-items: center; padding-top: 12px;"
               >
+                <a-typography-paragraph style="padding-left: 8px; margin-bottom: 0px;">Display in subplots</a-typography-paragraph>
                 <a-switch
                   v-model:checked="profileSubplotView"
                   size="small"
+                  style="position: absolute; right: 0px"
                   @change="onProfileSubplotView"
                 />
-                <a-typography-paragraph style="padding-left: 8px; margin-bottom: 0px;">Display in subplots</a-typography-paragraph>
               </a-row>
               <!-- TODO: show load duration curve -->
               <a-row v-if="profileVizTypeSelected === 'Aggregated'">
@@ -270,12 +282,13 @@
                 v-if="!isProfileVariable || (isProfileVariable && profileVizTypeSelected === 'Aggregated')"
                 style="align-items: center; padding-top: 12px;"
               >
+                <a-typography-paragraph style="padding-left: 8px; margin-bottom: 0px;">Show numbers on bar chart</a-typography-paragraph>
                 <a-switch
                   v-model:checked="showBarNumbers"
                   size="small"
+                  style="position: absolute; right: 0px"
                   @change="onSelectDisplayOptions"
                 />
-                <a-typography-paragraph style="padding-left: 8px; margin-bottom: 0px;">Show numbers on bar chart</a-typography-paragraph>
               </a-row>
             </a-col>
             <!------------------------------------------->
@@ -481,6 +494,7 @@ const initOptions = {
   profileVizTypeSelected: profileVizTypes[0],
   profileDownsampling: true,
   profileSubplotView: false,
+  profileGroupbyEnabled: false,
   profileGroupbyAggFuncSelected: profileAggFuncs[0],
   profileAggIntervalSelected: profileAggIntervals[0],
   profileIntervalAggFuncSelected: profileAggFuncs[0],
@@ -536,6 +550,7 @@ const profileDataRangeSelected = ref(appliedOptions.profileDataRangeSelected);
 const profileVizTypeSelected = ref(appliedOptions.profileVizTypeSelected);
 const profileDownsampling = ref(appliedOptions.profileDownsampling);
 const profileSubplotView = ref(appliedOptions.profileSubplotView);
+const profileGroupbyEnabled = ref(appliedOptions.profileGroupbyEnabled);
 const profileGroupbyAggFuncSelected = ref(appliedOptions.profileGroupbyAggFuncSelected);
 const profileAggIntervalSelected = ref(appliedOptions.profileAggIntervalSelected);
 const profileIntervalAggFuncSelected = ref(appliedOptions.profileIntervalAggFuncSelected);
@@ -567,6 +582,7 @@ const getOptions = () => {
     profileDataRangeSelected: profileDataRangeSelected.value,
     profileVizTypeSelected: profileVizTypeSelected.value,
     profileDownsampling: profileDownsampling.value,
+    profileGroupbyEnabled: profileGroupbyEnabled.value,
     profileGroupbyAggFuncSelected: profileGroupbyAggFuncSelected.value,
     profileAggIntervalSelected: profileAggIntervalSelected.value,
     profileIntervalAggFuncSelected: profileIntervalAggFuncSelected.value,
@@ -709,6 +725,15 @@ const onAnalyticsPlotRelayout = (newLayoutRanges) => {
     }
   }
 
+  updateTrace();
+};
+
+const onProfileGroupbyEnabled = () => {
+  // Reset to default value when switching off
+  if (profileGroupbyEnabled.value === false) {
+    profileGroupbyAggFuncSelected.value = initOptions.profileGroupbyAggFuncSelected;
+    groupbySelected.value = initOptions.groupbySelected;
+  }
   updateTrace();
 };
 
@@ -1023,11 +1048,14 @@ const updateTrace = async() => {
   // Conditionally updates profile data query options.
   if (queryProfileData) {
     options['profile'] = {
-        viz_type: profileVizTypeSelected.value,
-        data_range: profileDataRangeSelected.value !== null ? 
+        'viz_type': profileVizTypeSelected.value,
+        'data_range': profileDataRangeSelected.value !== null ? 
           profileDataRangeSelected.value.map(dt => formatAsDateTimeStr(dt)) : [],
-        group_by_agg_func: profileGroupbyAggFuncSelected.value
+        'group_by_enabled': profileGroupbyEnabled.value
       };
+    if (profileGroupbyEnabled.value) {
+      options['profile']['group_by_agg_func'] = profileGroupbyAggFuncSelected.value;
+    }
     if (profileDownsampling.value) {
       options['profile']['max_datapoints'] = profileMaxDataPoints;
     }
@@ -1093,6 +1121,7 @@ const disabledDate = (current) => {
  */
  const profileTraceHandler = (traces) => {
   const colorscale = generateColorscale(paletteSelected.value, traces.length);
+  const isGroupbyAggregated = profileGroupbyEnabled.value;
   const isAggregated = profileVizTypeSelected.value === 'Aggregated';
   const displaySubplots = profileSubplotView.value;
   const subplotGroups = [...new Set(traces.map((t) => t['legendgroup']))];
@@ -1113,6 +1142,11 @@ const disabledDate = (current) => {
     t.mode = isAggregated ? null : 'lines';
     t.text = (isAggregated && showBarNumbers.value) ? t.y.map(y => y.toFixed(1)) : "";
     t.marker = {color: colorscale[idx % colorscale.length]};
+    // Display the additional groupby aggregated profile data with dot lines
+    if (isGroupbyAggregated && !isAggregated && t['isGroupbyAggregated']) {
+      t.line = {dash: 'dot'}
+    }
+    
     if (t.name.length >= 25) {
       t.name = t.name.replace(new RegExp(`(.{1,${25}})`, 'g'), '$1<br>');
     }
@@ -1131,7 +1165,7 @@ const disabledDate = (current) => {
     hoversubplots: 'axis',
     legend: { groupclick: 'toggleitem' },
     grid: grid,
-    barmode: (isAggregated && [1, 2].includes(dataGrouping.value))? 'relative' : 'group',
+    barmode: (isAggregated && [1, 2].includes(dataGrouping.value)) ? 'relative' : 'group',
     barnorm: (isAggregated && dataGrouping.value === 2) ? 'percent' : '',
     showlegend: true,
     autosize: true,

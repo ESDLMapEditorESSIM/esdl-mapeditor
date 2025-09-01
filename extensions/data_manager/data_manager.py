@@ -356,7 +356,7 @@ def aggregate_profile_data_by_interval(df: DataFrame, interval: str, agg_func: s
     """
     Aggregate profile data into specified time intervals and apply the given aggregation function.
 
-    :param data: A list of tuples, each containing a datetime object and a float value.
+    :param df: A profile data dataframe with columns ["datetime", "value"].
     :param interval: The time interval for aggregation.
     :param agg_func: The aggregation function to apply.
 
@@ -936,10 +936,11 @@ class DataManager:
         filters = options.filters
         chart_type = options.chart_type
 
-        viz_type = options.profile['viz_type']
-        data_range = options.profile['data_range']
-        group_by_agg_func = options.profile['group_by_agg_func']
+        viz_type = options.profile.get('viz_type')
+        data_range = options.profile.get('data_range')
+        group_by_enabled = options.profile.get('group_by_enabled')
 
+        group_by_agg_func = options.profile.get('group_by_agg_func')
         max_datapoints = options.profile.get('max_datapoints')
         agg_interval = options.profile.get('agg_interval')
         agg_func = options.profile.get('agg_func')
@@ -962,6 +963,7 @@ class DataManager:
 
         # energy_system_id and profile_id are required to derive the profile using esh.get_by_id()
         query = session.query(Data,
+                              Data.node.label('attached_node'),
                               DataSet.name,
                               DataSet.energy_system_id,
                               query_profile_id,
@@ -975,6 +977,7 @@ class DataManager:
             if len(values) > 0:  # only filter when some of the values are selected, but not all.
                 query = query.where(preprocess_column(col).in_(values))
         
+        ds_profile_labels = {}
         profiles_datetimes = []
         profile_data = []
         profile_query = query.all()
@@ -982,8 +985,26 @@ class DataManager:
             dataset_name = result.name
             es_id = result.energy_system_id
             profile_id = result.profile_id
-            group_by_values = [str(getattr(result, group)) for group in group_by]
-            group_by_categories = "-".join(group_by_values)
+
+            # To avoid duplicated profile label in the same dataset.
+            if dataset_name not in ds_profile_labels:
+                ds_profile_labels[dataset_name] = []
+            if result.attached_node in ds_profile_labels[dataset_name]:
+                profile_label = f"{result.attached_node} ({profile_id})"
+            else:
+                profile_label = result.attached_node
+                ds_profile_labels[dataset_name].append(profile_label)
+
+            # If group_by_enabled true,
+            # add as a string tag to the profile data and to be used when performing profile aggregation.
+            group_by_category = None
+            if group_by_enabled:
+                if len(group_by) > 0:
+                    group_by_options = [str(getattr(result, group)) for group in group_by]
+                    group_by_category = f"{'-'.join(group_by_options)} ({group_by_agg_func})"
+                # When no group_by option is provided, aggregate all profiles using the specified function.
+                else:
+                    group_by_category = group_by_agg_func
 
             try:
                 profile: esdl.InfluxDBProfile = esh.get_by_id(es_id, profile_id)
@@ -1061,12 +1082,16 @@ class DataManager:
 
                 profile_data.append({
                     "dataset": dataset_name,
-                    "groupby": group_by_categories,
+                    "groupby": group_by_category,
+                    "profile_label": profile_label,
                     "datetime": datetimes,
                     "value": values
                 })
 
-        traces = self.process_profile_data(profile_data, group_by_agg_func, agg_interval, agg_func)
+        # Cast profile_data into a dataframe and flatten datetime and value list
+        df = pd.DataFrame(profile_data).explode(["datetime", "value"])
+
+        traces = self.process_profile_data(df, group_by_enabled, group_by_agg_func, viz_type, agg_interval, agg_func)
         
         if len(profiles_datetimes):
             min_dt = (min(profiles_datetimes) - timedelta(days=1)).strftime(dt_str_format)
@@ -1136,46 +1161,60 @@ class DataManager:
         
     @staticmethod
     def process_profile_data(
-        profile_data: list[dict],
-        group_by_agg_func: str,
+        df: DataFrame,
+        group_by_enabled: bool,
+        group_by_agg_func: Optional[str],
+        viz_type: ProfileVizType,
         agg_interval: Optional[str],
         interval_agg_func: Optional[str]
     ) -> list[dict]:
         """
-        Processes profile data by applying aggregation functions across group categories
-        and optional time intervals, returning a list of trace dictionaries for visualization.
+        Processes profile dataframe by applying aggregation functions across groupby categories
+        and optionally aggregation time intervals, returning a list of trace dictionaries for visualization.
         
-        :param profile_data: A list of dictionaries where each entry contains 'dataset', 'groupby', 'datetime', and 'value'.
-                            'datetime' and 'value' are expected to be lists of equal length.
+        :param df: profile data dataframe with columns ["dataset", "groupby", "profile_label", "datetime", "value"].
+        :param group_by_enabled: if true, calculate aggregated data and the results will be appended to the input dataframe.
         :param group_by_agg_func: Aggregation function to apply across grouped data points.
+        :param viz_type: if viz_type is AGGREGATED, aggregation on spcified time interval will be applied.
         :param agg_interval: Optional time interval for resampling profile data.
         :param interval_agg_func: Aggregation function to apply within each time interval.
 
         :return: A list of trace dictionaries for plotting profile data.
         """
-        df = pd.DataFrame(profile_data)
         traces = []
 
-        for (dataset_name, groupby), group_df in df.groupby(["dataset", "groupby"]):
-            # Flatten datetime and value list and apply aggregation within each group
-            group_df = group_df.explode(["datetime", "value"])
-            agg_df = group_df.groupby("datetime", as_index=False).agg({'value': group_by_agg_func.lower()})
+        if group_by_enabled:
+            # Generate and append new aggregated profiles result
+            agg_dfs = []
+            for (dataset, groupby), group_df in df.groupby(["dataset", "groupby"]):
+                agg_df = group_df.groupby("datetime", as_index=False).agg({'value': group_by_agg_func.lower()})
+                # To keep the same df structure
+                agg_df["dataset"] = dataset
+                agg_df["groupby"] = groupby
+                agg_df["profile_label"] = groupby
 
-            if agg_interval is not None and interval_agg_func is not None:
-                agg_df = aggregate_profile_data_by_interval(agg_df, agg_interval, interval_agg_func)
+                agg_dfs.append(agg_df)
+
+            agg_df_combined = pd.concat(agg_dfs, ignore_index=True)
+            df = pd.concat([df, agg_df_combined], ignore_index=True)
+
+        for (dataset, profile_label), group_df in df.groupby(["dataset", "profile_label"]):
+            is_aggregated = True if profile_label == group_df["groupby"].tolist()[0] else False
+
+            # Perform time interval based aggregation
+            if viz_type == ProfileVizType.AGGREGATED.value:
+                processed_df = aggregate_profile_data_by_interval(group_df, agg_interval, interval_agg_func)
             else:
-                agg_df["label"] = agg_df["datetime"].dt.strftime(dt_str_format)
+                processed_df = group_df.copy()
+                processed_df["label"] = group_df["datetime"].dt.strftime(dt_str_format)
             
-            trace_name = groupby
-            if len(groupby) == 0:
-                trace_name = group_by_agg_func
-
             trace = {
-                "name": trace_name,
-                "x": agg_df["label"].tolist(),
-                "y": agg_df["value"].tolist(),
-                "legendgroup": dataset_name,
-                "legendgrouptitle": {"text": dataset_name},
+                "name": profile_label,
+                "x": processed_df["label"].tolist(),
+                "y": processed_df["value"].tolist(),
+                "isGroupbyAggregated": is_aggregated,
+                "legendgroup": dataset,
+                "legendgrouptitle": {"text": dataset},
             }
             traces.append(trace)
 
