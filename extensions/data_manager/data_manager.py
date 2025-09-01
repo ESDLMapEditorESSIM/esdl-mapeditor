@@ -1001,7 +1001,7 @@ class DataManager:
             if group_by_enabled:
                 if len(group_by) > 0:
                     group_by_options = [str(getattr(result, group)) for group in group_by]
-                    group_by_category = f"{'-'.join(group_by_options)} ({group_by_agg_func})"
+                    group_by_category = f"{group_by_agg_func}-{'-'.join(group_by_options)}"
                 # When no group_by option is provided, aggregate all profiles using the specified function.
                 else:
                     group_by_category = group_by_agg_func
