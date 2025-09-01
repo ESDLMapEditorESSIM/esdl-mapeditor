@@ -1133,17 +1133,14 @@ class DataManager:
         
         group_by_param = [DataSet.name] + [preprocess_column(group) for group in group_by]
 
-        if 'datetime' in group_by:
-            # TODO: refinement needed
-            agg_func = func.avg
-        else:
-            agg_func = func.sum
+        agg_func = func.sum
         
         query = session.query(agg_func(Data.value).label('value'), *group_by_param)\
             .join(Variable, Variable.id == Data.variable_id).join(DataSet, Data.dataset_id == DataSet.id)\
             .where(Variable.name == variable_name)\
             .where(Variable.dataset_id.in_(dataset_ids))\
-            .group_by(*group_by_param)
+            .group_by(*group_by_param)\
+            .order_by(*group_by_param)
         
         for col, values in filters.items():
             values = [x for x in values if x is not None]   # if all options of a filter are selected, values is null
@@ -1155,7 +1152,7 @@ class DataManager:
         if chart_type == ChartType.TABLE:
             traces = self.process_table_trace(df)
         else:
-            traces = self.process_bar_chart_trace(df, dataset_ids, variable_name, group_by)
+            traces = self.process_bar_chart_trace(df, group_by)
 
         return { "traces": traces }
         
@@ -1284,39 +1281,17 @@ class DataManager:
 
         return trace
     
-    # TODO: separate into profile and bar chart trace functions
     @staticmethod
-    def process_bar_chart_trace(df: DataFrame,
-                                dataset_ids: List[int],
-                                variable_name: str,
-                                group_by: List[str]) -> list:
+    def process_bar_chart_trace(df: DataFrame, group_by: List[str]) -> list:
         """
         Processes a DataFrame to create traces for a bar chart visualization.
         """
         traces = []
-        if 'datetime' in group_by:  # profile data, so x-axis should have datetime as value
-            # TODO: refinement needed
-            if group_by == ['datetime'] and len(dataset_ids) == 1:
-                # make sure we don't do a group by datetime: we get 8760 categories in the legend
-                traces.append({
-                    'name': variable_name,
-                    'x': list(df['datetime']),
-                    'y': list(df['value'])
-                })
-            else:
-                group_by.remove('datetime')  # make sure we never group by datetime
-                for name, group in df.groupby(by=group_by, as_index=False):
-                    traces.append({
-                        'name': f'{name[-2]} - {name[-1]}' if isinstance(name, tuple) else name,
-                        'x': list(group['datetime']),
-                        'y': list(group['value']),
-                    })
-        else:
-            for name, group in df.groupby(by=group_by[-1], as_index=False):
-                traces.append({
-                    'name': name[-1] if isinstance(name, tuple) else name,
-                    'x': [[str(x) for x in list(group['name'])], [str(x) for x in list(group[group_by[0]])]],
-                    'y': list(group['value'])
-                })
+        for name, group in df.groupby(by=group_by[-1], as_index=False):
+            traces.append({
+                'name': name[-1] if isinstance(name, tuple) else name,
+                'x': [[str(x) for x in list(group['name'])], [str(x) for x in list(group[group_by[0]])]],
+                'y': list(group['value'])
+            })
 
         return traces

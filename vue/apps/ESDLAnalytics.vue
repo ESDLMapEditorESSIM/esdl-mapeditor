@@ -415,7 +415,6 @@ import {
   SyncOutlined,
 	TableOutlined }
 from "@ant-design/icons-vue";
-import { nseColorPalette } from '@/utils/spatialVisualization';
 import AnalyticsPlot from '@/components/esdlanalytics/AnalyticsPlot.vue';
 import dayjs from 'dayjs';
 import minMax from 'dayjs/plugin/minMax';
@@ -465,8 +464,6 @@ const colorPalettes = [
   { label: 'Diverging', value: 'Diverging', sample: window.palette('tol-dv', sampleColorCount) },
   { label: 'Sequential', value: 'Sequential', sample: window.palette('tol-sq', sampleColorCount) },
   { label: 'Rainbow', value: 'Rainbow', sample: window.palette('tol-rainbow', sampleColorCount) },
-  // TODO: remove this quick fix (implemented to support NSE use case) 
-  { label: 'Custom color palette', value: 'NSE', sample: nseColorPalette.sample },
 ];
 
 const groupStackOptions = [
@@ -873,7 +870,6 @@ const onDeleteBtnClick = async() => {
     console.error(error);
     displayNotification("error", `An error occurred while deleting metadata: ${error}`);
   } finally {
-    // TODO: rest all to default
     // Reset selection
     datasetSelected.value = [];
     variableSelected.value = null;
@@ -1251,10 +1247,6 @@ const barChartTraceHandler = (traces) => {
       break;
     case 'Rainbow':
       colorscale = window.palette('tol-rainbow', numColors);
-      break;
-    // TODO: remove this quick fix (implemented to support NSE use case)
-    case 'NSE':
-      colorscale = nseColorPalette.sample;
       break;
     case 'Default':
     default:
