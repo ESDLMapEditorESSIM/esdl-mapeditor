@@ -252,6 +252,14 @@ function set_marker_handlers(marker) {
                 });
             }
 
+            marker.options.contextmenuItems.push({
+                text: 'Set constraint',
+                icon: 'icons/Chain.png',
+                callback: function() {
+                    window.activate_asset_constraint(asset_id)
+                }
+            });
+
             marker.options.contextmenuItems.push('-');
             marker.options.contextmenuItems.push({
                 text: 'Set carrier',

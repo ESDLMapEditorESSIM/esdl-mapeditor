@@ -116,6 +116,7 @@ from utils.datetime_utils import parse_date
 from extensions.residential_area.residential_area import ResidentialArea
 from extensions.ownership.ownership import Ownership
 from extensions.spatial_visualization.spatial_visualization import SpatialVisualization
+from extensions.asset_constraint.asset_constraint import AssetConstraint
 
 print('MapEditor version {}'.format(mapeditor_version))
 print('MapEditor git describe {}'.format(mapeditor_long_version))
@@ -250,6 +251,7 @@ ActivityContextExtension(app, socketio, settings_storage)
 ResidentialArea(app, socketio, settings_storage)
 Ownership(app)
 SpatialVisualization(app)
+AssetConstraint(app)
 data_manager = DataManager(app, socketio)
 ExternalModels(app, socketio, models_storage, toast_notifications)
 WorkflowEngine(app, socketio, models_storage, esdl_services, toast_notifications)
@@ -263,7 +265,7 @@ app.config.update({
     'OIDC_ID_TOKEN_COOKIE_SECURE': False,
     'OIDC_USER_INFO_ENABLED': True,
     'OIDC_OPENID_REALM': 'esdl-mapeditor',
-    'OIDC_SCOPES': 'openid email profile groups microprofile-jwt',
+    'OIDC_SCOPES': 'openid email profile microprofile-jwt',
     'OIDC_INTROSPECTION_AUTH_METHOD': 'client_secret_post',
     'OIDC_CLIENT_SECRETS': settings.OIDC_CLIENT_SECRETS
 })
@@ -3113,6 +3115,8 @@ def query_esdl_services(params):
             if esdl_service_result is not None:
                 if backend_action and "run_after_esdl_loaded" in backend_action and backend_action["run_after_esdl_loaded"]:
                     esdl_service_result_post_esdl_load = esdl_service_result  # emit after ESDL has been loaded
+                else:
+                    emit('esdl_service_result', esdl_service_result)
             else:
                 emit('esdl_service_result', esdl_service_result)
         else:
