@@ -85,8 +85,10 @@ const onSubmit = async () => {
     alert("Please select a valid option.");
     return;
   }
+
+  const output = mode.value === "multiple" ? value.map(item => choicesByValue.get(item)): choicesByValue.get(value);
   await sendOutputData(
-      stepParams.value.data, choicesByValue.get(value), () => goToStep(stepParams.value.nextStep)
+      stepParams.value.data, output, () => goToStep(stepParams.value.nextStep)
   );
 };
 

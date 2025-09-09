@@ -1019,14 +1019,10 @@ esdl_config = {
                         "type": "select",
                         "multiple": False,
                         "target_variable": "project",
-
                         "config": {
                             "multiple": False,
                             "choices_attr": "projects",
-                            "label_fields": [
-                                "id",
-                                "name"
-                            ],
+                            "label_fields": ["id", "name"],
                             "value_field": "id",
                         },
                         "data": {
@@ -1403,7 +1399,7 @@ esdl_config = {
                                         "type": "value",
                                         "parameter": "email",
                                         "value": "lars@xithing.io",
-                                    }
+                                    },
                                 ],
                             },
                             "result": [
@@ -1423,7 +1419,7 @@ esdl_config = {
                                 },
                             ],
                             "with_jwt_token": True,
-                        }
+                        },
                     },
                     {
                         "id": "load-ehc-results",
@@ -1444,6 +1440,7 @@ esdl_config = {
                             "step_ids": [
                                 "select-name-and-goal-flex-scan",
                                 "select-hub-flex-scan",
+                                "select-options-flex-scan",
                                 "start-flex-scan-phase-2",
                                 "table-flex-scan-phase-2-runs",
                             ]
@@ -1500,6 +1497,26 @@ esdl_config = {
                         "next_step_trigger": "input_change",
                     },
                     {
+                        "id": "select-options-flex-scan",
+                        "name": "",
+                        "description": "Select options (optional)",
+                        "type": "select",
+                        "config": {"multiple": True, "label_fields": ["title"], "value_field": "value"},
+                        "data": {
+                            "from_config": [
+                                {
+                                    "title": "Replace EV reference profiles with peak/dumb loading",
+                                    "value": "replace_reference_ev_profiles_with_peak_load",
+                                },
+                            ],
+                            "to_state": {},
+                            "output_wrapper_variable": "flex_scan_options",
+                        },
+                        "reload_on_esdl_activation": True,
+                        "next_step": "flex-scan-phase-2",
+                        "next_step_trigger": "input_change",
+                    },
+                    {
                         "id": "start-flex-scan-phase-2",
                         "name": "",
                         "description": "",
@@ -1507,6 +1524,7 @@ esdl_config = {
                         "config": {
                             "state_params": {
                                 "run_name": "run_name",
+                                "flex_scan_options": "flex_scan_options.value",
                                 "optimization_goal": "optimization_goal",
                                 "start_date": "start_date",
                                 "end_date": "end_date",
@@ -1555,6 +1573,12 @@ esdl_config = {
                                     "name": "hub_elect_network_id",
                                     "description": "Hub electricity network ID",
                                     "parameter_name": "hub_elect_network_id",
+                                    "location": "body",
+                                },
+                                {
+                                    "name": "flex_scan_options",
+                                    "description": "Flex scan options",
+                                    "parameter_name": "flex_scan_options",
                                     "location": "body",
                                 },
                             ],
@@ -1673,10 +1697,10 @@ esdl_config = {
                                 "select_simulation_period_essim",
                                 "select_custom_period_essim",
                                 "start_run_essim",
-                                "runs_table_essim"
+                                "runs_table_essim",
                             ]
                         },
-                        "next_step": "essim"
+                        "next_step": "essim",
                     },
                     {
                         "id": "select_name_and_time_step_essim",
@@ -1686,51 +1710,30 @@ esdl_config = {
                                 "schema": {
                                     "type": "object",
                                     "properties": {
-                                        "run_name": {
-                                            "type": "string",
-                                            "minLength": 3,
-                                            "title": "Name"
-                                        },
+                                        "run_name": {"type": "string", "minLength": 3, "title": "Name"},
                                         "time_step": {
                                             "type": "string",
                                             "oneOf": [
-                                                {
-                                                    "const": "1h",
-                                                    "title": "1 hour"
-                                                },
-                                                {
-                                                    "const": "15m",
-                                                    "title": "15 minutes"
-                                                }
-                                            ]
-                                        }
+                                                {"const": "1h", "title": "1 hour"},
+                                                {"const": "15m", "title": "15 minutes"},
+                                            ],
+                                        },
                                     },
-                                    "required": [
-                                        "run_name",
-                                        "time_step"
-                                    ]
+                                    "required": ["run_name", "time_step"],
                                 },
                                 "uischema": {
                                     "elements": [
-                                        {
-                                            "scope": "#/properties/run_name",
-                                            "type": "Control"
-                                        },
-                                        {
-                                            "scope": "#/properties/time_step",
-                                            "type": "Control"
-                                        }
+                                        {"scope": "#/properties/run_name", "type": "Control"},
+                                        {"scope": "#/properties/time_step", "type": "Control"},
                                     ],
-                                    "type": "VerticalLayout"
+                                    "type": "VerticalLayout",
                                 },
-                                "formData": {
-                                    "time_step": "1h"
-                                }
+                                "formData": {"time_step": "1h"},
                             },
-                            "to_state": {}
+                            "to_state": {},
                         },
                         "next_step": "essim",
-                        "next_step_trigger": "input_change"
+                        "next_step_trigger": "input_change",
                     },
                     {
                         "id": "select_simulation_period_essim",
@@ -1740,10 +1743,8 @@ esdl_config = {
                         "config": {
                             "placeholder": "Select simulation period",
                             "multiple": False,
-                            "label_fields": [
-                                "description"
-                            ],
-                            "value_field": "id"
+                            "label_fields": ["description"],
+                            "value_field": "id",
                         },
                         "data": {
                             "from_config": [
@@ -1752,88 +1753,62 @@ esdl_config = {
                                     "description": "Year 2019",
                                     "formData": {
                                         "start_time": "2019-01-01T00:00:00+0100",
-                                        "end_time": "2020-01-01T00:00:00+0100"
+                                        "end_time": "2020-01-01T00:00:00+0100",
                                     },
                                     "schema": {
                                         "properties": {
-                                            "start_time": {
-                                                "format": "date-time",
-                                                "type": "string"
-                                            },
-                                            "end_time": {
-                                                "format": "date-time",
-                                                "type": "string"
-                                            }
+                                            "start_time": {"format": "date-time", "type": "string"},
+                                            "end_time": {"format": "date-time", "type": "string"},
                                         },
-                                        "required": [
-                                            "start_time",
-                                            "end_time"
-                                        ],
-                                        "type": "object"
+                                        "required": ["start_time", "end_time"],
+                                        "type": "object",
                                     },
                                     "uischema": {
                                         "elements": [
                                             {
                                                 "scope": "#/properties/start_time",
                                                 "type": "Control",
-                                                "options": {
-                                                    "readonly": True
-                                                }
+                                                "options": {"readonly": True},
                                             },
                                             {
                                                 "scope": "#/properties/end_time",
                                                 "type": "Control",
-                                                "options": {
-                                                    "readonly": True
-                                                }
-                                            }
+                                                "options": {"readonly": True},
+                                            },
                                         ],
-                                        "type": "VerticalLayout"
-                                    }
+                                        "type": "VerticalLayout",
+                                    },
                                 },
                                 {
                                     "id": "year2019",
                                     "description": "Year 2023",
                                     "formData": {
                                         "start_time": "2023-01-01T00:00:00+0100",
-                                        "end_time": "2024-01-01T00:00:00+0100"
+                                        "end_time": "2024-01-01T00:00:00+0100",
                                     },
                                     "schema": {
                                         "properties": {
-                                            "start_time": {
-                                                "format": "date-time",
-                                                "type": "string"
-                                            },
-                                            "end_time": {
-                                                "format": "date-time",
-                                                "type": "string"
-                                            }
+                                            "start_time": {"format": "date-time", "type": "string"},
+                                            "end_time": {"format": "date-time", "type": "string"},
                                         },
-                                        "required": [
-                                            "start_time",
-                                            "end_time"
-                                        ],
-                                        "type": "object"
+                                        "required": ["start_time", "end_time"],
+                                        "type": "object",
                                     },
                                     "uischema": {
                                         "elements": [
                                             {
                                                 "scope": "#/properties/start_time",
                                                 "type": "Control",
-                                                "options": {
-                                                    "readonly": True
-                                                }
+                                                "options": {"readonly": True},
                                             },
                                             {
                                                 "scope": "#/properties/end_time",
                                                 "type": "Control",
-                                                "options": {
-                                                    "readonly": True
-                                                }
-                                            }
+                                                "options": {"readonly": True},
+                                            },
                                         ],
-                                        "type": "VerticalLayout"
-                                    }
+                                        "type": "VerticalLayout",
+                                    },
                                 },
                                 {
                                     "id": "custom",
@@ -1841,57 +1816,38 @@ esdl_config = {
                                     "formData": {},
                                     "schema": {
                                         "properties": {
-                                            "start_time": {
-                                                "format": "date-time",
-                                                "type": "string"
-                                            },
-                                            "end_time": {
-                                                "format": "date-time",
-                                                "type": "string"
-                                            }
+                                            "start_time": {"format": "date-time", "type": "string"},
+                                            "end_time": {"format": "date-time", "type": "string"},
                                         },
-                                        "required": [
-                                            "start_time",
-                                            "end_time"
-                                        ],
-                                        "type": "object"
+                                        "required": ["start_time", "end_time"],
+                                        "type": "object",
                                     },
                                     "uischema": {
                                         "elements": [
-                                            {
-                                                "scope": "#/properties/start_time",
-                                                "type": "Control"
-                                            },
-                                            {
-                                                "scope": "#/properties/end_time",
-                                                "type": "Control"
-                                            }
+                                            {"scope": "#/properties/start_time", "type": "Control"},
+                                            {"scope": "#/properties/end_time", "type": "Control"},
                                         ],
-                                        "type": "VerticalLayout"
-                                    }
-                                }
+                                        "type": "VerticalLayout",
+                                    },
+                                },
                             ],
                             "to_state": {},
-                            "output_wrapper_variable": "selected_simulation_period_essim"
+                            "output_wrapper_variable": "selected_simulation_period_essim",
                         },
                         "next_step": "essim",
-                        "next_step_trigger": "input_change"
+                        "next_step_trigger": "input_change",
                     },
                     {
                         "id": "select_custom_period_essim",
                         "name": "",
                         "type": "json-form2",
-                        "config": {
-                            "data_from_variable": "selected_simulation_period_essim"
-                        },
+                        "config": {"data_from_variable": "selected_simulation_period_essim"},
                         "data": {
-                            "from_state": {
-                                "selected_simulation_period_essim": "selected_simulation_period_essim"
-                            },
-                            "to_state": {}
+                            "from_state": {"selected_simulation_period_essim": "selected_simulation_period_essim"},
+                            "to_state": {},
                         },
                         "next_step": "essim",
-                        "next_step_trigger": "input_change"
+                        "next_step_trigger": "input_change",
                     },
                     {
                         "id": "start_run_essim",
@@ -1903,9 +1859,9 @@ esdl_config = {
                                 "run_name": "run_name",
                                 "start_time": "start_time",
                                 "end_time": "end_time",
-                                "time_step": "time_step"
+                                "time_step": "time_step",
                             },
-                            "datetimes_convert_Z": True
+                            "datetimes_convert_Z": True,
                         },
                         "service": {
                             "id": "74c9d1a2-c92a-46ed-a7e4-9931971cdd28",
@@ -1914,7 +1870,7 @@ esdl_config = {
                             "headers": {
                                 "User-Agent": "ESDL Mapeditor/1.0",
                                 "Accept": "application/json",
-                                "Content-Type": "application/json"
+                                "Content-Type": "application/json",
                             },
                             "url": f"{ESSIM_BACKEND_HOST}/essim/simulation",
                             "http_method": "post",
@@ -1925,53 +1881,41 @@ esdl_config = {
                                     "name": "simulationDescription",
                                     "description": "Simulation name",
                                     "parameter_name": "run_name",
-                                    "location": "body"
+                                    "location": "body",
                                 },
                                 {
                                     "name": "startDate",
                                     "description": "start date",
                                     "parameter_name": "start_time",
-                                    "location": "body"
+                                    "location": "body",
                                 },
                                 {
                                     "name": "endDate",
                                     "description": "end date",
                                     "parameter_name": "end_time",
-                                    "location": "body"
+                                    "location": "body",
                                 },
                                 {
                                     "name": "timeStep",
                                     "description": "time step",
                                     "parameter_name": "time_step",
-                                    "location": "body"
+                                    "location": "body",
                                 },
                                 {
                                     "name": "influxURL",
                                     "description": "influx url",
                                     "value": "http://influxdb:8086",
-                                    "location": "body"
+                                    "location": "body",
                                 },
-                                {
-                                    "name": "user",
-                                    "description": "Essim user",
-                                    "value": "mapeditor",
-                                    "location": "body"
-                                }
+                                {"name": "user", "description": "Essim user", "value": "mapeditor", "location": "body"},
                             ],
                             "body": "json_text",
                             "body_config": {
                                 "type": "json",
                                 "parameters": [
-                                    {
-                                        "type": "esdl",
-                                        "encoding": "base64_encoded",
-                                        "parameter": "esdlContents"
-                                    },
-                                    {
-                                        "type": "esdl_id",
-                                        "parameter": "scenarioID"
-                                    }
-                                ]
+                                    {"type": "esdl", "encoding": "base64_encoded", "parameter": "esdlContents"},
+                                    {"type": "esdl_id", "parameter": "scenarioID"},
+                                ],
                             },
                             "result": [
                                 {
@@ -1979,18 +1923,18 @@ esdl_config = {
                                     "action": "save_model_run",
                                     "external_model_name": "essim",
                                     "external_model_id_response_param": "id",
-                                    "run_name_state_param": "run_name"
+                                    "run_name_state_param": "run_name",
                                 }
                             ],
                             "with_jwt_token": False,
-                            "state_params": True
+                            "state_params": True,
                         },
                         "button_text": "Start model run",
                         "next_step": "essim",
                         "workflow_engine": {
                             "run_name": "state_params.run_name",
-                            "workflow_engine_next_step": "retrieve_run_progress_results"
-                        }
+                            "workflow_engine_next_step": "retrieve_run_progress_results",
+                        },
                     },
                     {
                         "id": "retrieve_run_progress_results",
@@ -2003,38 +1947,27 @@ esdl_config = {
                                         "url": f"{ESSIM_BACKEND_HOST}/essim/simulation/<MODEL_JOB_ID>",
                                         "response_mapping": {
                                             "status": "status.state",
-                                            "progress_fraction": "status.description"
+                                            "progress_fraction": "status.description",
                                         },
                                         "model_specific_response_mapping": {
                                             "scenarioID": "scenarioID",
                                             "simRunDate": "simRunDate",
-                                            "dashboardURL": "dashboardURL"
+                                            "dashboardURL": "dashboardURL",
                                         },
                                         "esdl_encoding": "base64_encoded",
                                         "status_mapping": {
-                                            "SUBMITTED": [
-                                                "CREATED"
-                                            ],
-                                            "RUNNING": [
-                                                "RUNNING"
-                                            ],
-                                            "SUCCEEDED": [
-                                                "COMPLETE"
-                                            ],
-                                            "CANCELLED": [
-                                                "CANCELLED"
-                                            ],
-                                            "ERROR": [
-                                                "TIMEOUT",
-                                                "ERROR"
-                                            ]
-                                        }
+                                            "SUBMITTED": ["CREATED"],
+                                            "RUNNING": ["RUNNING"],
+                                            "SUCCEEDED": ["COMPLETE"],
+                                            "CANCELLED": ["CANCELLED"],
+                                            "ERROR": ["TIMEOUT", "ERROR"],
+                                        },
                                     }
                                 ],
                                 "retry_interval_seconds": 2,
-                                "maximum_wait_seconds": 3600
+                                "maximum_wait_seconds": 3600,
                             }
-                        }
+                        },
                     },
                     {
                         "id": "runs_table_essim",
@@ -2042,65 +1975,49 @@ esdl_config = {
                         "description": "",
                         "type": "table-external-model",
                         "config": {
-                          "model_short_name": "essim",
-                          "has_feedback_messages": False,
-                          "result_animation": {
-                            "filter_on_tag": {
-                              "tag_name": "simulationRun",
-                              "value_database_key": "model_job_id"
-                            }
-                          },
-                          "result_external_link": {
-                            "description": "Open Dashboard",
-                            "value_database_key": "model_specific_output.dashboardURL"
-                          },
-                          "delete_result_url": "",
-                          "time_series_xlsx_download": {
-                            "filter_on_tag": {
-                              "tag_name": "simulationRun",
-                              "value_database_key": "model_job_id"
+                            "model_short_name": "essim",
+                            "has_feedback_messages": False,
+                            "result_animation": {
+                                "filter_on_tag": {"tag_name": "simulationRun", "value_database_key": "model_job_id"}
                             },
-                            "esdl_object_name_field": "assetName",
-                            "excel_sheets_per_table": [
-                              {
-                                "name_postfix": "PinW",
-                                "field_name_recorded_per_esdl_object": "allocationPower",
-                                "field_names_unrelated_to_esdl_objects": [
-                                  "imbalancePower"
+                            "result_external_link": {
+                                "description": "Open Dashboard",
+                                "value_database_key": "model_specific_output.dashboardURL",
+                            },
+                            "delete_result_url": "",
+                            "time_series_xlsx_download": {
+                                "filter_on_tag": {"tag_name": "simulationRun", "value_database_key": "model_job_id"},
+                                "esdl_object_name_field": "assetName",
+                                "excel_sheets_per_table": [
+                                    {
+                                        "name_postfix": "PinW",
+                                        "field_name_recorded_per_esdl_object": "allocationPower",
+                                        "field_names_unrelated_to_esdl_objects": ["imbalancePower"],
+                                        "exclude_values": {
+                                            "field_name": "capability",
+                                            "values_to_exclude": ["Transport"],
+                                        },
+                                    },
+                                    {
+                                        "name_postfix": "EinJ",
+                                        "field_name_recorded_per_esdl_object": "allocationEnergy",
+                                        "field_names_unrelated_to_esdl_objects": ["imbalanceEnergy"],
+                                        "exclude_values": {
+                                            "field_name": "capability",
+                                            "values_to_exclude": ["Transport"],
+                                        },
+                                    },
                                 ],
-                                "exclude_values": {
-                                  "field_name": "capability",
-                                  "values_to_exclude": [
-                                    "Transport"
-                                  ]
-                                }
-                              },
-                              {
-                                "name_postfix": "EinJ",
-                                "field_name_recorded_per_esdl_object": "allocationEnergy",
-                                "field_names_unrelated_to_esdl_objects": [
-                                  "imbalanceEnergy"
-                                ],
-                                "exclude_values": {
-                                  "field_name": "capability",
-                                  "values_to_exclude": [
-                                    "Transport"
-                                  ]
-                                }
-                              }
-                            ]
-                          }
+                            },
                         },
                         "data": {
-                          "from_socket": {
-                            "event": "get_external_model_runs_for_user",
-                            "params": {
-                              "external_model_name": "essim"
+                            "from_socket": {
+                                "event": "get_external_model_runs_for_user",
+                                "params": {"external_model_name": "essim"},
                             }
-                          }
                         },
-                        "with_jwt_token": True
-                      },
+                        "with_jwt_token": True,
+                    },
                     # TODO: check if these steps can be safely removed
                     # {
                     #     # 8
