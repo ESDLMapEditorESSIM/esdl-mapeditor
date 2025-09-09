@@ -46,11 +46,11 @@
       </template>
       <template #color_select="{ record }">
         <span>
-          <input
+          <a-input
             type="color"
             :value="record.color"
             @change="e => changeColor(record.id, e.target.value)"
-          >
+          />
         </span>
       </template>
     </a-table>
@@ -470,7 +470,7 @@ export default {
         this.carrier_list[i]['color'] = this.carrier_info_mapping[this.carrier_list[i]['id']]['color'];
       }
       let profiles_list = window.profiles_plugin.profiles_list;
-      console.log(profiles_list);
+
       let profiles = Object.entries(window.profiles_plugin.profiles_list['profiles']);
       for (let gr=0; gr<profiles_list['groups'].length; gr++) {
         let options = [];
@@ -485,7 +485,6 @@ export default {
             });
           }
         }
-        console.log(options);
         this.profiles_options.push({
           'label': profiles_list['groups'][gr].name,
           'options': options
@@ -574,7 +573,6 @@ export default {
         });
     },
     addEDRCarriers() {
-      console.log('add EDR Carriers', this.edr_carriers);
       window.socket.emit('DLA_add_EDR_carriers', {'id': this.edr_carriers},
         (res) => {
           window.set_carrier_list(window.active_layer_id, res);
