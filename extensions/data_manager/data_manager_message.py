@@ -39,6 +39,9 @@ class ProfileAggInterval(Enum):
     YEAR = "Year"
 
 class ProfileAggFunc(Enum):
+    """
+    Aggregation functions to be applid on group_by categories or time interval.
+    """
     COUNT = "Count"
     MAX = "Max"
     MIN = "Min"
@@ -49,10 +52,14 @@ class ProfileAggFunc(Enum):
 class ProfileQueryOptions:
     viz_type: ProfileVizType
     data_range: List[str]
+    group_by_enabled: bool
+    group_by_agg_func: Optional[ProfileAggFunc]
+    """Function to be applied when aggregating on group_by categories."""
     max_datapoints: Optional[int]
     """If specified, downsample profile data to approximately the given value."""
     agg_interval: Optional[ProfileAggInterval]
     agg_func: Optional[ProfileAggFunc]
+    """Function to be applied when aggregating on time interval."""
 
 @dataclass
 class QueryRequestBody:
