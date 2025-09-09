@@ -710,7 +710,7 @@ esdl_config = {
         "eps": [
             {
                 "id": "9951c271-f9b6-4c4e-873f-b309dff19e03",
-                "name": "EIGEN Plan & Design Workflow",
+                "name": "Plan & Design Workflow",
                 "explanation": "This workflow allows you to run the ICE workflow for business parks.",
                 "type": "vueworkflow",
                 "resumable": True,
@@ -759,26 +759,26 @@ esdl_config = {
                                 "enable_if_state": "execution.success",
                             },
                             # ESTIMATE FLEX ASSETS
-                            {
-                                "name": "Estimate flex assets",
-                                "type": "header",
-                            },
-                            {
-                                "name": "Start Flex Scan phase 1",
-                                "type": "primary",
-                                "next_step": "start-flex-scan-phase-1",
-                                "enable_if_state": "execution.success",
-                            },
-                            {
-                                "name": "Load FS phase 1 results",
-                                "type": "primary",
-                                "next_step": "select-flex-scan-f1-year",
-                                "enable_if_state": "execution.success",
-                            },
+                            # {
+                            #     "name": "Estimate flex assets",
+                            #     "type": "header",
+                            # },
+                            # {
+                            #     "name": "Start Flex Scan phase 1",
+                            #     "type": "primary",
+                            #     "next_step": "start-flex-scan-phase-1",
+                            #     "enable_if_state": "execution.success",
+                            # },
+                            # {
+                            #     "name": "Load FS phase 1 results",
+                            #     "type": "primary",
+                            #     "next_step": "select-flex-scan-f1-year",
+                            #     "enable_if_state": "execution.success",
+                            # },
                             # CONFIGURE ENERGY INFRASTRUCTURE
                             {
                                 "name": "Configure energy infrastructure",
-                                "type": "header",
+                                "type": "subheader",
                             },
                             {
                                 "name": "Configure energy infrastructure",
@@ -788,7 +788,7 @@ esdl_config = {
                             # ADD SMART METER PROFILES
                             {
                                 "name": "Add smart meter profiles",
-                                "type": "header",
+                                "type": "subheader",
                             },
                             {
                                 "name": "Generate energy profiles template",
@@ -825,10 +825,10 @@ esdl_config = {
                                 "name": "Optimise energy hub",
                                 "type": "header",
                             },
-                            {
-                                "name": "Add asset costs",
-                                "type": "subheader",
-                            },
+                            # {
+                            #     "name": "Add asset costs",
+                            #     "type": "subheader",
+                            # },
                             {
                                 "name": "Generate cost information template",
                                 "type": "primary",
@@ -854,30 +854,14 @@ esdl_config = {
                                 "next_step": "load-ehc-results",
                             },
                             {
-                                "name": "Optimise flexibility (in development)",
+                                "name": "Optimise flexibility",
                                 "type": "subheader",
                             },
                             {
-                                "name": "Flex Scan phase 2",
+                                "name": "Flex Scan flex optimization",
                                 "type": "primary",
                                 "disabled": False,
                                 "next_step": "flex-scan-phase-2",
-                            },
-                            {
-                                "name": "Calculate business case (in development)",
-                                "type": "subheader",
-                            },
-                            {
-                                "name": "Run Energy Hub Configurator",
-                                "type": "primary",
-                                "disabled": True,
-                                "next_step": "run-ehc-business-case-module",
-                            },
-                            {
-                                "name": "Load EHC results",
-                                "type": "primary",
-                                "disabled": True,
-                                "next_step": "load-ehc-business-case-results",
                             },
                             # SIMULATE TOTAL ENERGY SYSTEM
                             {
@@ -1318,17 +1302,6 @@ esdl_config = {
                         },
                     },
                     {
-                        "id": "configure-new-assets",
-                        "name": "Configure new assets",
-                        "description": "",
-                        "type": "text",
-                        "data": {
-                            "from_config": {
-                                "text": "At this point of the workflow you can add any assets and connections, to model your energy system scenario. Please make sure that you have selected the EPS measures you are interested in beforehand, and that you have applied any custom measures if applicable. These cannot be adjusted in a later stage.",
-                            },
-                        },
-                    },
-                    {
                         "id": "energy-hub",
                         "name": "Energy Hub",
                         "description": "",
@@ -1356,6 +1329,17 @@ esdl_config = {
                         },
                     },
                     {
+                        "id": "configure-new-assets",
+                        "name": "Configure new assets",
+                        "description": "",
+                        "type": "text",
+                        "data": {
+                            "from_config": {
+                                "text": "At this point of the workflow you can add any assets and connections, to model your energy system scenario. Please make sure that you have selected the EPS measures you are interested in beforehand, and that you have applied any custom measures if applicable. These cannot be adjusted in a later stage.",
+                            },
+                        },
+                    },
+                    {
                         "id": "generate-cost-information-template",
                         "name": "Generate cost information template",
                         "description": "",
@@ -1373,7 +1357,7 @@ esdl_config = {
                         "id": "run-energy-hub-configurator",
                         "name": "Run Energy Hub Configurator",
                         "description": "For the energy hub configured in an ESDL layer, the economical optimal collective battery specifications can be calculated with the EHC, together with the corresponding business case. As result of this step, a new ESDL layer will be created with the EHC results, and a business case Excel will be downloaded to your browser automatically.",
-                        "type": "service",
+                        "type": "esdl-service",
                         "service": {
                             "id": "9bd2f969-f240-4b26-ace5-2e03fbc04b13",
                             "name": "Run Energy Hub Configurator",
@@ -1668,17 +1652,6 @@ esdl_config = {
                     {
                         "id": "run-ehc-business-case-module",
                         "name": "Run EHC Business Case module",
-                        "description": "",
-                        "type": "text",
-                        "data": {
-                            "from_config": {
-                                "text": "PLACEHOLDER",
-                            },
-                        },
-                    },
-                    {
-                        "id": "load-ehc-business-case-results",
-                        "name": "Load EHC Business Case results",
                         "description": "",
                         "type": "text",
                         "data": {
