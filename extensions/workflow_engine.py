@@ -249,7 +249,7 @@ class WorkflowStep:
             logger.warning(
                 f"Connection Timeout error for run '{self.sequence_data.run_name}', continuing querying on '{url}'."
             )
-
+            return True
         except Exception as e:
             logger.error(f"Error while getting external model run results: {str(e)}")
             return False
