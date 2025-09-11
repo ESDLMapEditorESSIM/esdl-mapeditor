@@ -22,6 +22,7 @@ import uuid
 
 from flask import Flask
 from flask_socketio import SocketIO, emit
+from urllib3.exceptions import ConnectTimeoutError
 
 from extensions.toast_notifications import ToastNotification, NotificationType, ToastNotifications
 from extensions.external_models.external_models_storage import (
@@ -244,6 +245,11 @@ class WorkflowStep:
             else:
                 logger.error(f"Unexpected query status code '{resp.status_code}' from url '{url}'.")
                 return False
+        except ConnectTimeoutError as cte:
+            logger.warning(
+                f"Connection Timeout error for run '{self.sequence_data.run_name}', continuing querying on '{url}'."
+            )
+
         except Exception as e:
             logger.error(f"Error while getting external model run results: {str(e)}")
             return False
