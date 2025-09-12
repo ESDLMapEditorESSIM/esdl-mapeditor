@@ -22,12 +22,12 @@ import uuid
 
 from flask import Flask
 from flask_socketio import SocketIO, emit
-from urllib3.exceptions import ConnectTimeoutError
 
 from extensions.toast_notifications import ToastNotification, NotificationType, ToastNotifications
 from extensions.external_models.external_models_storage import (
     ExternalModelsStorage,
     STATUS,
+    LOGS,
     OUTPUT_ESDL,
     LAST_UPDATED_TO_EXTERNAL_MODEL_AT,
     PROGRESS_FRACTION,
@@ -129,16 +129,18 @@ class WorkflowStep:
         nr_of_query_errors = 0
         while True:
             updated_values = dict(model_specific_output=dict())
-            queries_ok = True
+            queries_error_message = ""
             for query_config in config["query_list"]:
-                # update values with query response (if parsing error: abort and log error)
-                if not self.update_values_from_query(updated_values, query_config):
-                    queries_ok = False
-                    nr_of_query_errors += 1
-                    if nr_of_query_errors > QUERY_POLLING_DEFAULT_MAX_ERRORS:
-                        return False
-            if not queries_ok:
-                updated_values[STATUS] = RunStatus.ERROR.value
+                # update values with query response
+                queries_error_message += self.update_values_from_query(updated_values, query_config)
+
+            if queries_error_message:  # allow a number of errors (temporarily unavailable api)
+                nr_of_query_errors += 1
+                if nr_of_query_errors <= QUERY_POLLING_DEFAULT_MAX_ERRORS:
+                    continue
+                else:
+                    updated_values[STATUS] = RunStatus.ERROR.value
+                    updated_values[LOGS] = queries_error_message
             elif STATUS not in updated_values or updated_values[STATUS] is None:
                 return False
             updated_values[LAST_UPDATED_TO_EXTERNAL_MODEL_AT] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -231,8 +233,9 @@ class WorkflowStep:
                 )
         return True
 
-    def update_values_from_query(self, updated_values: dict, query_config: dict):
+    def update_values_from_query(self, updated_values: dict, query_config: dict) -> str:
         url = parse_string_with_parameters(query_config["url"], self.sequence_data.as_dict())
+        error_message = ""
         try:
             resp = requests.get(url)
 
@@ -248,13 +251,13 @@ class WorkflowStep:
                         updated_values[MODEL_SPECIFIC_OUTPUT][key] = self.parse_response_key(
                             key, resp_value, query_config
                         )
-                return True
             else:
-                logger.warning(f"Unexpected query status code '{resp.status_code}' from url '{url}'.")
-                return False
+                error_message = f"Unexpected query status code '{resp.status_code}' from url '{url}'."
+                logger.warning(error_message)
         except Exception as e:
-            logger.warning(f"Error while getting external model run results: {str(e)}")
-            return False
+            error_message = f"Error while getting external model run results: {str(e)}"
+            logger.warning(error_message)
+        return error_message
 
     @staticmethod
     def parse_response_key(key, value, query_config) -> any:
