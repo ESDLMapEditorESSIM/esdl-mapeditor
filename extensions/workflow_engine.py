@@ -44,6 +44,7 @@ logger = log.get_logger(__name__)
 
 QUERY_POLLING_DEFAULT_RETRY_INTERVAL_SECONDS = 10
 QUERY_POLLING_DEFAULT_MAXIMUM_WAIT_SECONDS = 3600
+QUERY_POLLING_DEFAULT_MAX_ERRORS = 5
 
 
 @dataclass
@@ -125,14 +126,20 @@ class WorkflowStep:
 
         # run query(ies) until SUCCEEDED or maximum wait time reached
         nr_of_retries = 0
+        nr_of_query_errors = 0
         while True:
             updated_values = dict(model_specific_output=dict())
+            queries_ok = True
             for query_config in config["query_list"]:
                 # update values with query response (if parsing error: abort and log error)
                 if not self.update_values_from_query(updated_values, query_config):
-                    return False
-
-            if STATUS not in updated_values or updated_values[STATUS] is None:
+                    queries_ok = False
+                    nr_of_query_errors += 1
+                    if nr_of_query_errors > QUERY_POLLING_DEFAULT_MAX_ERRORS:
+                        return False
+            if not queries_ok:
+                updated_values[STATUS] = RunStatus.ERROR.value
+            elif STATUS not in updated_values or updated_values[STATUS] is None:
                 return False
             updated_values[LAST_UPDATED_TO_EXTERNAL_MODEL_AT] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -243,15 +250,10 @@ class WorkflowStep:
                         )
                 return True
             else:
-                logger.error(f"Unexpected query status code '{resp.status_code}' from url '{url}'.")
+                logger.warning(f"Unexpected query status code '{resp.status_code}' from url '{url}'.")
                 return False
-        except ConnectTimeoutError as cte:
-            logger.warning(
-                f"Connection Timeout error for run '{self.sequence_data.run_name}', continuing querying on '{url}'."
-            )
-            return True
         except Exception as e:
-            logger.error(f"Error while getting external model run results: {str(e)}")
+            logger.warning(f"Error while getting external model run results: {str(e)}")
             return False
 
     @staticmethod
