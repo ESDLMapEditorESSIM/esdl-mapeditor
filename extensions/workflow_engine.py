@@ -137,10 +137,12 @@ class WorkflowStep:
             if queries_error_message:  # allow a number of errors (temporarily unavailable api)
                 nr_of_query_errors += 1
                 if nr_of_query_errors <= QUERY_POLLING_DEFAULT_MAX_ERRORS:
+                    time.sleep(retry_interval_seconds)
                     continue
                 else:
                     updated_values[STATUS] = RunStatus.ERROR.value
-                    updated_values[LOGS] = queries_error_message
+                    current_model_run_data = self.models_storage.get_model_run(self.sequence_data.run_id)
+                    updated_values[LOGS] = f"{current_model_run_data.get(LOGS, '')}\n{queries_error_message}"
             elif STATUS not in updated_values or updated_values[STATUS] is None:
                 return False
             updated_values[LAST_UPDATED_TO_EXTERNAL_MODEL_AT] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")

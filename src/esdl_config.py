@@ -1422,7 +1422,7 @@ esdl_config = {
                         "type": "composite",
                         "config": {
                             "step_ids": [
-                                "select-name-and-goal-flex-scan",
+                                "select-name_timestep-and-goal-flex-scan",
                                 "select-hub-flex-scan",
                                 "select-options-flex-scan",
                                 "start-flex-scan-phase-2",
@@ -1432,7 +1432,7 @@ esdl_config = {
                         "next_step": "flex-scan-phase-2",
                     },
                     {
-                        "id": "select-name-and-goal-flex-scan",
+                        "id": "select-name_timestep-and-goal-flex-scan",
                         "type": "json-form2",
                         "data": {
                             "from_config": {
@@ -1440,11 +1440,21 @@ esdl_config = {
                                     "type": "object",
                                     "properties": {
                                         "run_name": {"type": "string", "minLength": 3, "title": "Name"},
+                                        "time_step": {
+                                            "type": "string",
+                                            "oneOf": [
+                                                {"const": "1h", "title": "1 hour"},
+                                                {"const": "15m", "title": "15 minutes"},
+                                            ],
+                                        },
                                         "optimization_goal": {
                                             "type": "string",
                                             "oneOf": [
                                                 {"const": "infra", "title": "infra"},
-                                                {"const": "duurzaamheid", "title": "sustainability"},
+                                                {
+                                                    "const": "duurzaamheid",
+                                                    "title": "sustainability (not supported yet)",
+                                                },
                                                 {"const": "kosten", "title": "costs"},
                                             ],
                                         },
@@ -1455,8 +1465,19 @@ esdl_config = {
                                             "title": "End Date (including this day)",
                                         },
                                     },
-                                    "required": ["run_name", "optimization_goal", "start_date", "end_date"],
-                                }
+                                    "required": [
+                                        "run_name",
+                                        "time_step",
+                                        "optimization_goal",
+                                        "start_date",
+                                        "end_date",
+                                    ],
+                                },
+                                "formData": {
+                                    "time_step": "1h",
+                                    "start_date": "2023-01-01",
+                                    "end_date": "2023-01-31",
+                                },
                             },
                             "to_state": {},
                         },
@@ -1483,7 +1504,7 @@ esdl_config = {
                     {
                         "id": "select-options-flex-scan",
                         "name": "",
-                        "description": "Select options (optional)",
+                        "description": "Flex Scan options (optional)",
                         "type": "select",
                         "config": {"multiple": True, "label_fields": ["title"], "value_field": "value"},
                         "data": {
@@ -1508,6 +1529,7 @@ esdl_config = {
                         "config": {
                             "state_params": {
                                 "run_name": "run_name",
+                                "time_step": "time_step",
                                 "flex_scan_options": "flex_scan_options.value",
                                 "optimization_goal": "optimization_goal",
                                 "start_date": "start_date",
@@ -1533,6 +1555,12 @@ esdl_config = {
                                     "name": "run_name",
                                     "description": "Run name",
                                     "parameter_name": "run_name",
+                                    "location": "body",
+                                },
+                                {
+                                    "name": "time_step",
+                                    "description": "Time step",
+                                    "parameter_name": "time_step",
                                     "location": "body",
                                 },
                                 {

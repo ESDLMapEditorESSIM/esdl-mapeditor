@@ -92,7 +92,7 @@ def load_wms_layer_geoserver(
     geo: Geoserver,
     workspace: str,
     store_name: str,
-    raster_extensions: str,
+    supported_raster_extensions: str,
     layer_name: str,
     file_path: str,
     style_name: str,
@@ -118,7 +118,7 @@ def load_wms_layer_geoserver(
 
         if style_file_path:
             geo.upload_style(path=style_file_path, name=style_name, workspace=workspace)
-        if file_path.endswith(tuple(raster_extensions.replace(" ", "").split(","))):  # raster file
+        if file_path.endswith(tuple(supported_raster_extensions.replace(" ", "").split(","))):  # raster file
             geo.create_coveragestore(layer_name=layer_name, path=file_path, workspace=workspace)
             if not style_file_path:  # create default style
                 geo.create_coveragestyle(
@@ -184,7 +184,7 @@ def add_wms_layer(
         "legend_url": legend_url,
         "layer_ref": None,
         "visible": False,
-        "opacity": layer_opacity
+        "opacity": layer_opacity,
     }
     layer_uuid = str(uuid4())
     wms_layers[layer_uuid] = layer
@@ -270,7 +270,7 @@ def load_layers() -> None:
     )
 
     # add layers
-    with open(os.environ.get("LIST_TO_IMPORT_FILE"), newline="") as csvfile:
+    with open(os.environ.get("LAYERS_WITH_STYLE_FILE"), newline="") as csvfile:
         csv_reader = csv.reader(csvfile, delimiter=",", quotechar='"')
         for row in csv_reader:
             file_path = row[0].strip()  # remove newline characters
@@ -290,7 +290,9 @@ def load_layers() -> None:
 
             try:
                 # load layer in postgis (only for non-raster files)
-                is_raster_file = file_path.endswith(tuple(os.environ.get("RASTER_EXTENSIONS").replace(" ", "").split(",")))
+                is_raster_file = file_path.endswith(
+                    tuple(os.environ.get("SUPPORTED_RASTER_EXTENSIONS").replace(" ", "").split(","))
+                )
                 if not is_raster_file:
                     load_wms_layer_postgis(
                         cursor=cursor,
@@ -308,7 +310,7 @@ def load_layers() -> None:
                     geo=geo,
                     workspace=os.environ.get("GEOSERVER_WORKSPACE"),
                     store_name=os.environ.get("GEOSERVER_STORENAME"),
-                    raster_extensions=os.environ.get("RASTER_EXTENSIONS"),
+                    supported_raster_extensions=os.environ.get("SUPPORTED_RASTER_EXTENSIONS"),
                     layer_name=layer_name,
                     file_path=file_path,
                     style_name=style_name,
@@ -338,7 +340,7 @@ def load_layers() -> None:
                     layer_name,
                     f"{os.environ.get('GEOSERVER_URL')}/wms/ows?service=WMS&request=GetLegendGraphic&"
                     f"FORMAT=image/png&LAYER={layer_name}&LEGEND_OPTIONS=fontsize:10;fontname:serif;fontColor:505050",
-                    layer_opacity
+                    layer_opacity,
                 )
             except Exception as e:
                 print(e)

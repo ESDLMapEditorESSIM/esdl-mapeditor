@@ -414,7 +414,7 @@ class ESDLServices:
                     ):
                         kwargs = {"json": body}
                     else:
-                        kwargs = None
+                        kwargs = {}
                     url_response = requests.get(url, headers=headers, **kwargs)
                 elif service["http_method"] == "delete":
                     url_response = requests.delete(url, headers=headers)
@@ -448,8 +448,17 @@ class ESDLServices:
                 results = []
                 for result_config in service["result"]:
                     try:
-                        result = self._process_service_result(esh, url_response, input_data, result_config, service,
-                                                              service_params, state_params, active_es_id, body)
+                        result = self._process_service_result(
+                            esh,
+                            url_response,
+                            input_data,
+                            result_config,
+                            service,
+                            service_params,
+                            state_params,
+                            active_es_id,
+                            body,
+                        )
                         if result:
                             results.append(result)
                     except Exception as e:
@@ -473,9 +482,18 @@ class ESDLServices:
             logger.exception("Error accessing external ESDL service: " + str(e))
             return [(False, None, None)]
 
-    def _process_service_result(self, esh, url_response: Response, input_data, result_config, service: dict,
-                                service_params: dict, state_params, active_es_id: str, body: dict[str, Any]) -> None | Tuple[
-        bool, str | dict | None, dict | None]:
+    def _process_service_result(
+        self,
+        esh,
+        url_response: Response,
+        input_data,
+        result_config,
+        service: dict,
+        service_params: dict,
+        state_params,
+        active_es_id: str,
+        body: dict[str, Any],
+    ) -> None | Tuple[bool, str | dict | None, dict | None]:
         """
         Process the result of an ESDL service call. This can be adding an ESDL object to the current EnergySystem, printing
         the result, or adding assets to the main area.
