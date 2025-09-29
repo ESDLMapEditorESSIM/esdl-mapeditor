@@ -2389,6 +2389,7 @@ def process_command(message):
     if message['cmd'] == 'add_profile_to_port':
         port_id = message['port_id']
         profile_class = message['profile_class']
+        profile_type = message['profile_type']
         quap_type = message["qaup_type"]
 
         if profile_class == 'SingleValue':
@@ -2462,13 +2463,9 @@ def process_command(message):
             custom_qau = message["custom_qau"]
             qau = ESDLQuantityAndUnits.build_qau_from_dict(custom_qau)
             esdl_profile.profileQuantityAndUnit = qau
-        elif quap_type == 'profiletype':
-            # socket.emit('command', {cmd: 'add_profile_to_port', port_id: port_id, value: profile_mult_value,
-            #    profile_class: profile_class, quap_type: qaup_type, profile_type: profile_type});
-            profile_type = message['profile_type']
-            esdl_profile.profileType = esdl.ProfileTypeEnum.from_string(profile_type)
 
         esdl_profile.id = str(uuid.uuid4())
+        esdl_profile.profileType = esdl.ProfileTypeEnum.from_string(profile_type)
         esh.add_object_to_dict(es_edit.id, esdl_profile)
 
         asset = get_asset_from_port_id(esh, active_es_id, port_id)
