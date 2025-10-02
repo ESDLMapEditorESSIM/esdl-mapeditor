@@ -47,7 +47,7 @@ const props = defineProps({
 });
 
 // eslint-disable-next-line no-unused-vars
-const { getParamsFromState, goToPreviousStep, goToFirstStep, getState } = useWorkflow();
+const { getParamsFromState, goToPreviousStep, goToFirstStep, goToNextStep, getState } = useWorkflow();
 const state = getState();
 const { clearEsdlLayers } = useEsdlLayers()
 
@@ -83,7 +83,11 @@ const loadEsdl = () => {
   }
 
   window.show_loader();
-  window.socket.emit("command", { cmd: "query_esdl_service", params: params });
+  window.socket.emit("command", { cmd: "query_esdl_service", params: params }, () => {
+    // Close the loader and continue to the next workflow step when the external service call returns a result
+    window.hide_loader();
+    goToNextStep();
+  });
 };
 
 if (workflowStep.service.auto) {
