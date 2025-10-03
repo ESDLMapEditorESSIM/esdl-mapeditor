@@ -62,7 +62,6 @@ onUnmounted(() => {
 });
 
 const getEpsDetails = (asset_id) => {
-  // window.continue_service_workflow();
   window.socket.emit("DLA_get_object_properties", { id: asset_id }, async (res) => {
     isLoading.value = true;
     try {
