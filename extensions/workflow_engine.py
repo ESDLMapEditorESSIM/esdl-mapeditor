@@ -27,6 +27,7 @@ from extensions.toast_notifications import ToastNotification, NotificationType, 
 from extensions.external_models.external_models_storage import (
     ExternalModelsStorage,
     STATUS,
+    LOGS,
     OUTPUT_ESDL,
     LAST_UPDATED_TO_EXTERNAL_MODEL_AT,
     PROGRESS_FRACTION,
@@ -43,6 +44,7 @@ logger = log.get_logger(__name__)
 
 QUERY_POLLING_DEFAULT_RETRY_INTERVAL_SECONDS = 10
 QUERY_POLLING_DEFAULT_MAXIMUM_WAIT_SECONDS = 3600
+QUERY_POLLING_DEFAULT_MAX_ERRORS = 5
 
 
 @dataclass
@@ -122,14 +124,26 @@ class WorkflowStep:
         if not maximum_wait_seconds:
             maximum_wait_seconds = QUERY_POLLING_DEFAULT_MAXIMUM_WAIT_SECONDS
 
+        # run query(ies) until SUCCEEDED or maximum wait time reached
         nr_of_retries = 0
+        nr_of_query_errors = 0
         while True:
             updated_values = dict(model_specific_output=dict())
+            queries_error_message = ""
             for query_config in config["query_list"]:
-                if not self.update_values_from_query(updated_values, query_config):
-                    return False
+                # update values with query response
+                queries_error_message += self.update_values_from_query(updated_values, query_config)
 
-            if STATUS not in updated_values or updated_values[STATUS] is None:
+            if queries_error_message:  # allow a number of errors (temporarily unavailable api)
+                nr_of_query_errors += 1
+                if nr_of_query_errors <= QUERY_POLLING_DEFAULT_MAX_ERRORS:
+                    time.sleep(retry_interval_seconds)
+                    continue
+                else:
+                    updated_values[STATUS] = RunStatus.ERROR.value
+                    current_model_run_data = self.models_storage.get_model_run(self.sequence_data.run_id)
+                    updated_values[LOGS] = f"{current_model_run_data.get(LOGS, '')}\n{queries_error_message}"
+            elif STATUS not in updated_values or updated_values[STATUS] is None:
                 return False
             updated_values[LAST_UPDATED_TO_EXTERNAL_MODEL_AT] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -221,8 +235,9 @@ class WorkflowStep:
                 )
         return True
 
-    def update_values_from_query(self, updated_values: dict, query_config: dict):
+    def update_values_from_query(self, updated_values: dict, query_config: dict) -> str:
         url = parse_string_with_parameters(query_config["url"], self.sequence_data.as_dict())
+        error_message = ""
         try:
             resp = requests.get(url)
 
@@ -238,12 +253,13 @@ class WorkflowStep:
                         updated_values[MODEL_SPECIFIC_OUTPUT][key] = self.parse_response_key(
                             key, resp_value, query_config
                         )
-                return True
             else:
-                logger.error(f"Unexpected query status code '{resp.status_code}' from url '{url}'.")
+                error_message = f"Unexpected query status code '{resp.status_code}' from url '{url}'."
+                logger.warning(error_message)
         except Exception as e:
-            logger.error(f"Error while getting external model run results: {str(e)}")
-            return False
+            error_message = f"Error while getting external model run results: {str(e)}"
+            logger.warning(error_message)
+        return error_message
 
     @staticmethod
     def parse_response_key(key, value, query_config) -> any:
@@ -326,6 +342,8 @@ class WorkflowEngine:
                 if init_data["type"] == "esdl_service":
                     esdl_service_ok, esdl_service_result, _ = self.esdl_services.call_esdl_service(init_data)[0]
 
+                    if not esdl_service_result:
+                        raise RuntimeError("Error calling service")
                     esdl_service_result["model_run_doc"]["is_owner"] = (
                         esdl_service_result["model_run_doc"]["user"] == user_email
                     )
@@ -370,18 +388,18 @@ class WorkflowEngine:
                     )
                 )
                 return sequence_id
-            except Exception as e:
-                logger.error(f"Error while running workflow engine: {str(e)}")
+            except Exception:
+                logger.exception("Error while running workflow engine.")
                 self.toast_notifications.send(
                     ToastNotification(
                         title=f"Error running '{run_name}'.",
-                        description="Is the input ESDL ok?",
+                        description="Please check the selected ESDL and model service",
                         type=NotificationType.ERROR,
                     )
                 )
 
     def run_sequence(self, sequence_data: SequenceData, first_step) -> None:
-        logger.info(f"Running workflow sequence for run '{sequence_data.run_name}")
+        logger.info(f"Running workflow sequence for run '{sequence_data.run_name}'")
 
         next_step = first_step
         run_succeeded = False
@@ -403,7 +421,7 @@ class WorkflowEngine:
             ):
                 next_step = step_config["workflow_engine"]["workflow_engine_next_step"]
             else:
-                next_step = None
+                next_step = None  # stop workflow sequence
 
         # finish workflow sequence
         logger.info(
@@ -413,6 +431,7 @@ class WorkflowEngine:
             title = f"Run '{sequence_data.run_name}' succeeded."
             notification_type = NotificationType.SUCCESS
         else:
+            self.external_models_storage.update_model_run(sequence_data.run_id, {STATUS: RunStatus.ERROR.value})
             title = f"Run '{sequence_data.run_name}' failed."
             notification_type = NotificationType.ERROR
         self.toast_notifications.send_from_outside_request_context(

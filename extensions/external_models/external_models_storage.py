@@ -101,6 +101,8 @@ class ExternalModelsStorage:
         input_esdl: str,
         run_input_data: dict,
         user_name: str,
+        logs: str = None,
+        status: RunStatus = RunStatus.SUBMITTED,
     ) -> dict:
         """
         Add an external model run to the database, a run ID will be created.
@@ -111,6 +113,8 @@ class ExternalModelsStorage:
         :param input_esdl: The input ESDL as a string.
         :param run_input_data: Additional input data (next to the input ESDL).
         :param user_name: The name of the user.
+        :param logs: Optional error logs received while starting the run.
+        :param status: Optional run status.
         :return: the inserted new model data.
         """
         doc = get_default_model_run_values() | {
@@ -121,7 +125,11 @@ class ExternalModelsStorage:
             INPUT_ESDL: input_esdl,
             MODEL_SPECIFIC_INPUT: run_input_data,
             MODEL_SPECIFIC_OUTPUT: None,
+            STATUS: status.value,
         }
+        if logs:
+            doc[LOGS] = logs
+
         if VALUE_UNSET in doc.keys():
             raise RuntimeError(f"Cannot save model run, unset required values: {doc.keys()}")
         with self.named_locker.lock(self.collection_name):
@@ -224,7 +232,6 @@ def get_default_model_run_values() -> dict:
         RUN_ID: str(uuid.uuid4()),
         RUN_NAME: VALUE_UNSET,
         INPUT_ESDL: VALUE_UNSET,
-        STATUS: RunStatus.SUBMITTED.value,
         PROGRESS_FRACTION: 0,
         SUBMITTED_TO_EXTERNAL_MODEL_AT: datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         LAST_UPDATED_TO_EXTERNAL_MODEL_AT: None,

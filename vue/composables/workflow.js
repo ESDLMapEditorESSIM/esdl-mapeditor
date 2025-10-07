@@ -535,10 +535,12 @@ export class Workflow {
     doNext(nextStepIdOrObject) {
         let targetStepId = null;
         if (nextStepIdOrObject === null || nextStepIdOrObject === undefined) {
+            // close the sidebar
+            sidebar.hide()
             // No next step. Go to the beginning.
-            while (this.hasPreviousStep()) {
-                this.doPrevious();
-            }
+            // while (this.hasPreviousStep()) {
+            //     this.doPrevious();
+            // }
             return;
         } else if (typeof nextStepIdOrObject === 'object') {
             // Step with multiple next steps.

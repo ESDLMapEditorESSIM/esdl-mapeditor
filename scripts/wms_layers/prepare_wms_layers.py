@@ -18,18 +18,18 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-def get_file_paths(folder_path, allowed_extensions=None):
+def get_file_paths(folder_path, supported_extensions=None):
     paths = []
 
     # If file_extensions is None, include all file types
-    if allowed_extensions is None:
-        allowed_extensions = set()
+    if supported_extensions is None:
+        supported_extensions = set()
 
     # Walk through the directory and its subdirectories
     for foldername, subfolders, filenames in os.walk(folder_path):
         for filename in filenames:
             # Check if the file has allowed extension
-            if not allowed_extensions or filename.lower().endswith(allowed_extensions):
+            if not supported_extensions or filename.lower().endswith(supported_extensions):
                 file_path = os.path.join(foldername, filename)
                 paths.append(file_path)
 
@@ -37,14 +37,18 @@ def get_file_paths(folder_path, allowed_extensions=None):
 
 
 def write_to_file(paths, output_file):
-    with open(output_file, 'w', newline='') as csvfile:
-        csv_writer = csv.writer(csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_NONNUMERIC)
+    with open(output_file, "w", newline="") as csvfile:
+        csv_writer = csv.writer(csvfile, delimiter=",", quotechar='"', quoting=csv.QUOTE_NONNUMERIC)
         for file_path in paths:
-            csv_writer.writerow([file_path, 'sld file path here to avoid auto style'])
+            csv_writer.writerow([file_path, "sld file path here to avoid auto style"])
 
 
 if __name__ == "__main__":
-    file_paths = get_file_paths(os.environ.get('FOLDER_PATH'),
-                                allowed_extensions=tuple(os.environ.get('ALLOWED_EXTENSIONS').replace(" ", "").split(",")))
-    write_to_file(file_paths, os.environ.get('LIST_TO_IMPORT_FILE'))
-    print(f"File paths written to '{os.environ.get('LIST_TO_IMPORT_FILE')}'")
+    supported_extensions = tuple(
+        f"{os.environ.get('SUPPORTED_VECTOR_EXTENSIONS')},{os.environ.get('SUPPORTED_RASTER_EXTENSIONS')}".replace(
+            " ", ""
+        ).split(",")
+    )
+    file_paths = get_file_paths(os.environ.get("FOLDER_PATH"), supported_extensions=supported_extensions)
+    write_to_file(file_paths, os.environ.get("LAYERS_WITH_STYLE_FILE"))
+    print(f"File paths written to '{os.environ.get('LAYERS_WITH_STYLE_FILE')}'")
