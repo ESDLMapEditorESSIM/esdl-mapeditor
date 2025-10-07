@@ -21,6 +21,7 @@ from flask_socketio import emit
 from shapely import MultiPoint
 from typing import Dict
 
+import esdl
 from esdl import esdl
 from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEnergySystem, ESDLQuantityAndUnits
 from esdl.processing.ESDLEnergySystem import get_notes_list
@@ -30,7 +31,7 @@ from extensions.profiles import Profiles
 from extensions.session_manager import set_handler, get_handler, get_session, set_session_for_esid, set_session, \
     get_session_for_esid
 from src.esdl_helper import get_asset_and_coord_from_port_id, asset_state_to_ui, \
-    get_tooltip_asset_attrs, add_spatial_attributes
+    get_tooltip_asset_attrs, add_spatial_attributes, add_extra_attributes
 from src.incremental_ui import create_asset_port_message
 from src.log import get_logger
 from src.shape import Shape, ShapePoint
@@ -81,7 +82,7 @@ def calc_random_location_around_center(center, delta_x, delta_y, convert_RD_to_W
     return geom
 
 
-def calc_building_assets_location(building, force_repositioning=False):
+def calc_building_assets_location(building: esdl.AbstractBuilding | esdl.CompoundAsset, force_repositioning=False):
     """
     Calculate the locations of assets in buildings when they are not given
     The building editor uses a 500x500 pixel canvas
@@ -110,8 +111,10 @@ def calc_building_assets_location(building, force_repositioning=False):
             num_conv_stor = num_conv_stor + 1
         if isinstance(basset, esdl.Consumer):
             num_cons = num_cons + 1
-    for bpotential in building.potential:
-        num_potentials = num_potentials + 1
+    if isinstance(building, esdl.AbstractBuilding):
+        num_potentials = len(building.potential)
+        #for bpotential in building.potential:
+        #    num_potentials = num_potentials + 1
 
     num_cols = 0
     if num_conns > 0: num_cols = num_cols + 1
@@ -169,10 +172,11 @@ def calc_building_assets_location(building, force_repositioning=False):
                     basset.geometry = esdl.Point(lon=column_cons_x, lat=row_cons_idx * row_cons_height, CRS="Simple")
                     row_cons_idx = row_cons_idx + 1
 
-        for bpotential in building.potential:
-            if not bpotential.geometry or force_repositioning:
-                bpotential.geometry = esdl.Point(lon=column_pots_x, lat=row_pots_idx * row_pots_height, CRS="Simple")
-                row_pots_idx = row_pots_idx + 1
+        if isinstance(building, esdl.AbstractBuilding):
+            for bpotential in building.potential:
+                if not bpotential.geometry or force_repositioning:
+                    bpotential.geometry = esdl.Point(lon=column_pots_x, lat=row_pots_idx * row_pots_height, CRS="Simple")
+                    row_pots_idx = row_pots_idx + 1
 
 
 def calc_possible_locations_in_area(shape, num_assets_in_area):
@@ -547,8 +551,13 @@ def add_asset_to_asset_list(asset_list, asset):
     port_list = create_asset_port_message(asset)
 
     # Collect extra attributes that might be required to draw specific icons, ...
-    extra_attributes = dict()
-    extra_attributes['assetType'] = asset.assetType
+    extra_attributes = add_extra_attributes(asset)
+    # use the first asset in a compound asset as icon for this asset
+    # send this to the front-end in extra_attributes
+    if isinstance(asset, esdl.CompoundAsset):
+        if len(asset.asset) > 1:
+            first_asset_type = asset.asset[0].eClass.name
+            extra_attributes['compoundFirstAssetType'] = first_asset_type
 
     state = asset_state_to_ui(asset)
     geom = asset.geometry
@@ -603,13 +612,14 @@ def process_building(esh, es_id, asset_list, building_list, area_bld_list, conn_
         port_list.extend(create_asset_port_message(building))
 
     # Generate information for drawing building (as a point or a polygon)
-    if isinstance(building, esdl.Building) or isinstance(building, esdl.AggregatedBuilding):
+    #if isinstance(building, esdl.Building) or isinstance(building, esdl.AggregatedBuilding):
+    if (isinstance(building, esdl.Building) or isinstance(building, esdl.AggregatedBuilding)
+            or isinstance(building, esdl.CompoundAsset)):  # but not BuildingUnit
         geometry = building.geometry
         bld_KPIs = create_building_KPIs(building)
 
         # Collect extra attributes that might be required to draw specific icons, ...
-        extra_attributes = dict()
-        extra_attributes['assetType'] = building.assetType
+        extra_attributes = add_extra_attributes(building)
 
         if geometry:
             if isinstance(geometry, esdl.Point):
@@ -650,8 +660,7 @@ def process_building(esh, es_id, asset_list, building_list, area_bld_list, conn_
                     state = asset_state_to_ui(basset)
                     if bld_editor:
                         tooltip_asset_attrs = get_tooltip_asset_attrs(basset, 'marker')
-                        extra_attributes = dict()
-                        extra_attributes['assetType'] = basset.assetType
+                        extra_attributes = add_extra_attributes(basset)
                         asset_list.append(['point', 'asset', basset.name, basset.id, type(basset).__name__, [lat, lon],
                                            tooltip_asset_attrs, state, port_list, capability_type, extra_attributes])
                 else:
@@ -673,9 +682,9 @@ def process_building(esh, es_id, asset_list, building_list, area_bld_list, conn_
                         pc_asset = get_asset_and_coord_from_port_id(esh, es_id, pc.id)
 
                         # If the asset the current asset connects to, is in a building...
-                        if pc_asset['asset'].containingBuilding:
-                            bld_pc_asset = pc_asset['asset'].containingBuilding
-                            bld_basset = basset.containingBuilding
+                        if pc_asset['asset'].containingBuilding or pc_asset['asset'].containingAsset:
+                            bld_pc_asset = pc_asset['asset'].containingBuilding or pc_asset['asset'].containingAsset
+                            bld_basset = basset.containingBuilding or basset.containingAsset
                             # If the asset is in a different building ...
                             if not bld_pc_asset == bld_basset:
                                 in_different_buildings = True
@@ -718,7 +727,7 @@ def process_building(esh, es_id, asset_list, building_list, area_bld_list, conn_
                                               'to-port-id': pc.id, 'to-port-carrier': pc_carr_id,
                                               'to-asset-id': pc_asset['asset'].id, 'to-asset-coord': pc_asset_coord})
 
-    if bld_editor:
+    if bld_editor and isinstance(building, esdl.AbstractBuilding):
         for potential in building.potential:
             geom = potential.geometry
             if geom:
@@ -739,7 +748,7 @@ def process_area(esh, es_id, asset_list, building_list, area_bld_list, conn_list
 
     # process assets in area
     for asset in area.asset:
-        if isinstance(asset, esdl.AbstractBuilding):
+        if isinstance(asset, esdl.ExposedPortsAsset): # buildings or CompoundAssets
             process_building(esh, es_id, asset_list, building_list, area_bld_list, conn_list, asset, False, level+1)
         if isinstance(asset, esdl.EnergyAsset):
             add_asset_to_asset_list(asset_list, asset)
@@ -759,8 +768,8 @@ def process_area(esh, es_id, asset_list, building_list, area_bld_list, conn_list
                     for pc in p.connectedTo:
                         pc_asset = get_asset_and_coord_from_port_id(esh, es_id, pc.id)
                         pc_asset_coord = None
-                        if pc_asset['asset'].containingBuilding:
-                            bld_pc_asset = pc_asset['asset'].containingBuilding
+                        if pc_asset['asset'].containingBuilding or pc_asset['asset'].containingAsset:
+                            bld_pc_asset = pc_asset['asset'].containingBuilding or pc_asset['asset'].containingAsset
                             if bld_pc_asset.geometry:
                                 if isinstance(bld_pc_asset.geometry, esdl.Point):
                                     pc_asset_coord = (bld_pc_asset.geometry.lat, bld_pc_asset.geometry.lon)
@@ -897,9 +906,9 @@ def get_building_connections(building):
                         pc_asset = get_asset_and_coord_from_port_id(esh, active_es_id, pc.id)
 
                         # If the asset the current asset connects to, is in a building...
-                        if pc_asset['asset'].containingBuilding:
-                            bld_pc_asset = pc_asset['asset'].containingBuilding
-                            bld_basset = basset.containingBuilding
+                        if pc_asset['asset'].containingBuilding or pc_asset['asset'].containingAsset:
+                            bld_pc_asset = pc_asset['asset'].containingBuilding or pc_asset['asset'].containingAsset
+                            bld_basset = basset.containingBuilding or basset.containingAsset
                             # If the asset is in a different building ...
                             if not bld_pc_asset == bld_basset:
                                 conn_list.append({"from_id": p.id, "to_id": pc.id})
@@ -1015,6 +1024,7 @@ def process_energy_system(
 
                 set_session_for_esid(es.id, 'conn_list', conn_list)
                 set_session_for_esid(es.id, 'asset_list', asset_list)
+                set_session_for_esid(es.id, 'building_list', building_list)
                 set_session_for_esid(es.id, 'area_bld_list', area_bld_list)
 
                 # Display animation if time series data for 'Pipe' or 'ElectricityCable' available

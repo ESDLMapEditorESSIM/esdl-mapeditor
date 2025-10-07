@@ -215,6 +215,25 @@ def add_spatial_attributes(asset, attrs):
         attrs['surfaceArea'] = asset.surfaceArea
 
 
+def add_extra_attributes(asset: esdl.Asset, extra_attributes: dict = None) -> dict:
+    """
+    Collect extra attributes that might be required to draw specific icons, compound asset info, ...
+    This updates the existing dictionary provided by parameter extra_attributes, or creates a new dict
+    :return dict with extra attributes
+    """
+    if not extra_attributes:
+        extra_attributes = {}
+    if asset.eIsSet('assetType'):
+        extra_attributes['assetType'] = asset.assetType
+    # use the first asset in a compound asset as icon for this asset
+    # send this to the front-end in extra_attributes
+    if isinstance(asset, esdl.CompoundAsset):
+        if len(asset.asset) > 0:
+            first_asset_type = asset.asset[0].eClass.name
+            extra_attributes['compoundFirstAssetType'] = first_asset_type
+
+    return extra_attributes
+
 def energy_asset_to_ui(esh, es_id, asset):  # , port_asset_mapping):
     port_list = []
     conn_list = []
@@ -254,8 +273,7 @@ def energy_asset_to_ui(esh, es_id, asset):  # , port_asset_mapping):
 
     state = asset_state_to_ui(asset)
     geom = asset.geometry
-    extra_attributes = dict()
-    extra_attributes['assetType'] = asset.assetType
+    extra_attributes = add_extra_attributes(asset)
     if geom:
         if isinstance(geom, esdl.Point):
             lat = geom.lat
@@ -288,11 +306,22 @@ def energy_asset_to_ui(esh, es_id, asset):  # , port_asset_mapping):
     return [], []
 
 
-def update_carrier_conn_list():
+def update_carrier_conn_list(asset: esdl.ConnectableAsset):
     esh = get_handler()
     active_es_id = get_session('active_es_id')
-    conn_list = get_session_for_esid(active_es_id, 'conn_list')
 
+    if isinstance(asset.eContainer(), esdl.ExposedPortsAsset):
+        # building editor could be open, so update building connections too.
+        container = asset.eContainer()
+        emit("clear_connections", {'id': container.id})  # clear building/compound layer
+        # cannot import globally, creates circular import
+        from src.process_es_area_bld import get_building_information
+        container_info = get_building_information(container)
+        conn_list = container_info["conn_list"]
+        emit("add_connections", {"es_id": active_es_id, "conn_list": conn_list, "add_to_building": True})
+
+    emit('clear_connections', {'id': active_es_id})  # clear current active layer connections
+    conn_list = get_session_for_esid(active_es_id, 'conn_list')
     for c in conn_list:
         from_port = esh.get_by_id(active_es_id, c['from-port-id'])
         if from_port.carrier:
@@ -300,6 +329,4 @@ def update_carrier_conn_list():
         to_port = esh.get_by_id(active_es_id, c['from-port-id'])
         if to_port.carrier:
             c['to-port-carrier'] = to_port.carrier.id
-
-    emit('clear_connections')  # clear current active layer connections
-    emit('add_connections', {'es_id': active_es_id, 'conn_list': conn_list})
+    emit("add_connections", {"es_id": active_es_id, "conn_list": conn_list, "add_to_building": False})

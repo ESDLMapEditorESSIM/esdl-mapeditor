@@ -27,7 +27,14 @@ function set_port_size_and_position(mp) { // map as optional parameter
     if (mp !== undefined) {
         active_map = mp;
     }
-    let size = Math.pow(active_map.getZoom()/8+1,3);
+    let zoom = active_map.getZoom()
+    map_id = active_map.getContainer().id;
+    if (map_id === 'bldmapid' ) {
+        // building editor does not have a Zoom level (default 0= fully zoomed out)
+        zoom = 16; // default zoomlevel for this building editor
+    }
+
+    let size = Math.pow(zoom/8+1,3);
 
     let port_inner_width = 8;
     let port_border_width = 3;
@@ -66,7 +73,7 @@ function set_port_size_and_position(mp) { // map as optional parameter
 }
 
 function set_marker_port_handlers(marker) {
-    console.log('set_marker_port_handlers', marker.name)
+    //console.log('set_marker_port_handlers', marker)
     marker.on('mouseover', function(e) {
         marker.mouseactive = true;
         if (!editing_objects && !deleting_objects) {
@@ -194,7 +201,7 @@ function set_marker_port_handlers(marker) {
                         callback: function (e) {
                             // don't send asset id, only port_id to allow 
                             // setting carrier on assets with multiple ports
-                            select_carrier_menu("", ports[p].id);
+                            select_carrier_menu("", ports[p].id, marker.esid);
                         },
                         hideOnSelect: true
                     });
@@ -243,7 +250,7 @@ function set_marker_port_handlers(marker) {
                     ports[p].marker.addTo(get_layers(active_layer_id, 'connection_layer'));
                 }
             }
-            set_port_size_and_position();
+            set_port_size_and_position(marker._map);
         }
     });
 
@@ -604,7 +611,7 @@ function set_line_port_handlers(line) {
 
                 }
             }
-            set_port_size_and_position();
+            set_port_size_and_position(line._map);
         }
     });
 

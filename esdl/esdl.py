@@ -18,8 +18,7 @@ CommodityEnum = EEnum('CommodityEnum', literals=[
 AreaScopeEnum = EEnum('AreaScopeEnum', literals=['UNDEFINED', 'BUILDING', 'STREET', 'ZIPCODE', 'NEIGHBOURHOOD', 'DISTRICT',
                       'VILLAGE', 'CITY', 'MUNICIPALITY', 'REGION', 'PROVINCE', 'STATE', 'COUNTRY', 'CONTINENT', 'SERVICE_AREA'])
 
-ProfileTypeEnum = EEnum('ProfileTypeEnum', literals=['UNDEFINED', 'SOLARIRRADIANCE_IN_W_PER_M2', 'WINDSPEED_IN_M_PER_S', 'STATEOFCHARGE_IN_WS', 'ENERGY_IN_WH', 'ENERGY_IN_KWH', 'ENERGY_IN_MWH', 'ENERGY_IN_GWH', 'ENERGY_IN_J', 'ENERGY_IN_KJ', 'ENERGY_IN_MJ', 'ENERGY_IN_GJ', 'ENERGY_IN_TJ',
-                        'ENERGY_IN_PJ', 'TEMPERATURE_IN_C', 'TEMPERATURE_IN_K', 'POWER_IN_W', 'POWER_IN_KW', 'POWER_IN_MW', 'POWER_IN_GW', 'POWER_IN_TW', 'MONEY_IN_EUR', 'MONEY_IN_KEUR', 'MONEY_IN_MEUR', 'PERCENTAGE', 'MONEY_IN_EUR_PER_KW', 'MONEY_IN_EUR_PER_KWH', 'VOLUME_IN_M3', 'VOLUME_IN_LITERS'])
+ProfileTypeEnum = EEnum('ProfileTypeEnum', literals=['UNDEFINED', 'INPUT', 'OUTPUT'])
 
 DurationUnitEnum = EEnum('DurationUnitEnum', literals=[
                          'SECOND', 'MINUTE', 'HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR'])
@@ -3795,13 +3794,13 @@ class DataTableProfile(ExternalProfile):
 The information defined in this data table should be sufficient to build a query using one of the supported database or file types (see AbstractDataConfiguration)."""
     tableName = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     columnName = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
-    timeColumnName = EAttribute(eType=EString, unique=True, derived=False,
-                                changeable=True, default_value='time')
+    datetimeColumnName = EAttribute(eType=EString, unique=True,
+                                    derived=False, changeable=True, default_value='datetime')
     filter = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     schema = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     configuration = EReference(ordered=True, unique=True, containment=False, derived=False)
 
-    def __init__(self, *, tableName=None, columnName=None, timeColumnName=None, filter=None, schema=None, configuration=None, **kwargs):
+    def __init__(self, *, tableName=None, columnName=None, datetimeColumnName=None, filter=None, schema=None, configuration=None, **kwargs):
 
         super().__init__(**kwargs)
 
@@ -3811,8 +3810,8 @@ The information defined in this data table should be sufficient to build a query
         if columnName is not None:
             self.columnName = columnName
 
-        if timeColumnName is not None:
-            self.timeColumnName = timeColumnName
+        if datetimeColumnName is not None:
+            self.datetimeColumnName = datetimeColumnName
 
         if filter is not None:
             self.filter = filter

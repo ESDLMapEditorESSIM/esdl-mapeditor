@@ -78,6 +78,7 @@ class ESDLFileIO:
         del_session("shape_dictionary")
         del_session("conn_list")
         del_session("asset_list")
+        del_session("building_list")
         del_session("area_bld_list")
 
         es_info_list = {}

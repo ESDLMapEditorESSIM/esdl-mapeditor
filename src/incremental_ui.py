@@ -60,6 +60,10 @@ class UpdateAssetMessage(TypedDict):
     """
     Defines if the asset is an ExposedPortAsset or an EnergyAsset
     """
+    parent_id: NotRequired[str]
+    """
+    Id of the parent asset (in case of ExposedPortAsset or Building)
+    """
 
 
 def create_update_asset_message(
@@ -77,9 +81,16 @@ def create_update_asset_message(
     """
     if port_list is None:
         port_list = create_asset_port_message(asset)
-    return UpdateAssetMessage(
-        asset_id=asset.id, name=asset.name, ports=port_list, exposed_port_asset=isinstance(asset, esdl.ExposedPortsAsset)
+    uam = UpdateAssetMessage(
+        asset_id=asset.id,
+        name=asset.name,
+        ports=port_list,
+        exposed_port_asset=isinstance(asset, esdl.ExposedPortsAsset),
     )
+    exposed_port_asset = asset.containingAsset or asset.containingBuilding
+    if exposed_port_asset:
+        uam["parent_id"] = exposed_port_asset.id
+    return uam
 
 
 def create_asset_port_message(asset: esdl.EnergyAsset | esdl.ExposedPortsAsset) -> List[PortMessage]:
@@ -104,7 +115,7 @@ def create_asset_port_message(asset: esdl.EnergyAsset | esdl.ExposedPortsAsset) 
 def create_port_message(p: esdl.InPort | esdl.OutPort, exposed_port: bool = False) -> PortMessage:
     """
     Creates a PortMessage for a port
-    :param p:
+    :param p: port to create the portmesssage for
     :param exposed_port: if exposed_port is true, this is added to the PortMessage to be used in the Gui.
         This indicates that that specific port has been exposed in the parent building or compound asset.
     :return: PortMessage

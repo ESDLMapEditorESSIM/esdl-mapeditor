@@ -168,11 +168,19 @@ export default {
   data() {
     return {
       obj_properties: {},
-      activePanels: ["Basic"],
+      //activePanels: ["Basic"],
+      activePanels: window.object_properties_active_panels ? window.object_properties_active_panels : ["Basic"],
       isLoading: true,
       noResult: false,
       ignoredRefs
     };
+  },
+  watch:{
+    activePanels: function() {
+      //console.log('Active Panels changed', this.activePanels)
+      // store active panel state in global, so we can reuse it later on
+      window.object_properties_active_panels = this.activePanels;
+    }
   },
   computed: {
     filteredReferences: function() {

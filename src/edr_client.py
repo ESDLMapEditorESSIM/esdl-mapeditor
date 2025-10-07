@@ -63,7 +63,7 @@ class EDRClient:
         @self.flask_app.route('/edr_assets/<asset_type>')
         def get_edr_assets(asset_type = None):
             if asset_type is None:
-                asset_type = "EnergyAsset"
+                asset_type = "ConnectableAsset"
             try:
                 res_code, res_list = self.get_EDR_list(asset_type)
 
@@ -159,6 +159,7 @@ class EDRClient:
         """
         esdl_type_section_mapping = {
             "EnergyAsset": "Assets",
+            "ConnectableAsset": "Assets",  # CompoundAssets, AbstractBuildings and EnergyAssets
             "GenericProfile": "Profiles",
         }
 

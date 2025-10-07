@@ -102,6 +102,7 @@ function connect_asset(feature_id, port_id) {
     }
 }
 
+// TODO: can be removed, no usages
 function remove_connection(from_asset_id, from_port_id, to_asset_id, to_port_id) {
     socket.emit('command', {cmd: 'remove_connection', from_asset_id:from_asset_id, from_port_id:from_port_id, to_asset_id:to_asset_id, to_port_id:to_port_id});
 }
@@ -196,12 +197,12 @@ function delete_asset(clicked_asset) {
         for (let i in asset.ports) {
             let from_id = asset.ports[i].id;
             for (let j in asset.ports[i].conn_to) {
-                remove_single_connection(from_id, asset.ports[i].conn_to[j].id, asset.esid)
+                remove_single_connection(from_id, asset.ports[i].conn_to[j].id, asset.ep_id || asset.esid)
             }
         }
 
         // remove the asset itself
-        remove_object_from_layer(asset.esid, 'esdl_layer', asset);
+        remove_object_from_layer(asset.ep_id || asset.esid, 'esdl_layer', asset);
         socket.emit('command', {cmd: 'remove_object', id: asset.id, asspot: asset.asspot});
     }
     if (select_assets.is_select_mode()) {
@@ -251,12 +252,20 @@ function set_marker_handlers(marker) {
                 });
             }
 
+            marker.options.contextmenuItems.push({
+                text: 'Set constraint',
+                icon: 'icons/Chain.png',
+                callback: function() {
+                    window.activate_asset_constraint(asset_id)
+                }
+            });
+
             marker.options.contextmenuItems.push('-');
             marker.options.contextmenuItems.push({
                 text: 'Set carrier',
                 icon: 'icons/SetCarrier.png',
                 callback: function(e) {
-                    select_carrier_menu(asset_id, "");
+                    select_carrier_menu(asset_id, "", marker.esid);
                 }
             });
             marker.options.contextmenuItems.push({
@@ -483,7 +492,7 @@ function set_line_handlers(line) {
         text: 'Set carrier',
         icon: 'icons/SetCarrier.png',
         callback: function(e) {
-            select_carrier_menu(line_id, "");
+            select_carrier_menu(line_id, "", line.esid);
         }
     });
 
@@ -575,7 +584,8 @@ function set_line_handlers(line) {
 }
 
 
-function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping, tt_format) {
+function add_asset(es_bld_id, asset_info, exposed_port_asset_id, carrier_info_mapping, tt_format) {
+    // exposed_port_asset_id points to the container asset when this asset is contained in a building or compoundAsset
     // Format of asset_info
     // 0         1          2     3   4           5          6      7      8        9           10
     // 'point'   asset      name  id  class_name  [lat,lon]  attrs  state  [ports]  capability  extra_attrs
@@ -585,33 +595,38 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
     // 'polygon' potential  name  id  class_name  [...]
     let classname = '';
     let extra_attrs = null;
-    if ((asset_info[0] == 'point' && asset_info[1] == 'asset' && asset_info[4] != 'Joint') ||
-        (asset_info[0] == 'polygon' && asset_info[1] == 'asset' )) {
+    if ((asset_info[0] === 'point' && asset_info[1] === 'asset' && asset_info[4] !== 'Joint') ||
+        (asset_info[0] === 'polygon' && asset_info[1] === 'asset' )) {
         classname = 'circle ' + asset_info[9];
-        if (!add_to_building) classname = 'zoom '+classname;
+        if (!exposed_port_asset_id) classname = 'zoom '+classname;
         extra_attrs = asset_info[10];
-    } else if (asset_info[1] == 'potential') {
+    } else if (asset_info[1] === 'potential') {
         classname = 'circle Potential';
-        if (!add_to_building) classname = 'zoom '+classname;
+        if (!exposed_port_asset_id) classname = 'zoom '+classname;
     }
     let img_class = "circle-img";
-    if (!add_to_building) img_class = 'hide_when_small zoom '+img_class;
-    if (asset_info[1] == 'asset') {
-        if (asset_info[7] == 'o') {
+    if (!exposed_port_asset_id) img_class = 'hide_when_small zoom '+img_class;
+    if (asset_info[1] === 'asset') {
+        if (asset_info[7] === 'o') {
             classname += ' Optional';       // will become 'Producer Optional'
         }
-        if (asset_info[7] == 'd') {
+        if (asset_info[7] === 'd') {
             classname += 'Disabled';        // will become 'ProducerDisabled'
             img_class += "-disabled";
         }
     }
-  
-    imgsrc = 'images/' + asset_info[4] + '.png';
-    if (!assets_for_icons.includes(asset_info[4])) {
-        imgsrc = drawTextImage(getAbbrevation(asset_info[4]));
+
+    let icon_asset_type = asset_info[4];
+    // use the first asset in a compound asset as icon for this asset
+    if (extra_attrs && extra_attrs['compoundFirstAssetType'] !== undefined) {
+        icon_asset_type = extra_attrs['compoundFirstAssetType']
+    }
+    imgsrc = 'images/' + icon_asset_type + '.png';
+    if (!assets_for_icons.includes(icon_asset_type)) {
+        imgsrc = drawTextImage(getAbbrevation(icon_asset_type));
     }
     if (custom_icons_plugin.custom_icons) {
-        let custom_icon = custom_icons_plugin.get_icon_for(asset_info[4], extra_attrs);
+        let custom_icon = custom_icons_plugin.get_icon_for(icon_asset_type, extra_attrs);
         if (custom_icon) {
             imgsrc = 'data:' + custom_icon.contentType + ';base64,' + custom_icon.imageData;
         }
@@ -621,11 +636,11 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
         html: '<div class="image-div" style="font-size:0px"><img class="'+img_class+'" src="' + imgsrc + '"></img></div>',
         iconSize: null
     });
-    if (asset_info[4] == 'Joint') {
+    if (asset_info[4] === 'Joint') {
         img_class = "circle-img-joint"
-        if (!add_to_building) img_class = 'zoom '+img_class;
+        if (!exposed_port_asset_id) img_class = 'zoom '+img_class;
         classname = "Joint"
-        if (!add_to_building) classname = 'zoom '+classname;
+        if (!exposed_port_asset_id) classname = 'zoom '+classname;
         divicon = L.divIcon({
             className: classname,
             html: '<div style="font-size:0px"><img class="'+img_class+'" src="' + imgsrc + '"></img></div>',
@@ -635,7 +650,7 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
   
     if (asset_info[2] == null) asset_info[2] = 'No name';
     var title = asset_info[4]+': '+asset_info[2];
-    if (asset_info[0] == 'point' && !(asset_info[1] == 'asset' && 'surfaceArea' in asset_info[6])) {
+    if (asset_info[0] === 'point' && !(asset_info[1] === 'asset' && 'surfaceArea' in asset_info[6])) {
         var marker = L.marker(
             [asset_info[5][0], asset_info[5][1]], {
                 icon: divicon,
@@ -649,19 +664,25 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
         marker.title = title;
         marker.id = asset_info[3];
         marker.esid = es_bld_id;
+        marker.ep_id = exposed_port_asset_id;
         marker.name = asset_info[2];
         marker.type = asset_info[4];
         marker.asspot = asset_info[1];
         marker.attrs = asset_info[6];
-        if (marker.asspot == 'asset') {
+        if (marker.asspot === 'asset') {
             marker.ports = asset_info[8];
             marker.capability = asset_info[9];
         }
   
         set_marker_handlers(marker);
-        add_object_to_layer(es_bld_id, 'esdl_layer', marker);
+        if (exposed_port_asset_id) {
+            // add to building editor layer
+            add_object_to_layer(exposed_port_asset_id, 'esdl_layer', marker);
+        } else {
+            add_object_to_layer(es_bld_id, 'esdl_layer', marker);
+        }
 
-        if (asset_info[1] == 'asset') {
+        if (asset_info[1] === 'asset') {
             if (spatial_buffers_plugin.show_spatial_buffers())
                 spatial_buffers_plugin.add_spatial_buffers(marker);
 
@@ -670,17 +691,17 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
                     { permanent: true, className: 'marker-tooltip' });
         }
     }
-    if (asset_info[0] == 'polygon' || (asset_info[0] == 'point' && asset_info[1] == 'asset' && 'surfaceArea' in asset_info[6])) {
+    if (asset_info[0] === 'polygon' || (asset_info[0] === 'point' && asset_info[1] === 'asset' && 'surfaceArea' in asset_info[6])) {
         // If an asset has an esdl.Point geometry and a surfaceArea attribute, draw it as a circle.
         var coords = asset_info[5]
         let polygon_color;
-        if (asset_info[1] == 'asset') {
+        if (asset_info[1] === 'asset') {
             polygon_color = colors[asset_info[9]]
         } else {
             polygon_color = colors["Potential"]
         }
         var polygon;
-        if (asset_info[0] == 'polygon') {
+        if (asset_info[0] === 'polygon') {
             polygon = L.polygon(coords, {color: polygon_color, weight: 3, draggable:true, title: title});
         } else {
             let radius = Math.sqrt(asset_info[6]['surfaceArea'] / Math.PI)
@@ -690,6 +711,7 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
         polygon.title = title;
         polygon.id = asset_info[3];
         polygon.esid = es_bld_id;
+        polygon.ep_id = exposed_port_asset_id;
         polygon.name = asset_info[2];
         polygon.type = asset_info[4];
         polygon.asspot = asset_info[1];
@@ -705,7 +727,7 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
             spatial_buffers_plugin.add_spatial_buffers(polygon);
   
         var polygon_center = coords;        // Take the point location as a center or
-        if (asset_info[0] == 'polygon') {   // if its a polygon, calculate the center
+        if (asset_info[0] === 'polygon') {   // if its a polygon, calculate the center
             polygon_center = calculate_array_polygon_center(coords);
         }
         // todo make assets with polygon draggable (needs difficult updates in backend)
@@ -720,7 +742,7 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
         marker.attrs = asset_info[6];
         marker.polygon = polygon;
         polygon.marker = marker;
-        if (marker.asspot == 'asset') {
+        if (marker.asspot === 'asset') {
             marker.ports = asset_info[8];
             marker.capability = asset_info[9];
         }
@@ -728,11 +750,11 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
         set_marker_handlers(marker);
         add_object_to_layer(es_bld_id, 'esdl_layer', marker);
   
-        if (user_settings.ui_settings.tooltips.show_asset_information_on_map && asset_info[1] == 'asset')
+        if (user_settings.ui_settings.tooltips.show_asset_information_on_map && asset_info[1] === 'asset')
             marker.bindTooltip(get_tooltip_text(tt_format['marker'], marker.name, marker.attrs),
                 { permanent: true, className: 'marker-tooltip' });
     }
-    if (asset_info[0] == 'line') {
+    if (asset_info[0] === 'line') {
         var coords = asset_info[5];
         var lineType = asset_info[4];
         var port_list = asset_info[8];
@@ -745,10 +767,10 @@ function add_asset(es_bld_id, asset_info, add_to_building, carrier_info_mapping,
             }
         }
         let line_options = {color: line_color, weight: 3, draggable:true, title: title, className:"zoomline"};
-        if (asset_info[7] == 'o') {   // Optional asset with dashed line
+        if (asset_info[7] === 'o') {   // Optional asset with dashed line
             line_options['dashArray'] = '3,10';
         }
-        if (asset_info[7] == 'd') {    // Disabled asset with grey dotted line
+        if (asset_info[7] === 'd') {    // Disabled asset with grey dotted line
             line_options['dashArray'] = '2,4';
             line_options['color'] = '#808080';
         }

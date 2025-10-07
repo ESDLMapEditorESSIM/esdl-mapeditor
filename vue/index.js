@@ -24,6 +24,7 @@ import CustomIconsSettings from "@/apps/CustomIconsSettings.vue";
 import KPIDashboard from '@/apps/KPIDashboard.vue';
 import ESDLAnalytics from '@/apps/ESDLAnalytics.vue';
 import OwnershipDialog from '@/apps/OwnershipDialog.vue';
+import AssetConstraint from '@/apps/AssetConstraint.vue';
 import {
     createVueLControl,
     mountApp,
@@ -85,6 +86,12 @@ window.control_strategy_window = (object_id) => {
     mountSidebarComponent(ControlStrategy);
 }
 
+window.activate_asset_constraint = (object_id) => {
+    const { newObject } = useObject();
+    newObject(object_id);
+    mountSidebarComponent(AssetConstraint);
+}
+
 window.marginal_costs_window = (object_id) => {
     const { newObject } = useObject();
     newObject(object_id);
@@ -95,6 +102,7 @@ window.carriers_window = () => {
     mountSidebarComponent(Carriers);
 }
 
+window.object_properties_active_panels = null;
 window.object_properties_window = (object_id) => {
     console.log('object_properties_list', object_id)
     const { newObject } = useObject();

@@ -190,7 +190,7 @@ function process_service_results(results) {
                 asset_feedback.forEach(function (af, index) {
                     if (asset_severity_order[af["severity"]] > asset_severity_order[asset_severity])
                         asset_severity = af["severity"]
-                    asset_message += '<li>' + af["severity"] + ': ' + af['message'] + '</li>';
+                    asset_message += '<li>' + af["severity"] + ' - ' + af['validation_message'] + '</li>';
                 });
                 asset_message += '</ul>';
 
