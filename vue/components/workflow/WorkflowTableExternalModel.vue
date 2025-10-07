@@ -307,6 +307,7 @@ const handleModalOk = () => {
       }
       window.socket.emit("external_models_delete_run", params, async () => {
         if (iRow === checkedRows.value.length - 1) {
+          deleteRunsEnabled.value = false;
           actionModalActive.value = false;
           await getInputData(stepParams.value.data, handleData);
         }
