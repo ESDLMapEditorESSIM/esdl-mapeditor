@@ -14,7 +14,7 @@
       placeholder="Enter search term..."
     />
     <a-table
-      v-if="filtered_general_feedback_list.length>0"
+      v-if="filtered_general_feedback_list.length"
       :columns="generalColumns"
       :data-source="filtered_general_feedback_list"
       row-key="id"
@@ -28,12 +28,23 @@
           :key="item.key"
           style="font-size: x-small"
         >
-          <span :style="severity_color_mapping[item.severity]">{{ item.severity }}:</span> {{ item.message }}<br>
+          <p style="margin: 0;">
+            <span :style="severity_color_mapping[item.severity]">{{ item.severity }}</span>
+            {{ ` - ${item.validationMessage }` }}
+          </p>
+          <ul 
+            v-if="Array.isArray(item.checkResultMessages)"
+            style="margin-left: -1rem; margin-bottom: 0.1rem;"
+          >
+            <li v-for="(msg, index) in item.checkResultMessages" :key="index">
+              {{ msg }}
+            </li>
+          </ul>
         </span>
       </template>
     </a-table>
     <a-table
-      v-if="filtered_asset_feedback_list.length>0"
+      v-if="filtered_asset_feedback_list.length"
       :columns="columns"
       :data-source="filtered_asset_feedback_list"
       row-key="id"
@@ -49,7 +60,18 @@
           :key="item.key"
           style="font-size: x-small"
         >
-          <span :style="severity_color_mapping[item.severity]">{{ item.severity }}:</span> {{ item.message }}<br>
+          <p style="margin: 0;">
+            <span :style="severity_color_mapping[item.severity]">{{ item.severity }}</span>
+            {{ ` - ${item.validationMessage }` }}
+          </p>
+          <ul 
+            v-if="Array.isArray(item.checkResultMessages)"
+            style="margin-left: -1rem; margin-bottom: 0.1rem;"
+          >
+            <li v-for="(msg, index) in item.checkResultMessages" :key="index">
+              {{ msg }}
+            </li>
+          </ul>
         </span>
       </template>
     </a-table>
@@ -99,6 +121,7 @@ const columns = [
 ];
 
 const asset_feedback_list = ref([]);
+// A list of feedback that can't be linked to the specific asset.
 const general_feedback_list = ref([]);
 const search_text = ref("");
 
@@ -148,24 +171,28 @@ function create_asset_feedback_list() {
   let active_es_asset_layers = active_es_asset_info.getLayers();
 
   let tmp_asset_feedback_list = [];
-  let found_feedback_ids = []
+  let found_feedback_ids = [];
 
   for (let i = 0; i < active_es_asset_layers.length; i++) {
-    let asset = active_es_asset_layers[i];
-    if (asset.id in currentAssetFeedbackList.value) {
-      found_feedback_ids.push(asset.id)
+    const asset = active_es_asset_layers[i];
+    const assetId = asset.id;
+    const assetName = asset.name;
+    if (assetId in currentAssetFeedbackList.value) {
+      found_feedback_ids.push(assetId)
       let messages = [];
-      for (let j = 0; j < currentAssetFeedbackList.value[asset.id].length; j++) {
+
+      currentAssetFeedbackList.value[assetId].forEach((validationResult) => {
         messages.push({
           key: uuidv4(),
-          message: currentAssetFeedbackList.value[asset.id][j]['message'],
-          severity: currentAssetFeedbackList.value[asset.id][j]['severity'],
+          severity: validationResult['severity'],
+          validationMessage: validationResult['validation_message'], 
+          checkResultMessages: validationResult['check_result_messages'],
         });
-      }
+      })
 
-      let feedback_item = {
-        key: asset.id,
-        name: asset.name,
+      const feedback_item = {
+        key: assetId,
+        name: assetName,
         messages: messages,
         layer: asset,
       }
@@ -175,21 +202,23 @@ function create_asset_feedback_list() {
   asset_feedback_list.value = tmp_asset_feedback_list;
 
   let tmp_general_feedback_list = [];
-  for (const messages_id in currentAssetFeedbackList.value) {
-    if (!found_feedback_ids.includes(messages_id)) {
+  for (const messagesId in currentAssetFeedbackList.value) {
+    if (!found_feedback_ids.includes(messagesId)) {
       let messages = [];
-      for (let j = 0; j < currentAssetFeedbackList.value[messages_id].length; j++) {
+
+      currentAssetFeedbackList.value[messagesId].forEach((validationResult) => {
         messages.push({
           key: uuidv4(),
-          message: currentAssetFeedbackList.value[messages_id][j]['message'],
-          severity: currentAssetFeedbackList.value[messages_id][j]['severity'],
+          severity: validationResult['severity'],
+          validationMessage: validationResult['validation_message'], 
+          checkResultMessages: validationResult['check_result_messages']
         });
-      }
+      })
 
-      let feedback_item = {
-        key: messages_id,
-        name: messages_id,
-        messages: messages, messages_id
+      const feedback_item = {
+        key: messagesId,
+        name: messagesId,
+        messages: messages
       }
       tmp_general_feedback_list.push(feedback_item)
     }
