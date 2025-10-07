@@ -14,6 +14,7 @@
 import base64
 import io
 import os
+import threading
 
 import pandas as pd
 import requests
@@ -291,15 +292,19 @@ class ExternalModels:
             run_id = model_run_info[RUN_ID]
 
             deleted_run_data = self.external_models_storage.delete_model_run(run_id)
+            run_name = deleted_run_data[RUN_NAME]
+            model_name = deleted_run_data[MODEL_NAME]
 
             delete_result_url = model_run_info.get("delete_result_url")
             if deleted_run_data and delete_result_url:
                 url = parse_string_with_parameters(delete_result_url, deleted_run_data)
-                try:
-                    requests.delete(url)
-                except Exception as e:
-                    logger.warning(f"Error while deleting external model run results: {str(e)}")
-            return {"message": f"{deleted_run_data[MODEL_NAME]} run '{deleted_run_data[RUN_NAME]}' deleted ok."}
+                # Delete external model database data in the background
+                threading.Thread(
+                    target=self.delete_run_data_in_external_model_database,
+                    args=(url, run_name, model_name, get_session("user-email")),
+                    daemon=True,
+                ).start()
+            return {"message": f"{deleted_run_data[MODEL_NAME]} run '{deleted_run_data[RUN_NAME]}' deleted."}
 
         @self.socketio.on("external_models_get_run_text", namespace="/esdl")
         def external_models_get_run_text(model_run_info: dict):
@@ -356,7 +361,10 @@ class ExternalModels:
 
             if user_group_paths:
                 properties[USER_GROUP_PATHS] = dict(
-                    type="array", title="user groups", uniqueItems=True, items=dict(type="string", enum=user_group_paths)
+                    type="array",
+                    title="user groups",
+                    uniqueItems=True,
+                    items=dict(type="string", enum=user_group_paths),
                 )
                 form_data[USER_GROUP_PATHS] = model_run_data[USER_GROUP_PATHS]
                 ui_elements.append(dict(type="Control", scope=f"#/properties/{USER_GROUP_PATHS}"))
@@ -386,3 +394,31 @@ class ExternalModels:
             :return: list of user group paths.
             """
             return get_session("user-group-path")
+
+    def delete_run_data_in_external_model_database(self, url: str, run_name: str, model_name: str, user_email: str):
+        """Delete run data in the external model database, give warning message if not successful.
+        Can be called from outside request context (on other thread)"""
+        delete_ok = True
+        try:
+            response = requests.delete(url, timeout=10)
+            if not response.ok:
+                delete_ok = False
+                logger.warning(
+                    f"Failed to delete data for run '{run_name}' from the '{model_name}' database: "
+                    f"status={response.status_code}, body={response.text[:1000]}"
+                )
+        except Exception as e:
+            delete_ok = False
+            logger.warning(f"Error while deleting data for run '{run_name}' from the '{model_name}' database: {str(e)}")
+
+        if not delete_ok:
+            self.toast_notifications.send_from_outside_request_context(
+                user_email=user_email,
+                toast_notification=ToastNotification(
+                    title=f"Run deleted from the MapEditor,"
+                    f" but failed to delete data for run '{run_name}' from the '{model_name}' database.",
+                    description="",
+                    type=NotificationType.WARNING,
+                    close_after_seconds=8,
+                ),
+            )
