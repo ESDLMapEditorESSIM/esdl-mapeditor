@@ -388,8 +388,8 @@ class WorkflowEngine:
                     )
                 )
                 return sequence_id
-            except Exception as e:
-                logger.exception(f"Error while running workflow engine: {str(e)}")
+            except Exception:
+                logger.exception("Error while running workflow engine.")
                 self.toast_notifications.send(
                     ToastNotification(
                         title=f"Error running '{run_name}'.",

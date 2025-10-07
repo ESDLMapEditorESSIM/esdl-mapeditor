@@ -51,7 +51,7 @@ const props = defineProps({
   },
 });
 
-const { getParamsFromState, goToStep, getState } = useWorkflow();
+const { getParamsFromState, goToStep } = useWorkflow();
 const workflowStep = props.workflowStep;
 
 let formData = { };
@@ -79,8 +79,6 @@ const getJsonForm = async () => {
   const request_params = getParamsFromState(
     workflowStep.target["request_params"]
   );
-  console.log(getState());
-  console.log("Request params:", request_params);
   request_params["url"] = workflowStep.url;
   const queryString = new URLSearchParams(request_params).toString();
 

@@ -461,8 +461,8 @@ class ESDLServices:
                         )
                         if result:
                             results.append(result)
-                    except Exception as e:
-                        logger.exception("Error processing service result: " + str(e))
+                    except Exception:
+                        logger.exception("Error processing service result.")
                         results.append((False, None, None))
                 return results
             else:
@@ -478,8 +478,8 @@ class ESDLServices:
                 else:
                     logger.warning("Error running ESDL service ", input_data)
                 return [(False, str(input_data), None)]
-        except Exception as e:
-            logger.exception("Error accessing external ESDL service: " + str(e))
+        except Exception:
+            logger.exception("Error accessing external ESDL service.")
             return [(False, None, None)]
 
     def _process_service_result(
