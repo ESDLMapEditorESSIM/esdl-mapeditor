@@ -557,12 +557,12 @@ class BoundaryService:
             time.sleep(0.01)  # yield a little concurrency when running this in a thread
 
             logger.info(f"Checking for SA_{scope_id} in boundary cache...")
-            if "SA_" + scope_id in boundary_cache:
+            if "SA_" + str(type) + "_ " + scope_id in boundary_cache:
                 # print('Retrieve boundary from cache', str(year)+id)
                 # res_boundary = copy.deepcopy(boundary_cache[id])   # this doesn't solve messing up cache
                 # return res_boundary
-                logger.info(f"SA_{scope_id} in boundary cache, returning from cache")
-                return boundary_cache["SA_" + scope_id]
+                logger.info(f"SA_{str(type)}_{scope_id} in boundary cache, returning from cache")
+                return boundary_cache["SA_" + str(type) + "_ " + scope_id]
             else:
                 logger.info("Not found, using boundary service to find information")
 
@@ -578,7 +578,7 @@ class BoundaryService:
                 r = requests.get(url)
                 if len(r.text) > 0:
                     reply = json.loads(r.text)
-                    boundary_cache["SA_" + scope_id] = reply
+                    boundary_cache["SA_" + str(type) + "_ " + scope_id] = reply
                     return reply
                 else:
                     logger.warning("WARNING: Empty response for Boundary service supply area info for {} with id {}".format(scope.name, id))
