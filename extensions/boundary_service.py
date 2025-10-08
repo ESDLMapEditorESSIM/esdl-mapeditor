@@ -354,6 +354,7 @@ class BoundaryService:
 
             if add_station_info:
                 stations = self.get_station_from_service(
+                    boundaries_year,
                     use_capacity_data_for,
                     esdl.AreaScopeEnum.from_string(str.upper(scope)),
                     str.upper(identifier)
@@ -377,6 +378,7 @@ class BoundaryService:
             if add_service_area_info or add_service_area_ck_info:
                 type = ServiceAreaDataType.VIVET_DSO_data if add_station_info else ServiceAreaDataType.Capaciteitskaart_data
                 service_areas = self.get_service_area_from_service(
+                    boundaries_year,
                     esdl.AreaScopeEnum.from_string(str.upper(scope)), str.upper(identifier), type)
 
                 if service_areas:
@@ -546,8 +548,9 @@ class BoundaryService:
         else:
             return None
 
-    def get_service_area_from_service(self, scope, scope_id, type):
+    def get_service_area_from_service(self, year, scope, scope_id, type):
         """
+         :param year: year for which the data must be obtained
          :param scope: any of the following: zipcode, neighbourhood, district, municipality, energyregion, province, country
          :param id: the identifier of the 'scope'
          :param type: the type of service area data to use, can be 'SA' (for VIVET) or 'CK' (for CapaciteitsKaart)
@@ -572,7 +575,7 @@ class BoundaryService:
                 else:
                     endpoint = 'service_area_ck'
                 url = 'http://' + settings.boundaries_config["host"] + ':' + settings.boundaries_config["port"] + \
-                      settings.boundaries_config["path_service_areas"] + '/' + endpoint + '/' + \
+                      settings.boundaries_config["path_service_areas"] + '/' + endpoint + '/' + str(year) + '/' + \
                       boundary_service_mapping[scope.name] + '/' + scope_id
                 # print('Retrieve from boundary service', id)
                 r = requests.get(url)
@@ -590,8 +593,9 @@ class BoundaryService:
         else:
             return None
 
-    def get_station_from_service(self, delta_year, scope, scope_id):
+    def get_station_from_service(self, year, delta_year, scope, scope_id):
         """
+         :param year: year for which the data must be obtained
          :param delta_year: delta of the year for which the data must be obtained (can be 0 (current), 3, 5, or 10)
          :param scope: any of the following: zipcode, neighbourhood, district, municipality, energyregion, province, country
          :param id: the identifier of the 'scope'
@@ -602,8 +606,8 @@ class BoundaryService:
 
             try:
                 url = 'http://' + settings.boundaries_config["host"] + ':' + settings.boundaries_config["port"] + \
-                      settings.boundaries_config["path_service_areas"] + '/station/' + str(delta_year) + '/' + \
-                      boundary_service_mapping[scope.name] + '/' + scope_id
+                      settings.boundaries_config["path_service_areas"] + '/station/' + str(year) + '/' + \
+                      str(delta_year) + '/' + boundary_service_mapping[scope.name] + '/' + scope_id
                 r = requests.get(url)
                 if len(r.text) > 0:
                     reply = json.loads(r.text)

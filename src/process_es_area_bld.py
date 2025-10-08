@@ -37,7 +37,7 @@ from src.assets_to_be_added import AssetsToBeAdded
 from src.esdl_helper import get_asset_and_coord_from_port_id, asset_state_to_ui, \
     get_tooltip_asset_attrs, add_spatial_attributes
 from src.log import get_logger
-from src.shape import Shape, ShapePoint
+from src.shape import Shape, ShapePoint, ShapeMultiPolygon
 from src.tno.projects.emits import emit_active_esdl_project
 from utils.RDWGSConverter import RDWGSConverter
 from utils.utils import timed
@@ -461,8 +461,14 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, sho
         boundary_wgs = BoundaryService.get_instance().get_boundary_from_service(boundaries_year, area_scope, str.upper(area_id))
         if boundary_wgs:
             sh = Shape.parse_geojson_geometry(boundary_wgs['geom'])
-            num_sub_polygons = len(sh.shape.geoms)
-            for i, pol in enumerate(sh.shape.geoms):
+            if isinstance(sh, ShapeMultiPolygon):
+                num_sub_polygons = len(sh.shape.geoms)
+                polygons = sh.shape.geoms
+            else:
+                # shape is a Polygon, and Polygon instances don't have a 'geoms' field
+                num_sub_polygons = 1
+                polygons = [sh.shape]
+            for i, pol in enumerate(polygons):
                 if num_sub_polygons > 1:
                     area_id_number = " ({} of {})".format(i + 1, num_sub_polygons)
                 else:
