@@ -55,11 +55,14 @@ const {
   setWorkflowStepInputValid,
   getInputData,
   sendOutputData,
-  isAllInputValid
+  isAllInputValid,
+  getState,
 } = useWorkflow();
 
 // Variable for indexing all choices by the value (which is rendered in HTML).
 let choicesByValue;
+
+const insertedPreviousValues = ref(false);
 
 onMounted(() => {
   init();
@@ -86,7 +89,7 @@ const onSubmit = async () => {
     return;
   }
 
-  const output = mode.value === "multiple" ? value.map(item => choicesByValue.get(item)): choicesByValue.get(value);
+  const output = mode.value === "multiple" ? value.map(item => choicesByValue.get(item)) : choicesByValue.get(value);
   await sendOutputData(
       stepParams.value.data, output, () => goToStep(stepParams.value.nextStep)
   );
@@ -160,6 +163,17 @@ const updateData = async (data) => {
       form.value[stepParams.value.data.output_wrapper_variable] = "";
     }
   }
+
+  if (!insertedPreviousValues.value) {
+    // overwrite default values with last submitted values if present in state
+    const state = getState();
+    if (stepParams.value.data.output_wrapper_variable in state) {
+      form.value[stepParams.value.data.output_wrapper_variable] =
+          state[stepParams.value.data.output_wrapper_variable][stepParams.value.config.value_field]
+    }
+    insertedPreviousValues.value = true;
+  }
+
   updateInputState();
   isLoading.value = false;
 };

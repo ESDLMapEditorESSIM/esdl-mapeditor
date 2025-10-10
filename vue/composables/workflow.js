@@ -366,7 +366,7 @@ export function useWorkflow() {
     const sendOutputData = async (dataConfig, output, afterDataSentFunction = () => {
     }) => {
         if (getStartingBackendProcessId() !== null) {
-            output["backend_process_id"] = getStartingBackendProcessId();
+            output.backend_process_id = getStartingBackendProcessId();
         }
         let formattedOutput;
         if (dataConfig.output_wrapper_variable) {
@@ -576,18 +576,6 @@ export class Workflow {
         }
     }
 
-    addStep(step) {
-        // Don't add to previous steps if staying on the same step which happens with the 'composite' step
-        if (step !== null && step !== this.workflowStep) {
-            this.prevWorkflowSteps.push(this.workflowStep);
-            this.workflowTrigger["index"] += 1;
-            step.workflowTrigger = this.workflowTrigger;
-            step["main_service_id"] = this.service.id;
-            this.inputValidDict = {};
-            this.workflowStep = step;
-        }
-    }
-
     getStepIndexFromId(stepId) {
         for (const [index, step] of this.service.workflow.entries()) {
             if ("id" in step && step.id === stepId) {
@@ -602,7 +590,7 @@ export class Workflow {
      */
     doPrevious() {
         this.workflowStep = this.prevWorkflowSteps.pop();
-        this.workflowTrigger["index"] += 1;
+        this.workflowTrigger.index += 1;
     }
 
     hasPreviousStep() {
@@ -617,9 +605,9 @@ export class Workflow {
         }
         const wfStep = this.service.workflow[stepIndex];
 
-        this.workflowTrigger["index"] += 1;
+        this.workflowTrigger.index += 1;
         wfStep.workflowTrigger = this.workflowTrigger;
-        wfStep["main_service_id"] = this.service.id;
+        wfStep.main_service_id = this.service.id;
         return wfStep;
     }
 }
