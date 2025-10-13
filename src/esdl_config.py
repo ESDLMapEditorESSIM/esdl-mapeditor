@@ -1792,7 +1792,7 @@ esdl_config = {
                                     },
                                 },
                                 {
-                                    "id": "year2019",
+                                    "id": "year2023",
                                     "description": "Year 2023",
                                     "formData": {
                                         "start_time": "2023-01-01T00:00:00+0100",
