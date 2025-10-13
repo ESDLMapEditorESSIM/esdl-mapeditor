@@ -98,6 +98,7 @@ essim_config = {
     "ESSIM_path": "/essim/simulation",
     "influxURL": os.environ.get('ESSIM_INFLUX_URL', None),  # "http://influxdb:8086",
     "influx_mapeditor_url": os.environ.get('ESSIM_MAPEDITOR_INFLUX_URL', os.environ.get("ESSIM_INFLUX_URL", None)),  # "http://localhost:8086",
+    # This field doesn't seem used.
     "grafanaURL": os.environ.get('ESSIM_GRAFANA_URL', None),  # "http://grafana:3000",
     "user": "essim",
     "ESSIM_database_server": os.environ.get('ESSIM_DATABASE_HOST', None),  # "influxdb",
