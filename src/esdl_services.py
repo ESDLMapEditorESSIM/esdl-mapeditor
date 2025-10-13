@@ -306,6 +306,19 @@ class ESDLServices:
                             esdlstr_bytes = esdlstr.encode("utf-8")
                             esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
                             body[param["parameter"]] = esdlstr_base64_bytes.decode("utf-8")
+                    if param["type"] == "esdl_store":
+                        # Retrieve an ESDL that was a result of an earlier service call
+                        if "energysystem" in body:
+                            del body["energysystem"]  # added earlier
+                        esdlstr = get_session("esdl_store")
+                        if param["encoding"] == "none":
+                            body[param["parameter"]] = esdlstr
+                        if param["encoding"] == "url_encoded":
+                            body[param["parameter"]] = urllib.parse.quote(esdlstr)
+                        if param["encoding"] == "base64_encoded":
+                            esdlstr_bytes = esdlstr.encode("utf-8")
+                            esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
+                            body[param["parameter"]] = esdlstr_base64_bytes.decode("utf-8")
                     if param["type"] == "value":
                         body[param["parameter"]] = param["value"]
                     if param["type"] == "json_string":
@@ -440,6 +453,25 @@ class ESDLServices:
 
                     # TODO: Check if this is correct?!
                     return True, {}, {"es": pm.get_energy_system(variant)}
+                elif service["result"][0]["action"] == "esdl_store":
+                    # Temporarily store the ESDL for later use in next steps
+                    if "encoding" in service["result"][0]:
+                        if service["result"][0]["encoding"] == "url_encoded":
+                            esdl_response = urllib.parse.quote(r.text)
+                        elif service["result"][0]["encoding"] == "base64_encoded":
+                            response_with_esdl = r.text
+                            if "json_field" in service["result"][0]:  # use specific json field in result
+                                response_with_esdl = r.json()[service["result"][0]["json_field"]]
+                            esdlstr_bytes = response_with_esdl.encode("utf-8")
+                            esdlstr_base64_bytes = base64.b64decode(esdlstr_bytes)
+                            esdl_response = esdlstr_base64_bytes.decode("utf-8")
+                        else:
+                            esdl_response = r.text
+                    else:
+                        esdl_response = r.text
+
+                    set_session("esdl_store", esdl_response)
+                    return True, {"continue_workflow": True}, None
                 elif service["result"][0]["action"] == "print":
                     return True, json.loads(r.text), {"es": pm.get_energy_system(variant)}
                 elif service["result"][0]["action"] == "add_assets":

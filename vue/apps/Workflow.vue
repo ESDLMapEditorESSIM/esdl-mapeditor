@@ -90,64 +90,75 @@
     />
     <WorkflowTableQuery
       v-else-if="currentWorkflow.workflowStep.type === WorkflowStepTypes.TABLE_QUERY"
+      :key="currentWorkflow.workflowStep.name"
       :workflow-step="currentWorkflow.workflowStep"
     />
     <WorkflowEsdlService
       v-else-if="
         currentWorkflow.workflowStep.type === WorkflowStepTypes.ESDL_SERVICE
       "
+      :key="currentWorkflow.workflowStep.name"
       :workflow-step="currentWorkflow.workflowStep"
     />
     <WorkflowDownloadFile
       v-else-if="
         currentWorkflow.workflowStep.type === WorkflowStepTypes.DOWNLOAD_FILE
       "
+      :key="currentWorkflow.workflowStep.name"
       :workflow-step="currentWorkflow.workflowStep"
     />
     <WorkflowUploadFile
       v-else-if="
         currentWorkflow.workflowStep.type === WorkflowStepTypes.UPLOAD_FILE
       "
+      :key="currentWorkflow.workflowStep.name"
       :workflow-step="currentWorkflow.workflowStep"
     />
     <WorkflowHttpPost
       v-else-if="
         currentWorkflow.workflowStep.type === WorkflowStepTypes.HTTP_POST
       "
+      :key="currentWorkflow.workflowStep.name"
       :workflow-step="currentWorkflow.workflowStep"
     />
     <WorkflowProgress
       v-else-if="
         currentWorkflow.workflowStep.type === WorkflowStepTypes.PROGRESS
       "
+      :key="currentWorkflow.workflowStep.name"
       :workflow-step="currentWorkflow.workflowStep"
     />
     <WorkflowText
       v-else-if="
         currentWorkflow.workflowStep.type === WorkflowStepTypes.TEXT
       "
+      :key="currentWorkflow.workflowStep.name"
       :workflow-step="currentWorkflow.workflowStep"
     />
     <WorkflowCustomComponent
       v-else-if="currentWorkflow.workflowStep.type === WorkflowStepTypes.CUSTOM"
+      :key="currentWorkflow.workflowStep.name"
       :workflow-step="currentWorkflow.workflowStep"
     />
     <WorkflowCallJsFunction
       v-else-if="
         currentWorkflow.workflowStep.type === WorkflowStepTypes.CALL_JS_FUNCTION
       "
+      :key="currentWorkflow.workflowStep.name"
       :workflow-step="currentWorkflow.workflowStep"
     />
     <WorkflowJsonForm
       v-else-if="
         currentWorkflow.workflowStep.type === WorkflowStepTypes.JSON_FORM
       "
+      :key="currentWorkflow.workflowStep.name"
       :workflow-step="currentWorkflow.workflowStep"
     />
     <WorkflowJsonForm2
       v-else-if="
         currentWorkflow.workflowStep.type === WorkflowStepTypes.JSON_FORM2
       "
+      :key="currentWorkflow.workflowStep.name"
       :workflow-step="currentWorkflow.workflowStep"
     />
     <p v-else>

@@ -11,8 +11,6 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-from typing import TypedDict
-
 import base64
 import collections
 import json
@@ -20,6 +18,7 @@ import os.path
 import urllib
 import uuid
 from datetime import datetime
+from typing import TypedDict
 
 import requests
 from flask import Flask, abort, jsonify, session
@@ -95,7 +94,7 @@ class ESSIM:
 
                     # Call init_simulation to enable the loadflow calculations
                     self.essim_kpis.init_simulation(res_es, sim_id, influxdb_startdate, influxdb_enddate)
-                    self.executor.submit(process_energy_system, pm, 'test')  # run in separate thread
+                    self.executor.submit(process_energy_system)  # run in separate thread
 
                     return res_es.id
 

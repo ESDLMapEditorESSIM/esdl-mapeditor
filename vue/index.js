@@ -62,6 +62,7 @@ import ResidentialArea from "@/apps/ResidentialArea.vue";
 import HeatTransition from "@/apps/HeatTransition.vue";
 import './utils/startDrawAsset';
 import ResultVisualizationsToolbar from "@/components/toolbars/ResultVisualizationsToolbar.vue";
+import ETMInterface from "@/apps/ETMInterface.vue";
 
 // Vue.config.productionTip = false
 
@@ -109,6 +110,10 @@ window.object_properties_window = (object_id) => {
 
 window.edr_asset_window = () => {
     mountSidebarComponent(EDRAssets);
+}
+
+window.etm_interface_window = () => {
+    mountSidebarComponent(ETMInterface);
 }
 
 window.show_tooltip = (object_title, object_id, el_id) => {

@@ -1,10 +1,12 @@
 from dataclasses import dataclass
-from typing import Dict, List, Optional
 from enum import Enum
+from typing import Dict, List, Optional
+
 
 @dataclass
 class MetadataUpdateRequestBody:
     es_id: str
+    energyUnit: str
 
 @dataclass
 class MetadataDeleteRequestBody:

@@ -268,7 +268,8 @@ function process_service_results(results) {
     }
 
     if (!('show_asset_results' in results) && !('asset_feedback' in results) &&
-        !('show_url' in results) && !('message' in results)) {
+        !('show_url' in results) && !('message' in results) &&
+        !(('esdl_service_result' in results) && 'continue_workflow' in results['esdl_service_result'])) {
         sidebar.hide();
     }
 }

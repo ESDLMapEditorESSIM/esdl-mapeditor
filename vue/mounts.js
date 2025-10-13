@@ -48,11 +48,15 @@ import MapEditorDialog from "../static/utils/MapEditorDialog";
 import Toast, {POSITION} from "vue-toastification";
 import "vue-toastification/dist/index.css"
 
+let sidebar_app= null;
 export function mountSidebarComponent(component) {
+    if (sidebar_app !== null) {
+        sidebar_app.unmount();
+    }
     let sidebar_ctr = window.sidebar.getContainer();
     sidebar_ctr.innerHTML = '<div id="vue_sidebar_app"></div>';
     window.sidebar.show();
-    mountApp(component, '#vue_sidebar_app');
+    [sidebar_app] = mountApp(component, '#vue_sidebar_app');
 }
 
 export function mountSettingsComponent(component) {
@@ -122,5 +126,6 @@ export function mountApp(component, elementSelector) {
     };
     app.use(Toast, toastOptions);
 
-    app.mount(elementSelector);
+    const componentInstance = app.mount(elementSelector);
+    return [app, componentInstance];
 }

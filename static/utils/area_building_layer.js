@@ -1381,7 +1381,7 @@ function createAreaMarkerResizeDiv(sliderValue) {
         const slider = L.DomUtil.create('input', 'area-marker-resize-slider', areaMarkerResizeDiv);
         slider.type = 'range';
         slider.min = 0.05;
-        slider.max = 5.0;
+        slider.max = 15.0;
         slider.step = 0.05;
         slider.value = sliderValue;
         L.DomEvent.disableClickPropagation(slider);
