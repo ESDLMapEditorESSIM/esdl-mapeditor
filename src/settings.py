@@ -39,9 +39,9 @@ USE_GEVENT = (_use_gevent.upper() == 'TRUE' or _use_gevent == '1')
 # Database settings
 POSTGRES_HOST = os.environ.get('POSTGRES_HOST', 'localhost')
 POSTGRES_PORT = os.environ.get('POSTGRES_PORT', '5432')
-POSTGRES_USER = os.environ.get('POSTGRES_USER', 'mapeditor')
+POSTGRES_USER = os.environ.get('POSTGRES_USER', 'data_manager')
 POSTGRES_PASSWORD = os.environ.get('POSTGRES_PASSWORD', 'password')
-POSTGRES_DB = os.environ.get('POSTGRES_DB', 'mapeditor')
+POSTGRES_DB = os.environ.get('POSTGRES_DB', 'data_manager')
 POSTGRES_DB_URI = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
 
 SQLITE_DB_NAME = os.environ.get('SQLITE_DB_NAME', 'data_manager.db')
