@@ -334,7 +334,7 @@ class ETMInterface:
             post_data = {
                 "scenario": {
                     "title": self.etm_municipalities[municipality_code],
-                    "area_id": self.etm_municipalities[municipality_code],
+                    "area_code": self.etm_municipalities[municipality_code],
                     "end_year": 2050
                 }
             }
