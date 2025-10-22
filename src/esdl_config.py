@@ -19,7 +19,7 @@ ESDL_UPLOAD_PROFILES_HOST = os.getenv("ESDL_UPLOAD_PROFILES_HOST", "http://maped
 ESDL_COST_SERVICE_HOST = os.getenv("ESDL_COST_SERVICE_HOST", "http://mapeditor-cost-service:4004")
 FLEX_BACKEND_HOST = os.getenv("FLEX_BACKEND_HOST", "http://localhost:7200")
 FLEX_FRONTEND_HOST = os.getenv("FLEX_FRONTEND_HOST", "http://localhost:7201")
-ESSIM_BACKEND_HOST = os.getenv("ESSIM_BACKEND_HOST", "http://essim-engine:8112")
+ESSIM_URL = os.getenv("ESSIM_URL", "http://essim-engine:8112")
 
 esdl_config = {
     "control_strategies": [
@@ -301,8 +301,8 @@ esdl_config = {
         },
         {
             "id": "x12c4a2b-8eee-46f7-a225-87c5f85e666a",
-            "name": "Essim",
-            "explanation": "Run, view and manage Essim calculations",
+            "name": "ESSIM",
+            "explanation": "Run, view and manage ESSIM calculations",
             "type": "vueworkflow",
             "hide_step_history": True,
             "workflow": [
@@ -481,7 +481,7 @@ esdl_config = {
                         "value_field": "id",
                     },
                     "data": {
-                        "from_url": {"url": f"{ESSIM_BACKEND_HOST}/essim/simulation/kpiModules/"},
+                        "from_url": {"url": f"{ESSIM_URL}/essim/simulation/kpiModules/"},
                         "to_state": {},
                         "output_wrapper_variable": "selected_kpis",
                     },
@@ -506,13 +506,13 @@ esdl_config = {
                         "id": "74c9d1a2-c92a-46ed-a7e4-9931971cdd28",
                         "description": "",
                         "name": "",
-                        "button_label": "Run Essim Calculation",
+                        "button_label": "Run ESSIM Calculation",
                         "headers": {
                             "User-Agent": "ESDL Mapeditor/1.0",
                             "Accept": "application/json",
                             "Content-Type": "application/json",
                         },
-                        "url": f"{ESSIM_BACKEND_HOST}/essim/simulation",
+                        "url": f"{ESSIM_URL}/essim/simulation",
                         "http_method": "post",
                         "type": "send_esdl",
                         "send_email_in_post_body_parameter": "user_name",
@@ -547,7 +547,7 @@ esdl_config = {
                                 "value": "http://influxdb:8086",
                                 "location": "body",
                             },
-                            {"name": "user", "description": "Essim user", "value": "mapeditor", "location": "body"},
+                            {"name": "user", "description": "ESSIM user", "value": "mapeditor", "location": "body"},
                         ],
                         "body": "json_text",
                         "body_config": {
@@ -578,13 +578,13 @@ esdl_config = {
                 },
                 {
                     "id": "retrieve_run_progress_results",
-                    "monitor_name": "Running Essim Calculation...",
+                    "monitor_name": "Running ESSIM Calculation...",
                     "type": "workflow-engine-monitor",
                     "config": {
                         "model_run_result_polling": {
                             "query_list": [
                                 {
-                                    "url": f"{ESSIM_BACKEND_HOST}/essim/simulation/<MODEL_JOB_ID>",
+                                    "url": f"{ESSIM_URL}/essim/simulation/<MODEL_JOB_ID>",
                                     "response_mapping": {
                                         "status": "status.state",
                                         "progress_fraction": "status.description",
@@ -616,7 +616,7 @@ esdl_config = {
                     "type": "table-external-model",
                     "config": {
                         "external_model": "essim",
-                        "model_short_name": "essim",
+                        "model_short_name": "ESSIM",
                         "has_feedback_messages": False,
                         "result_animation": {
                             "filter_on_tag": {"tag_name": "simulationRun", "value_database_key": "model_job_id"}
@@ -1884,7 +1884,7 @@ esdl_config = {
                                 "Accept": "application/json",
                                 "Content-Type": "application/json",
                             },
-                            "url": f"{ESSIM_BACKEND_HOST}/essim/simulation",
+                            "url": f"{ESSIM_URL}/essim/simulation",
                             "http_method": "post",
                             "type": "send_esdl",
                             "send_email_in_post_body_parameter": "user_name",
@@ -1956,7 +1956,7 @@ esdl_config = {
                             "model_run_result_polling": {
                                 "query_list": [
                                     {
-                                        "url": f"{ESSIM_BACKEND_HOST}/essim/simulation/<MODEL_JOB_ID>",
+                                        "url": f"{ESSIM_URL}/essim/simulation/<MODEL_JOB_ID>",
                                         "response_mapping": {
                                             "status": "status.state",
                                             "progress_fraction": "status.description",
