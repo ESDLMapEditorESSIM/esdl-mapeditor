@@ -16,38 +16,38 @@
 
 <template>
   <a-tree
+    v-model:expanded-keys="expandedKeys"
+    :show-icon="true"
     :tree-data="treeData"
     checkable
     :check-strictly="true"
-    :selected-keys="selectedKey"
+    :selected-keys="[selectedKey]"
     :checked-keys="checkedKeys"
-    :expanded-keys="expandedKeys"
     @check="onCheck"
     @select="onSelect"
-    @expanded-change="onExpand"
     @right-click="onRightClick"
   >
-    <template #icon="{ record }">
-      <span :class="record.icon" />
+    <template #icon="{ iconClass }">
+      <span v-if="iconClass" :class="iconClass" />
     </template>
   </a-tree>
 </template>
 
 <script setup>
-import {ref, computed, onMounted, watch} from 'vue';
+import {ref, computed, onMounted, watch, nextTick} from 'vue';
 import { useESDLProjects } from '@/composables/esdlProjects';
 import { useSocketIO } from '@/composables/socketio';
 import { useBaseLayers } from '@/composables/baseLayers';
 import { useEsdlLayers } from '@/composables/esdlLayers';
 
 // Composables
-const { esdlProject, getESDLProject, setActiveVariant } = useESDLProjects();
+const { esdlProject, getESDLProject, activeVariant, setActiveVariant } = useESDLProjects();
 const { baseLayerDefinitions, showBaseLayer, hideBaseLayer, getBaseLayerByLabel } = useBaseLayers();
-const { enableEsdl, disableEsdl, enabledEsdlIdList, hideEsdlLayerFromMap } = useEsdlLayers();
+const { enableEsdl, disableEsdl, enabledEsdlIdList } = useEsdlLayers();
 
 // State for Ant Tree
 const selectedKey = ref(null);
-const checkedKeys = ref([]);
+const checkedBaseLayers = ref([baseLayerDefinitions[0].label]);
 const expandedKeys = ref([]);
 
 onMounted(() => {
@@ -66,14 +66,14 @@ const treeData = computed(() => {
       title: bl.label,
       key: bl.label,
       isLeaf: true,
-      icon: ['fas', 'fa-layer-group'],
+      iconClass: 'fas fa-layer-group',
       checkable: true,
       disableCheckbox: false,
       selectable: false,
+      dataType: 'base_layer',
       children: []
     })),
-    icon: ['fas', 'fa-layer-group'],
-    expanded: true,
+    iconClass: 'fas fa-layer-group',
   };
 
   function variantNode(variant) {
@@ -85,12 +85,13 @@ const treeData = computed(() => {
         ...variant.children.map(variantNode),
         ...variant.changes.map(changeNode)
       ],
-      icon: ['fas', 'bezier-curve'],
+      iconClass: 'fas fa-bezier-curve',
       checkable: true,
       selectable: true,
       showIcon: true,
       class: variant.active ? 'is-active' : '',
       dataType: 'variant',
+      variantId: variant.id,
       esId: variant.es_id
     };
   }
@@ -105,11 +106,11 @@ const treeData = computed(() => {
     }
     let icon;
     if (change.type === 'HighLevelChange') {
-      icon = ['far', 'object-group'];
+      icon = 'far fa-object-group';
     } else if (change.type === 'Add') {
-      icon = ['fas', 'fa-plus'];
+      icon = 'fas fa-plus';
     } else if (change.type === 'Set') {
-      icon = ['fas', 'fa-arrow-right'];
+      icon = 'fas fa-arrow-right';
     }
 
     return {
@@ -123,34 +124,36 @@ const treeData = computed(() => {
     };
   }
 
+  const projectNode = {
+    title: esdlProject.value.name,
+    key: esdlProject.value.id,
+    children: esdlProject.value.variants.map(variantNode),
+    iconClass: 'fas fa-project-diagram',
+    selectable: false
+  };
+
   return [
     baseLayersNode,
-    {
-      title: esdlProject.value.name,
-      key: esdlProject.value.id,
-      children: esdlProject.value.variants.map(variantNode),
-      icon: ['fas', 'project-diagram'],
-      selectable: false
-    }
+    projectNode,
   ];
 });
 
-// Initialize checked and expanded keys when data updates
+let expandedInitialized = false;
 watch(treeData, (newData) => {
-  // expand root nodes
-  expandedKeys.value = newData.map(node => node.key);
-  // check enabled ESDL variants
-  checkedKeys.value = newData
-      .flatMap(node => node.children || [])
-      .filter(n => n.dataType === 'variant' && enabledEsdlIdList.value.includes(n.esId))
-      .map(n => n.key);
+  // Expand the top-level nodes (Base layers + Project) after data initialization.
+  if (!expandedInitialized && newData.length) {
+    expandedKeys.value = newData.map((node) => node.key);
+    expandedInitialized = true;
+  }
 }, { immediate: true });
 
-watch(enabledEsdlIdList, (newData) => {
-  checkedKeys.value = treeData.value;
-      // .flatMap(node => node.children || [])
-      // .filter(n => n.dataType === 'variant' && newData.includes(n.esId))
-      // .map(n => n.key);
+const checkedKeys = computed(() => {
+  const variantKeys = treeData.value
+    .flatMap(node => node.children || [])
+    .filter(v => v.dataType === 'variant' && enabledEsdlIdList.value.includes(v.esId))
+    .map(v => v.key);
+
+  return [...variantKeys, ...checkedBaseLayers.value];
 });
 
 // Handlers
@@ -165,36 +168,67 @@ function onSelect(selected, info) {
   if (data.dataType === 'variant') {
     selectedKey.value = node.key;
     if (!node.active) {
-      checkedKeys.value = [node.key];
       setActiveVariant(node.key, data.esId);
+      for (const enabledEsdlId of enabledEsdlIdList.value) {
+        if (enabledEsdlId !== data.esId) {
+          disableEsdl(enabledEsdlId);
+        }
+      }
+      enableEsdl(data.esId)
     }
   }
 }
 
-function onCheck(checked, info) {
+async function onCheck(_, info) {
   const node = info.node;
+  const isChecked = info.checked;
+  // Data is the reference to the original data object that we create.
   const data = node.dataRef;
-  console.debug('SIDE PANE: onCheck', checked, info);
+  const ctrlPressed = info.nativeEvent?.ctrlKey;
+  console.debug('SIDE PANE: onCheck', isChecked, info);
   if (data.dataType === 'variant') {
-    if (checked) {
-      enableEsdl(data.esId);
+    if (isChecked) {
+      if (data.esId in window.esdl_list) {
+        enableEsdl(data.esId);
+        if (!ctrlPressed) {
+          // Disable other variants.
+          for (const enabledEsdlId of enabledEsdlIdList.value) {
+            if (enabledEsdlId !== data.esId) {
+              disableEsdl(enabledEsdlId);
+              // TODO: This doesn't work, esId does not exist here.
+              if (activeVariant.value.esId === enabledEsdlId) {
+                console.debug("check_node: set active variant", data);
+                setActiveVariant(data.variantId, data.esId);
+              }
+            }
+          }
+        }
+      } else {
+        // We have no way to just get the energy system without activating it right now. I don't think it's a problem.
+        console.debug("check_node: set active variant");
+        setActiveVariant(data.variantId, data.esId)
+      }
     } else {
       disableEsdl(data.esId);
     }
-    checkedKeys.value = checked ? [node.key] : [];
   } else if (data.dataType === 'base_layer') {
     const layer = getBaseLayerByLabel(node.key);
-    if (checked) {
+    if (isChecked) {
+      // Disable other base layers if ctrl is not pressed
+      if (!ctrlPressed) {
+        for (const blKey of checkedBaseLayers.value) {
+          const blLayer = getBaseLayerByLabel(blKey);
+          hideBaseLayer(blLayer);
+        }
+        checkedBaseLayers.value = [];
+      }
+      checkedBaseLayers.value.push(node.key);
       showBaseLayer(layer);
     } else {
       hideBaseLayer(layer);
+      checkedBaseLayers.value = checkedBaseLayers.value.filter(key => key !== node.key);
     }
-    checkedKeys.value = checked ? [node.key] : [];
   }
-}
-
-function onExpand(keys) {
-  expandedKeys.value = keys;
 }
 
 function onRightClick(info) {

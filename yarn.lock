@@ -3337,9 +3337,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ant-design-vue@npm:4.1.0":
-  version: 4.1.0
-  resolution: "ant-design-vue@npm:4.1.0"
+"ant-design-vue@npm:4.2.6":
+  version: 4.2.6
+  resolution: "ant-design-vue@npm:4.2.6"
   dependencies:
     "@ant-design/colors": ^6.0.0
     "@ant-design/icons-vue": ^7.0.0
@@ -3365,7 +3365,7 @@ __metadata:
     warning: ^4.0.0
   peerDependencies:
     vue: ">=3.2.0"
-  checksum: cbdb5be69b2af7095fc4fca7fe116b9548eca3287ccec16bdd9ac8505ab1a7941e7282aa76820650c8de4b30b428b2ce6263e194192a277ed126b3c06495fc7d
+  checksum: 09ce259fc9bd9cefce34a041148921a3a8328645d9fc9d3a8362aba59c139c08e12712717fa4922c486b42a7bd728b9da97928e0d938503f4524afd271c434e7
   languageName: node
   linkType: hard
 
@@ -8491,7 +8491,7 @@ __metadata:
     "@vue/cli-service": 5.0.8
     "@vue/compiler-sfc": 3.0.4
     ajv: ^8.12.0
-    ant-design-vue: 4.1.0
+    ant-design-vue: 4.2.6
     axios: ^1.6.0
     babel-plugin-import: 1.13.8
     chart.js: ^3.6.0
