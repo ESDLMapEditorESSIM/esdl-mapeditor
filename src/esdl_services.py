@@ -32,7 +32,7 @@ from esdl.processing.string_uri import StringURI
 from esdl.undo import UndoRedoCommandStack
 from esdl.undo_wrapper import undo_record_changes
 from extensions.profiles import Profiles
-from extensions.session_manager import get_project_manager, get_session, set_session
+from extensions.session_manager import get_project_manager, get_session, set_session, del_session
 from extensions.settings_storage import SettingsStorage
 from src.esdl_helper import energy_asset_to_ui
 from src.process_es_area_bld import calc_possible_locations_in_area, choose_location, find_area_location_based, \
@@ -311,6 +311,8 @@ class ESDLServices:
                         if "energysystem" in body:
                             del body["energysystem"]  # added earlier
                         esdlstr = get_session("esdl_store")
+                        # Clear the stored ESDL after retrieving it.
+                        del_session("esdl_store")
                         if param["encoding"] == "none":
                             body[param["parameter"]] = esdlstr
                         if param["encoding"] == "url_encoded":

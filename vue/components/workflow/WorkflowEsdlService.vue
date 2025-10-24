@@ -84,9 +84,11 @@ const loadEsdl = () => {
 
   window.show_loader();
   window.socket.emit("command", { cmd: "query_esdl_service", params: params }, () => {
-    // Close the loader and continue to the next workflow step when the external service call returns a result
-    window.hide_loader();
-    goToNextStep();
+    window.socket.once('esdl_service_result', function(res) {
+      // Continue to the next workflow step when the external service call returns a result
+      // TODO: This is only emit when the service finished successfully. We should also handle errors.
+      goToNextStep();
+    });
   });
 };
 
