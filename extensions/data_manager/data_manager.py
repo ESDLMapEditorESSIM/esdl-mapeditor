@@ -33,7 +33,7 @@ from influxdb import InfluxDBClient
 import esdl
 from esdl.processing.ESDLAsset import get_asset_capability_type
 from esdl.processing.ESDLQuantityAndUnits import unit_to_string
-from esdl.profiles.influxdbprofilemanager import InfluxDBProfileManager, ConnectionSettings
+from esdl.profiles.influxdbprofilemanager import InfluxDBProfileManager
 from extensions.data_manager.db_interaction import create_db_tables, get_db_driver_type, DriverType, create_db, drop_db, \
     drop_db_tables
 from extensions.profiles import Profiles
@@ -307,50 +307,6 @@ def preprocess_column(column_name: str) -> Any:
             return func.jsonb_extract_path_text(Data.labels, key_name).label(column_name)
     else:
         return column(column_name)
-    
-def get_profile_influxdb_settings(profile: esdl.InfluxDBProfile, profiles_settings: dict) -> ConnectionSettings | None:
-    """
-    Retrieves InfluxDB connection settings for a given profile.
-
-    If the profile is hosted on a publicly accessible server, 
-    it additionally checks the InfluxDB connectivity and constructs the connection settings.
-    """
-    # Find profile server information for the InfluxDBProfile
-    for prof_server in profiles_settings["profiles_servers"]:
-        if prof_server["host"] in profile.host and prof_server["port"] == str(profile.port):
-            return ConnectionSettings(
-                host=prof_server["host"],
-                port=profile.port,
-                database=profile.database,
-                username=prof_server["username"],
-                password=prof_server["password"],
-                ssl=prof_server.get("ssl_enabled", False),
-                verify_ssl=prof_server.get("ssl_enabled", False),
-            )
-
-    # Check additionally if the profile is hosted on a public accessible server
-    # Ensure host part only (without http:// or https://) 
-    host = urlparse(profile.host).netloc if profile.host.startswith(('http://', 'https://')) else profile.host
-    try:
-        influxdb_client = InfluxDBClient(host=host, port=profile.port, ssl=True, verify_ssl=True, retries=1, timeout=2)
-        db = influxdb_client.get_list_database()
-        if db:
-            return ConnectionSettings(
-                host=host,
-                port=profile.port,
-                database=profile.database,
-                username="",
-                password="",
-                ssl=True,
-                verify_ssl=True,
-            )
-    except Exception as e:
-        logger.warn(e)
-    finally:
-        if influxdb_client:
-            influxdb_client.close()
-
-    return None
 
 def aggregate_profile_data_by_interval(df: DataFrame, interval: str, agg_func: str) -> DataFrame:
     """
@@ -1010,7 +966,7 @@ class DataManager:
                 profile: esdl.InfluxDBProfile = esh.get_by_id(es_id, profile_id)
                 if not profile:
                     raise ValueError(f"Profile with ID {profile_id} (ESDL ID {es_id}) not found.")
-                influxdb_settings = get_profile_influxdb_settings(profile, profiles_settings)
+                influxdb_settings = InfluxDBProfileManager.get_profile_influxdb_settings(profile, profiles_settings)
             except Exception as e:
                 err = f"Error retrieving ESDL profile {profile_id} and associated influxdb settings: {e}"
                 logger.error(err)
