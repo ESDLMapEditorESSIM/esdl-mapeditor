@@ -374,7 +374,10 @@ def editor():
                     # 'mapeditor-admin' gives you admin rights in this app
                     mapeditor_role = resource_access[client]['roles']
         logger.debug(f"User has following mapeditor role(s): {mapeditor_role}")
-        set_session('user-group-path', openid.get_user_profile().get('user_group_path'))
+        user_group_path = openid.get_user_profile().get('user_group_path')
+        if not user_group_path:
+            user_group_path = []
+        set_session('user-group-path', user_group_path)
         set_session('user-group', openid.get_user_profile().get('user_group'))
         set_session('user-role', role)
         set_session('user-email', user_email)

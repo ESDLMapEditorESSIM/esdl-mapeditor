@@ -4,7 +4,8 @@
     <a-form-item>
       <a-table
         :columns="columns"
-        :row-key="rowKey"
+        :row-selection="rowSelection"
+        :row-key="rowIdKey"
         :data-source="tableRows"
         :pagination="pagination"
         :loading="isLoading"
@@ -23,7 +24,7 @@
                     @mouseleave="hide_jquery_ui_popup"
                   />
                   <i
-                    v-else-if="actionEnabled(action, record)"
+                    v-else-if="itemEnabled(action, record)"
                     :class="action.icon"
                     class="pointer"
                     :title="action.title"
@@ -34,7 +35,7 @@
                 </div>
                 <div v-else>
                   <li>
-                    <a v-if="actionEnabled(action, record)" href="#" @click="doAction(record, action)">{{
+                    <a v-if="itemEnabled(action, record)" href="#" @click="doAction(record, action)">{{
                       action.title
                     }}</a>
                     <div v-else class="disabled">{{ action.title }}</div>
@@ -60,9 +61,10 @@
 
 <script setup="props">
 
-import {onMounted, ref, watch} from "vue";
+import {computed, onMounted, ref, watch} from "vue";
 import {useWorkflow} from "@/composables/workflow";
 import {useOngoingBackendProcesses} from "@/composables/ongoingBackendProcesses";
+import {WorkflowNextStepTriggerOptions} from "@/composables/workflow";
 
 const props = defineProps({
   workflowStep: {
@@ -81,6 +83,8 @@ const {
   goToStep,
   getState,
   getInputData,
+  sendOutputData,
+  setWorkflowStepInputValid
 } = useWorkflow();
 const {
   setStartingBackendProcessId,
@@ -103,15 +107,14 @@ onMounted(() => {
 
 const isLoading = ref(true);
 
-
 const state = getState();
 const columns = ref([]);
-const rowKey = ref("");
+const rowIdKey = ref("");
 const additional_fields = ref(null);
 const actions = ref([]);
 const tableRows = ref([]);
 
-const pagination = ref({"position": 'bottom', "hideOnSinglePage": true, "defaultPageSize": 9});
+const pagination = ref({"position": 'bottom', "hideOnSinglePage": true, "defaultPageSize": 10});
 
 const formatDate = (row) => {
   if (row.text !== undefined && row.text != null) {
@@ -142,19 +145,19 @@ const doAction = (record, action) => {
   // put record key, optional additional variables, in state
   if (stepParams.value.data.output_wrapper_variable) {
     state[stepParams.value.data.output_wrapper_variable] = {};
-    state[stepParams.value.data.output_wrapper_variable][rowKey.value] = record[rowKey.value];
+    state[stepParams.value.data.output_wrapper_variable][rowIdKey.value] = record[rowIdKey.value];
     for (const field of additional_fields.value) {
       state[stepParams.value.data.output_wrapper_variable][field] = record[field];
     }
   } else {
-    state[rowKey.value] = record[rowKey.value];
+    state[rowIdKey.value] = record[rowIdKey.value];
     for (const field of additional_fields.value) {
       state[field] = record[field];
     }
   }
 
   if ("wait_icon" in action) {
-    const processId = action.title + record[rowKey.value];
+    const processId = action.title + record[rowIdKey.value];
     addOngoingBackendProcessId(processId);
     setStartingBackendProcessId(processId);
   }
@@ -165,30 +168,56 @@ const doAction = (record, action) => {
 };
 
 const actionWaiting = (action, record) => {
-  return isBackendProcessIdOngoing(action.title + record[rowKey.value]);
+  return isBackendProcessIdOngoing(action.title + record[rowIdKey.value]);
 };
 
-const actionEnabled = (action, row) => {
-  if (action.enabled) {
-    if (action.enabled.dataIndex) {
-      if ("values" in action.enabled) {
-        let value = row[action.enabled.dataIndex];
-        return !!action.enabled.values.includes(value);
-      } else if ("exists" in action.enabled) {
-        const dataExists = action.enabled.dataIndex in row;
-        return action.enabled.exists ? dataExists : !dataExists;
+const itemEnabled = (item, row) => {
+  if (item.enabled) {
+    if (item.enabled.dataIndex) {
+      if ("values" in item.enabled) {
+        const value = row[item.enabled.dataIndex];
+        return !!item.enabled.values.includes(value);
+      } else if ("exists" in item.enabled) {
+        const dataExists = item.enabled.dataIndex in row;
+        return item.enabled.exists ? dataExists : !dataExists;
+      } else if ("condition" in item.enabled) {
+        const value = row[item.enabled.dataIndex];
+        const condition = item.enabled.condition;
+        if (condition.type === "larger_than") {
+          return value > condition.value;
+        } else if (condition.type === "larger_equal_than") {
+          return value >= condition.value;
+        } else if (condition.type === "smaller_than") {
+          return value < condition.value;
+        } else if (condition.type === "smaller_equal_than") {
+          return value <= condition.value;
+        }
       }
     }
   }
   return true;  // default enabled
 };
 
+const updateDataToSubmit = async (data) => {
+  if (!data || data.length === 0) {
+    setWorkflowStepInputValid(stepParams.value.id, false);
+  } else {
+    if (stepParams.value.nextStepTrigger === WorkflowNextStepTriggerOptions.INPUT_CHANGE) {
+      sendOutputData(stepParams.value.data, data);
+    }
+    setWorkflowStepInputValid(stepParams.value.id, true);
+  }
+}
+
 const handleData = (data) => {
   if (data === null) {
     return;
   }
   if (!Array.isArray(data)) {
-    data = Object.values(data);
+    data = Object.entries(data).map(([key, value]) => ({
+      dictKey: key,
+      ...value
+    }));
   }
   if (props.rows === null) {
     tableRows.value = data;
@@ -199,7 +228,7 @@ const handleData = (data) => {
   const config = stepParams.value.config;
   columns.value = config.columns;
   actions.value = config.actions;
-  rowKey.value = config.value_field; // "job_id"
+  rowIdKey.value = config.value_field;
   additional_fields.value = config.additional_fields;
 
   // process defined columns in workflow config
@@ -223,19 +252,39 @@ const handleData = (data) => {
     }
   });
 
-  let hasActionColumn = columns.value.find(o => o.key === 'action');
+  const hasActionColumn = columns.value.find(o => o.key === 'action');
   if (!hasActionColumn && actions.value) {
     columns.value.push(
         {
-          'key': 'action',
-          'title': 'Action',
-          "slots": {
-            "customRender": "action",
+          key: 'action',
+          title: 'Action',
+          slots: {
+            customRender: "action",
           }
         });
   }
   isLoading.value = false;
 };
+
+const rowSelection = computed(() => {
+  const rowSelection = stepParams.value.config.row_selection ?? null;
+  if (!rowSelection) return null;
+
+  return {
+    type: rowSelection.type,
+    columnWidth: 20,
+    onChange: (selectedRowKeys) => {
+      if (rowSelection.type === "radio") {  // one selected row
+        updateDataToSubmit(tableRows.value.find(row => row[rowIdKey.value] === selectedRowKeys[0]));
+      } else { // multiple selected rows
+        updateDataToSubmit(tableRows.value.filter(row => selectedRowKeys.includes(row[rowIdKey.value])));
+      }
+    },
+    getCheckboxProps: (row) => ({
+      disabled: !itemEnabled(rowSelection, row),
+    }),
+  };
+});
 
 const hasProgressIndication = (record, column) => {
   return record.status === "RUNNING" && "progressAttribute" in column;
@@ -249,6 +298,7 @@ const getProgressPercent = (record, column) => {
 const init = async () => {
   stepParams.value = getWorkflowStepParameters(props.workflowStep);
   await getInputData(stepParams.value.data, handleData);
+  await updateDataToSubmit(null);
 };
 
 // to prevent stuck popup
@@ -270,5 +320,20 @@ const hide_jquery_ui_popup = () => {
 
 .disabled {
   color: lightgray;
+}
+
+::v-deep .ant-table th.ant-table-selection-column,
+::v-deep .ant-table td.ant-table-selection-column {
+  padding-left: 1px !important;
+  padding-right: 1px !important;
+}
+
+::v-deep .ant-table th.ant-table-selection-column .ant-checkbox-wrapper,
+::v-deep .ant-table td.ant-table-selection-column .ant-checkbox-wrapper {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 </style>

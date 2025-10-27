@@ -27,6 +27,7 @@
 import {onMounted, onUnmounted, ref, watch} from "vue";
 import {useWorkflow, WorkflowNextStepTriggerOptions} from "@/composables/workflow";
 import {MessageNames, PubSubManager} from "@/bridge";
+import {getattrd} from "@/utils/utils";
 
 const props = defineProps({
   workflowStep: {
@@ -54,11 +55,14 @@ const {
   setWorkflowStepInputValid,
   getInputData,
   sendOutputData,
-  isAllInputValid
+  isAllInputValid,
+  getState,
 } = useWorkflow();
 
 // Variable for indexing all choices by the value (which is rendered in HTML).
 let choicesByValue;
+
+const insertedPreviousValues = ref(false);
 
 onMounted(() => {
   init();
@@ -84,8 +88,10 @@ const onSubmit = async () => {
     alert("Please select a valid option.");
     return;
   }
+
+  const output = mode.value === "multiple" ? value.map(item => choicesByValue.get(item)) : choicesByValue.get(value);
   await sendOutputData(
-      stepParams.value.data, choicesByValue.get(value), () => goToStep(stepParams.value.nextStep)
+      stepParams.value.data, output, () => goToStep(stepParams.value.nextStep)
   );
 };
 
@@ -104,7 +110,7 @@ const updateInputState = () => {
 };
 
 const updateData = async (data) => {
-  console.debug("Updating data", data)
+  // console.debug("Updating data", data)
   if (data != null) {
     let choices;
     // Choices data can be found as an attribute in a dict or is directly returned as a list
@@ -121,7 +127,7 @@ const updateData = async (data) => {
       const label_list = stepParams.value.config.label_fields
           .map((label_field) => {
             if (typeof label_field === "string") {
-              return choice[label_field];
+              return getattrd(choice, label_field);
             } else {
               const label = label_field.label;
               const default_value = label_field.default;
@@ -157,6 +163,17 @@ const updateData = async (data) => {
       form.value[stepParams.value.data.output_wrapper_variable] = "";
     }
   }
+
+  if (!insertedPreviousValues.value) {
+    // overwrite default values with last submitted values if present in state
+    const state = getState();
+    if (stepParams.value.data.output_wrapper_variable in state) {
+      form.value[stepParams.value.data.output_wrapper_variable] =
+          state[stepParams.value.data.output_wrapper_variable][stepParams.value.config.value_field]
+    }
+    insertedPreviousValues.value = true;
+  }
+
   updateInputState();
   isLoading.value = false;
 };

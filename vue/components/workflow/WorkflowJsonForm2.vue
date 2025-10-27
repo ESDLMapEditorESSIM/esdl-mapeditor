@@ -63,8 +63,11 @@ const {
   setWorkflowStepInputValid,
   getInputData,
   sendOutputData,
-  isAllInputValid
+  isAllInputValid,
+  getState,
 } = useWorkflow();
+
+const insertedPreviousValues = ref(false);
 
 onMounted(() => {
   init();
@@ -108,6 +111,17 @@ const updateData = (jsonFormData) => {
 
   uischema = jsonFormData && "uischema" in jsonFormData ? jsonFormData.uischema : null;
   formData.value = jsonFormData && "formData" in jsonFormData ? jsonFormData.formData : formData.value;
+
+  if (!insertedPreviousValues.value) {
+    // overwrite default values with last submitted values if present in state
+    const state = getState();
+    for (const propName of Object.keys(schema["properties"])) {
+      if (propName in state) {
+        formData.value[propName] = state[propName];
+      }
+    }
+    insertedPreviousValues.value = true;
+  }
 
   isLoading.value = false;
 };

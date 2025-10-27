@@ -25,6 +25,7 @@
       </a-row>
       <a-table
         :columns="columns"
+        :row-selection="rowSelection"
         :row-key="rowIdKey"
         :data-source="filteredRows"
         :pagination="pagination"
@@ -80,8 +81,8 @@
   <a-modal
     v-model:open="actionModalActive"
     :title="modalTitle"
-    :ok-text="activeAction.title === EDIT? 'Save' : activeAction.title === DELETE? 'Delete' : 'Ok'"
-    :ok-button-props="{danger: activeAction.title === DELETE}"
+    :ok-text="activeAction.title === EDIT? 'Save' : [DELETE, DELETE_MULTIPLE].includes(activeAction.title) ? 'Delete' : 'Ok'"
+    :ok-button-props="{danger: [DELETE, DELETE_MULTIPLE].includes(activeAction.title)}"
     width="80%"
     style="top: 50px"
     :body-style="{'max-height': 'calc(100vh - 200px)', 'overflow': 'auto'}"
@@ -103,13 +104,14 @@
 
 <script setup="props">
 
-import {onMounted, ref} from "vue";
+import {onMounted, ref, h} from "vue";
 import {useWorkflow} from "@/composables/workflow";
 import {useOngoingBackendProcesses} from "@/composables/ongoingBackendProcesses";
 import {useWorkflowTableState} from "@/composables/workflowTableState";
 
 import {JsonForms} from "@jsonforms/vue";
 import Ajv from "ajv";
+import {Tooltip} from 'ant-design-vue';
 import addFormats from "ajv-formats";
 import {vanillaRenderers,} from "@jsonforms/vue-vanilla";
 import "@jsonforms/vue-vanilla/vanilla.css";
@@ -152,6 +154,7 @@ const VIEW_DETAILS = "View details";
 const DOWNLOAD_XLSX = "Download xlsx";
 const LOAD_INPUT_ESDL = "Load input ESDL";
 const DELETE = "Delete";
+const DELETE_MULTIPLE = "Delete multiple";
 
 const isLoading = ref(true);
 const activeAction = ref({});
@@ -166,6 +169,9 @@ const actions = ref([]);
 const tableRows = ref([]);
 const filteredRows = ref([]);
 const userGroupsForUser = ref([{value: "my_runs", label: "my runs"}]);
+
+const checkedRows = ref([]);
+const deleteRunsEnabled = ref(false);
 
 const pagination = ref({"position": 'bottom', "hideOnSinglePage": true, "defaultPageSize": 10});
 
@@ -293,6 +299,20 @@ const handleModalOk = () => {
       actionModalActive.value = false;
       await getInputData(stepParams.value.data, handleData);
     });
+  } else if (activeAction.value.title === DELETE_MULTIPLE) {
+    for (let iRow = 0; iRow < checkedRows.value.length; iRow++) {
+      const params = {"run_id": checkedRows.value[iRow][rowIdKey.value]};
+      if (stepParams.value.config.delete_result_url) {
+        params["delete_result_url"] = stepParams.value.config.delete_result_url;
+      }
+      window.socket.emit("external_models_delete_run", params, async () => {
+        if (iRow === checkedRows.value.length - 1) {
+          deleteRunsEnabled.value = false;
+          actionModalActive.value = false;
+          await getInputData(stepParams.value.data, handleData);
+        }
+      });
+    }
   } else {
     actionModalActive.value = false;
   }
@@ -343,31 +363,38 @@ const getProgressPercent = (record, column) => {
   return isNaN(progress) ? 0 : Math.round(100 * progress);
 };
 
+const buildTreeFromPaths = (paths) => {
+  const root = [];
+  for (const path of paths) {
+    const parts = path.replace(/^\/+/, '').split('/');  // remove initial slash and split
+    let currentLevel = root;
+    let currentPath = '';
+    for (const part of parts) {
+      currentPath += '/' + part;
+      let existing = currentLevel.find(node => node.label === part);
+      if (!existing) {
+        existing = {
+          value: currentPath,
+          label: part,
+          children: []
+        };
+        currentLevel.push(existing);
+      }
+      currentLevel = existing.children;
+    }
+  }
+  return root;
+}
+
 const init = async () => {
   stepParams.value = getWorkflowStepParameters(props.workflowStep);
   await getInputData(stepParams.value.data, handleData);
 
-  window.socket.emit("get_user_group_paths", (user_group_paths) => {
-        const organizations = [];
-        const projects = [];
-        for (const user_group_path of user_group_paths) {
-          if (user_group_path.startsWith("/Organizations")) {
-            organizations.push({
-              value: user_group_path,
-              label: user_group_path.replace("/Organizations/", "")
-            });
-          } else if (user_group_path.startsWith("/Projects")) {
-            projects.push({
-              value: user_group_path,
-              label: user_group_path.replace("/Projects/", "")
-            });
-          }
+  window.socket.emit("get_user_group_paths", (userGroupPaths) => {
+        userGroupsForUser.value = [{value: "my_runs", label: "my runs"}];
+        if (userGroupPaths.length > 0) {
+          userGroupsForUser.value = userGroupsForUser.value.concat(buildTreeFromPaths(userGroupPaths));
         }
-        userGroupsForUser.value = [
-          {value: "my_runs", label: "my runs"},
-          {value: "Organizations", label: "Organizations", children: organizations},
-          {value: "Projects", label: "Projects", children: projects}
-        ];
       }
   );
 
@@ -400,27 +427,86 @@ const hide_jquery_ui_popup = () => {
   window.jquery(".ui-tooltip-content").parents('div').remove();
 };
 
+const deleteSelectedRuns = () => {
+  activeAction.value = {title: DELETE_MULTIPLE};
+  modalTitle.value = `Delete runs?`;
+  const keysToShow = ['run_name', 'model_name', 'status', 'last_updated_from_external_model_at', 'user_group_paths']
+  runDetailsText.value = checkedRows.value.map(obj => {
+    const entries = keysToShow.map(k => {
+      if (k in obj) {
+        return `&nbsp;&nbsp;${k}: <b>${obj[k]}</b>`;
+      }
+      return null;
+    }).filter(Boolean).join('<br>')
+    return `-${entries}`;
+  }).join('<br><br>');
+
+  actionModalActive.value = true;
+};
+
+const rowSelection = {
+  onChange: (selectedRowKeys) => {
+    checkedRows.value = tableRows.value.filter(row =>
+        selectedRowKeys.includes(row[rowIdKey.value])
+    );
+    deleteRunsEnabled.value = selectedRowKeys.length > 0;
+  },
+  columnWidth: 18,
+  columnTitle: () =>
+      h(
+          Tooltip,
+          {title: deleteRunsEnabled.value ? 'Delete selected run(s)' : 'No runs selected'},
+          {
+            default: () =>
+                h(
+                    'div',
+                    {
+                      style: {
+                        cursor: deleteRunsEnabled.value ? 'pointer' : 'not-allowed',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: deleteRunsEnabled.value ? 1 : 0.4,
+                      },
+                      onClick: () => {
+                        if (deleteRunsEnabled.value) deleteSelectedRuns()
+                      },
+                    },
+                    [
+                      h('i', {
+                        class: 'far fa-trash-alt',
+                        style: {color: deleteRunsEnabled.value ? 'red' : 'gray', fontSize: '16px'},
+                      }),
+                    ]
+                ),
+          }
+      ),
+  getCheckboxProps: (row) => ({
+    disabled: !row.is_owner,
+  }),
+};
+
 const setColumns = () => {
   columns.value = [
     {
-      "dataIndex": "run_name",
-      "title": "Name",
-      "ellipsis": true
+      dataIndex: "run_name",
+      title: "Name",
+      ellipsis: true
     },
     {
-      "dataIndex": "status",
-      "title": "Status",
-      "align": "center",
-      "progressAttribute": "progress_fraction",
-      "slots": {
-        "customRender": "tags"
+      dataIndex: "status",
+      title: "Status",
+      align: "center",
+      progressAttribute: "progress_fraction",
+      slots: {
+        customRender: "tags"
       }
     },
     {
-      "dataIndex": "submitted_to_external_model_at",
-      "title": "Submitted",
-      "formatter": "formatDate",
-      "defaultSortOrder": "descend"
+      dataIndex: "submitted_to_external_model_at",
+      title: "Submitted",
+      formatter: "formatDate",
+      defaultSortOrder: "descend"
     }
   ];
 
@@ -447,10 +533,10 @@ const setColumns = () => {
 
   columns.value.push(
       {
-        'key': 'action',
-        'title': 'Action',
-        "slots": {
-          "customRender": "action",
+        key: 'action',
+        title: 'Action',
+        slots: {
+          customRender: "action",
         }
       }
   );
@@ -459,11 +545,11 @@ const setColumns = () => {
 const setActions = () => {
   actions.value = [
     {
-      "title": LOAD_RESULT,
-      "icon": "far fa-eye",
-      "enabled": {
-        "dataIndex": "status",
-        "values": [
+      title: LOAD_RESULT,
+      icon: "far fa-eye",
+      enabled: {
+        dataIndex: "status",
+        values: [
           "SUCCEEDED"
         ]
       }
@@ -471,11 +557,11 @@ const setActions = () => {
   if (stepParams.value.config.has_feedback_messages) {
     actions.value.push(
         {
-          "title": VIEW_FEEDBACK,
-          "icon": "far fa-comment",
-          "enabled": {
-            "dataIndex": "esdl_feedback",
-            "exists": true
+          title: VIEW_FEEDBACK,
+          icon: "far fa-comment",
+          enabled: {
+            dataIndex: "esdl_feedback",
+            exists: true
           }
         }
     );
@@ -488,11 +574,11 @@ const setActions = () => {
   );
   actions.value.push(
       {
-        "title": EDIT,
-        "icon": "far fa-edit",
-        "enabled": {
-          "dataIndex": "is_owner",
-          "values": [
+        title: EDIT,
+        icon: "far fa-edit",
+        enabled: {
+          dataIndex: "is_owner",
+          values: [
             true
           ]
         }
@@ -501,13 +587,13 @@ const setActions = () => {
   if (stepParams.value.config.time_series_xlsx_download) {
     actions.value.push(
         {
-          "title": DOWNLOAD_XLSX,
-          "icon": "fas fa-download",
-          "wait_title": "Extracting data..",
-          "wait_icon": "fas fa-spinner fa-spin",
-          "enabled": {
-            "dataIndex": "status",
-            "values": [
+          title: DOWNLOAD_XLSX,
+          icon: "fas fa-download",
+          wait_title: "Extracting data..",
+          wait_icon: "fas fa-spinner fa-spin",
+          enabled: {
+            dataIndex: "status",
+            values: [
               "SUCCEEDED"
             ]
           }
@@ -517,24 +603,18 @@ const setActions = () => {
   if (stepParams.value.config.load_input_esdl) {
     actions.value.push(
         {
-          "title": LOAD_INPUT_ESDL,
-          "icon": "fas fa-sign-in-alt",
-          "enabled": {
-            "dataIndex": "status",
-            "values": [
-              "SUCCEEDED"
-            ]
-          }
+          title: LOAD_INPUT_ESDL,
+          icon: "fas fa-sign-in-alt"
         }
     );
   }
   actions.value.push(
       {
-        "title": DELETE,
-        "icon": "far fa-trash-alt",
-        "enabled": {
-          "dataIndex": "is_owner",
-          "values": [
+        title: DELETE,
+        icon: "far fa-trash-alt",
+        enabled: {
+          dataIndex: "is_owner",
+          values: [
             true
           ]
         },
@@ -561,4 +641,20 @@ div.ant-modal-content {
 .action-disabled {
   color: lightgray;
 }
+
+::v-deep .ant-table th.ant-table-selection-column,
+::v-deep .ant-table td.ant-table-selection-column {
+  padding-left: 1px !important;
+  padding-right: 1px !important;
+}
+
+::v-deep .ant-table th.ant-table-selection-column .ant-checkbox-wrapper,
+::v-deep .ant-table td.ant-table-selection-column .ant-checkbox-wrapper {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 </style>

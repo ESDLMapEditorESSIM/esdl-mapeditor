@@ -39,6 +39,7 @@ class ESDLFileIO:
         @self.flask_app.route("/esdl_file_io", methods=['POST'])
         def esdl_file_io():
             with self.flask_app.app_context():
+                request.max_form_memory_size = 20 * 1024 * 1024
                 esh = EnergySystemHandler()
                 set_handler(esh)
 

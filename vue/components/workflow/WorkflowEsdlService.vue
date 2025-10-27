@@ -126,7 +126,10 @@ const loadEsdl = () => {
       window.hide_loader();
     });
   } else {
-    window.socket.emit("command", {cmd: "query_esdl_service", params: params});
+    window.socket.emit("command", {cmd: "query_esdl_service", params: params},(sequenceId) => {
+      goToStep(stepParams.value.nextStep);
+      window.hide_loader();
+    });
   }
 };
 

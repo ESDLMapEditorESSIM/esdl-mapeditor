@@ -170,4 +170,4 @@ to perform, and optionally this step can be displayed to track the progress of t
 only one action is implemented: `model_run_result_polling`. Others can be implemented in
 `extensions/workflow_engine.py`.
 
-![workflow_engine_overview.png](workflow_engine%2Fworkflow_engine_overview.png)
+![workflow_engine_overview.png](workflow_engine/workflow_engine_overview.png)

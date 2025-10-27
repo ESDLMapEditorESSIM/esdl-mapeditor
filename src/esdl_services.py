@@ -30,8 +30,13 @@ import src.log as log
 from esdl import esdl
 from esdl.esdl_handler import StringURI
 from esdl.processing import ESDLAsset, ESDLGeometry
-from extensions.external_models.external_models_storage import ExternalModelsStorage, ESDL_FEEDBACK, OUTPUT_ESDL, \
-    INPUT_ESDL
+from extensions.external_models.external_models_storage import (
+    ExternalModelsStorage,
+    ESDL_FEEDBACK,
+    OUTPUT_ESDL,
+    INPUT_ESDL,
+    RunStatus,
+)
 from extensions.profiles import Profiles
 from extensions.session_manager import get_handler, get_session, set_session
 from extensions.settings_storage import SettingsStorage
@@ -301,7 +306,7 @@ class ESDLServices:
         if "body_config" in service:
             if service["body_config"].get("profiles") == "inline":
                 es_converted = copy_and_convert_esdl_profiles(active_es_id)
-                uri = StringURI('es_converted.esdl')
+                uri = StringURI("es_converted.esdl")
                 es_converted_resource = ResourceSet().create_resource(uri)
                 es_converted_resource.append(es_converted)
                 es_converted_resource.save(uri)
@@ -409,7 +414,7 @@ class ESDLServices:
                     ):
                         kwargs = {"json": body}
                     else:
-                        kwargs = None
+                        kwargs = {}
                     url_response = requests.get(url, headers=headers, **kwargs)
                 elif service["http_method"] == "delete":
                     url_response = requests.delete(url, headers=headers)
@@ -443,12 +448,21 @@ class ESDLServices:
                 results = []
                 for result_config in service["result"]:
                     try:
-                        result = self._process_service_result(esh, url_response, input_data, result_config, service,
-                                                              service_params, state_params, active_es_id, body)
+                        result = self._process_service_result(
+                            esh,
+                            url_response,
+                            input_data,
+                            result_config,
+                            service,
+                            service_params,
+                            state_params,
+                            active_es_id,
+                            body,
+                        )
                         if result:
                             results.append(result)
-                    except Exception as e:
-                        logger.exception("Error processing service result: " + str(e))
+                    except Exception:
+                        logger.exception("Error processing service result.")
                         results.append((False, None, None))
                 return results
             else:
@@ -464,13 +478,22 @@ class ESDLServices:
                 else:
                     logger.warning("Error running ESDL service ", input_data)
                 return [(False, str(input_data), None)]
-        except Exception as e:
-            logger.exception("Error accessing external ESDL service: " + str(e))
+        except Exception:
+            logger.exception("Error accessing external ESDL service.")
             return [(False, None, None)]
 
-    def _process_service_result(self, esh, url_response: Response, input_data, result_config, service: dict,
-                                service_params: dict, state_params, active_es_id: str, body: dict[str, Any]) -> None | Tuple[
-        bool, str | dict | None, dict | None]:
+    def _process_service_result(
+        self,
+        esh,
+        url_response: Response,
+        input_data,
+        result_config,
+        service: dict,
+        service_params: dict,
+        state_params,
+        active_es_id: str,
+        body: dict[str, Any],
+    ) -> None | Tuple[bool, str | dict | None, dict | None]:
         """
         Process the result of an ESDL service call. This can be adding an ESDL object to the current EnergySystem, printing
         the result, or adding assets to the main area.
@@ -504,7 +527,7 @@ class ESDLServices:
                     esdlstr_base64_bytes = base64.b64decode(esdlstr_bytes)
                     esdl_response = esdlstr_base64_bytes.decode("utf-8")
 
-            es, parse_info = esh.add_from_string(service["name"], esdl_response)
+            es, parse_info = esh.add_from_string(service["name"], esdl_response, overwrite_existing=False)
             # TODO deal with parse_info?
 
             message = None
@@ -532,7 +555,7 @@ class ESDLServices:
                     animation_fields = Profiles.get_animation_fields(
                         es.id,
                         influxdb_host_override=influxdb_host_override,
-                        influxdb_port_override=influxdb_port_override
+                        influxdb_port_override=influxdb_port_override,
                     )
                     if animation_fields:
                         filter_tag_name = None
@@ -596,11 +619,7 @@ class ESDLServices:
                         add_assets_to_area[area.id] = [add_assets]
                     else:
                         logger.error("add_assets service config not handled properly yet!")
-                        return (
-                            False,
-                            "add_assets service config not handled properly yet!",
-                            None
-                        )
+                        return (False, "add_assets service config not handled properly yet!", None)
 
             # If service returns an ESDL string that represents one asset, add it to the main area
             if isinstance(add_assets_service_result, str):
@@ -625,9 +644,7 @@ class ESDLServices:
                         if area_to_be_added_to.id in shape_dictionary:
                             area_shape = shape_dictionary[area_to_be_added_to.id]
                             # Calculate "enough" possible locations for assets inside the area
-                            possible_locations = calc_possible_locations_in_area(
-                                area_shape, len(asset_str_list)
-                            )
+                            possible_locations = calc_possible_locations_in_area(area_shape, len(asset_str_list))
 
                     for asset_str in asset_str_list:
                         asset = ESDLAsset.load_asset_from_string(asset_str)
@@ -675,9 +692,7 @@ class ESDLServices:
                     ESDLAsset.add_object_to_area(es_edit, potential, area.id)
                     # asset_ui, conn_list = energy_asset_to_ui(esh, active_es_id, potential)
 
-                    coords = ESDLGeometry.parse_esdl_subpolygon(
-                        potential.geometry.exterior, False
-                    )  # [lon, lat]
+                    coords = ESDLGeometry.parse_esdl_subpolygon(potential.geometry.exterior, False)  # [lon, lat]
                     coords = ESDLGeometry.exchange_coordinates(coords)
                     potentials_to_be_added.append(
                         [
@@ -776,9 +791,7 @@ class ESDLServices:
                     {"es_id": active_es_id, "notes_list": notes_list},
                 )
             else:
-                logger.error(
-                    "Service with id " + service_params["service_id"] + " did not return a esdl.Notes object"
-                )
+                logger.error("Service with id " + service_params["service_id"] + " did not return a esdl.Notes object")
                 return False, None, None
 
             return True, {"send_message_to_UI_but_do_nothing": {}}, None
@@ -806,7 +819,21 @@ class ESDLServices:
             return True, {"file": response_with_file, "filename": filename, "content_type": content_type}, None
         elif service["result"][0]["action"] == "save_model_run":
             esdl_str = esh.to_string(active_es_id)
-            model_job_id = url_response.json()[service["result"][0]["external_model_id_response_param"]]
+            response_json = url_response.json()
+
+            if service["result"][0]["external_model_id_response_param"] in response_json:
+                model_job_id = response_json[service["result"][0]["external_model_id_response_param"]]
+                status = RunStatus.SUBMITTED
+            else:  # if no external model id returned: model run failed
+                model_job_id = "0"
+                status = RunStatus.ERROR
+
+            logs = None
+            if (
+                "external_model_logs_response_param" in service["result"][0]
+                and service["result"][0]["external_model_logs_response_param"] in response_json
+            ):
+                logs = response_json[service["result"][0]["external_model_logs_response_param"]]
 
             parameters = state_params.copy()
             run_name = parameters[service["result"][0]["run_name_state_param"]]
@@ -821,6 +848,8 @@ class ESDLServices:
                 input_esdl=esdl_str,
                 run_input_data=parameters,
                 user_name=user,
+                logs=logs,
+                status=status,
             )
             return (
                 True,

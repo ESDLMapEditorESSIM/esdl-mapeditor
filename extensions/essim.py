@@ -22,6 +22,7 @@ import urllib
 import uuid
 from datetime import datetime
 
+import pytz
 import requests
 from flask import Flask, abort, jsonify, session
 from flask_executor import Executor
@@ -36,6 +37,7 @@ from extensions.settings_storage import SettingsStorage
 from src.essim_kpis import ESSIM_KPIs
 from src.process_es_area_bld import process_energy_system
 from src.tno.shared import excel
+from utils.datetime_utils import parse_date
 
 logger = log.get_logger(__name__)
 
@@ -379,8 +381,11 @@ class ESSIM:
                                                          port=ESSIM_config['ESSIM_database_port'],
                                                          database=simulation_info['scenarioID'])
 
-                        sdt = datetime.strptime(simulation_info['startDate'], '%Y-%m-%dT%H:%M:%S%z')
-                        edt = datetime.strptime(simulation_info['endDate'], '%Y-%m-%dT%H:%M:%S%z')
+                        # Parse the datetimes from the simulation info (lots of datetime formats are accepted)
+                        sdt = self.parse_date_string(simulation_info['startDate'])
+                        edt = self.parse_date_string(simulation_info['endDate'])
+
+                        # format datetimes how influxdb wants them
                         influxdb_startdate = sdt.strftime('%Y-%m-%dT%H:%M:%SZ')
                         influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
 
@@ -444,6 +449,15 @@ class ESSIM:
                     else:
                         logger.error("Either simulation info or ESDL could not be retrieved")
                         return None
+
+    def parse_date_string(self, date_string):
+        dt = parse_date(date_string)
+        try:
+            aware_dt = pytz.utc.localize(dt)  # Assume timezone is UTC if no TZ was given
+        except ValueError:  # ValueError: Not naive datetime (tzinfo is already set)
+            aware_dt = dt
+
+        return aware_dt
 
     def retrieve_sim_fav_list(self, essim_list=ESSIM_SIMULATION_LIST):
         with self.flask_app.app_context():
@@ -798,7 +812,15 @@ class ESSIM:
         # Iterate over all network results
         for result_key in essim_results.keys():
             result_key_name = result_key[0]
-            network_name = result_key_name.replace(common_name, "")
+            # Only remove the common part if it's not equal to the full name (this is the case when simulating one network)
+            if result_key_name != common_name:
+                network_name = result_key_name.replace(common_name, "")
+            else:
+                network_name = result_key_name
+
+            # If this name is too long, only use first 25 characters, then "_EinJ" or "_PinW" can still be added.
+            if len(network_name) > 25:
+                network_name = network_name[:25]
 
             for attribute in ["Power", "Energy"]:
                 sheet_name = network_name + "_" + attribute_to_name_mapping[attribute]

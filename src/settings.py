@@ -39,14 +39,14 @@ USE_GEVENT = (_use_gevent.upper() == 'TRUE' or _use_gevent == '1')
 # Database settings
 POSTGRES_HOST = os.environ.get('POSTGRES_HOST', 'localhost')
 POSTGRES_PORT = os.environ.get('POSTGRES_PORT', '5432')
-POSTGRES_USER = os.environ.get('POSTGRES_USER', 'mapeditor')
+POSTGRES_USER = os.environ.get('POSTGRES_USER', 'data_manager')
 POSTGRES_PASSWORD = os.environ.get('POSTGRES_PASSWORD', 'password')
-POSTGRES_DB = os.environ.get('POSTGRES_DB', 'mapeditor')
+POSTGRES_DB = os.environ.get('POSTGRES_DB', 'data_manager')
 POSTGRES_DB_URI = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
 
 SQLITE_DB_NAME = os.environ.get('SQLITE_DB_NAME', 'data_manager.db')
 
-DB_DRIVER_TYPE = os.environ.get('DB_DRIVER_TYPE', 'postgresql')
+DB_DRIVER_TYPE = os.environ.get('DB_DRIVER_TYPE', 'sqlite')
 DEFAULT_DRIVER_URI = POSTGRES_DB_URI if DB_DRIVER_TYPE == 'postgresql' else f"sqlite:///{SQLITE_DB_NAME}"
 
 SQLALCHEMY_DATABASE_URI = os.environ.get('SQLALCHEMY_DATABASE_URI', POSTGRES_DB_URI)
@@ -98,6 +98,7 @@ essim_config = {
     "ESSIM_path": "/essim/simulation",
     "influxURL": os.environ.get('ESSIM_INFLUX_URL', None),  # "http://influxdb:8086",
     "influx_mapeditor_url": os.environ.get('ESSIM_MAPEDITOR_INFLUX_URL', os.environ.get("ESSIM_INFLUX_URL", None)),  # "http://localhost:8086",
+    # This field doesn't seem used.
     "grafanaURL": os.environ.get('ESSIM_GRAFANA_URL', None),  # "http://grafana:3000",
     "user": "essim",
     "ESSIM_database_server": os.environ.get('ESSIM_DATABASE_HOST', None),  # "influxdb",

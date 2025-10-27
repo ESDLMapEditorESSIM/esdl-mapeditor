@@ -94,6 +94,8 @@ For more details see the json example below.
 - `actions`: list of actions with `title`, `icon`, `next_step` and `enabled` options.
 - `value_field`: key of a unique field in each row by which to identify.
 - `additional_fields`: list of key values that will also be added to the workflow state along with the `value_field`.
+- `row_selection`: optional row selection with `type` of `radio` or `checkbox` and `enabled` option with `dataIndex` and
+  `condition`.
 
 #### required input data
 
@@ -107,102 +109,66 @@ no real output data from this component.
 Example config:
 
 ```json
-{
-  "id": "runs_table",
-  "name": "Results overview",
-  "description": "",
+     {
+  "id": "choose_geothermal_source",
+  "name": "Select one of the aquifers below",
+  "description": "Properties from regional nation-wide maps: a local study will give more reliable results.",
   "type": "table",
   "config": {
     "columns": [
       {
-        "dataIndex": "run_name",
+        "dataIndex": "name",
         "title": "Name",
         "ellipsis": true
       },
       {
-        "dataIndex": "status",
-        "title": "Status",
-        "align": "center",
-        "progressAttribute": "progress_fraction",
-        "slots": {
-          "customRender": "tags"
-        }
+        "dataIndex": "aquiferTemperature",
+        "title": "Temperature [\u00B0C]"
       },
       {
-        "dataIndex": "submitted_to_external_model_at",
-        "title": "Submitted",
-        "formatter": "formatDate",
-        "defaultSortOrder": "descend"
+        "dataIndex": "flowRate",
+        "title": "Flow Rate [kg/s]"
+      },
+      {
+        "dataIndex": "power",
+        "title": "Power [W]"
       }
     ],
-    "actions": [
-      {
-        "title": "Load result",
-        "icon": "far fa-eye",
-        "next_step": "load_run_results",
-        "enabled": {
-          "dataIndex": "status",
-          "values": [
-            "SUCCEEDED"
-          ]
+    "row_selection": {
+      "type": "radio",
+      "enabled": {
+        "dataIndex": "power",
+        "condition": {
+          "type": "larger_than",
+          "value": 0
         }
-      },
-      {
-        "title": "View details",
-        "icon": "fas fa-info-circle",
-        "next_step": "view_run_details"
-      },
-      {
-        "title": "Edit",
-        "icon": "far fa-edit",
-        "next_step": "edit_run",
-        "enabled": {
-          "dataIndex": "is_owner",
-          "values": [
-            true
-          ]
-        }
-      },
-      {
-        "title": "Download xlsx",
-        "icon": "fas fa-download",
-        "wait_title": "Extracting data..",
-        "wait_icon": "fas fa-spinner fa-spin",
-        "next_step": "download_xlsx",
-        "enabled": {
-          "dataIndex": "status",
-          "values": [
-            "SUCCEEDED"
-          ]
-        }
-      },
-      {
-        "title": "Delete",
-        "icon": "far fa-trash-alt",
-        "next_step": "delete_run",
-        "enabled": {
-          "dataIndex": "is_owner",
-          "values": [
-            true
-          ]
-        }
-      }
-    ],
-    "value_field": "run_id",
-    "additional_fields": [
-      "run_name"
-    ]
-  },
-  "data": {
-    "from_socket": {
-      "event": "get_external_model_runs_for_user",
-      "params": {
-        "external_model_name": "essim"
       }
     },
-    "output_wrapper_variable": "model_run"
+    "value_field": "name"
   },
-  "with_jwt_token": true
+  "data": {
+    "from_url": {
+      "url": "http://localhost:6300/api/query",
+      "request_params": [
+        {
+          "name": "lat",
+          "parameter_name": "lat"
+        },
+        {
+          "name": "lng",
+          "parameter_name": "lng"
+        },
+        {
+          "name": "service_identifier",
+          "value": "geothermal_layer_selection"
+        }
+      ]
+    },
+    "to_state": {
+    },
+    "output_wrapper_variable": "chosen_aquifer_row"
+  },
+  "next_step_trigger": "input_change"
 }
 ```
 
