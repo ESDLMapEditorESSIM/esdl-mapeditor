@@ -297,6 +297,58 @@ class PortProfileViewer:
         return True
 
     @staticmethod
+    def get_assets_profiles(es_id: str, asset_ids: List[str]) -> list:
+        """
+        Returns a list of dictionaries.
+
+        Example:
+        [
+            {
+                "asset_id": "asset123",
+                "asset_name": "Consumer",
+                "profiles": [
+                    {"id": "profile456", "name": "Heat flow [W]"},
+                    ...
+                ]
+            },
+            ...
+        ]
+        """
+        assets_profiles = []
+        for asset_id in asset_ids:
+            asset_name, profiles = PortProfileViewer.get_asset_profiles(es_id, asset_id)
+            assets_profiles.append(
+                {
+                    "asset_id": asset_id,
+                    "asset_name": asset_name,
+                    "profiles": profiles
+                }
+            )
+
+        return assets_profiles
+    
+    @staticmethod
+    def get_asset_profiles(es_id: str, asset_id: str):
+        esh = get_handler()
+        asset: esdl.Asset = esh.get_by_id(es_id, asset_id)
+
+        port_profile_info: list = get_port_profile_info(asset, only_if_profile=True, only_of_type="InfluxDBProfile")
+
+        profiles = []
+        for port in port_profile_info:
+            for p in port.get("profiles", []):
+                profile_id = p.get("id")
+                profile_name = p.get("uiname")
+                profile_qau = p.get("type")
+                profiles.append(
+                    {
+                        "id": profile_id,
+                        "name": f"{profile_name} [{profile_qau.split(' ')[-1]}]"
+                    }
+                )
+
+        return asset.name, profiles
+    @staticmethod
     def get_port_profile_info_multiple_assets(asset_id_list):
         """
         Get port profile information in case multiple assets are selected

@@ -60,6 +60,18 @@ export function mountSidebarComponent(component) {
     [sidebar_app] = mountApp(component, '#vue_sidebar_app');
 }
 
+let sidebar_b_app = null;
+export function mountSidebarBottomComponent (component) {
+    if (sidebar_b_app !== null) {
+        sidebar_b_app.unmount();
+    }
+
+    let sidebar_b_ctr = window.sidebar_b.getContainer();
+    sidebar_b_ctr.innerHTML = '<div id="vue_sidebar_b_app" style="height: 100%"></div>';
+    window.sidebar_b.show();
+    [sidebar_b_app] = mountApp(component, '#vue_sidebar_b_app');
+}
+
 export function mountSettingsComponent(component) {
     let settings_div = document.getElementById('settings_module_contents');
     settings_div.innerHTML = '<div id="mount_settings_component_div"></div>';
