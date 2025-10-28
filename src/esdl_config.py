@@ -619,7 +619,9 @@ esdl_config = {
                         "model_short_name": "ESSIM",
                         "has_feedback_messages": False,
                         "result_animation": {
-                            "filter_on_tag": {"tag_name": "simulationRun", "value_database_key": "model_job_id"}
+                            "influxdb_host_override": "influxdb",
+                            "influxdb_port_override": "8086",
+                            "filter_on_tag": {"tag_name": "simulationRun", "value_database_key": "model_job_id"},
                         },
                         "result_external_link": {
                             "description": "Open Dashboard",
