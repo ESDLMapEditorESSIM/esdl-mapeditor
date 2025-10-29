@@ -182,12 +182,14 @@
                 />
               </a-row>
               <a-row style="align-items: center; padding-top: 12px;">
-                <a-typography-paragraph style="padding-left: 8px; margin-bottom: 0px;">Downsampling</a-typography-paragraph>
-                <a-tooltip :title="profileDownsampleMsg">
-                  <a-button size="small" type="text">
-                    <component :is="InfoCircleOutlined" style="vertical-align: 0.1rem" />
-                  </a-button>
-                </a-tooltip>
+                <a-typography-paragraph style="padding-left: 8px; margin-bottom: 0px;">
+                  Downsampling
+                  <a-tooltip :title="profileDownsampleMsg">
+                    <a-button size="small" type="text">
+                      <component :is="InfoCircleOutlined" style="vertical-align: 0.1rem" />
+                    </a-button>
+                  </a-tooltip>
+                </a-typography-paragraph>
                 <a-switch
                   v-model:checked="profileDownsampling"
                   size="small"
@@ -400,7 +402,6 @@
 
 <script setup>
 import { defineProps, ref, h, onMounted, onUnmounted } from 'vue';
-import { notification } from 'ant-design-vue';
 import {
   BarChartOutlined,
   DeleteOutlined,
@@ -415,7 +416,10 @@ import {
   SyncOutlined,
 	TableOutlined }
 from "@ant-design/icons-vue";
-import AnalyticsPlot from '@/components/esdlanalytics/AnalyticsPlot.vue';
+import AnalyticsPlot from '@/components/plot/AnalyticsPlot.vue';
+import { fetchData } from '@/utils/api';
+import { config } from '@/utils/profileVisualization';
+import { displayNotification } from '@/utils/notification';
 import dayjs from 'dayjs';
 import minMax from 'dayjs/plugin/minMax';
 
@@ -445,12 +449,12 @@ const chartTypes = [
   {value: "table", payload: { icon: TableOutlined } },
 ];
 
-const dateTimeFormat = "YYYY-MM-DD HH:mm:ss";
+const dateTimeFormat = config.dateTimeFormat;
 const profileVizTypes = ['Profile', 'Aggregated'];
 const profileAggIntervals = ['Week', 'Month', 'Quarter', 'Year'];
 const profileAggFuncs = ['Mean', 'Sum', 'Max', 'Min', 'Count'];
 
-const profileMaxDataPoints = 100 // The value is applied in updateTrace() when profileDownsampling === true
+const profileMaxDataPoints = config.profileMaxDataPoints;
 const profileDownsampleMsg = "Downsampling simplifies large dataset for better chart readability and performance. " + 
                              "The average value is used to represent data within each interval. " +
                              "Toggle it on to explore general trends or off to access the full dataset. " + 
@@ -759,32 +763,6 @@ onUnmounted(() => {
 // --------- Component methods --------- //
 // ------------------------------------- //
 
-/**
- * Fetches DataManager metadata from the specified resource using a WebSocket connection.
- * 
- * @param {string} resource The name of the resource to fetch metadata from.
- * @param {Object} requestBody Optional. The request body to send with the WebSocket emit.
- * @returns {Promise<Array|Object>} A promise that resolves with the metadata response or rejects with an error.
- */
- const fetchMetadata = async(resource, requestBody) => {
-  const metadataPromise = new Promise((resolve, reject) => {
-    const path = `datamanager/${resource}`;
-    const callback = (response) => {
-      if (response) {
-        resolve(response);
-			} else {
-				reject(new Error(`An unknown error occurred while fetching metadata from ${path}`));
-			}
-    };
-
-    if (requestBody) {
-      window.socket.emit(path, requestBody, callback);
-    } else {
-      window.socket.emit(path, callback);
-    }
-	});
-  return metadataPromise;
-};
 
 /**
  * Modifies DataManager metadata with specified action using a WebSocket connection.
@@ -806,20 +784,6 @@ const modifyMetadata = async(action, requestBody) => {
 	});
 };
 
-/**
- * Displays a notification with the specified level and description.
- * 
- * @param {string} level The level of the notification ("info", "warning", "error").
- * @param {string} description The description text of the notification.
- */
-const displayNotification = (level, description) => {
-  notification[level.toLowerCase()]({
-    message: level.toUpperCase(),
-    description: description,
-    placement: "bottomRight",
-    duration: 8
-  });
-};
 
 /**
  * Adds or updates ESDLs into metadata by iterating over the list of energy systems.
@@ -890,7 +854,7 @@ const onDeleteBtnClick = async() => {
 const updateDatasets = async() => {
   console.debug("Fetching DataManager datasets");
   try {
-    const datasets = await fetchMetadata('datasets');
+    const datasets = await fetchData('datamanager/datasets');
     if (datasets.length) {
       datasetOptions.value = datasets.map((d) => ({
         value: d.id,
@@ -914,7 +878,7 @@ const updateVariables = async() => {
   if (datasetSelected.value.length) {
     try {
       const reqBody = { dataset_ids: datasetSelected.value };
-      const variables = await fetchMetadata('variables', reqBody);
+      const variables = await fetchData('datamanager/variables', reqBody);
 
       const options = {};
       variables.forEach((v) => {
@@ -971,7 +935,7 @@ const updateColumns = async() => {
         dataset_ids: datasetSelected.value, 
         variable_name: variableSelected.value
       };
-      const varFilterOptions = await fetchMetadata('columns', reqBody);
+      const varFilterOptions = await fetchData('datamanager/columns', reqBody);
 
       groupbyOptions.value = Object.entries(varFilterOptions).map(([name, val]) => {
         const optValue = val.column === 'labels' ? `labels/${val.key}` : val.column;
@@ -1062,7 +1026,7 @@ const updateTrace = async() => {
   }
 
   try {
-    const results = await fetchMetadata('query', options);
+    const results = await fetchData('datamanager/query', options);
     const traces = results['traces'];
     if (queryProfileData) {
       profileDataRanges.value = dtStringsToDayJsObjects(results['data_range']);
@@ -1332,7 +1296,7 @@ const exportChartDataToCSV = () => {
 
 </script>
 
-<style>
+<style scoped>
 
 .ant-layout-header.graph-header {
 	display: flex;
@@ -1341,8 +1305,7 @@ const exportChartDataToCSV = () => {
 	background-color: white; 
 }
 
-.ant-segmented-item,
-.ant-segmented-item::selection {
+::v-deep(.ant-segmented-item, .ant-segmented-item::selection) {
   height: 100%;
   display: flex;
   justify-content: center;

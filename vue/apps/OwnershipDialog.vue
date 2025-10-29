@@ -97,7 +97,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { notification } from 'ant-design-vue';
+import { displayNotification } from '@/utils/notification';
 
 const displayedText = ref('');
 
@@ -155,21 +155,6 @@ onMounted(async () => {
 const onActiveTabChange = (activeEsdlId) => {
   activeKey.value = undefined;
   getOwnershipState(activeEsdlId);
-};
-
-/**
- * Displays a notification with the specified level and description.
- * 
- * @param {string} level The level of the notification ("success", "info", "warning", "error").
- * @param {string} description The description text of the notification.
- */
- const displayNotification = (level, description) => {
-  notification[level.toLowerCase()]({
-    message: level.toUpperCase(),
-    description: description,
-    placement: "bottomRight",
-    duration: 8
-  });
 };
 
 const resetForm = () => {
