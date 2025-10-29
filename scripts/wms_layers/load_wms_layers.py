@@ -15,10 +15,11 @@ import csv
 import os
 import subprocess
 from uuid import uuid4
-import psycopg2
-from psycopg2 import extensions
+import psycopg
+#from psycopg2 import extensions
 
 from geo.Geoserver import Geoserver, GeoserverException
+from psycopg import Cursor
 
 from extensions.settings_storage import SettingsStorage, SettingType
 from src.tno.locking import NamedLocker
@@ -43,14 +44,14 @@ def _get_identifier(setting_type: SettingType, project_name: str) -> str | None:
     return identifier
 
 
-def connect_to_postgres(host: str, port: int, database: str, user: str, password: str) -> extensions.cursor:
+def connect_to_postgres(host: str, port: int, database: str, user: str, password: str) -> Cursor:
     print(f"Connecting to postgres, host: '{host}', port: '{port}', database: '{database}'")
-    conn = psycopg2.connect(host=host, port=port, database=database, user=user, password=password)
+    conn = psycopg.connect(host=host, port=port, database=database, user=user, password=password)
     return conn.cursor()
 
 
 def load_wms_layer_postgis(
-    cursor: extensions.cursor,
+    cursor: Cursor,
     postgres_host: str,
     postgres_port: str,
     postgres_user: str,

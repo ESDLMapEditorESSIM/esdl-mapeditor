@@ -17,7 +17,8 @@ from esdl.processing import ESDLEcore, ESDLEnergySystem
 from pyecore.ecore import EReference
 
 from esdl.processing.ESDLEcore import instantiate_type
-from esdl.processing.ESDLQuantityAndUnits import unit_to_string, build_qau_from_unit_string, get_or_create_esi_qau
+from esdl.processing.ESDLQuantityAndUnits import get_or_create_esi_qau
+from esdl.units.parser import unit_to_string, build_qau_from_unit_string
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from extensions.esdl_browser import ESDLBrowser # for repr function
 from extensions.session_manager import get_handler, get_session

@@ -17,6 +17,7 @@ import re
 from flask_socketio import emit
 from pyecore.ecore import EEnum
 
+import esdl.units.parser
 from esdl import esdl
 from esdl.processing import ESDLGeometry, ESDLAsset, ESDLQuantityAndUnits
 from extensions.session_manager import get_handler, get_session, get_session_for_esid
@@ -41,7 +42,7 @@ def generate_profile_info(profile_list, only_of_type: str = None):
         if isinstance(qau, esdl.QuantityAndUnitReference):
             qau = qau.reference
         if qau:
-            profile_type = ESDLQuantityAndUnits.qau_to_string(qau)
+            profile_type = esdl.units.parser.qau_to_string(qau)
         else:
             profile_type = profile.profileType.name
         profile_name = profile.name

@@ -14,6 +14,8 @@
 
 from flask import Flask
 from flask_socketio import SocketIO, emit
+
+import esdl.units.parser
 from esdl import esdl
 from extensions.panel_service import get_panel_service_datasource, create_panel_multiple
 from extensions.settings_storage import SettingsStorage
@@ -243,7 +245,7 @@ class PortProfileViewer:
         if isinstance(qau, esdl.QuantityAndUnitReference):
             qau = qau.reference
         if qau:
-            profile_type = ESDLQuantityAndUnits.qau_to_string(qau)
+            profile_type = esdl.units.parser.qau_to_string(qau)
             aggr_method = PortProfileViewer.determine_profile_aggregation_method(qau)
         else:
             profile_type = profile.profileType.name

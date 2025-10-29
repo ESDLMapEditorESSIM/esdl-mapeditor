@@ -22,6 +22,7 @@ from shapely import MultiPoint
 from typing import Dict
 
 import esdl
+import esdl.units.parser
 from esdl import esdl
 from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEnergySystem, ESDLQuantityAndUnits
 from esdl.processing.ESDLEnergySystem import get_notes_list
@@ -316,7 +317,7 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, sho
                 if not kpi_qau:  # Reference field in the ESDL could be "" (but should never be)
                     unit = ''
                 else:
-                    unit = ESDLQuantityAndUnits.unit_to_string(kpi_qau)
+                    unit = esdl.units.parser.unit_to_string(kpi_qau)
             else:
                 unit = ''
 

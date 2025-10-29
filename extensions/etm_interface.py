@@ -23,7 +23,7 @@ from uuid import uuid4
 
 from esdl import esdl
 from esdl.processing import ESDLAsset
-from esdl.processing.ESDLQuantityAndUnits import unit_to_string, build_qau_from_unit_string
+from esdl.units.parser import unit_to_string, build_qau_from_unit_string
 from esdl.profiles.influxdbprofilemanager import InfluxDBProfileManager
 from extensions.session_manager import get_handler, get_session
 from extensions.settings_storage import SettingsStorage

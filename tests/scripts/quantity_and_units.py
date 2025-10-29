@@ -1,9 +1,10 @@
-from esdl import esdl
 from esdl.processing.ESDLQuantityAndUnits import *
 from esdl.esdl_handler import EnergySystemHandler
 
 esdl.QuantityAndUnitType.__repr__ = \
     lambda x: '{}'.format(EnergySystemHandler.attr_to_dict(x))
+
+from esdl.units.parser import qau_to_string, unit_to_string, build_qau_from_unit_string
 
 
 def test_qau(descr, qau):
