@@ -22,7 +22,6 @@ from math import fabs
 import pytz
 
 from esdl import esdl
-from esdl.processing import ESDLEnergySystem
 from esdl.processing.ESDLQuantityAndUnits import unit_to_string
 from extensions.profiles import Profiles
 from extensions.session_manager import get_handler, get_session, set_session
@@ -243,24 +242,20 @@ class TimeDimension:
             determine_networks_automatically = False
         asset_ids = dict()
 
-        if determine_networks_automatically:
-            # Create list of networks from ESDL carriers
-            active_es_id = get_session("active_es_id_animation")
-            esh = get_handler()
-            es = esh.get_energy_system(active_es_id)
-            networks_list = [f'"{carrier["id"]}"' for carrier in ESDLEnergySystem.get_carrier_list(es)]
-
         logger.debug("finding all IDs from assets")
         query = 'SHOW TAG VALUES WITH KEY="assetId"'
         result = influxdb_client.query(query)
         if result:
             for key in list(result.keys()):
-                if any(key[0] in network for network in networks_list):
-                    # Create list of assetIds per network
-                    asset_list = list()
-                    for kv in result[key]:
-                        asset_list.append(kv["value"])
-                    asset_ids[key[0]] = asset_list
+                # Create list of networks
+                if determine_networks_automatically:
+                    networks_list.append(f'"{key[0]}"')
+
+                # Create list of assetIds per network
+                asset_list = list()
+                for kv in result[key]:
+                    asset_list.append(kv["value"])
+                asset_ids[key[0]] = asset_list
 
         set_session("timedimension-networks-list", networks_list)
         set_session("timedimension-asset-ids", asset_ids)

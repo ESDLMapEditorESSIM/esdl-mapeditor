@@ -835,9 +835,9 @@ class Profiles:
             if not influxdb_client:
                 return None
 
-            esh = get_handler()
-            es = esh.get_energy_system(esdl_id)
-            carrier_ids = [carrier["id"] for carrier in ESDLEnergySystem.get_carrier_list(es)]
+            query_collections_with_asset_id = 'SHOW TAG VALUES WITH KEY="assetId"'
+            collections_with_asset_id = influxdb_client.query(query_collections_with_asset_id)
+            carrier_ids = collections_with_asset_id.keys()[0]
 
             fields = []
             for carrier_id in carrier_ids:

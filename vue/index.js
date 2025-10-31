@@ -25,11 +25,13 @@ import KPIDashboard from '@/apps/KPIDashboard.vue';
 import ESDLAnalytics from '@/apps/ESDLAnalytics.vue';
 import OwnershipDialog from '@/apps/OwnershipDialog.vue';
 import AssetConstraint from '@/apps/AssetConstraint.vue';
+import PortProfileViewer from '@/apps/PortProfileViewer.vue';
 import {
     createVueLControl,
     mountApp,
     mountSettingsComponent,
     mountSidebarComponent,
+    mountSidebarBottomComponent,
     mountTooltipComponent,
 } from "./mounts";
 import AssetsToBeAddedToolbar from '@/components/toolbars/AssetsToBeAddedToolbar.vue'
@@ -90,6 +92,12 @@ window.activate_asset_constraint = (object_id) => {
     const { newObject } = useObject();
     newObject(object_id);
     mountSidebarComponent(AssetConstraint);
+}
+
+window.activate_port_profile_viewer = (object_id) => {
+    const { newObject } = useObject();
+    newObject(object_id);
+    mountSidebarBottomComponent(PortProfileViewer);
 }
 
 window.marginal_costs_window = (object_id) => {

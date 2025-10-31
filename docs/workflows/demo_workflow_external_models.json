@@ -278,7 +278,6 @@
           "id": "74c9d1a2-c92a-46ed-a7e4-9931971cdd28",
           "description": "",
           "name": "",
-          "button_label": "Run Essim Calculation",
           "headers": {
             "User-Agent": "ESDL Mapeditor/1.0",
             "Accept": "application/json",
@@ -402,6 +401,26 @@
             "retry_interval_seconds": 2,
             "maximum_wait_seconds": 3600
           }
+        },
+        "workflow_engine": {
+          "workflow_engine_next_step": "show_run_results"
+        }
+      },
+      {
+        "id": "show_run_results",
+        "monitor_name": "Essim Result",
+        "type": "workflow-engine-monitor",
+        "config": {
+          "model_run_show_results": [
+            {
+              "description": "run name",
+              "value_database_key": "run_name"
+            },
+            {
+              "value_database_key": "model_specific_output.dashboardURL",
+              "link_text": "Open dashboard"
+            }
+          ]
         }
       },
       {
@@ -410,10 +429,11 @@
         "description": "",
         "type": "table-external-model",
         "config": {
-          "external_model": "essim",
           "model_short_name": "essim",
           "has_feedback_messages": false,
           "result_animation": {
+            "influxdb_host_override": "influxdb",
+            "influxdb_port_override": "8086",
             "filter_on_tag": {
               "tag_name": "simulationRun",
               "value_database_key": "model_job_id"
@@ -574,7 +594,6 @@
           "id": "74c9d1a2-c92a-46ed-a7e4-9931971cbb21",
           "description": "",
           "name": "",
-          "button_label": "Run Omotes Calculation",
           "headers": {
             "User-Agent": "ESDL Mapeditor/1.0",
             "Content-Type": "application/json"
@@ -695,11 +714,11 @@
         "description": "",
         "type": "table-external-model",
         "config": {
-          "external_model": "omotes",
           "model_short_name": "omotes",
           "result_animation": {},
           "has_feedback_messages": true,
           "delete_result_url": "http://omotes-rest:9200/job/<MODEL_JOB_ID>",
+          "load_input_esdl": true,
           "time_series_xlsx_download": {
             "esdl_object_name_field": "assetName",
             "excel_sheets_per_table": [
@@ -840,5 +859,146 @@
       "filename": "Validator.png",
       "type": "filename"
     }
+  },
+  {
+    "id": "e04ec8d5-a15f-41c4-a8a3-6a94825c9f49",
+    "name": "Add Geothermal Source",
+    "type": "workflow",
+    "location": "map_context_menu",
+    "headers": {
+      "Accept": "application/esdl+xml",
+      "User-Agent": "ESDL Mapeditor/0.1"
+    },
+    "workflow": [
+      {
+        "id": "select_and_create_geothermal_source",
+        "type": "composite",
+        "config": {
+          "step_ids": [
+            "choose_geothermal_source",
+            "add_geothermal_source"
+          ]
+        },
+        "next_step": "select_and_create_geothermal_source"
+      },
+      {
+        "id": "choose_geothermal_source",
+        "name": "Select one of the aquifers below",
+        "description": "Properties from regional nation-wide maps: a local study will give more reliable results.",
+        "type": "table",
+        "config": {
+          "columns": [
+            {
+              "dataIndex": "name",
+              "title": "Name",
+              "ellipsis": true
+            },
+            {
+              "dataIndex": "aquiferTemperature",
+              "title": "Temperature [\u00B0C]"
+            },
+            {
+              "dataIndex": "flowRate",
+              "title": "Flow Rate [kg/s]"
+            },
+            {
+              "dataIndex": "power",
+              "title": "Power [W]"
+            }
+          ],
+          "row_selection": {
+            "type": "radio",
+            "enabled": {
+              "dataIndex": "power",
+              "condition": {
+                "type": "larger_than",
+                "value": 0
+              }
+            }
+          },
+          "value_field": "name"
+        },
+        "data": {
+          "from_url": {
+            "url": "http://localhost:6300/api/query",
+            "request_params": [
+              {
+                "name": "lat",
+                "parameter_name": "lat"
+              },
+              {
+                "name": "lng",
+                "parameter_name": "lng"
+              },
+              {
+                "name": "service_identifier",
+                "value": "geothermal_layer_selection"
+              }
+            ]
+          },
+          "to_state": {
+          },
+          "output_wrapper_variable": "chosen_aquifer_row"
+        },
+        "next_step_trigger": "input_change"
+      },
+      {
+        "id": "add_geothermal_source",
+        "name": "Add Geothermal Source to the active ESDL",
+        "description": "",
+        "type": "esdl-service",
+        "config": {
+          "state_params": {
+            "lat": "lat",
+            "lng": "lng",
+            "service_identifier": "chosen_aquifer_row.dictKey"
+          }
+        },
+        "service": {
+          "id": "a859bd1b-58d2-4018-9f4e-8ca62962442d",
+          "name": "Call service",
+          "description": "",
+          "headers": {
+            "Accept": "application/esdl+xml",
+            "User-Agent": "ESDL Mapeditor/0.1"
+          },
+          "url": "http://localhost:6300/api/query",
+          "http_method": "get",
+          "type": "",
+          "query_parameters": [
+            {
+              "parameter_name": "lat",
+              "parameter": "lat"
+            },
+            {
+              "parameter_name": "lng",
+              "parameter": "lng"
+            },
+            {
+              "parameter_name": "service_identifier",
+              "parameter": "service_identifier"
+            }
+          ],
+          "body": "",
+          "result": [
+            {
+              "code": 200,
+              "action": "add_assets"
+            }
+          ]
+        },
+        "button_text": "Add Geothermal Source",
+        "next_step": "geothermal_source_added_message"
+      },
+      {
+        "id": "geothermal_source_added_message",
+        "name": "Geothermal Source Added",
+        "type": "text",
+        "data": {
+          "from_config": "A Geothermal Source was added to the active ESDL.<br>It has not yet been connected to other assets."
+        },
+        "button_text": "Close"
+      }
+    ]
   }
 ]
