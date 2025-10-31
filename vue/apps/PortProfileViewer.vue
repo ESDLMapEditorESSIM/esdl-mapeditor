@@ -66,7 +66,7 @@ import { LoadingOutlined, InfoCircleOutlined } from "@ant-design/icons-vue";
 import dayjs from "dayjs";
 
 import { fetchData } from "@/utils/api";
-import { config } from "@/utils/profileVisualization";
+import { config, normalizePlotlyDateTimeStr } from "@/utils/profileVisualization";
 import { displayNotification } from "@/utils/notification";
 import { useObject } from "@/composables/ObjectID";
 import { useEsdlLayers } from "@/composables/esdlLayers";
@@ -109,7 +109,7 @@ const currentLayout = ref({});
 const dateTimeFormat = config.dateTimeFormat;
 
 const profileSelectorMsg =
-  "Tip: To view port profiles for multiple assets, hold down the Ctrl key while selecting assets on the map. " +
+  "Tip: To view port profiles for multiple assets, hold down the CTRL key while selecting assets on the map. " +
   "Then open the Port Profile Viewer to explore asset port profiles from the dropdown.";
 
 const profileMaxDataPoints = config.profileMaxDataPoints;
@@ -193,11 +193,19 @@ const fetchAssetsProfiles = async (esId, assetIds) => {
     es_id: esId,
     asset_ids: assetIds,
   };
-  const assetsProfiles = await fetchData(
-    "port_profile_viewer/assets_profiles",
-    reqBody
-  );
-  return assetsProfiles;
+  try {
+    const assetsProfiles = await fetchData(
+      "port_profile_viewer/assets_profiles",
+      reqBody
+    );
+    return assetsProfiles;
+  } catch (e) {
+    console.error(e);
+    displayNotification(
+      "error",
+      `Error listing port profiles from the active ESDL [${esId}] and selected assets with Ids [${assetIds}]`
+    );
+  }
 };
 
 const onSelectProfiles = () => {
@@ -220,9 +228,10 @@ const onPlotRelayout = (newLayoutRanges) => {
   if (newLayoutRanges === null) {
     profileDateTimeRange.value = null;
   } else {
-    profileDateTimeRange.value = newLayoutRanges["x"].map((dt) =>
-      formatAsDateTimeStr(dt, dateTimeFormat)
-    );
+    profileDateTimeRange.value = newLayoutRanges["x"].map((dt) => {
+      const normalizedDt = normalizePlotlyDateTimeStr(dt);
+      return formatAsDateTimeStr(normalizedDt, dateTimeFormat);
+    });
   }
   updateTrace();
 };

@@ -418,7 +418,7 @@ import {
 from "@ant-design/icons-vue";
 import AnalyticsPlot from '@/components/plot/AnalyticsPlot.vue';
 import { fetchData } from '@/utils/api';
-import { config } from '@/utils/profileVisualization';
+import { config, normalizePlotlyDateTimeStr } from '@/utils/profileVisualization';
 import { displayNotification } from '@/utils/notification';
 import dayjs from 'dayjs';
 import minMax from 'dayjs/plugin/minMax';
@@ -713,14 +713,10 @@ const onAnalyticsPlotRelayout = (newLayoutRanges) => {
   // Apply subset of data range for querying data.
   else {
     try {
-      let dateTimeRanges = newLayoutRanges["x"];
-      // Handling a special case that the returned datetime string in newLayoutRanges is with format: "YYYY-MM-DD HH:mm"
-      newLayoutRanges["x"].forEach((dt, idx) => {
-        if (dayjs(dt, "YYYY-MM-DD HH:mm", true).isValid()) {
-          dateTimeRanges[idx] = `${dt}:00`;
-        }
+      const normalizedDateTimeRanges = newLayoutRanges["x"].map((dt) => {
+        return normalizePlotlyDateTimeStr(dt);
       })
-      profileDataRangeSelected.value = dtStringsToDayJsObjects(dateTimeRanges);
+      profileDataRangeSelected.value = dtStringsToDayJsObjects(normalizedDateTimeRanges);
     } catch (error) {
       displayNotification("error", `An error occurred while applying the selected data extent for querying: ${error}`);
     }
