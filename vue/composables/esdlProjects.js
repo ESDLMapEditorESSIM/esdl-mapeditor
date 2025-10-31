@@ -59,8 +59,30 @@ export function useESDLProjects() {
         });
     }
 
+    /**
+     * Get the active variant of the current ESDL project. Recursively check all variants and their children.
+     * @returns {Variant}
+     */
     function activeVariant() {
-        return esdlProject.value.variants.find(variant => variant.id === esdlProject.value.active_variant_id);
+        function findActiveVariant(variants) {
+            for (const variant of variants) {
+                if (variant.active) {
+                    return variant;
+                }
+                if (variant.children && variant.children.length > 0) {
+                    const activeChild = findActiveVariant(variant.children);
+                    if (activeChild) {
+                        return activeChild;
+                    }
+                }
+            }
+            return null;
+        }
+
+        if (esdlProject.value && esdlProject.value.variants) {
+            return findActiveVariant(esdlProject.value.variants);
+        }
+        
     }
 
     const active_es_id = computed(() => esdlProject.value.active_es_id);

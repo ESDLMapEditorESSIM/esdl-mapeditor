@@ -140,6 +140,7 @@ def set_active_variant(message: SetActiveVariantRequest):
         else:
             executor.submit(process_energy_system)
         emit_update_undo_redo_stack(pm.active_tracker.stack)
+        emit_active_esdl_project()
     else:
         logger.warning("No variant with given ID found!", variant_id=message["id"])
 
@@ -212,7 +213,7 @@ class RenameVariantRequest(TypedDict):
 @socketio.on("rename_variant", namespace="/esdl")
 def rename_variant(message: RenameVariantRequest):
     """
-    Rename energy project.
+    Rename variant.
     """
     pm = get_project_manager()
     variant = pm.get_variant_by_id(message["id"])
