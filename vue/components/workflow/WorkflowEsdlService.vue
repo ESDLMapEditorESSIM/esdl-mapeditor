@@ -92,7 +92,7 @@ const submitButton = () => {
 };
 
 const loadEsdl = () => {
-  console.debug("Loading ESDL service", stepParams.value);
+  console.debug("Loading ESDL service for step:", props.workflowStep);
   let params = {};
   params["service_config"] = stepParams.value.service;
 
@@ -122,18 +122,23 @@ const loadEsdl = () => {
     window.socket.emit("wfe_initialize_sequence", params, (sequenceId) => {
       // after workflow engine start, set id and go to next Vue step (table overview or monitor progress)
       Object.assign(getState(), {"wfeSequenceId": sequenceId});
-      goToStep(stepParams.value.nextStep);
+      if (stepParams.value.nextStep) {
+        goToStep(stepParams.value.nextStep);
+      }
       window.hide_loader();
     });
   } else {
-    window.socket.emit("command", {cmd: "query_esdl_service", params: params},(sequenceId) => {
-      goToStep(stepParams.value.nextStep);
+    window.socket.emit("command", {cmd: "query_esdl_service", params: params},() => {
+      if (stepParams.value.nextStep) {
+        goToStep(stepParams.value.nextStep);
+      }
       window.hide_loader();
     });
   }
 };
 
 const init = async () => {
+  console.debug("Initializing WorkflowEsdlService for step:", props.workflowStep);
   stepParams.value = getWorkflowStepParameters(props.workflowStep);
   stepParams.value.service = props.workflowStep.service;
   if (stepParams.value.nextStepTrigger === WorkflowNextStepTriggerOptions.LOADING_COMPLETE || stepParams.value.service.auto) {

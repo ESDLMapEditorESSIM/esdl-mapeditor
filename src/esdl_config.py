@@ -1075,7 +1075,7 @@ esdl_config = {
                         },
                         "data": {
                             "from_url": {
-                                "url": f"{EPS_WEB_HOST}/api/eps/",
+                                "url": f"{EPS_WEB_HOST}/api/eps/?gdf=true",
                                 "method": "GET",
                                 "headers": {"Accept": "application/json"},
                             },
