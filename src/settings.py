@@ -49,7 +49,7 @@ SQLITE_DB_NAME = os.environ.get('SQLITE_DB_NAME', 'data_manager.db')
 DB_DRIVER_TYPE = os.environ.get('DB_DRIVER_TYPE', 'sqlite')
 DEFAULT_DRIVER_URI = POSTGRES_DB_URI if DB_DRIVER_TYPE == 'postgresql' else f"sqlite:///{SQLITE_DB_NAME}"
 
-SQLALCHEMY_DATABASE_URI = os.environ.get('SQLALCHEMY_DATABASE_URI', POSTGRES_DB_URI)
+SQLALCHEMY_DATABASE_URI = os.environ.get('SQLALCHEMY_DATABASE_URI', DEFAULT_DRIVER_URI)
 
 settings_storage_config = {
     "host": os.environ.get('SETTINGS_STORAGE_HOST', None),  # "mongo",

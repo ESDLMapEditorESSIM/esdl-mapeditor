@@ -33,7 +33,7 @@
     
 <script setup>
 import { defineProps } from "vue";
-import AnalyticsPlot from "../esdlanalytics/AnalyticsPlot.vue";
+import AnalyticsPlot from "../plot/AnalyticsPlot.vue";
 import { CloseOutlined, FormOutlined } from "@ant-design/icons-vue";
 
 const props = defineProps({

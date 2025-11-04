@@ -1,7 +1,7 @@
 <template>
   <h1>ESDL feedback</h1>
   <template
-    v-if="asset_feedback_list.length"
+    v-if="asset_feedback_list.length || general_feedback_list.length"
   >
     <a-card style="width: 100%">
       <p>
