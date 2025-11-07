@@ -17,7 +17,7 @@
 <template>
   <a-tree
     v-model:expanded-keys="expandedKeys"
-    v-model:selected-keys="selectedKeys"
+    :selected-keys="selectedKeys"
     :show-icon="true"
     :tree-data="treeData"
     checkable
@@ -67,7 +67,7 @@ import { useEsdlLayers } from '@/composables/esdlLayers';
 import {useSocketIO} from "@/composables/socketio";
 
 // Composables
-const { esdlProject, getESDLProject, activeVariant, setActiveVariant } = useESDLProjects();
+const { esdlProject, getESDLProject, activeVariant, setActiveVariant, getAllVariants } = useESDLProjects();
 const { enableEsdl, disableEsdl, enabledEsdlIdList } = useEsdlLayers();
 const { socket } = useSocketIO();
 
@@ -97,7 +97,10 @@ const contextMenuItems = computed(() => {
       { key: 'flatten', icon: 'fas fa-layer-group', label: 'Flatten variant' },
     ];
   } else if (dataType === 'project') {
-    return [{ key: 'create', icon: 'fas fa-plus', label: 'Create new variant' }];
+    return [
+      { key: 'create', icon: 'fas fa-plus', label: 'Create new base variant' },
+      { key: 'rename', icon: 'fas fa-edit', label: 'Rename project' },
+    ];
   }
 
   return []; // no options for other types
@@ -158,6 +161,7 @@ const treeData = computed(() => {
     title: esdlProject.value.name,
     key: esdlProject.value.id,
     children: esdlProject.value.variants.map(variantNode),
+    project: esdlProject,
     iconClass: 'fas fa-project-diagram',
     dataType: 'project',
     checkable: false,
@@ -179,12 +183,14 @@ watch(treeData, (newData) => {
 }, { immediate: true });
 
 const checkedKeys = computed(() => {
-  const variantKeys = treeData.value
-    .flatMap(node => node.children || [])
-    .filter(v => v.dataType === 'variant' && enabledEsdlIdList.value.includes(v.esId))
-    .map(v => v.key);
-
-  return [...variantKeys];
+  const allVariants = getAllVariants();
+  const enabledVariantIds = [];
+  for (const variant of allVariants) {
+    if (enabledEsdlIdList.value.includes(variant.es_id)) {
+      enabledVariantIds.push(variant.id);
+    }
+  }
+  return enabledVariantIds;
 });
 
 // Handlers
@@ -197,7 +203,7 @@ function onSelect(selected, info) {
     return;
   }
   if (data.dataType === 'variant') {
-    console.log("select_node: set active variant", node);
+    console.debug("select_node: set active variant", node);
     if (!data.variant.active) {
       setActiveVariant(data.variant.id);
       for (const enabledEsdlId of enabledEsdlIdList.value) {
@@ -222,12 +228,6 @@ async function onCheck(_, info) {
       if (data.esId in window.esdl_list) {
         enableEsdl(data.esId);
         if (!ctrlPressed) {
-          // Disable other variants.
-          for (const enabledEsdlId of enabledEsdlIdList.value) {
-            if (enabledEsdlId !== data.esId) {
-              disableEsdl(enabledEsdlId);
-            }
-          }
           // If the currently active variant is not the one we just enabled, make it active.
           if (activeVariant().es_id !== data.esId) {
             setActiveVariant(data.variant.id);
@@ -237,6 +237,14 @@ async function onCheck(_, info) {
         // We have no way to just get the energy system without activating it right now. I don't think it's a problem.
         console.debug("check_node: set active variant");
         setActiveVariant(data.variant.id)
+      }
+      if (!ctrlPressed) {
+        // Disable other variants.
+        for (const enabledEsdlId of enabledEsdlIdList.value) {
+          if (enabledEsdlId !== data.esId) {
+            disableEsdl(enabledEsdlId);
+          }
+        }
       }
     } else {
       disableEsdl(data.esId);
@@ -276,7 +284,11 @@ function onContextMenuClick({ key }) {
   if (key === 'create') {
     createNewVariant(node);
   } else if (key === 'rename') {
-    renameVariant(node.variant);
+    if (node.dataType === 'project') {
+      renameProject(node.project);
+    } else {
+      renameVariant(node.variant);
+    }
   } else if (key === 'delete') {
     removeVariant(node.variant);
   } else if (key === 'flatten') {
@@ -297,8 +309,19 @@ function createNewVariant(node) {
   }
 }
 
+function renameProject(project) {
+  const newName = window.prompt('New project name:', project.name);
+  if (newName && newName !== project.name) {
+    // emit via socket, or call composable to update backend
+    console.debug(`Rename project ${project.id} to ${newName}`);
+    socket.value.emit("rename_project", {id: project.id, name: newName}, () => {
+      project.name = newName;
+    });
+  }
+}
+
 function renameVariant(variant) {
-  const newName = window.prompt('New name:', variant.name);
+  const newName = window.prompt('New variant name:', variant.name);
   if (newName && newName !== variant.name) {
     // emit via socket, or call composable to update backend
     console.debug(`Rename variant ${variant.id} to ${newName}`);

@@ -136,9 +136,9 @@ def set_active_variant(message: SetActiveVariantRequest):
         es = pm.get_active_energy_system()
         set_session('active_es_id', es.id)
         if needs_update:
-            executor.submit(process_energy_system, force_update_es_id=es.id)
+            executor.submit(process_energy_system, force_update_es_id=es.id, only_process_es_id=es.id)
         else:
-            executor.submit(process_energy_system)
+            executor.submit(process_energy_system, only_process_es_id=es.id)
         emit_update_undo_redo_stack(pm.active_tracker.stack)
         emit_active_esdl_project()
     else:

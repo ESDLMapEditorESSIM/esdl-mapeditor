@@ -24,11 +24,3 @@
 import BaseLayerTree from "@/components/sidepane/BaseLayerTree.vue";
 import ProjectTree from "@/components/sidepane/ProjectTree.vue";
 </script>
-
-<style scoped lang="scss">
-//#project_view {
-//  padding: 8px 5px;
-//  overflow: auto;
-//  height: 100%;
-//}
-</style>

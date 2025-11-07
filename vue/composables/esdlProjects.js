@@ -98,6 +98,26 @@ export function useESDLProjects() {
         });
     }
 
+    function getAllVariants() {
+        /** @type {Variant[]} */
+        const variants = [];
+
+        function addVariantsRecursively(variantList) {
+            for (const variant of variantList) {
+                variants.push(variant);
+                if (variant.children && variant.children.length > 0) {
+                    addVariantsRecursively(variant.children);
+                }
+            }
+        }
+
+        if (esdlProject.value && esdlProject.value.variants) {
+            addVariantsRecursively(esdlProject.value.variants);
+        }
+
+        return variants;
+    }
+
     return {
         activeVariant,
         setActiveVariant,
@@ -107,5 +127,6 @@ export function useESDLProjects() {
         getESDLProject,
         esdlProject,
         setEsdlProject,
+        getAllVariants,
     }
 }

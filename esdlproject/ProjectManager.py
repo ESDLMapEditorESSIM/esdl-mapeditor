@@ -418,7 +418,7 @@ class ProjectManager:
         logger.debug("set_active_variant(): Acquiring lock")
         with self.active_variant_lock:
             logger.debug("set_active_variant(): Lock acquired")
-            new_active_variant_changed = False
+            new_active_variant_recreated = False
             snapshot = self.get_variant_snapshot(new_variant)
             if snapshot is not None:
                 # Calculate the list of variants between the VariantCollection and this variant such that we can check
@@ -453,20 +453,20 @@ class ProjectManager:
                         self.remove_variant_snapshot(new_variant)  # delete previous variant snapshot
                         self.replay_parent_variant_changes(new_variant)  # generate new snapshot based on parent changes
                         self.active_variant = new_variant
-                        new_active_variant_changed = True
+                        new_active_variant_recreated = True
                 self.active_variant = new_variant
             else:
                 # New variant is selected and activated for the first time.
                 logger.debug(f"set_active_variant(): Switching to new active energy system for variant {new_variant.name}")
                 self.replay_parent_variant_changes(new_variant)
-                new_active_variant_changed = True
+                new_active_variant_recreated = True
                 self.active_variant = new_variant
 
             # Update the timestamp of the last activation of the variant.
             self.variant_activation_timestamps[new_variant.id] = datetime.now(timezone.utc)
 
         logger.debug("set_active_variant(): Releasing lock")
-        return new_active_variant_changed
+        return new_active_variant_recreated
 
     def get_active_variant(self) -> Variant | None:
         return self.active_variant
