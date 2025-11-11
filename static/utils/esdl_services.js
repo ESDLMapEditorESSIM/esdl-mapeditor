@@ -25,8 +25,8 @@ function set_esdl_services_information(info) {
 // function query_esdl_service(index) {
 /**
  * Actually execute the querying of an ESDL service.
- * @param {*} service 
- * @param {*} state_params: The optional parameters the function should use to fill query p arameters with.
+ * @param {*} service
+ * @param {*} state_params : The optional parameters the function should use to fill query p arameters with.
  */
 function query_esdl_service(service, state_params) {
     let params = {};
@@ -41,7 +41,7 @@ function query_esdl_service(service, state_params) {
         }
     }
 
-    params['query_parameters'] = {}
+    params['state_params'] = {}
     let q_params = service['query_parameters'];
     for (let i = 0; i < q_params.length; i++) {
         let parameter_name = q_params[i]['parameter_name'];
@@ -60,18 +60,15 @@ function query_esdl_service(service, state_params) {
         } else {
             if (ptype == 'integer' || ptype == 'string') {
                 parameter_value = document.getElementById(parameter_name + '_' + ptype).value;
-            }
-            else if (ptype == 'boolean') {
+            } else if (ptype == 'boolean') {
                 parameter_value = document.getElementById(parameter_name + '_boolean').options[document.getElementById(parameter_name + '_boolean').selectedIndex].value;
-            }
-            else if (ptype == 'selection') {
+            } else if (ptype == 'selection') {
                 parameter_value = document.getElementById(parameter_name + '_select').options[document.getElementById(parameter_name + '_select').selectedIndex].value;
-            }
-            else if (ptype == 'multi-selection') {
+            } else if (ptype == 'multi-selection') {
                 parameter_value = Array.from(document.getElementById(parameter_name + '_select').selectedOptions).map(option => option.value);
             }
         }
-        params['query_parameters'][parameter_name] = parameter_value;
+        params['state_params'][parameter_name] = parameter_value;
     }
 
     params['body_config'] = {}
@@ -79,10 +76,10 @@ function query_esdl_service(service, state_params) {
         let b_params = service['body_config'];
         if (b_params && Object.keys(b_params).length) {
             if (b_params['type'] == 'json') {
-                for (let i=0; i<b_params['parameters'].length; i++) {
+                for (let i = 0; i < b_params['parameters'].length; i++) {
                     if (b_params['parameters'][i]['type'] == 'json_string') {
                         let parameter_name = b_params['parameters'][i]['parameter'];
-                        let parameter_value = document.getElementById(parameter_name+'_textarea').value;
+                        let parameter_value = document.getElementById(parameter_name + '_textarea').value;
                         params['body_config'][parameter_name] = JSON.parse(parameter_value);
                     }
                 }
@@ -102,7 +99,7 @@ function query_esdl_service(service, state_params) {
     }
     show_loader();
     console.log("query_esdl_service params", params);
-    socket.emit('command', { cmd: 'query_esdl_service', params: params });
+    socket.emit('command', {cmd: 'query_esdl_service', params: params});
 
     // TODO: Determine when to close
     if (service['type'] == 'geo_query') {
@@ -111,21 +108,21 @@ function query_esdl_service(service, state_params) {
 }
 
 var asset_severity_order = {
-  "INFO": 0,
-  "WARNING": 1,
-  "ERROR": 2,
+    "INFO": 0,
+    "WARNING": 1,
+    "ERROR": 2,
 };
 
 var asset_severity_color = {
-  "INFO": "#00FF00",
-  "WARNING": "#FFA500",
-  "ERROR": "#FF0000",
+    "INFO": "#00FF00",
+    "WARNING": "#FFA500",
+    "ERROR": "#FF0000",
 }
 
 var asset_severity_class = {
-  "INFO": "Info_marker",
-  "WARNING": "Warning_marker",
-  "ERROR": "Error_marker",
+    "INFO": "Info_marker",
+    "WARNING": "Warning_marker",
+    "ERROR": "Error_marker",
 }
 
 function process_service_results(results) {
@@ -154,7 +151,7 @@ function process_service_results(results) {
                 if (transformer_results['loading_percent'] > 100) {
                     let cur_location = object.getLatLng();
 
-                    let marker = L.marker(cur_location, { icon: divicon, title: object.id });
+                    let marker = L.marker(cur_location, {icon: divicon, title: object.id});
                     marker.id = object.id;
                     marker.title = object.id;
 
@@ -167,7 +164,7 @@ function process_service_results(results) {
                 if (cable_results['loading_percent'] > 100) {
                     let coords = object.getLatLngs();
 
-                    let line = L.polyline(coords, { color: "#FF0000", weight: 6, draggable: false, title: object.id });
+                    let line = L.polyline(coords, {color: "#FF0000", weight: 6, draggable: false, title: object.id});
                     line.id = object.id;
                     line.title = object.id;
 
@@ -190,10 +187,10 @@ function process_service_results(results) {
 
                 let asset_severity = 'INFO';
                 let asset_message = '<h1>Feedback</h1><ul>';
-                asset_feedback.forEach(function(af, index) {
+                asset_feedback.forEach(function (af, index) {
                     if (asset_severity_order[af["severity"]] > asset_severity_order[asset_severity])
                         asset_severity = af["severity"]
-                    asset_message += '<li>' + af["severity"] + ': ' + af['message'] + '</li>';
+                    asset_message += '<li>' + af["severity"] + ' - ' + af['validation_message'] + '</li>';
                 });
                 asset_message += '</ul>';
 
@@ -209,7 +206,7 @@ function process_service_results(results) {
                         popupAnchor: [0, -15] // point from which the popup should open relative to the iconAnchor
                     });
 
-                    let marker = L.marker(cur_location, { icon: divicon, title: asset_message });
+                    let marker = L.marker(cur_location, {icon: divicon, title: asset_message});
                     marker.id = object.id;
                     marker.title = asset_message;
                     // marker.bindTooltip(asset_message);
@@ -219,7 +216,12 @@ function process_service_results(results) {
                 if (object instanceof L.Polyline) {
                     let coords = object.getLatLngs();
                     let line_color = asset_severity_color[asset_severity];
-                    let line = L.polyline(coords, { color: line_color, weight: 6, draggable: false, title: asset_message });
+                    let line = L.polyline(coords, {
+                        color: line_color,
+                        weight: 6,
+                        draggable: false,
+                        title: asset_message
+                    });
                     line.id = object.id;
                     line.title = asset_message;
                     line.bindTooltip(asset_message);
@@ -230,7 +232,7 @@ function process_service_results(results) {
         }
 
         $('.asset_feedback').tooltip({
-            content: function() {
+            content: function () {
                 return $(this).attr('title');
             }
         });
@@ -250,7 +252,7 @@ function process_service_results(results) {
             if ('errors' in results['show_url']['response']) {
                 let table = '<table class="pure-table pure-table-striped">';
                 table += '<thead><tr><th>Feedback from the ETM API</th></tr></thead>';
-                for (let i=0; i<results['show_url']['response']['errors'].length; i++) {
+                for (let i = 0; i < results['show_url']['response']['errors'].length; i++) {
                     table += '<tr><td>' + results['show_url']['response']['errors'][i] + '</td></tr>';
                 }
                 table += '</table>';
@@ -260,11 +262,16 @@ function process_service_results(results) {
     }
     if ('message' in results) {
         if ($("#service_message").length) { // check if service_message exists already
-            $("#service_message").innerHTML = `${results["message"]}`;
-        } else {
-            service_results_div.innerHTML += `<p id="service_message">${results["message"]}</p>`;
+            $("#service_message").remove();
+        }
+        service_results_div.innerHTML += `<p id="service_message">${results["message"]}</p>`;
+        if (!("hide_button" in results && results["hide_button"])) {
             service_results_div.innerHTML += '<p id="sidebar_action_button"><button type="button" class="btn btn-block btn-primary" onclick="sidebar.hide();">Close</button></p>';
         }
+    }
+
+    if ('file' in results) {
+        window.download_binary_file_from_base64_str_with_type(results.file, results.filename, results.content_type);
     }
 
     if (!('show_asset_results' in results) && !('asset_feedback' in results) &&
@@ -338,7 +345,7 @@ function show_area_list(select_element_id, scope, filter_type, selected_filter) 
  * @param {*} index The index of the active service in the esdl_config.py service list.
  * @param {*} state Optional initial state to pass to the workflow.
  */
-function show_service_settings(index, state=null) {
+function show_service_settings(index, state = null) {
     let service_settings_div = document.getElementById('service_settings_div');
     if (!service_settings_div) {
         // The sidebar is not rendered. This happens when starting services from the context menu.
@@ -412,12 +419,10 @@ function render_service(service, service_settings_div, workflow_state_params) {
                     if ('default' in q_params[i]) {
                         default_value = q_params[i]['default'];
                     }
-                    table += '<input id="' + q_params[i]['parameter_name'] + '_' + ptype + '" type="text" value="'+default_value+'"></input>';
-                }
-                else if (ptype == 'boolean') {
+                    table += '<input id="' + q_params[i]['parameter_name'] + '_' + ptype + '" type="text" value="' + default_value + '"></input>';
+                } else if (ptype == 'boolean') {
                     table += '<select id="' + q_params[i]['parameter_name'] + '_boolean"><option value="true">TRUE</value><option value="false">FALSE</value></select>';
-                }
-                else if (ptype == 'selection' || ptype == 'multi-selection') {
+                } else if (ptype == 'selection' || ptype == 'multi-selection') {
                     table += '<select id="' + q_params[i]['parameter_name'] + '_select"';
                     if (ptype == 'multi-selection') {
                         table += ' multiple';
@@ -443,7 +448,7 @@ function render_service(service, service_settings_div, workflow_state_params) {
         let b_params = service['body_config'];
         if (b_params && Object.keys(b_params).length) {
             if (b_params['type'] == 'json') {
-                for (let i=0; i<b_params['parameters'].length; i++) {
+                for (let i = 0; i < b_params['parameters'].length; i++) {
                     if (b_params['parameters'][i]['type'] == 'json_string') {
                         if (first_body_ui_parameter) {
                             service_settings_div.innerHTML += '<p><h3>Service body parameters</h3>';
@@ -451,8 +456,8 @@ function render_service(service, service_settings_div, workflow_state_params) {
                             first_body_ui_parameter = false;
                         }
 
-                        let table_rows = '<tr><td>'+b_params['parameters'][i]['name']+'</td></tr>';
-                        table_rows += '<tr><td><textarea id="'+b_params['parameters'][i]['parameter']+'_textarea" style="width:100%; height:200px;">';
+                        let table_rows = '<tr><td>' + b_params['parameters'][i]['name'] + '</td></tr>';
+                        table_rows += '<tr><td><textarea id="' + b_params['parameters'][i]['parameter'] + '_textarea" style="width:100%; height:200px;">';
                         table_rows += JSON.stringify(b_params['parameters'][i]['default'], null, 4);
                         table_rows += '</textarea></td></tr>';
 
@@ -512,7 +517,7 @@ function esdl_services_info() {
 }
 
 function show_esdl_service_sidebar(id) {
-    for (let i=0; i<esdl_services_information.length; i++) {
+    for (let i = 0; i < esdl_services_information.length; i++) {
         if (esdl_services_information[i].id == id) {
             let sidebar_ctr = sidebar.getContainer();
             sidebar_ctr.innerHTML = '<div id="service_settings_div"></div>'
@@ -553,7 +558,7 @@ function update_map_service_contextmenus(services_list) {
             map.contextmenu.addItem({
                 text: services_list[i]['name'],
                 icon: resource_uri + 'icons/service.png',
-                callback: function(e) {
+                callback: function (e) {
                     const service = services_list[i];
                     const state = {
                         lat: e.latlng.lat.toString(),
@@ -585,6 +590,42 @@ function add_service_to_contextmenu(layer, service, callback, icon) {
 }
 
 /**
+ * Creates a WKT string for a Leaflet layer
+ * Source: https://gist.github.com/bmcbride/4248238
+ */
+function toWKT(layer) {
+    var lng, lat, coords= [];
+    if (layer instanceof L.Polygon || layer instanceof L.Polyline) {
+        var latlngs = layer.getLatLngs();
+        for (var i = 0; i < latlngs.length; i++) {
+            var latlngs1 = latlngs[i];
+            if (latlngs1.length) {
+                for (var j = 0; j < latlngs1.length; j++) {
+                    coords.push(latlngs1[j].lng + " " + latlngs1[j].lat);
+                    if (j === 0) {
+                        lng = latlngs1[j].lng;
+                        lat = latlngs1[j].lat;
+                    }
+                }
+            } else {
+                coords.push(latlngs[i].lng + " " + latlngs[i].lat);
+                if (i === 0) {
+                    lng = latlngs[i].lng;
+                    lat = latlngs[i].lat;
+                }
+            }
+        };
+        if (layer instanceof L.Polygon) {
+            return "POLYGON((" + coords.join(",") + "," + lng + " " + lat + "))";
+        } else if (layer instanceof L.Polyline) {
+            return "LINESTRING(" + coords.join(",") + ")";
+        }
+    } else if (layer instanceof L.Marker) {
+        return "POINT(" + layer.getLatLng().lng + " " + layer.getLatLng().lat + ")";
+    }
+};
+
+/**
  * Add a service to the context menu of an area.
  * @param layer
  * @param service
@@ -604,6 +645,7 @@ function add_service_to_area_contextmenu(layer, service, idx, icon) {
             area_id: area_id,
             lat: e.latlng.lat.toString(),
             lng: e.latlng.lng.toString(),
+            wkt: toWKT(layer),
         }
         const scope_abbr = area_id.substring(0, 2);
         if (scope_abbr in scope_map) {
@@ -673,6 +715,6 @@ function update_esdl_services(event) {
     }
 }
 
-$(document).ready(function() {
+$(document).ready(function () {
     extensions.push(update_esdl_services)
 });

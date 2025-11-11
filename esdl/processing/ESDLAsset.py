@@ -11,13 +11,15 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+import uuid
 
 from esdl import esdl
-from pyecore.ecore import EClass
+from pyecore.ecore import EClass, EObject
 from pyecore.resources import ResourceSet
 from esdl.processing.string_uri import StringURI
 from esdl.processing import ESDLEnergySystem
 from extensions.session_manager import get_session, get_project_manager
+from esdl.resources.xmlresource import XMLResource
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -256,3 +258,21 @@ def remove_profile_from_port(port, profile_id):
         if profile.id == profile_id:
             profile_list.remove(profile)
             pm.remove_object_from_dict(active_es_id, profile, True)
+
+def update_ids_in_object(obj: EObject):
+    for el in obj.eAllContents():
+        if hasattr(el, 'id'):
+            if el.eIsSet('id'):
+                el.id = str(uuid.uuid4())
+
+def eobject_to_string(obj: EObject) -> str:
+    rset = ResourceSet()
+    rset.resource_factory['esdl'] = XMLResource
+    uri = StringURI('convert_to_string.esdl')
+    res: XMLResource = rset.create_resource(uri)
+    if obj.eResource: # make a deepcopy if obj is already part of another resource
+        obj = obj.deepcopy()
+    res.append(obj)
+    res.save()
+    return uri.getvalue()
+

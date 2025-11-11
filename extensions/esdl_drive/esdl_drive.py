@@ -91,7 +91,7 @@ class ESDLDrive:
                             info += line + "\n"
                         message = "Warnings while opening {}:\n\n{}".format(uri.last_segment, info)
                         emit('alert', message, namespace='/esdl')
-                        print(pm.rset.resources)
+                        # print(pm.rset.resources)
                 except Exception as e:
                     logger.error("Error in loading file from ESDLDrive: "+ str(e))
                     return

@@ -56,7 +56,13 @@ def get_panel_service_datasource(database, host=None, username=None, password=No
             result = json.loads(r.text)
 
             for idb in result["influxdbs"]:
-                if idb["url"] == ps_influxdb_host and idb["database"] == database:
+                # On local development, you might get a conflict if running the mapeditor outside of Docker, but the
+                # panel service typically is in Docker. They will both mean the same thing with localhost and influxdb.
+                if 'localhost' in ps_influxdb_host and 'localhost' not in idb['url']:
+                    db_host = ps_influxdb_host.replace('localhost', 'influxdb')
+                else:
+                    db_host = ps_influxdb_host
+                if idb["url"] == db_host and idb["database"] == database:
                     logger.debug("Datasource found: {}".format(idb["name"]))
                     ps_influxdb_name = idb["name"]
                     break
@@ -87,8 +93,7 @@ def get_panel_service_datasource(database, host=None, username=None, password=No
                 logger.debug("New datasource created:")
                 logger.debug(result)
             else:
-                logger.debug(f"Error creating datasource {ps_influxdb_name} - status code: " + str(r.status_code))
-                logger.debug(r.json()["message"])
+                logger.debug("Error creating datasource", datasource_name=ps_influxdb_name, status_code=str(r.status_code), message=r.json()["message"])
                 ps_influxdb_name = None
         except Exception as e:
             ps_influxdb_name = None

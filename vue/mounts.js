@@ -1,14 +1,15 @@
 /**
  * Mounting functions, to mount Vue components somewhere in the MapEditor.
  */
-import {createApp} from "vue"
-import VueComponentLControl from './components/leaflet/VueComponentLControl'
-import VueGridLayout from 'vue-grid-layout'
+import {createApp} from "vue";
+import VueComponentLControl from './components/leaflet/VueComponentLControl';
+import VueGridLayout from 'vue-grid-layout';
 // Import everything.
 // import Antd from 'ant-design-vue';
 // import 'ant-design-vue/dist/antd.min.css';
 // Import subset.
 import {
+    AutoComplete,
     Breadcrumb,
     Button,
     Card,
@@ -19,6 +20,7 @@ import {
     DatePicker,
     Divider,
     Dropdown,
+    Empty,
     Form,
     Input,
     InputNumber,
@@ -27,22 +29,25 @@ import {
     Menu,
     Modal,
     Popover,
+    Progress,
     Radio,
     Row,
     Select,
+    Segmented,
     Slider,
     Space,
     Spin,
     Switch,
     Table,
+    Tabs,
     Tag,
     Tooltip,
     Transfer,
     Tree,
+    TreeSelect,
     Typography,
     Timeline,
     Upload,
-    Tabs,
 } from 'ant-design-vue';
 import MapEditorDialog from "../static/utils/MapEditorDialog";
 import Toast, {POSITION} from "vue-toastification";
@@ -57,6 +62,18 @@ export function mountSidebarComponent(component) {
     sidebar_ctr.innerHTML = '<div id="vue_sidebar_app"></div>';
     window.sidebar.show();
     [sidebar_app] = mountApp(component, '#vue_sidebar_app');
+}
+
+let sidebar_b_app = null;
+export function mountSidebarBottomComponent (component) {
+    if (sidebar_b_app !== null) {
+        sidebar_b_app.unmount();
+    }
+
+    let sidebar_b_ctr = window.sidebar_b.getContainer();
+    sidebar_b_ctr.innerHTML = '<div id="vue_sidebar_b_app" style="height: 100%"></div>';
+    window.sidebar_b.show();
+    [sidebar_b_app] = mountApp(component, '#vue_sidebar_b_app');
 }
 
 export function mountSettingsComponent(component) {
@@ -82,9 +99,10 @@ export function createVueMapEditorDialog(component, options) {
 }
 
 export function mountApp(component, elementSelector) {
-    const app = createApp(component)
+    const app = createApp(component);
 
     // Components from ant-design-vue
+    app.use(AutoComplete);
     app.use(Breadcrumb);
     app.use(Button);
     app.use(Card);
@@ -95,6 +113,7 @@ export function mountApp(component, elementSelector) {
     app.use(DatePicker);
     app.use(Divider);
     app.use(Dropdown);
+    app.use(Empty);
     app.use(Form);
     app.use(Input);
     app.use(InputNumber);
@@ -103,20 +122,24 @@ export function mountApp(component, elementSelector) {
     app.use(Menu);
     app.use(Modal);
     app.use(Popover);
+    app.use(Progress);
     app.use(Radio);
     app.use(Row);
     app.use(Select);
+    app.use(Segmented);
     app.use(Slider);
     app.use(Space);
     app.use(Spin);
     app.use(Switch);
     app.use(Tabs);
     app.use(Table);
+    app.use(Tabs);
     app.use(Tag);
     app.use(Tooltip);
     app.use(Timeline);
     app.use(Transfer);
     app.use(Tree);
+    app.use(TreeSelect);
     app.use(Typography);
     app.use(Upload);
     app.use(VueGridLayout);

@@ -14,6 +14,15 @@
   -     TNO
   -->
 
+<!--
+TODO:
+- Tighter layout
+- Checkbox align top
+- Context menu integrated with tree
+- Remember expanded keys
+- Add line
+-->
+
 <template>
   <a-tree
     v-model:expanded-keys="expandedKeys"

@@ -32,10 +32,12 @@ class TooltipInfo:
     def register(self):
         logger.info('Registering TooltipInfo extension')
 
-        @self.flask_app.route('/tooltip_info/<object_id>')
-        def get_tooltip_info(object_id):
+        @self.flask_app.route('/tooltip_info/<es_id>/<object_id>')
+        def get_tooltip_info(es_id, object_id):
+            if es_id is None:
+                es_id = get_session('active_es_id')
             pm = get_project_manager()
-            es_edit = pm.get_active_energy_system()
+            es_edit = pm.get_energy_system_by_id(es_id)
             active_es_id = es_edit.id
 
             results = {

@@ -1,5 +1,7 @@
 <template>
-  <div v-if="workflowStep.service.auto">
+  <div
+    v-if="stepParams.nextStepTrigger === WorkflowNextStepTriggerOptions.LOADING_COMPLETE"
+  >
     <p v-if="workflowStep.service.description">
       {{ workflowStep.service.description }}
     </p>
@@ -7,21 +9,29 @@
       The ESDL service will be called automatically. Please click the button below when the ESDL was loaded fully.
     </p>
     <div id="service_results_div" />
-    <a-button v-if="workflowStep.service.button_label" type="primary" @click="goToPreviousStep()">
-      {{ workflowStep.service.button_label }}
+    <a-button v-if="stepParams.buttonText" type="primary" @click="goToPreviousStep()">
+      {{ stepParams.buttonText }}
     </a-button>
-    <a-button v-else type="primary" @click="esdlWasLoaded()"> ESDL was loaded </a-button>
+    <a-button v-else type="primary" @click="esdlWasLoaded()"> ESDL was loaded</a-button>
   </div>
   <div v-else>
     <p v-if="workflowStep.service.description">
       {{ workflowStep.service.description }}
     </p>
-    <p v-else>
+    <p v-else-if="workflowStep.service.auto">
+      The ESDL service will be called automatically. Please click the button below when the ESDL was loaded fully.
+    </p>
+    <p v-else-if="workflowStep.service.description !==''">
       Please select the "Run ESDL service" button below to run the ESDL service
       and load the results.
     </p>
-    <a-button v-if="!workflowStep.service.auto" type="primary" @click="clearLayersAndLoadEsdl">
-      <div v-if="workflowStep.service.button_label"> {{ workflowStep.service.button_label }} </div>
+    <a-button
+      v-if="stepParams.nextStepTrigger === WorkflowNextStepTriggerOptions.BUTTON_CLICK"
+      type="primary"
+      :disabled="!isAllInputValid()"
+      @click="submitButton"
+    >
+      <div v-if="stepParams.buttonText"> {{ stepParams.buttonText }}</div>
       <div v-else>
         Run ESDL service
       </div>
@@ -31,12 +41,21 @@
 </template>
 
 <script setup="props">
-import {setattrd} from "../../utils/utils.js";
- // more info on service_results_div @see esdl_services.js
+import {setattrd} from "@/utils/utils";
 
-import { useWorkflow } from "../../composables/workflow.js";
-import { useEsdlLayers } from "../../composables/esdlLayers.js";
-// eslint-disable-next-line no-unused-vars
+import {useWorkflow, WorkflowNextStepTriggerOptions} from "@/composables/workflow";
+import {onMounted, ref, watch} from "vue";
+
+const {
+  getWorkflowStepParameters,
+  getParamsFromState,
+  goToPreviousStep,
+  goToFirstStep,
+  getState,
+  goToStep,
+  isAllInputValid
+} = useWorkflow();
+const state = getState();
 
 const props = defineProps({
   workflowStep: {
@@ -46,55 +65,90 @@ const props = defineProps({
   },
 });
 
-// eslint-disable-next-line no-unused-vars
-const { getParamsFromState, goToPreviousStep, goToFirstStep, goToNextStep, getState } = useWorkflow();
-const state = getState();
-const { clearEsdlLayers } = useEsdlLayers()
+/** @type {import('vue').Ref<import('@/composables/workflow').StepParameters|null>} */
+const stepParams = ref({});
 
-const workflowStep = props.workflowStep;
+onMounted(() => {
+  init();
+  watch(props.workflowStep.workflowTrigger, () => {
+    init();
+  });
+});
 
-// eslint-disable-next-line no-unused-vars
 const esdlWasLoaded = () => {
-  if (workflowStep.target_variable && workflowStep.target_variable_value) {
-    setattrd(state, workflowStep.target_variable, workflowStep.target_variable_value);
+  if (stepParams.value.config.target_variable && stepParams.value.target_variable_value) {
+    setattrd(state, stepParams.value.target_variable, stepParams.value.target_variable_value);
   }
-
   goToFirstStep();
-}
+};
 
-const clearLayersAndLoadEsdl = () => {
-  if (workflowStep.service.clearLayers) {
-    clearEsdlLayers();
-    // Allow a second for the layers to be cleared.
-    setTimeout(loadEsdl, 1000);
+const submitButton = () => {
+  if (stepParams.value.service.auto) {
+    // If the service is auto, the button takes you to the next step.
+    goToStep(stepParams.value.nextStep);
   } else {
     loadEsdl();
   }
-}
+};
 
 const loadEsdl = () => {
+  console.debug("Loading ESDL service for step:", props.workflowStep);
   let params = {};
-  params["service_id"] = workflowStep.service.id;
+  params["service_config"] = stepParams.value.service;
 
-  if (workflowStep["state_params"]) {
-    params["query_parameters"] = getParamsFromState(workflowStep["state_params"]);
+  const stepConfig = stepParams.value.config;
+
+  if (stepConfig && stepConfig["state_params"]) {
+    params["state_params"] = getParamsFromState(stepParams.value.config["state_params"]);
   } else {
-    params["query_parameters"] = {};
+    params["state_params"] = {};
+  }
+  if (stepConfig && stepConfig["datetimes_convert_Z"]) {  // for i.e. essim
+    for (const [key, value] of Object.entries(params["state_params"])) {
+      if (!isNaN(new Date(value).getTime())) { // string is in datetime format
+        params["state_params"][key] = value.replace(".000Z", "+0100");
+      }
+    }
   }
 
   window.show_loader();
-  window.socket.emit("command", { cmd: "query_esdl_service", params: params }, () => {
-    window.socket.once('esdl_service_result', function(res) {
-      // Continue to the next workflow step when the external service call returns a result
-      // TODO: This is only emit when the service finished successfully. We should also handle errors.
-      goToNextStep();
+
+  if (stepParams.value.workflowEngine) {
+    params["type"] = "esdl_service";
+    params["main_service_id"] = props.workflowStep.main_service_id;
+    params["run_name_key"] = stepParams.value.workflowEngine.run_name;
+    params["workflow_engine_next_step"] = stepParams.value.workflowEngine.workflow_engine_next_step;
+
+    window.socket.emit("wfe_initialize_sequence", params, (sequenceId) => {
+      // after workflow engine start, set id and go to next Vue step (table overview or monitor progress)
+      Object.assign(getState(), {"wfeSequenceId": sequenceId});
+      if (stepParams.value.nextStep) {
+        goToStep(stepParams.value.nextStep);
+      }
+      window.hide_loader();
     });
-  });
+  } else {
+    window.socket.emit("command", {cmd: "query_esdl_service", params: params},() => {
+      window.socket.once('esdl_service_result', function(res) {
+        // Continue to the next workflow step when the external service call returns a result
+        // TODO: This is only emit when the service finished successfully. We should also handle errors.
+        if (stepParams.value.nextStep) {
+          goToStep(stepParams.value.nextStep);
+        }
+      });
+      window.hide_loader();
+    });
+  }
 };
 
-if (workflowStep.service.auto) {
-  // Load the ESDL upon loading of this step.
-  clearLayersAndLoadEsdl();
-}
+const init = async () => {
+  console.debug("Initializing WorkflowEsdlService for step:", props.workflowStep);
+  stepParams.value = getWorkflowStepParameters(props.workflowStep);
+  stepParams.value.service = props.workflowStep.service;
+  if (stepParams.value.nextStepTrigger === WorkflowNextStepTriggerOptions.LOADING_COMPLETE || stepParams.value.service.auto) {
+    // Load the ESDL upon loading of this step.
+    loadEsdl();
+  }
+};
 
 </script>

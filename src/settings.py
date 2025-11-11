@@ -31,6 +31,10 @@ ASYNC_MODE = os.getenv("ASYNC_MODE", None)
 # Use the domain name of the server where the application is running. Example: 'https://mapeditor.esdl.hesi.energy'
 ALLOWED_ORIGINS = os.environ.get('ALLOWED_ORIGINS', '*')
 
+# Use the domain name of the server where the application is running. Example: 'https://mapeditor.esdl.hesi.energy'
+ALLOWED_ORIGINS = os.environ.get('ALLOWED_ORIGINS', '*')
+
+
 OIDC_CLIENT_SECRETS = os.environ.get('OIDC_CLIENT_SECRETS', None) # 'credentials/client_secrets_opensource.json'
 _use_gevent = os.environ.get('MAPEDITOR_USE_GEVENT', '')
 USE_GEVENT = (_use_gevent.upper() == 'TRUE' or _use_gevent == '1')
@@ -38,9 +42,9 @@ USE_GEVENT = (_use_gevent.upper() == 'TRUE' or _use_gevent == '1')
 # Database settings
 POSTGRES_HOST = os.environ.get('POSTGRES_HOST', 'localhost')
 POSTGRES_PORT = os.environ.get('POSTGRES_PORT', '5432')
-POSTGRES_USER = os.environ.get('POSTGRES_USER', 'mapeditor')
+POSTGRES_USER = os.environ.get('POSTGRES_USER', 'data_manager')
 POSTGRES_PASSWORD = os.environ.get('POSTGRES_PASSWORD', 'password')
-POSTGRES_DB = os.environ.get('POSTGRES_DB', 'mapeditor')
+POSTGRES_DB = os.environ.get('POSTGRES_DB', 'data_manager')
 POSTGRES_DB_URI = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
 
 SQLITE_DB_NAME = os.environ.get('SQLITE_DB_NAME', 'data_manager.db')
@@ -53,7 +57,8 @@ SQLALCHEMY_DATABASE_URI = os.environ.get('SQLALCHEMY_DATABASE_URI', DEFAULT_DRIV
 settings_storage_config = {
     "host": os.environ.get('SETTINGS_STORAGE_HOST', None),  # "mongo",
     "port": os.environ.get('SETTINGS_STORAGE_PORT', "27017"),
-    "database": "esdl_mapeditor_settings"
+    "database": "esdl_mapeditor_settings",
+    "external_models_collection": "external_model_runs"
 }
 
 user_logging_config = {
@@ -97,6 +102,7 @@ essim_config = {
     "ESSIM_path": "/essim/simulation",
     "influxURL": os.environ.get('ESSIM_INFLUX_URL', None),  # "http://influxdb:8086",
     "influx_mapeditor_url": os.environ.get('ESSIM_MAPEDITOR_INFLUX_URL', os.environ.get("ESSIM_INFLUX_URL", None)),  # "http://localhost:8086",
+    # This field doesn't seem used.
     "grafanaURL": os.environ.get('ESSIM_GRAFANA_URL', None),  # "http://grafana:3000",
     "user": "essim",
     "ESSIM_database_server": os.environ.get('ESSIM_DATABASE_HOST', None),  # "influxdb",
@@ -131,11 +137,6 @@ statistics_settings_config = {
     "host": os.environ.get('STATISTICS_SERVICE_HOST', None),
     "port": "6003",
     "path": "/api/statistics/calculate"
-}
-
-heatnetwork_dispatcher_config = {
-    "host": os.environ.get('DISPATCHER_HOST', 'http://localhost'),
-    "port": os.environ.get('DISPATCHER_PORT', 9200)
 }
 
 user_feedback_url_config = {

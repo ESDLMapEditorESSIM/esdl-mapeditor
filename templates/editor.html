@@ -386,8 +386,6 @@
                     if (deleting_objects == false && editing_objects == false) {        // do not execute when removing/editing objects
                         var marker = e.target;
                         var id = marker.id;
-
-                        // socketio.emit('command', {cmd: 'get_object_info', id: id, asspot: 'asset'});
                         object_properties_window(id);
                     }
                 }
@@ -584,7 +582,7 @@
             socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace, {
                 'timeout': 50000,
                 'connect timeout': 15000,
-                path: "/socketio.io",
+                path: "/socket.io"
             });
 
             function handleErrors(err) {
@@ -745,6 +743,7 @@
                 add_layer_control();    // add jstree layer control
                 // title_div = document.getElementById('es_title');
                 // title_div.innerHTML = '<b>' + title + '<b>';
+                console.log("ESDL list", esdl_list);
                 window.PubSubManager.broadcast('CREATE_NEW_ESDL_LAYER', message);
             });
 
@@ -782,20 +781,21 @@
 
                 // hide_loader();
                 //console.log('add_esdl_objects', options);
-                list = options['asset_pot_list'];
-                add_to_building = options['add_to_building'];
-                es_id = options['es_id'];
-                carrier_info_mapping = get_carrier_info_mapping(es_id);
+                let list = options['asset_pot_list'];
+                let add_to_building = options['add_to_building'];  // this is the building or compound_asset id
+                let es_id = options['es_id'];
+                let carrier_info_mapping = get_carrier_info_mapping(es_id);
 
-                tt_format = get_tooltip_format();
+                let tt_format = get_tooltip_format();
 
-                es_bld_id = es_id;
+                let es_bld_id = es_id;
+                let exposed_port_asset_id = null;
                 if (add_to_building) {
-                   es_bld_id = bld_edit_id;
+                    exposed_port_asset_id = bld_edit_id;
                 }
 
                 for (let i = 0; i<list.length; i++) {
-                    add_asset(es_bld_id, list[i], add_to_building, carrier_info_mapping, tt_format);
+                    add_asset(es_bld_id, list[i], exposed_port_asset_id, carrier_info_mapping, tt_format);
                 }
                 if (!add_to_building) {
                     spatial_buffers_plugin.bring_spatial_buffers_to_back();
@@ -834,12 +834,12 @@
 
             socket.on('add_building_objects', function(options) {
                 // Format of list items
-                // 0         1           2         3                    4                             5                   6     7
-                // 'point'   asset.name  asset.id  type(asset).__name__ [shape['lat'], shape['lng']]] building_has_assets KPIs  extra_attrs
-                // 'polygon' asset.name  asset.id  type(asset).__name__ coords                        building_has_assets KPIs  extra_attrs
+                // 0         1           2         3                    4                             5                   6     7             8
+                // 'point'   asset.name  asset.id  type(asset).__name__ [shape['lat'], shape['lng']]] building_has_assets KPIs  extra_attrs   port_list
+                // 'polygon' asset.name  asset.id  type(asset).__name__ coords                        building_has_assets KPIs  extra_attrs   port_list
 
                 // hide_loader();
-                // console.log(options);
+                //console.log(options);
                 list = options['building_list'];
                 es_id = options['es_id'];
 
@@ -847,9 +847,18 @@
 
                 for (let i = 0; i<list.length; i++) {
                     classname = 'zoom circle Building';
-                    imgsrc = 'images/' + list[i][3] + '.png';
+                    let icon_asset_type = list[i][3];
+                    // use the first asset in a compound asset as icon for this asset
+                    let extra_attrs = list[i][7];
+                    if (extra_attrs && extra_attrs['compoundFirstAssetType'] !== undefined) {
+                        icon_asset_type = extra_attrs['compoundFirstAssetType']
+                    }
+                    imgsrc = 'images/' + icon_asset_type + '.png';
+                    if (!assets_for_icons.includes(icon_asset_type)) {
+                       imgsrc = drawTextImage(getAbbrevation(icon_asset_type));
+                    }
                     if (custom_icons_plugin.custom_icons) {
-                        let custom_icon = custom_icons_plugin.get_icon_for(list[i][3], list[i][7]);
+                        let custom_icon = custom_icons_plugin.get_icon_for(icon_asset_type, list[i][7]);
                         if (custom_icon) {
                             imgsrc = 'data:' + custom_icon.contentType + ';base64,' + custom_icon.imageData;
                         }
@@ -862,7 +871,7 @@
 
                     if (list[i][1] == null) list[i][1] = 'No name';
 					var title = list[i][3]+': '+list[i][1];
-                    if (list[i][0] == 'point') {
+                    if (list[i][0] === 'point') {
                         var marker = L.marker([list[i][4][0], list[i][4][1]], {icon: divicon, title: title, draggable: true});
 
                         marker.title = title;
@@ -870,11 +879,13 @@
                         marker.esid = es_id;
                         marker.name = list[i][1];
                         marker.type = list[i][3];
+                        marker.ports = list[i][8];
 
                         set_building_handlers(marker);
+                        set_marker_port_handlers(marker);  // for exposed port assets
                         add_object_to_layer(es_id, 'esdl_layer', marker);
                     }
-                    if (list[i][0] == 'polygon') {
+                    if (list[i][0] === 'polygon') {
                         // var coords = list[i][4];
                         // var polygon = L.polygon(coords, {color: 'black', weight: 1, draggable:true, title: title});
                         // polygon.title = title;
@@ -913,9 +924,11 @@
                             marker.esid = es_id;
                             marker.name = list[i][1];
                             marker.type = list[i][3];
+                            marker.ports = list[i][8];  // add exposed ports
                             // marker.polygon = polygon;    // building has no polygon, but a geojson layer...
 
                             set_building_handlers(marker);
+                            set_marker_port_handlers(marker);
                             add_object_to_layer(es_id, 'esdl_layer', marker);
                         }
                     }
@@ -937,7 +950,13 @@
             socket.on('clear_connections', function(message) {
                 let id = active_layer_id;
                 if (message && message.id) {
+                    if (!bld_edit_id && message.id !== id) {
+                        // attempt to clear connections of building editor,
+                        // while it is not open.
+                        return;
+                    }
                     id = message.id;
+
                     console.log("Clear connections for id:", id);
                 }
                 console.log('clear_connections', id)
@@ -954,10 +973,16 @@
 
                 es_bld_id = es_id;
                 if (add_to_building) {
-                   es_bld_id = bld_edit_id; // global variable indicating the currently edited building
+                    if (bld_edit_id) {
+                        es_bld_id = bld_edit_id; // global variable indicating the currently edited building
+                    } else {
+                        // Building editor is not open, so we cannot add these connections
+                        console.warn("Building editor is not open, cannot update connections", connections);
+                        return
+                    }
                 }
 
-                carrier_info_mapping = get_carrier_info_mapping(es_id);
+                let carrier_info_mapping = get_carrier_info_mapping(es_id);
 
                 var linecolor = 0;
                 var linewidth = 2;
@@ -967,7 +992,7 @@
                     var coords = [con['from-asset-coord'], con['to-asset-coord']];
                     var title = '';
 
-                    if (con['from-port-carrier'] == con['to-port-carrier']) {
+                    if (con['from-port-carrier'] === con['to-port-carrier']) {
                         linewidth = 2;
                         if (con['from-port-carrier']) {          // same carrier specified
                             linecolor = carrier_info_mapping[con['from-port-carrier']]['color'];
@@ -1025,7 +1050,7 @@
                             }
                        });
                     }
-                    // TODO: Should this be es_bld_is instead of es_id
+                    // TODO: Should this be es_bld_id instead of es_id
                     line.es_id = es_id;
                     line.id = con['from-port-id'] + con['to-port-id']
                     line.from_port_id = con['from-port-id'];
@@ -1083,152 +1108,153 @@
             // ------------------------------------------------------------------------------------------------------------
             //  User ESDL actions
             // ------------------------------------------------------------------------------------------------------------
-            socket.on('asset_info', function(asset_info) {
-                asset_id = asset_info['id'];
-                asset_name = asset_info['name'];
-                asset_class = asset_info['class'];
-                asset_attrs = asset_info['attrs'];
-                asset_doc = asset_info['asset_doc']
-                connected_to_info = asset_info['connected_to_info'];
-                ctrl_strategy = asset_info['ctrl_strategy'];
-                //console.log(asset_attrs);
-                //console.log(connected_to_info);
-                //console.log(ctrl_strategy);
+            // TODO: remove this code as it is replaced by the Vue ObjectProperties window
+            // socket.on('asset_info', function(asset_info) {
+            //     asset_id = asset_info['id'];
+            //     asset_name = asset_info['name'];
+            //     asset_class = asset_info['class'];
+            //     asset_attrs = asset_info['attrs'];
+            //     asset_doc = asset_info['asset_doc']
+            //     connected_to_info = asset_info['connected_to_info'];
+            //     ctrl_strategy = asset_info['ctrl_strategy'];
+            //     //console.log(asset_attrs);
+            //     //console.log(connected_to_info);
+            //     //console.log(ctrl_strategy);
 
-                sidebar_ctr = sidebar.getContainer();
+            //     sidebar_ctr = sidebar.getContainer();
 
-                sidebar_ctr.innerHTML = '<h1 title="' + asset_doc + '">' + asset_name + '</h1>';
+            //     sidebar_ctr.innerHTML = '<h1 title="' + asset_doc + '">' + asset_name + '</h1>';
 
-                let idgen = 0; // generate Unique ID's otherwise jquery-ui will err
-                let table = '<table>';
-                for (i=0; i<asset_attrs.length; i++) {
-                    if (asset_attrs[i]['value'] == null) {
-                        value = '';
-                    } else {
-                        value = asset_attrs[i]['value'];
-                    }
-                    let title = 'data-html="true" title="';
-                    if (asset_attrs[i]['doc'] != null) {
-                        title += asset_attrs[i]['doc'];
-                    }
-                    if (asset_attrs[i]['type'] != null) {
-                        title += '<br/>Data type:  ';
-                        title += asset_attrs[i]['type'];
-                        title += ' ';
-                    }
-                    if (asset_attrs[i]['default'] != null) {
-                        title += '<br/>Default value: ';
-                        title += asset_attrs[i]['default'];
-                    }
-                    title += '"';
-                    let edate = "";
-                    if (asset_attrs[i]['type'] == 'EDate') {
-                        edate = ' edate="true" ';
-                    }
-                    table += '<tr><td width=180 ' + title + '>' + camelCaseToWords(asset_attrs[i]['name']) + '</td>';
+            //     let idgen = 0; // generate Unique ID's otherwise jquery-ui will err
+            //     let table = '<table>';
+            //     for (i=0; i<asset_attrs.length; i++) {
+            //         if (asset_attrs[i]['value'] == null) {
+            //             value = '';
+            //         } else {
+            //             value = asset_attrs[i]['value'];
+            //         }
+            //         let title = 'data-html="true" title="';
+            //         if (asset_attrs[i]['doc'] != null) {
+            //             title += asset_attrs[i]['doc'];
+            //         }
+            //         if (asset_attrs[i]['type'] != null) {
+            //             title += '<br/>Data type:  ';
+            //             title += asset_attrs[i]['type'];
+            //             title += ' ';
+            //         }
+            //         if (asset_attrs[i]['default'] != null) {
+            //             title += '<br/>Default value: ';
+            //             title += asset_attrs[i]['default'];
+            //         }
+            //         title += '"';
+            //         let edate = "";
+            //         if (asset_attrs[i]['type'] == 'EDate') {
+            //             edate = ' edate="true" ';
+            //         }
+            //         table += '<tr><td width=180 ' + title + '>' + camelCaseToWords(asset_attrs[i]['name']) + '</td>';
 
-                    if (asset_attrs[i]['type'] == 'EEnum' || asset_attrs[i]['type'] == 'EBoolean') {
-                        options = asset_attrs[i]['options'];
-                        table += '<td><select width="60" style="width:145px" id="'+ asset_attrs[i]['name']+idgen +'" assetid="' + asset_id + '" name="' +
-                            asset_attrs[i]['name'] + '" onchange="change_param(this);">';
-                            for (let o=0; o<options.length; o++) {
-                                selected = "";
-                                if (options[o] == value) selected=" selected";
-                                caption = options[o].charAt(0).toUpperCase() + options[o].slice(1).toLowerCase();
-                                caption = caption.replace(/_/g, ' '); // replace _ with space to render nicely
-                                table += '<option value="' + options[o] + '" '+selected+'>' + caption + '</option>';
-                            }
-                        table += '</select></td></tr>';
-                    } else {
-                        table += '<td><input type="text" width="60" id="'+ asset_attrs[i]['name']+idgen +'" assetid="' + asset_id + '" name="' +
-                            asset_attrs[i]['name'] + '" value="' + value +'" onchange="change_param(this);" ' + edate + '></td></tr>';
-                    }
-                    idgen++;
-                }
-                table += '</table>';
-                sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
+            //         if (asset_attrs[i]['type'] == 'EEnum' || asset_attrs[i]['type'] == 'EBoolean') {
+            //             options = asset_attrs[i]['options'];
+            //             table += '<td><select width="60" style="width:145px" id="'+ asset_attrs[i]['name']+idgen +'" assetid="' + asset_id + '" name="' +
+            //                 asset_attrs[i]['name'] + '" onchange="change_param(this);">';
+            //                 for (let o=0; o<options.length; o++) {
+            //                     selected = "";
+            //                     if (options[o] == value) selected=" selected";
+            //                     caption = options[o].charAt(0).toUpperCase() + options[o].slice(1).toLowerCase();
+            //                     caption = caption.replace(/_/g, ' '); // replace _ with space to render nicely
+            //                     table += '<option value="' + options[o] + '" '+selected+'>' + caption + '</option>';
+            //                 }
+            //             table += '</select></td></tr>';
+            //         } else {
+            //             table += '<td><input type="text" width="60" id="'+ asset_attrs[i]['name']+idgen +'" assetid="' + asset_id + '" name="' +
+            //                 asset_attrs[i]['name'] + '" value="' + value +'" onchange="change_param(this);" ' + edate + '></td></tr>';
+            //         }
+            //         idgen++;
+            //     }
+            //     table += '</table>';
+            //     sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
 
-                if (asset_class == 'EnergyAsset') {
-                    sidebar_ctr.innerHTML += '<h2>Add ports:</h2>';
-                    table = '<table>';
-                    table += '<tr><td width=180>Name</td><td><input type="text" width="60" id="name_add_port"></td></tr>';
-                    table += '<tr><td><button onclick="add_port(\'in\', \'' + asset_id +
-                        '\'); sidebar.hide();">Add InPort</button><button onclick="add_port(\'out\', \'' +
-                        asset_id + '\'); sidebar.hide();">Add OutPort</button></td><td>&nbsp;</td>';
-                    table += '</table>';
-                    sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
+            //     if (asset_class == 'EnergyAsset') {
+            //         sidebar_ctr.innerHTML += '<h2>Add ports:</h2>';
+            //         table = '<table>';
+            //         table += '<tr><td width=180>Name</td><td><input type="text" width="60" id="name_add_port"></td></tr>';
+            //         table += '<tr><td><button onclick="add_port(\'in\', \'' + asset_id +
+            //             '\'); sidebar.hide();">Add InPort</button><button onclick="add_port(\'out\', \'' +
+            //             asset_id + '\'); sidebar.hide();">Add OutPort</button></td><td>&nbsp;</td>';
+            //         table += '</table>';
+            //         sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
 
-                    sidebar_ctr.innerHTML += '<h2>Current ports:</h2>';
-                    table = '<table>';
-                    for (i=0; i<connected_to_info.length; i++) {
-                        pname = connected_to_info[i]['pname'];
-                        if (pname == '') {
-                            pname = 'No name';
-                        }
-                        pcarr = connected_to_info[i]['pcarr'];
-                        if (pcarr == '') {
-                            pcarr = 'No carrier';
-                        }
-                        table += '<tr><td><button onclick="remove_port(\'' + connected_to_info[i]['pid'] + '\'); sidebar.hide();">Del</button></td>';
-                        table += '<td title="id: '+ connected_to_info[i]['pid'] +'">'
-                            + connected_to_info[i]['ptype'] + ' - ' + pname + ' - ' + pcarr + '</td></tr>';
-                    }
-                    table += '</table>';
-                    sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
+            //         sidebar_ctr.innerHTML += '<h2>Current ports:</h2>';
+            //         table = '<table>';
+            //         for (i=0; i<connected_to_info.length; i++) {
+            //             pname = connected_to_info[i]['pname'];
+            //             if (pname == '') {
+            //                 pname = 'No name';
+            //             }
+            //             pcarr = connected_to_info[i]['pcarr'];
+            //             if (pcarr == '') {
+            //                 pcarr = 'No carrier';
+            //             }
+            //             table += '<tr><td><button onclick="remove_port(\'' + connected_to_info[i]['pid'] + '\'); sidebar.hide();">Del</button></td>';
+            //             table += '<td title="id: '+ connected_to_info[i]['pid'] +'">'
+            //                 + connected_to_info[i]['ptype'] + ' - ' + pname + ' - ' + pcarr + '</td></tr>';
+            //         }
+            //         table += '</table>';
+            //         sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
 
-                    if (ctrl_strategy) {
-                        sidebar_ctr.innerHTML += '<h2>Control strategy:</h2>';
-                        sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + ctrl_strategy;
-                    }
+            //         if (ctrl_strategy) {
+            //             sidebar_ctr.innerHTML += '<h2>Control strategy:</h2>';
+            //             sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + ctrl_strategy;
+            //         }
 
-                    sidebar_ctr.innerHTML += '<h2>Connections:</h2>';
-                    table = '<table>';
-                    for (i=0; i<connected_to_info.length; i++) {
-                        pname = connected_to_info[i]['pname'];
-                        if (pname == '') {
-                            pname = 'No name';
-                        }
-                        table += '<tr><td colspan=4 title="id: '+ connected_to_info[i]['pid'] +'">'
-                            + connected_to_info[i]['ptype'] + ' - ' + pname + '</td></tr>';
-                        for (j=0; j<connected_to_info[i]['ct_list'].length; j++) {
-                            aname = connected_to_info[i]['ct_list'][j]['aname'];
-                            if (aname == '') {
-                                aname = 'No name';
-                            }
-                            table += '<tr>';
-                            // remove_connection(from_asset_id, from_port_id, to_asset_id, to_port_id)
-                            let from_asset_id = asset_id;
-                            let from_port_id = connected_to_info[i]['pid'];
-                            let to_asset_id = connected_to_info[i]['ct_list'][j]['aid'];
-                            let to_port_id = connected_to_info[i]['ct_list'][j]['pid'];
-                            table += '<td><button onclick="remove_connection(\'' + from_asset_id + '\',\'' + from_port_id + '\',\'' + to_asset_id + '\',\'' + to_port_id + '\'); sidebar.hide();">Del</button></td>';
-                            table += '<td>&nbsp;</td><td title="port id:' + connected_to_info[i]['ct_list'][j]['pid'] + '">'
-                                + connected_to_info[i]['ct_list'][j]['atype'] + ' - '
-                                + aname + '</td>';
-                            table += '</tr>';
-                        }
-                    }
-                    table += '</table>';
-                    sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
-                }
+            //         sidebar_ctr.innerHTML += '<h2>Connections:</h2>';
+            //         table = '<table>';
+            //         for (i=0; i<connected_to_info.length; i++) {
+            //             pname = connected_to_info[i]['pname'];
+            //             if (pname == '') {
+            //                 pname = 'No name';
+            //             }
+            //             table += '<tr><td colspan=4 title="id: '+ connected_to_info[i]['pid'] +'">'
+            //                 + connected_to_info[i]['ptype'] + ' - ' + pname + '</td></tr>';
+            //             for (j=0; j<connected_to_info[i]['ct_list'].length; j++) {
+            //                 aname = connected_to_info[i]['ct_list'][j]['aname'];
+            //                 if (aname == '') {
+            //                     aname = 'No name';
+            //                 }
+            //                 table += '<tr>';
+            //                 // remove_connection(from_asset_id, from_port_id, to_asset_id, to_port_id)
+            //                 let from_asset_id = asset_id;
+            //                 let from_port_id = connected_to_info[i]['pid'];
+            //                 let to_asset_id = connected_to_info[i]['ct_list'][j]['aid'];
+            //                 let to_port_id = connected_to_info[i]['ct_list'][j]['pid'];
+            //                 table += '<td><button onclick="remove_connection(\'' + from_asset_id + '\',\'' + from_port_id + '\',\'' + to_asset_id + '\',\'' + to_port_id + '\'); sidebar.hide();">Del</button></td>';
+            //                 table += '<td>&nbsp;</td><td title="port id:' + connected_to_info[i]['ct_list'][j]['pid'] + '">'
+            //                     + connected_to_info[i]['ct_list'][j]['atype'] + ' - '
+            //                     + aname + '</td>';
+            //                 table += '</tr>';
+            //             }
+            //         }
+            //         table += '</table>';
+            //         sidebar_ctr.innerHTML = sidebar_ctr.innerHTML + table;
+            //     }
 
-                // add date picker to date input fields
-                $( ":input[edate*='true']" ).datepicker({
-                    showOn: "button",
-                    dateFormat: "yy-mm-dd",
-                    showAnim: "slideDown",
-                    changeYear: true,
-                    yearRange: "1980:2060",
-                    changeMonth: true
-                    });
-                // let tooltips support html styling
-                $('td[title]').tooltip({
-                    content: function() {
-                        return $(this).attr('title');
-                    }
-                });
-                sidebar.show();
-            });
+            //     // add date picker to date input fields
+            //     $( ":input[edate*='true']" ).datepicker({
+            //         showOn: "button",
+            //         dateFormat: "yy-mm-dd",
+            //         showAnim: "slideDown",
+            //         changeYear: true,
+            //         yearRange: "1980:2060",
+            //         changeMonth: true
+            //         });
+            //     // let tooltips support html styling
+            //     $('td[title]').tooltip({
+            //         content: function() {
+            //             return $(this).attr('title');
+            //         }
+            //     });
+            //     sidebar.show();
+            // });
 
 			// socketio.on('conductor_info', function(asset_info) {
 				// console.log('Conductor info: ')
@@ -1268,18 +1294,37 @@
             // update an asset - called after adding and removing ports
             // currently only updates the ports for the context menu
             socket.on('update_asset', function(asset_update) {
-                asset_id = asset_update['asset_id'];
-                ports = asset_update['ports'];
-                layer = find_layer_by_id(active_layer_id, 'esdl_layer', asset_id);
-                layer.ports = ports;
-                if (layer instanceof L.Marker) {
-                    set_marker_handlers(layer);
+                //console.log("Update asset", asset_update);
+                let asset_id = asset_update['asset_id'];
+                let name = asset_update['name'];
+                let ports = asset_update['ports'];
+                let layer = find_layer_by_id(active_layer_id, 'esdl_layer', asset_id);
+                if (layer === undefined && bld_edit_id) {
+                    // try on main map as building editor is open
+                    layer = find_layer_by_id(es_id, 'esdl_layer', asset_id);
                 }
-                if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
-                    // polygon is a subclass of polyline in Leaflet.
-                    console.log('update_asset', layer);
-                    set_line_handlers(layer);
-                    update_line_color(layer);
+                if (layer !== undefined) {
+                    // layer could be undefined if asset is in building/compound asset
+
+                    // Update the name of the asset, but assume the ESDL class (layer.type) has not changed
+                    layer.title = layer.type + ': ' + name;
+                    layer.ports = ports;
+                    if (layer instanceof L.Marker) {
+
+                        if (layer.asspot) {
+                            // for normal assets (also updates the contextmenu items)
+                            // these have the asspot property
+                            set_marker_handlers(layer);
+                        } else {
+                            // for exposed_port assets
+                            set_marker_port_handlers(layer);
+                        }
+                    }
+                    if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
+                        // polygon is a subclass of polyline in Leaflet.
+                        set_line_handlers(layer);
+                        update_line_color(layer);
+                    }
                 }
             });
 
@@ -1605,12 +1650,17 @@
 {% endif %}
                                     <li class="separator"><span class="dropdown-item menu-separator"></span></li>
                                     <li><a class="dropdown-item" href="#" onclick="export_as_shapefiles(this, '.');">
-                                        <div class="menu-icon" style="margin-top:0px"><i class="fa fa-file-export fa-smaller"></i></div>
-                                        Export as shapefiles</a></li>
+                                        <div class="menu-icon" style="font-size: 12px;"><i class="fa fa-file-export"></i></div>Export as shapefiles</a></li>
+                                    <li class="dropdown-item" style="pointer-events: none">
+                                        <div style="border-bottom: 1px solid #ccc"></div>
+                                    </li>
                                     <li><a class="dropdown-item" href="#" onclick="export_as_inline_profile(this, '.');">
-                                        <div class="menu-icon ui-icon ui-icon-folder-open"></div>
-                                        Export with in-line profiles</a></li>
-
+                                        <div class="menu-icon" style="font-size: 12px;"><i class="fa fa-cloud-download-alt"></i></div>Export ESDL with in-line profiles</a>
+                                    </li>
+{#                                    Disabled for main until we figure out how to cleanly import these files. #}
+{#                                    <li><a class="dropdown-item" href="#" onclick="document.querySelector('.inputImportInlineFile').click();">#}
+{#                                        <div class="menu-icon" style="font-size: 12px;"><i class="fa fa-cloud-download-alt"></i></div>Import ESDL with in-line profiles</a>#}
+{#                                    </li>#}
                                 </ul>
                             </li>
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">Edit</a>
@@ -1624,7 +1674,7 @@
                                     <li><a class="dropdown-item" href="#" onclick="carriers_window();"><div class="menu-icon">&nbsp;</div>Energy carriers...</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="sectors_window();"><div class="menu-icon">&nbsp;</div>Sectors...</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="environmental_profiles();"><div class="menu-icon ui-icon ui-icon-star">&nbsp;</div>Environmental profiles...</a></li>
-                                    <li><a class="dropdown-item" href="#" onclick="ownership_dialog.open();"><div class="menu-icon" id="menu_ownership">&nbsp;</div>Ownership</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="ownership_dialog.open();"><div class="menu-icon ui-icon ui-icon-pencil" id="menu_ownership" title="View ownership of assets">&nbsp;</div>Ownership...</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="shapefile_converter_window.open_window();"><div class="menu-icon ui-icon ui-icon-image">&nbsp;</div>Shapefile converter...</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="search_assets_window();"><div class="menu-icon ui-icon ui-icon-search">&nbsp;</div>Search assets...</a></li>
                                 </ul>
@@ -1657,24 +1707,24 @@
                                     <li class="dropdown"><a class="dropdown-item dropdown-toggle" href="#"><div class="menu-icon"></div>Load animation</a>
                                         <ul class="dropdown-menu">
 {% if 'ielgas' in role %}
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas', 'start_test_run', [], 'allocationEnergy');"><div class="menu-icon" id="menu_td_ielgas">&nbsp;</div>I-ELGAS model NL - all</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas', 'start_test_run', ['electricity_network'], 'allocationEnergy');"><div class="menu-icon" id="menu_td_ielgas-e">&nbsp;</div>I-ELGAS model NL - electricity</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas', 'start_test_run', ['gas_network'], 'allocationEnergy');"><div class="menu-icon" id="menu_td_ielgas-g">&nbsp;</div>I-ELGAS model NL - methane</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas', 'start_test_run', ['hydrogen_network'], 'allocationEnergy');"><div class="menu-icon" id="menu_td_ielgas-h">&nbsp;</div>I-ELGAS model NL - hydrogen</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas-eu', 'start_test_run', [], 'allocationEnergy');"><div class="menu-icon" id="menu_td_ielgaseu">&nbsp;</div>I-ELGAS model EU - all</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas-eu', 'start_test_run', ['electricity_network'], 'allocationEnergy');"><div class="menu-icon" id="menu_td_ielgaseu-e">&nbsp;</div>I-ELGAS model EU - electricity</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas-eu', 'start_test_run', ['gas_network'], 'allocationEnergy');"><div class="menu-icon" id="menu_td_ielgaseu-g">&nbsp;</div>I-ELGAS model EU - methane</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas-eu', 'start_test_run', ['hydrogen_network'], 'allocationEnergy');"><div class="menu-icon" id="menu_td_ielgaseu-h">&nbsp;</div>I-ELGAS model EU - hydrogen</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas', '', '', ['electricity_network', 'gas_network', 'hydrogen_network'], 'allocationEnergy', 'localhost', '8086');"><div class="menu-icon" id="menu_td_ielgas">&nbsp;</div>I-ELGAS model NL - all</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas', '', '', ['electricity_network'], 'allocationEnergy', 'localhost', '8086');"><div class="menu-icon" id="menu_td_ielgas-e">&nbsp;</div>I-ELGAS model NL - electricity</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas', '', '', ['gas_network'], 'allocationEnergy', 'localhost', '8086');"><div class="menu-icon" id="menu_td_ielgas-g">&nbsp;</div>I-ELGAS model NL - methane</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas', '', '', ['hydrogen_network'], 'allocationEnergy', 'localhost', '8086');"><div class="menu-icon" id="menu_td_ielgas-h">&nbsp;</div>I-ELGAS model NL - hydrogen</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas-eu', '', '', ['electricity_network', 'gas_network', 'hydrogen_network'], 'allocationEnergy', 'localhost', '8086');"><div class="menu-icon" id="menu_td_ielgaseu">&nbsp;</div>I-ELGAS model EU - all</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas-eu', '', '', ['electricity_network'], 'allocationEnergy', 'localhost', '8086');"><div class="menu-icon" id="menu_td_ielgaseu-e">&nbsp;</div>I-ELGAS model EU - electricity</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas-eu', '', '', ['gas_network'], 'allocationEnergy', 'localhost', '8086');"><div class="menu-icon" id="menu_td_ielgaseu-g">&nbsp;</div>I-ELGAS model EU - methane</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('i-elgas-eu', '', '', ['hydrogen_network'], 'allocationEnergy', 'localhost', '8086');"><div class="menu-icon" id="menu_td_ielgaseu-h">&nbsp;</div>I-ELGAS model EU - hydrogen</a></li>
 {% endif %}
 {% if 'opera' in role %}
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', 'opera_test_run', []);"><div class="menu-icon" id="menu_td_opera">&nbsp;</div>Opera model - all</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', 'opera_test_run', ['electricity_network']);"><div class="menu-icon" id="menu_td_opera-e">&nbsp;</div>Opera model - electricity</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', 'opera_test_run', ['gas_network']);"><div class="menu-icon" id="menu_td_opera-g">&nbsp;</div>Opera model - methane</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', 'opera_test_run', ['hydrogen_network']);"><div class="menu-icon" id="menu_td_opera-h">&nbsp;</div>Opera model - hydrogen</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', 'opera_test_run2', []);"><div class="menu-icon" id="menu_td_opera2">&nbsp;</div>Opera model - 2 - all</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', 'opera_test_run2', ['electricity_network']);"><div class="menu-icon" id="menu_td_opera2-e">&nbsp;</div>Opera model -2  - electricity</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', 'opera_test_run2', ['gas_network']);"><div class="menu-icon" id="menu_td_opera2-g">&nbsp;</div>Opera model - 2 - methane</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', 'opera_test_run2', ['hydrogen_network']);"><div class="menu-icon" id="menu_td_opera2-h">&nbsp;</div>Opera model - 2 - hydrogen</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', '', '', ['electricity_network', 'gas_network', 'hydrogen_network'], 'localhost', '8086');"><div class="menu-icon" id="menu_td_opera">&nbsp;</div>Opera model - all</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', '', '', ['electricity_network'], 'localhost', '8086');"><div class="menu-icon" id="menu_td_opera-e">&nbsp;</div>Opera model - electricity</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', '', '', ['gas_network'], 'localhost', '8086');"><div class="menu-icon" id="menu_td_opera-g">&nbsp;</div>Opera model - methane</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', '', '', ['hydrogen_network'], 'localhost', '8086');"><div class="menu-icon" id="menu_td_opera-h">&nbsp;</div>Opera model - hydrogen</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', '', '', ['electricity_network', 'gas_network', 'hydrogen_network'], 'localhost', '8086');"><div class="menu-icon" id="menu_td_opera2">&nbsp;</div>Opera model - 2 - all</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', '', '', ['electricity_network'], 'localhost', '8086');"><div class="menu-icon" id="menu_td_opera2-e">&nbsp;</div>Opera model -2  - electricity</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', '', '', ['gas_network'], 'localhost', '8086');"><div class="menu-icon" id="menu_td_opera2-g">&nbsp;</div>Opera model - 2 - methane</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="time_dimension.initialize('opera_results', '', '', ['hydrogen_network'], 'localhost', '8086');"><div class="menu-icon" id="menu_td_opera2-h">&nbsp;</div>Opera model - 2 - hydrogen</a></li>
 {% endif %}
                                         </ul>
                                     </li>
@@ -1694,7 +1744,7 @@
                                 <ul class="dropdown-menu">
                                     <li>
                                         <a class="dropdown-item" href="#" onclick="refresh_esdl();">
-                                            <div id="menu_option_refresh_esdl" class="menu-icon" style="margin-top:0px" title="Refresh the view of the ESDL (Ctrl+R)"><i class="fa fa-refresh fa-fw fa-smaller"></i></div>
+                                            <div id="menu_option_refresh_esdl" class="menu-icon" style="font-size: 12px; margin-top:0px" title="Refresh the view of the ESDL (Ctrl+R)"><i class="fa fa-refresh fa-fw"></i></div>
                                             Refresh view (Ctrl+R)
                                         </a>
                                     </li>
@@ -1743,6 +1793,12 @@
                                         </a>
                                     </li>
                                     <li>
+                                        <a class="dropdown-item" href="#" onclick="open_spatial_visualization();">
+                                            <div class="menu-icon" id="menu_spatial_visualization">&nbsp;</div>
+                                            Spatial visualization
+                                        </a>
+                                    </li>
+                                    <li>
                                         <a class="dropdown-item" href="#" onclick="app_settings.open_window();">
                                             <div id="menu_settings" class="menu-icon" style="margin-top:0px">
                                                 <i class="fa fa-cog"></i>
@@ -1777,6 +1833,7 @@
         <div id="ctrl" style="float: right; position: relative; padding:3px;">
             <input class="inputFile" type="file" style="display: none;" onchange="load_esdl_files(event);" accept=".esdl" onclick="this.value=null;" multiple>
             <input class="inputImportFile" type="file" style="display: none;" onchange="import_esdl_files(event);" accept=".esdl" onclick="this.value=null;" multiple>
+{#            <input class="inputImportInlineFile" type="file" style="display: none;" onchange="import_esdl_with_inline_profiles(event);" onclick="this.value=null;">#}
 
 {% if edr_enabled %}
             <button id="edr-asset-btn" onclick="edr_asset_window();" title="EDR assets" class="ui-button ui-widget ui-corner-all">EDR assets</button>
@@ -1810,6 +1867,7 @@
     <div id="tdmonitorcontrol"></div>
     <div id="essim_kpis_control"></div>
     <div id="vuemodal"></div>
+    <div id="toast_notifications"></div>
 
     <div id="userMessages" class="userMessages userMessages-hidden"><p id="userMessage">There is a message</p></div>
 
@@ -1856,6 +1914,26 @@
         set_leaflet_sizes();                /* Markers, joints, and lines */
         resize_all_area_pie_charts();
     });
+
+    // handle contextmenu in some corner cases. See port_handlers.js when right-clicking on a port to show context menu
+    map.on('contextmenu.show', function (e) {
+        remove_tooltip();
+    });
+    map.on('contextmenu.hide', function (e) {
+        // See port_handlers.js when right-clicking on a port to show context menu
+        // the port_marker and highlighted connections need to be reset, but
+        if (e.contextmenu.active_port_marker) {
+            let pm = e.contextmenu.active_port_marker;
+            pm.port_parent.active=false;
+            if (!pm.parent.mouseactive) {
+                pm.removeFrom(get_layers(active_layer_id, 'connection_layer'));
+                remove_tooltip();
+                unhighlight_connection(pm.port_parent);
+                delete e.contextmenu['active_port_marker'];
+            }
+        }
+    });
+
 
     // use a pane to control line selection overlay with a different zIndex
     init_selection_pane(map); // from asset.js

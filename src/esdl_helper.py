@@ -22,6 +22,7 @@ from esdl.processing import ESDLGeometry, ESDLAsset, ESDLQuantityAndUnits
 from extensions.session_manager import get_session, get_session_for_esid, get_project_manager
 from extensions.profiles import Profiles
 from esdlproject.ProjectManager import ProjectManager
+from src.incremental_ui.incremental_ui_messages import create_asset_port_message
 
 
 def generate_profile_info(profile_list, only_of_type: str = None):
@@ -34,6 +35,9 @@ def generate_profile_info(profile_list, only_of_type: str = None):
     profile_info_list = []
     for profile in profile_list:
         profile_class = type(profile).__name__
+        if only_of_type and profile_class != only_of_type:
+            continue
+
         qau = profile.profileQuantityAndUnit
         if isinstance(qau, esdl.QuantityAndUnitReference):
             qau = qau.reference
@@ -44,13 +48,9 @@ def generate_profile_info(profile_list, only_of_type: str = None):
         profile_name = profile.name
         profile_id = profile.id
         if profile_class == 'SingleValue':
-            if only_of_type and profile_class != only_of_type:
-                break
             value = profile.value
             profile_info_list.append({'id': profile_id, 'class': 'SingleValue', 'value': value, 'type': profile_type, 'uiname': profile_name})
         if profile_class == 'InfluxDBProfile':
-            if only_of_type and profile_class != only_of_type:
-                break
             database = profile.database
             multiplier = profile.multiplier
             measurement = profile.measurement
@@ -65,8 +65,6 @@ def generate_profile_info(profile_list, only_of_type: str = None):
                 profile_name = field
             profile_info_list.append({'id': profile_id, 'class': 'InfluxDBProfile', 'multiplier': multiplier, 'type': profile_type, 'uiname': profile_name})
         if profile_class == 'DateTimeProfile':
-            if only_of_type and profile_class != only_of_type:
-                break
             profile_info_list.append({'id': profile_id, 'class': 'DateTimeProfile', 'type': profile_type, 'uiname': profile_name})
 
     return profile_info_list
@@ -217,28 +215,49 @@ def add_spatial_attributes(asset, attrs):
         attrs['surfaceArea'] = asset.surfaceArea
 
 
-def energy_asset_to_ui(esh: ProjectManager, es_id, asset):  # , port_asset_mapping):
+def add_extra_attributes(asset: esdl.Asset, extra_attributes: dict = None) -> dict:
+    """
+    Collect extra attributes that might be required to draw specific icons, compound asset info, ...
+    This updates the existing dictionary provided by parameter extra_attributes, or creates a new dict
+    :return dict with extra attributes
+    """
+    if not extra_attributes:
+        extra_attributes = {}
+    if asset.eIsSet('assetType'):
+        extra_attributes['assetType'] = asset.assetType
+    # use the first asset in a compound asset as icon for this asset
+    # send this to the front-end in extra_attributes
+    if isinstance(asset, esdl.CompoundAsset):
+        if len(asset.asset) > 0:
+            first_asset_type = asset.asset[0].eClass.name
+            extra_attributes['compoundFirstAssetType'] = first_asset_type
+
+    return extra_attributes
+
+def energy_asset_to_ui(pm: ProjectManager, es_id, asset):  # , port_asset_mapping):
     port_list = []
     conn_list = []
 
     ports = asset.port
     for p in ports:
         # p_asset = port_asset_mapping[p.id]
-        p_asset = get_asset_and_coord_from_port_id(esh, es_id, p.id)
+        p_asset = get_asset_and_coord_from_port_id(pm, es_id, p.id)
         p_asset_coord = p_asset['coord']        # get proper coordinate if asset is line
         conn_to = [cp.id for cp in p.connectedTo]
-        profile = p.profile
-        profile_info_list = []
-        carrier_id = p.carrier.id if p.carrier else None
-        if profile:
-            profile_info_list = generate_profile_info(profile)
-        port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': conn_to,
-                          'profile': profile_info_list, 'carrier': carrier_id})
+        # TODO: remove commented code as profile info is never used in the UI as far as Ewoud can tell
+        # profile = p.profile
+        # profile_info_list = []
+        # carrier_id = p.carrier.id if p.carrier else None
+        # if profile:
+        #     profile_info_list = generate_profile_info(profile)
+        # port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': conn_to,
+        #                   'profile': profile_info_list, 'carrier': carrier_id})
+        port_list.extend(create_asset_port_message(asset))
         if conn_to:
             # conn_to_list = conn_to.split(' ')   # connectedTo attribute is list of port ID's separated by a space
             for id in conn_to:
                 # pc_asset = port_asset_mapping[id]
-                pc_asset = get_asset_and_coord_from_port_id(esh, es_id, id)
+                pc_asset = get_asset_and_coord_from_port_id(pm, es_id, id)
                 pc_asset_coord = pc_asset['coord']
 
                 conn_list.append(
@@ -254,8 +273,7 @@ def energy_asset_to_ui(esh: ProjectManager, es_id, asset):  # , port_asset_mappi
 
     state = asset_state_to_ui(asset)
     geom = asset.geometry
-    extra_attributes = dict()
-    extra_attributes['assetType'] = asset.assetType
+    extra_attributes = add_extra_attributes(asset)
     if geom:
         if isinstance(geom, esdl.Point):
             lat = geom.lat
@@ -288,11 +306,22 @@ def energy_asset_to_ui(esh: ProjectManager, es_id, asset):  # , port_asset_mappi
     return [], []
 
 
-def update_carrier_conn_list():
+def update_carrier_conn_list(asset: esdl.ConnectableAsset):
     pm = get_project_manager()
     active_es_id = get_session('active_es_id')
-    conn_list = get_session_for_esid(active_es_id, 'conn_list')
 
+    if isinstance(asset.eContainer(), esdl.ExposedPortsAsset):
+        # building editor could be open, so update building connections too.
+        container = asset.eContainer()
+        emit("clear_connections", {'id': container.id})  # clear building/compound layer
+        # cannot import globally, creates circular import
+        from src.process_es_area_bld import get_building_information
+        container_info = get_building_information(container)
+        conn_list = container_info["conn_list"]
+        emit("add_connections", {"es_id": active_es_id, "conn_list": conn_list, "add_to_building": True})
+
+    emit('clear_connections', {'id': active_es_id})  # clear current active layer connections
+    conn_list = get_session_for_esid(active_es_id, 'conn_list')
     for c in conn_list:
         from_port = pm.get_by_id(active_es_id, c['from-port-id'])
         if from_port.carrier:
@@ -300,6 +329,4 @@ def update_carrier_conn_list():
         to_port = pm.get_by_id(active_es_id, c['from-port-id'])
         if to_port.carrier:
             c['to-port-carrier'] = to_port.carrier.id
-
-    emit('clear_connections')  # clear current active layer connections
-    emit('add_connections', {'es_id': active_es_id, 'conn_list': conn_list})
+    emit("add_connections", {"es_id": active_es_id, "conn_list": conn_list, "add_to_building": False})

@@ -25,9 +25,10 @@ from esdl.undo_wrapper import undo_record_changes
 from esdlproject.ProjectManager import load_external_string
 from extensions.boundary_service import is_valid_boundary_id
 from extensions.session_manager import get_project_manager, get_session, get_session_for_esid
-from src.esdl_helper import get_tooltip_asset_attrs
-from src.process_es_area_bld import calc_building_assets_location, recalculate_area_bld_list, \
-    get_area_id_from_mapeditor_id
+from src.esdl_helper import get_tooltip_asset_attrs, add_extra_attributes
+from src.process_es_area_bld import calc_building_assets_location, recalculate_area_bld_list, get_area_id_from_mapeditor_id
+import uuid
+import requests
 
 logger = log.get_logger(__name__)
 
@@ -271,8 +272,7 @@ class PICORooftopPVPotential:
 
     @staticmethod
     def get_building_info_for_emit_list(building):
-        extra_attributes = dict()
-        extra_attributes['assetType'] = building.assetType
+        extra_attributes = add_extra_attributes(building)
         return ['point', building.name, building.id, type(building).__name__,
                         [building.geometry.lat, building.geometry.lon], True, {}, extra_attributes]
 
@@ -325,8 +325,7 @@ class PICORooftopPVPotential:
         port_list = [{'name': pv_outport.name, 'id': pv_outport.id, 'type': type(pv_outport).__name__, 'conn_to': []}]
         capability_type = ESDLAsset.get_asset_capability_type(pv_installation)
         tooltip_asset_attrs = get_tooltip_asset_attrs(pv_installation, 'marker')
-        extra_attributes = dict()
-        extra_attributes['assetType'] = pv_installation.assetType
+        extra_attributes = add_extra_attributes(pv_installation)
         asset_list.append(['point', 'asset', pv_installation.name, pv_installation.id,
                            type(pv_installation).__name__, [pv_geometry.lat, pv_geometry.lon],
                            tooltip_asset_attrs, 'e', port_list, capability_type, extra_attributes])

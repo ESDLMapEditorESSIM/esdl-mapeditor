@@ -78,6 +78,7 @@
       <a-select
         v-model:value="selected_asset_type"
         :options="asset_type_list"
+        :disabled="!allow_selection_of_asset_type"
         show-search
         option-filter-prop="label"
         :filter-option="filter_select"
@@ -116,16 +117,22 @@
       </a-button>
     </a-space>
   </a-space>
-  <spinner v-else />
+  <template v-else>
+    <span>Loading EDR data...</span>
+    <spinner />
+  </template>
 </template>
 
 <script>
 import axios from 'axios'
+import {useReplaceEDRAsset} from "@/composables/replaceEDRAsset";
 import spinner from "@/components/Spinner.vue";
+
+const { assetIdList, assetClass } = useReplaceEDRAsset();
 
 export default {
   components: {
-    spinner
+    spinner,
   },
   data() {
     return {
@@ -140,6 +147,7 @@ export default {
       filter_status_final: true,
       filter_cost_information: false,
       filter_input_output_relation: false,
+      allow_selection_of_asset_type: true,
     }
   },
   computed: {
@@ -168,12 +176,20 @@ export default {
   },
   mounted() {
     this.getDataSocketIO();
+
+    if (assetIdList.value !== undefined && assetClass.value !== undefined) {
+      this.selected_asset_type = assetClass.value;
+      this.allow_selection_of_asset_type = false;
+    }
   },
   methods: {
     getDataSocketIO: function () {
       // console.log(currentObjectID.value);
-      // window.socketio.emit('edr_assets', (res) => {
-      const path = '/edr_assets';
+      // window.socket.emit('edr_assets', (res) => {
+      let path = '/edr_assets';
+      if (assetIdList.value !== undefined && assetClass.value !== undefined) {
+        path = path + "/" + assetClass.value;
+      }
       axios.get(path)
         .then((res) => {
           this.asset_list = res['data']['item_list'];
@@ -197,14 +213,37 @@ export default {
           console.error(error);
         });
     },
+    clear_replace_asset_info: function () {
+      // clear values for next check (could be a regular "get asset from EDR" request)
+      assetIdList.value = null;
+      assetClass.value = null;
+    },
     select: function () {
       const selected_value = this.selected_asset;
       if (selected_value) {
-        window.socket.emit('command', {cmd: 'get_edr_asset', edr_asset_id: selected_value});
+        if (assetIdList.value !== undefined && assetClass.value !== undefined) {
+          // replace with EDR asset was choosen
+
+          for (let idx=0; idx<assetIdList.value.length; idx++) {
+            let asset_id = assetIdList.value[idx];
+            let asset = find_layer_by_id(active_layer_id, 'esdl_layer', asset_id);
+            console.log(asset);
+
+            window.socket.emit('command', {
+              cmd: 'replace_edr_asset',
+              original_asset_id: asset_id,
+              edr_asset_id: selected_value
+            });
+          }
+          this.clear_replace_asset_info();
+        } else {
+          window.socket.emit('command', {cmd: 'get_edr_asset', edr_asset_id: selected_value});
+        }
         window.sidebar.hide();
       }
     },
     cancel: function () {
+      this.clear_replace_asset_info();
       window.sidebar.hide();
     },
     filter_select: function (input, option) {

@@ -36,7 +36,9 @@ var get_building_color = get_buildingYear_colors;     // function to get color o
 // HTML element ids for indexing
 const areaLegendDivId = 'area-legend-div';
 const areaMarkerResizeDivId = 'area-marker-resize-div';
-let areaMarkerResizeSliderVal = 2.0; // resize map area marker (pie chart) size based on the slider value
+
+const initAreaMarkerResizeSliderVal = 1.0;
+let areaMarkerResizeSliderVal = initAreaMarkerResizeSliderVal; // resize map area marker (pie chart) size based on the slider value
 
 let initMapZoomLevel; // initial map zoom level used by calcPieChartRadius() to scale pie chart size
 
@@ -662,7 +664,7 @@ function calcPieChartRadius(kpiItemsSum, kpiSumMin, kpiSumMax, resizeFactor=1.0)
     // Define zoom level and resize factor responsive pie chart min and max radius.
     const baseRadius = 1 * resizeFactor;
     const rMin = baseRadius * zoomScalingFactor;
-    const rMax = rMin * 5;
+    const rMax = rMin * 8;
 
     // Special case: when kpiItemsSum == kpiSumMin == kpiSumMax and all > 0
     // This occurs when the layer contains only one area feature.
@@ -799,6 +801,10 @@ function resize_all_area_pie_charts() {
 function resize_area_pie_charts(esdl_layer_id) {
     if (esdl_layer_id === null) { esdl_layer_id = active_layer_id; }
     let area_layers = get_layers(esdl_layer_id, 'area_layer');
+    if (!area_layers) {
+        // in case area_layer is not present (e.g. in Building Editor)
+        return;
+    }
     let layersAreaFeaturesDistKPIsRange = get_area_dist_kpis_ranges(esdl_layer_id);
 
     // get the area legend choice for THIS esdl layer
@@ -893,7 +899,7 @@ function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
     let dist_kpis_ranges = get_area_dist_kpis_ranges(active_layer_id);
     let distKPIsRange = dist_kpis_ranges[group_name];
     // Reset to default slider value when adding a new layer
-    areaMarkerResizeSliderVal = 1.0;
+    areaMarkerResizeSliderVal = initAreaMarkerResizeSliderVal;
 
     let geo_json_layer = L.geoJson(area_data, {
         style: style_area,
@@ -1031,9 +1037,8 @@ function set_building_contextmenu(layer, id) {
         contextmenuItems: [],
         contextmenuInheritItems: false
     });
-
     layer.options.contextmenuItems.push({
-        text: 'Building ESDL contents',
+        text: 'Open ' + layer.type + ' contents',
         icon: resource_uri + 'icons/BuildingContents.png',
         callback: function(e) { edit_building_contents(e, id); }
     });
@@ -1044,7 +1049,7 @@ function set_building_contextmenu(layer, id) {
         callback: function(e) { remove_building(layer); }
     });
     layer.options.contextmenuItems.push({
-        text: 'Edit building properties',
+        text: 'Edit ESDL properties',
         icon: resource_uri + 'icons/Edit.png',
         callback: function(e) { esdl_browser.open_browser_with_event(e, id); }
     });

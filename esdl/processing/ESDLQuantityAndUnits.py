@@ -143,7 +143,8 @@ unitdict = {
     'PASCAL': 'Pa',
     'NEWTON': 'N',
     'DEGREES': '\u00b0',  # Sign for degrees
-    'HOUR': 'h'
+    'HOUR': 'h',
+    'TONNE': 't'
 }
 
 

@@ -1,6 +1,6 @@
 <template>
   <div
-    v-show="kpis_present || animation_possible"
+    v-if="activeEsdlVisualizationAvailable()"
     class="my-control leaflet-result-visualizations-toolbar"
   >
     <a-row type="flex" justify="space-between">
@@ -13,33 +13,37 @@
         </a-button>
       </a-col>
     </a-row>
-
-    <a-row v-if="service_short_name!=null && calc_name!=null">
+    <a-row v-if="activeEsdlParams.message!=null">
       <a-space direction="vertical" align="center">
-        <span>For '{{ service_short_name }}' result: '{{ calc_name }}'</span>
+        <span style="width: 250px; display: inline-block; word-break: break-all;">{{ activeEsdlParams.message }}</span>
       </a-space>
     </a-row>
     <br>
     <a-row>
       <a-space direction="vertical" align="center">
         <a-space>
-          <a-button v-if="kpis_present" size="small" type="primary" @click="handleShowDashboard">
+          <a-button v-if="activeEsdlParams.kpis_present" size="small" type="primary" @click="handleShowDashboard">
             Show KPI dashboard
           </a-button>
-          <span v-else>No KPI's available</span>
         </a-space>
-
-        <a-space-compact v-if="animation_possible" block size="small">
+        <a-space>
+          <a-button
+            v-if="activeEsdlParams.external_link_description!=null" size="small" type="primary"
+            @click="handleShowExternalLink"
+          >
+            {{ activeEsdlParams.external_link_description }}
+          </a-button>
+        </a-space>
+        <a-space-compact v-if="activeEsdlParams.animation_possible" block size="small">
           <a-select
             ref="select"
-            v-model:value="selected_field"
+            v-model:value="activeEsdlParams.anim_selected_field"
             style="width: 150px"
-            :options="field_options"
-            @focus="focus"
+            :options="activeEsdlParams.anim_field_options"
             @change="handleChange"
           />
           <a-button
-            :disabled="selected_field === 'Choose field ...'"
+            :disabled="activeEsdlParams.anim_selected_field === 'Choose field ...'"
             size="small"
             type="primary"
             @click="handleLoadAnimation"
@@ -47,9 +51,6 @@
             Load animation
           </a-button>
         </a-space-compact>
-        <a-space v-else-if="service_short_name!=null && calc_name!=null">
-          <span>No animation available</span>
-        </a-space>
       </a-space>
     </a-row>
   </div>
@@ -58,70 +59,140 @@
 <script setup>
 import {ref, onMounted} from 'vue';
 import {CloseOutlined} from '@ant-design/icons-vue';
+import {MessageNames, PubSubManager} from "@/bridge";
+import {useEsdlLayers} from "@/composables/esdlLayers";
 
-const kpis_present = ref(false);
-const animation_possible = ref(false);
-const field_options = ref([]);
-const selected_field = ref("Choose field ...");
-const anim_esdl_id = ref(null);
-const service_short_name = ref(null);
-const calc_name = ref(null);
+const {getActiveEsdlLayerId} = useEsdlLayers();
+
+class VisualParams {
+  constructor(esdl_id) {
+    this.esdl_id = esdl_id;
+    this.kpis_present = false;
+    this.animation_possible = false;
+    this.anim_selected_field = "Choose field ...";
+    this.anim_filter_tag_name = null;
+    this.anim_filter_tag_value = null;
+    this.anim_influxdb_host_override = null;
+    this.anim_influxdb_port_override = null;
+    this.message = null;
+    this.external_link_url = null;
+    this.external_link_description = null;
+  }
+}
+
+/**  @type {import('vue').Ref<Record<string, VisualParams>>} */
+const paramsPerEsdl = ref({});
+/**  @type {import('vue').Ref<VisualParams>} */
+const activeEsdlParams = ref(null);
 
 onMounted(() => {
   window.addEventListener('load', () => {
     // run after everything is in-place
     window.socket.on('kpis_present', function (data) {
       console.log('kpis_present:', data['es_id']);
-      if (data['es_id'] !== anim_esdl_id.value) {  // remove animation info if new ESDL
-        time_dimension.removeGeoJSONLayers();
-        time_dimension.show_hide_animation_toolbar(false);
-        animation_possible.value = false;
-        anim_esdl_id.value = null;
-        service_short_name.value = null;
-        calc_name.value = null;
+      setActiveEsdlParams(data['es_id']);
+
+      activeEsdlParams.value.kpis_present = true;
+      // kpis are always loaded with general ESDL id, message, don't overwrite
+      if (activeEsdlParams.value.message === null) {
+        activeEsdlParams.value.message = data['message'];
       }
-      kpis_present.value = true;
     });
     window.socket.on('animation_esdl_data', function (data) {
-      console.log('animation_possible, esdl id: ', data['es_id']);
-      animation_possible.value = true;
-      field_options.value = [];
+      console.log('animation_esdl_data, esdl id: ', data['es_id']);
+      setActiveEsdlParams(data['es_id']);
+      activeEsdlParams.value.animation_possible = true;
+      activeEsdlParams.value.anim_field_options = [];
       data['fields'].forEach((field) => {
-        field_options.value.push(
+        activeEsdlParams.value.anim_field_options.push(
             {
               value: field,
               label: field,
             }
-        )
+        );
       });
-      anim_esdl_id.value = data['es_id'];
-      service_short_name.value = data['service_short_name'];
-      calc_name.value = data['calc_name'];
+      activeEsdlParams.value.message = data['message'];
+      activeEsdlParams.value.anim_filter_tag_name = data["filter_tag_name"];
+      activeEsdlParams.value.anim_filter_tag_value = data["filter_tag_value"];
+      activeEsdlParams.value.anim_influxdb_host_override = data["influxdb_host_override"];
+      activeEsdlParams.value.anim_influxdb_port_override = data["influxdb_port_override"];
+    });
+    window.socket.on('results_external_link', function (data) {
+      console.log('results_external_link:', data['es_id']);
+      setActiveEsdlParams(data['es_id']);
+      activeEsdlParams.value.message = data['message'];
+      activeEsdlParams.value.external_link_description = data["description"];
+      activeEsdlParams.value.external_link_url = data["url"];
     });
   });
+});
+
+const setActiveEsdlParams = (esdl_id) => {
+  if (activeEsdlParams.value !== null && esdl_id === activeEsdlParams.value.esdl_id) {
+    return;
+  }
+  if (!(esdl_id in paramsPerEsdl.value)) {
+    paramsPerEsdl.value[esdl_id] = new VisualParams(esdl_id);
+  }
+  activeEsdlParams.value = paramsPerEsdl.value[esdl_id];
+};
+
+const activeEsdlVisualizationAvailable = () => {
+  if (activeEsdlParams.value !== null) {
+    if (activeEsdlParams.value.kpis_present || activeEsdlParams.value.animation_possible || activeEsdlParams.value.external_link_description != null) {
+      return true;
+    }
+  }
+  return false;
+};
+
+PubSubManager.subscribe(MessageNames.SELECT_ACTIVE_LAYER, (name, message) => {
+  const esdl_id = message.active_layer_id;
+  if (activeEsdlParams.value !== null && esdl_id === activeEsdlParams.value.esdl_id) {
+    return;
+  }
+  clearData();
+  setActiveEsdlParams(window.esdl_list[getActiveEsdlLayerId().value].id);
+});
+
+PubSubManager.subscribe(MessageNames.REMOVE_LAYER, (name, message) => {
+  const esdl_id = message.removed_layer_id;
+  delete paramsPerEsdl.value[esdl_id];
+  clearData();
 });
 
 const handleShowDashboard = () => {
   window.kpi_dashboard.open();
 };
-const handleLoadAnimation = () => {
-  console.log("Results animation");
-  // TODO simulation_id set to 'null' since we don't know the output mesido simulationRun, use for essim
 
-  time_dimension.initialize(anim_esdl_id.value, null, [], selected_field.value);
+const handleShowExternalLink = () => {
+  window.open(activeEsdlParams.value.external_link_url, '_blank');
 };
+
+const handleLoadAnimation = () => {
+  time_dimension.initialize(
+      activeEsdlParams.value.esdl_id,
+      activeEsdlParams.value.anim_filter_tag_name,
+      activeEsdlParams.value.anim_filter_tag_value,
+      [],
+      activeEsdlParams.value.anim_selected_field,
+      activeEsdlParams.value.anim_influxdb_host_override,
+      activeEsdlParams.value.anim_influxdb_port_override
+  );
+};
+
 const handleDismiss = () => {
+  clearData();
+};
+
+const handleChange = (value) => {
+  activeEsdlParams.value.anim_selected_field = value;
+};
+
+const clearData = () => {
   time_dimension.removeGeoJSONLayers();
   time_dimension.show_hide_animation_toolbar(false);
-  kpis_present.value = false;
-  animation_possible.value = false;
-  anim_esdl_id.value = null;
-  service_short_name.value = null;
-  calc_name.value = null;
-};
-const handleChange = (value) => {
-  console.log(`selected: ${value}`);
-  selected_field.value = value;
+  activeEsdlParams.value = null;
 };
 
 </script>

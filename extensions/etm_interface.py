@@ -286,7 +286,7 @@ class ETMInterface:
             for row in reader:
                 self.municipalities_bld_info[row['gm_code']] = row
 
-        logger.debug(f"ETM plugin read {len(self.municipalities_bld_info)} municipalities from input file")
+        logger.debug(f"ETM plugin read {len(self.municipalities_bld_info)} municipality building stats from input file")
 
     def get_scenario_info(self, scenario_id):
         if scenario_id in etm_scenarios:

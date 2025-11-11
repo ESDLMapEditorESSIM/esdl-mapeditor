@@ -11,10 +11,17 @@
       >
         {{ option.name }}
       </div>
+      <div
+        v-else-if="option.type === 'subheader'"
+        class="choice-subheader"
+      >
+        {{ option.name }}
+      </div>
       <a-button
         v-else
         :type="option.type || 'primary'"
         block
+        ghost
         :disabled="isOptionDisabled(option)"
         class="choice-button"
         @click="optionClick(option)"
@@ -107,5 +114,11 @@ const optionClick = (option) => {
 .choice-list .choice-entry .choice-header {
   text-align: center;
   font-weight: bolder;
+  font-size: 1.5em;
+}
+.choice-list .choice-entry .choice-subheader {
+  text-align: center;
+  font-size: 1.2em;
+  color: #333;
 }
 </style>

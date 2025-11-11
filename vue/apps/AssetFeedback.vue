@@ -15,14 +15,14 @@
   -->
 
 <template>
-  <h1>Asset feedback</h1>
+  <h1>ESDL feedback</h1>
   <template
-    v-if="asset_feedback_list.length"
+    v-if="asset_feedback_list.length || general_feedback_list.length"
   >
     <a-card style="width: 100%">
       <p>
-        The following feedback was given for the assets in the energy system. You can click on an item in the list
-        to let the map zoom into the specific asset
+        The following feedback was given for the objects in the energy system.
+        For object feedback messages, you can click on an item in the list to let the map zoom into the object.
       </p>
     </a-card>
     <a-input
@@ -30,11 +30,11 @@
       placeholder="Enter search term..."
     />
     <a-table
-      :columns="columns"
-      :data-source="filtered_asset_feedback_list"
+      v-if="filtered_general_feedback_list.length"
+      :columns="generalColumns"
+      :data-source="filtered_general_feedback_list"
       row-key="id"
-      :custom-row="customRow"
-      :pagination="{ pageSize: 50 }"
+      :pagination="{ pageSize: 5 }"
       :scroll="{ y: 'max-content' }"
     >
       <template #name="{ record }">
@@ -44,7 +44,50 @@
           :key="item.key"
           style="font-size: x-small"
         >
-          <span :style="severity_color_mapping[item.severity]">{{ item.severity }}:</span> {{ item.message }}<br>
+          <p style="margin: 0;">
+            <span :style="severity_color_mapping[item.severity]">{{ item.severity }}</span>
+            {{ ` - ${item.validationMessage }` }}
+          </p>
+          <ul 
+            v-if="Array.isArray(item.checkResultMessages)"
+            style="margin-left: -1rem; margin-bottom: 0.1rem;"
+          >
+            <li v-for="(msg, index) in item.checkResultMessages" :key="index">
+              {{ msg }}
+            </li>
+          </ul>
+        </span>
+      </template>
+    </a-table>
+    <a-table
+      v-if="filtered_asset_feedback_list.length"
+      :columns="columns"
+      :data-source="filtered_asset_feedback_list"
+      row-key="id"
+      :custom-row="customRow"
+      :pagination="{ pageSize: 50 }"
+      :scroll="{ y: 'max-content' }"
+      class="table-with-hover"
+    >
+      <template #name="{ record }">
+        <b>{{ record.name }}</b><br>
+        <span
+          v-for="item in record.messages"
+          :key="item.key"
+          style="font-size: x-small"
+        >
+          <p style="margin: 0;">
+            <span :style="severity_color_mapping[item.severity]">{{ item.severity }}</span>
+            {{ ` - ${item.validationMessage }` }}
+          </p>
+          <ul 
+            v-if="Array.isArray(item.checkResultMessages)"
+            style="margin-left: -1rem; margin-bottom: 0.1rem;"
+          >
+            <li v-for="(msg, index) in item.checkResultMessages" :key="index">
+              {{ msg }}
+            </li>
+          </ul>
         </span>
       </template>
     </a-table>
@@ -69,35 +112,52 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { useAssetFeedbackList } from '../composables/assetFeedback';
-import { v4 as uuidv4 } from 'uuid';
+import {ref, computed} from 'vue'
+import {useAssetFeedbackList} from '../composables/assetFeedback';
+import {v4 as uuidv4} from 'uuid';
 
-const { currentAssetFeedbackList } = useAssetFeedbackList();
+const {currentAssetFeedbackList} = useAssetFeedbackList();
+
+const generalColumns = [
+  {
+    title: 'Feedback message(s)',
+    dataIndex: 'name',
+    width: 150,
+    slots: {customRender: "name"},
+  },
+];
 
 const columns = [
   {
-    title: 'Asset with error(s)',
+    title: 'Object feedback message(s): click to zoom',
     dataIndex: 'name',
     width: 150,
-    slots: { customRender: "name" },
+    slots: {customRender: "name"},
   },
 ];
 
 const asset_feedback_list = ref([]);
+// A list of feedback that can't be linked to the specific asset.
+const general_feedback_list = ref([]);
 const search_text = ref("");
 
-const severity_color_mapping =  {
+const severity_color_mapping = {
   "INFO": "color:#00FF00",
   "WARNING": "color:#FFA500",
   "ERROR": "color:#FF0000",
 }
 
+const filtered_general_feedback_list = computed(() => {
+  return general_feedback_list.value.filter((record) => {
+    return record.name.includes(search_text.value); // || record.message.includes(search_text.value);
+  });
+});
+
 const filtered_asset_feedback_list = computed(() => {
   return asset_feedback_list.value.filter((record) => {
     return record.name.includes(search_text.value); // || record.message.includes(search_text.value);
   });
-})
+});
 
 function customRow(record) {
   return {
@@ -126,25 +186,29 @@ function create_asset_feedback_list() {
   let active_es_asset_info = window.get_layers(active_es_id, 'esdl_layer');
   let active_es_asset_layers = active_es_asset_info.getLayers();
 
-  console.log(currentAssetFeedbackList.value);
   let tmp_asset_feedback_list = [];
+  let found_feedback_ids = [];
 
-  for (let i=0; i<active_es_asset_layers.length; i++) {
-    let asset = active_es_asset_layers[i];
-    if (asset.id in currentAssetFeedbackList.value) {
-
+  for (let i = 0; i < active_es_asset_layers.length; i++) {
+    const asset = active_es_asset_layers[i];
+    const assetId = asset.id;
+    const assetName = asset.name;
+    if (assetId in currentAssetFeedbackList.value) {
+      found_feedback_ids.push(assetId)
       let messages = [];
-      for (let j=0; j<currentAssetFeedbackList.value[asset.id].length; j++) {
+
+      currentAssetFeedbackList.value[assetId].forEach((validationResult) => {
         messages.push({
           key: uuidv4(),
-          message: currentAssetFeedbackList.value[asset.id][j]['message'],
-          severity: currentAssetFeedbackList.value[asset.id][j]['severity'],
+          severity: validationResult['severity'],
+          validationMessage: validationResult['validation_message'], 
+          checkResultMessages: validationResult['check_result_messages'],
         });
-      }
+      })
 
-      let feedback_item = {
-        key: asset.id,
-        name: asset.name,
+      const feedback_item = {
+        key: assetId,
+        name: assetName,
         messages: messages,
         layer: asset,
       }
@@ -152,8 +216,38 @@ function create_asset_feedback_list() {
     }
   }
   asset_feedback_list.value = tmp_asset_feedback_list;
+
+  let tmp_general_feedback_list = [];
+  for (const messagesId in currentAssetFeedbackList.value) {
+    if (!found_feedback_ids.includes(messagesId)) {
+      let messages = [];
+
+      currentAssetFeedbackList.value[messagesId].forEach((validationResult) => {
+        messages.push({
+          key: uuidv4(),
+          severity: validationResult['severity'],
+          validationMessage: validationResult['validation_message'], 
+          checkResultMessages: validationResult['check_result_messages']
+        });
+      })
+
+      const feedback_item = {
+        key: messagesId,
+        name: messagesId,
+        messages: messages
+      }
+      tmp_general_feedback_list.push(feedback_item)
+    }
+  }
+  general_feedback_list.value = tmp_general_feedback_list;
 }
 
 create_asset_feedback_list();
 
 </script>
+
+<style scoped>
+.table-with-hover {
+  cursor: pointer;
+}
+</style>

@@ -1,0 +1,361 @@
+#  This work is based on original code developed and copyrighted by TNO 2023.
+#  Subsequent contributions are licensed to you by the developers of such code and are
+#  made available to the Project under one or several contributor license agreements.
+#
+#  This work is licensed to you under the Apache License, Version 2.0.
+#  You may obtain a copy of the license at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Contributors:
+#      TNO         - Initial implementation
+#  Manager:
+#      TNO
+import csv
+import os
+import subprocess
+from uuid import uuid4
+import psycopg2
+from psycopg2 import extensions
+
+from geo.Geoserver import Geoserver, GeoserverException
+
+from extensions.settings_storage import SettingsStorage, SettingType
+from src.tno.locking import NamedLocker
+from src.wms_layers import LAYERS_SETTING, LAYERS_GROUP_SETTING
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
+def _get_identifier(setting_type: SettingType, project_name: str) -> str | None:
+    if setting_type is None:
+        return
+    elif setting_type == SettingType.PROJECT:
+        if project_name is not None:
+            identifier = project_name.replace(" ", "_")
+        else:
+            identifier = "unnamed project"
+    elif setting_type == SettingType.SYSTEM:
+        identifier = SettingsStorage.SYSTEM_NAME_IDENTIFIER
+    else:
+        return None
+    return identifier
+
+
+def connect_to_postgres(host: str, port: int, database: str, user: str, password: str) -> extensions.cursor:
+    print(f"Connecting to postgres, host: '{host}', port: '{port}', database: '{database}'")
+    conn = psycopg2.connect(host=host, port=port, database=database, user=user, password=password)
+    return conn.cursor()
+
+
+def load_wms_layer_postgis(
+    cursor: extensions.cursor,
+    postgres_host: str,
+    postgres_port: str,
+    postgres_user: str,
+    postgres_password: str,
+    postgres_db: str,
+    file_path: str,
+    table_name: str,
+    overwrite: bool = False,
+) -> None:
+    # check if table already exists
+    cursor.execute("select exists(select * from information_schema.tables where table_name=%s)", (table_name,))
+    if overwrite or not cursor.fetchone()[0]:  # if overwrite or table does not exist
+        result = subprocess.run(
+            f'ogr2ogr -f PostgreSQL "PG:host={postgres_host} port={postgres_port} user={postgres_user}'
+            f' password={postgres_password} dbname={postgres_db}" "{file_path}" -nln {table_name} -overwrite',
+            shell=True,
+            capture_output=True,
+            text=True,
+        )
+        if result.stdout:
+            print("stdout:", result.stdout)
+        if result.stderr:
+            raise IOError("=== stderr:", result.stderr)
+    else:
+        print(f"   === skipping postgres load: table already exists: '{table_name}' for file '{file_path}'")
+
+
+def connect_to_geoserver(geo_server_url: str, geoserver_admin_user: str, geoserver_admin_password: str) -> Geoserver:
+    print("Connecting to geoserver", geo_server_url)
+    geo = Geoserver(
+        service_url=geo_server_url,
+        username=geoserver_admin_user,
+        password=geoserver_admin_password,
+    )
+    return geo
+
+
+def load_wms_layer_geoserver(
+    geo: Geoserver,
+    workspace: str,
+    store_name: str,
+    supported_raster_extensions: str,
+    layer_name: str,
+    file_path: str,
+    style_name: str,
+    style_file_path: str = None,
+    overwrite: bool = False,
+) -> None:
+    # check if layer already exists
+    try:
+        layer = geo.get_layer(layer_name, os.environ.get("GEOSERVER_WORKSPACE"))
+    except GeoserverException:
+        layer = None
+    if layer:
+        if isinstance(layer, str):
+            raise IOError(f" === ERROR loading '{layer_name}': {layer}")
+
+    if overwrite or not layer:  # if overwrite or layer does not exist
+        if layer:  # delete already existing layer and style
+            try:  # delete style if exists
+                geo.delete_style(style_name=style_name, workspace=workspace)
+            except GeoserverException:
+                pass
+            geo.delete_layer(layer_name=layer_name, workspace=workspace)
+
+        if style_file_path:
+            geo.upload_style(path=style_file_path, name=style_name, workspace=workspace)
+        if file_path.endswith(tuple(supported_raster_extensions.replace(" ", "").split(","))):  # raster file
+            geo.create_coveragestore(layer_name=layer_name, path=file_path, workspace=workspace)
+            if not style_file_path:  # create default style
+                geo.create_coveragestyle(
+                    raster_path=file_path,
+                    style_name=style_name,
+                    workspace=workspace,
+                    color_ramp="nipy_spectral",
+                )
+            geo.publish_style(
+                layer_name=layer_name,
+                style_name=style_name,
+                workspace=workspace,
+            )
+        else:  # load from postgis
+            geo.publish_featurestore(
+                workspace=workspace,
+                store_name=store_name,
+                pg_table=layer_name,
+            )
+    else:
+        print(f"   === skipping geoserver load: layer already exists: '{layer_name}' for file '{file_path}'")
+
+
+def add_wms_group(
+    layer_groups: dict, parent_uuid: str, setting_type: SettingType, project_name: str, description: str
+) -> str:
+    for group_id, group in layer_groups.items():
+        if description == group["description"] and group_id in layer_groups[parent_uuid]["child_ids"]:
+            return group_id  # layer group already exits
+    if setting_type == SettingType.SYSTEM:
+        project_name = SettingType.SYSTEM.value
+    group = {
+        "setting_type": setting_type.value,
+        "project_name": project_name,
+        "description": description,
+        "child_ids": [],
+    }
+    group_uuid = str(uuid4())
+    layer_groups[group_uuid] = group
+    layer_groups[parent_uuid]["child_ids"].append(group_uuid)
+    return group_uuid
+
+
+def add_wms_layer(
+    wms_layers: dict,
+    parent_group: dict,
+    setting_type: SettingType,
+    project_name: str,
+    description: str,
+    url: str,
+    layer_name: str,
+    legend_url: str,
+    layer_opacity: float,
+) -> None:
+    if setting_type == SettingType.SYSTEM:
+        project_name = SettingType.SYSTEM.value
+    layer = {
+        "description": description,
+        "url": url,
+        "layer_name": layer_name,
+        "setting_type": setting_type.value,
+        "project_name": project_name,
+        "legend_url": legend_url,
+        "layer_ref": None,
+        "visible": False,
+        "opacity": layer_opacity,
+    }
+    layer_uuid = str(uuid4())
+    wms_layers[layer_uuid] = layer
+    parent_group["child_ids"].append(layer_uuid)
+
+
+def load_layers() -> None:
+    cursor = connect_to_postgres(
+        host=os.environ.get("POSTGRES_HOST"),
+        port=int(os.environ.get("POSTGRES_PORT")),
+        database=os.environ.get("POSTGRES_DB"),
+        user=os.environ.get("POSTGRES_USER"),
+        password=os.environ.get("POSTGRES_PASSWORD"),
+    )
+
+    # connect to geoserver
+    geo = connect_to_geoserver(
+        os.environ.get("GEOSERVER_URL"),
+        os.environ.get("GEOSERVER_ADMIN_USER"),
+        os.environ.get("GEOSERVER_ADMIN_PASSWORD"),
+    )
+
+    # create workspace if not present
+    workspace_names = None
+    workspaces = geo.get_workspaces()["workspaces"]
+    if workspaces:
+        workspace_names = [workspace_values[0]["name"] for workspace_values in workspaces.values()]
+    if not workspace_names or os.environ.get("GEOSERVER_WORKSPACE") not in workspace_names:
+        geo.create_workspace(workspace=os.environ.get("GEOSERVER_WORKSPACE"))
+
+    # create datastore if not present
+    datastore_names = None
+    datastores = geo.get_datastores()["dataStores"]
+    if datastores:
+        datastore_names = [datastore_values[0]["name"] for datastore_values in datastores.values()]
+    if not datastore_names or os.environ.get("GEOSERVER_STORENAME") not in datastore_names:
+        geo.create_featurestore(
+            store_name=os.environ.get("GEOSERVER_STORENAME"),
+            workspace=os.environ.get("GEOSERVER_WORKSPACE"),
+            db=os.environ.get("POSTGRES_DB"),
+            host=os.environ.get("POSTGRES_HOST_INTERNAL"),
+            port=int(os.environ.get("POSTGRES_PORT_INTERNAL")),
+            pg_user=os.environ.get("POSTGRES_USER"),
+            pg_password=os.environ.get("POSTGRES_PASSWORD"),
+        )
+
+    # get mapeditor wms layers and groups
+    settings_storage = SettingsStorage(
+        named_locker=NamedLocker(), database_uri=f"mongodb://{os.environ.get('MONGO_URL')}"
+    )
+    setting_type = SettingType(os.environ.get("SETTING_TYPE"))
+    identifier = _get_identifier(setting_type, os.environ.get("PROJECT_NAME"))
+    if setting_type == SettingType.SYSTEM:
+        root_key = "system_root_group"
+    else:
+        root_key = f"{identifier}_root_group"
+    if settings_storage.has(setting_type, identifier, LAYERS_SETTING):
+        wms_layers = settings_storage.get(setting_type, identifier, LAYERS_SETTING)
+    else:
+        wms_layers = {}
+    if settings_storage.has(setting_type, identifier, LAYERS_GROUP_SETTING):
+        layer_groups = settings_storage.get(setting_type, identifier, LAYERS_GROUP_SETTING)
+    else:
+        if setting_type == SettingType.SYSTEM:
+            description = "Standard Layers"
+        else:
+            description = f"Project Layers for {identifier}"
+        layer_groups = {
+            root_key: {
+                "setting_type": "project",
+                "project_name": identifier,
+                "description": description,
+                "is_root": True,
+                "child_ids": [],
+                "readonly": False,
+            }
+        }
+
+    # add base folder to mapeditor layer groups
+    base_folder_name = os.path.normpath(os.environ.get("FOLDER_PATH")).split(os.path.sep)[-1]
+    base_folder_uuid = add_wms_group(
+        layer_groups, root_key, setting_type, os.environ.get("PROJECT_NAME"), base_folder_name
+    )
+
+    # add layers
+    with open(os.environ.get("LAYERS_WITH_STYLE_FILE"), newline="") as csvfile:
+        csv_reader = csv.reader(csvfile, delimiter=",", quotechar='"')
+        for row in csv_reader:
+            file_path = row[0].strip()  # remove newline characters
+            print(f"processing '{file_path}'")
+
+            path_in_base_folder = os.path.relpath(file_path, os.environ.get("FOLDER_PATH"))
+            path_parts = os.path.normpath(path_in_base_folder).split(os.path.sep)
+            parent_folders = path_parts[:-1]
+            layer_name, _ = os.path.splitext(path_parts[-1].lower().replace("&", ""))
+
+            style_file_path = row[1].strip()
+            if os.path.isfile(style_file_path):
+                style_name = os.path.basename(style_file_path).replace(".sld", "")
+            else:
+                style_file_path = None
+                style_name = layer_name + "_style"
+
+            try:
+                # load layer in postgis (only for non-raster files)
+                is_raster_file = file_path.endswith(
+                    tuple(os.environ.get("SUPPORTED_RASTER_EXTENSIONS").replace(" ", "").split(","))
+                )
+                if not is_raster_file:
+                    load_wms_layer_postgis(
+                        cursor=cursor,
+                        postgres_host=os.environ.get("POSTGRES_HOST"),
+                        postgres_port=os.environ.get("POSTGRES_PORT"),
+                        postgres_user=os.environ.get("POSTGRES_USER"),
+                        postgres_password=os.environ.get("POSTGRES_PASSWORD"),
+                        postgres_db=os.environ.get("POSTGRES_DB"),
+                        file_path=file_path,
+                        table_name=layer_name,
+                        overwrite=os.getenv("OVERWRITE_POSTGIS_GEOSERVER").lower() in ("true", "1", "t"),
+                    )
+                # load layer in geoserver
+                load_wms_layer_geoserver(
+                    geo=geo,
+                    workspace=os.environ.get("GEOSERVER_WORKSPACE"),
+                    store_name=os.environ.get("GEOSERVER_STORENAME"),
+                    supported_raster_extensions=os.environ.get("SUPPORTED_RASTER_EXTENSIONS"),
+                    layer_name=layer_name,
+                    file_path=file_path,
+                    style_name=style_name,
+                    style_file_path=style_file_path,
+                    overwrite=os.getenv("OVERWRITE_POSTGIS_GEOSERVER").lower() in ("true", "1", "t"),
+                )
+
+                # load folders and WMS layers into mongodb for mapeditor tree
+                parent_folder_uuid = base_folder_uuid
+                for folder_name in parent_folders:
+                    parent_folder_uuid = add_wms_group(
+                        layer_groups, parent_folder_uuid, setting_type, os.environ.get("PROJECT_NAME"), folder_name
+                    )
+
+                if is_raster_file:
+                    layer_opacity = float(os.environ.get("RASTER_DEFAULT_TRANSPARENCY"))
+                else:
+                    layer_opacity = float(os.environ.get("VECTOR_DEFAULT_TRANSPARENCY"))
+
+                add_wms_layer(
+                    wms_layers,
+                    layer_groups[parent_folder_uuid],
+                    setting_type,
+                    os.environ.get("PROJECT_NAME"),
+                    layer_name,
+                    f"{os.environ.get('GEOSERVER_URL')}/wms",
+                    layer_name,
+                    f"{os.environ.get('GEOSERVER_URL')}/wms/ows?service=WMS&request=GetLegendGraphic&"
+                    f"FORMAT=image/png&LAYER={layer_name}&LEGEND_OPTIONS=fontsize:10;fontname:serif;fontColor:505050",
+                    layer_opacity,
+                )
+            except Exception as e:
+                print(e)
+                if os.getenv("ABORT_ON_LAYER_ERROR").lower() in ("true", "1", "t"):
+                    raise IOError(
+                        f"ERROR loading {file_path}:"
+                        f" previous files have been loaded to postgis/geoserver,"
+                        f" nothing has been loaded into the mapeditor."
+                    )
+                else:
+                    print(f"ERROR loading {file_path}: this file is not loaded into the mapeditor.")
+
+    settings_storage.set(setting_type, identifier, LAYERS_SETTING, wms_layers)
+    settings_storage.set(setting_type, identifier, LAYERS_GROUP_SETTING, layer_groups)
+
+
+if __name__ == "__main__":
+    load_layers()

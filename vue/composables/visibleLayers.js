@@ -153,7 +153,7 @@ const queryWmsLayersFeaturesOnClick = (event) => {
             ev_lat_lng: event.latlng,
             layers: layersRequestInfo
         };
-        socket.emit("query_wms_layer_feature", requestBody);
+        socket.value.emit("query_wms_layer_feature", requestBody);
     }
 };
 

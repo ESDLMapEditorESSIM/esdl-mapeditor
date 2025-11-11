@@ -86,7 +86,7 @@ class ESDLDataLayer:
             # Is this the right way?
             obj_info['attributes'] = cat_attrs
 
-            if isinstance(esdl_object, esdl.EnergyAsset):
+            if isinstance(esdl_object, esdl.ConnectableAsset):
                 obj_info['port_profile_info'] = get_port_profile_info(esdl_object)
                 obj_info['port_connected_to_info'] = get_connected_to_info(esdl_object)
             else:

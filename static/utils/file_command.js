@@ -43,9 +43,47 @@ function click_new_ESDL_button(obj) {
 
     window.socket.emit('file_command', {cmd: 'new_esdl', name: new_name, description: new_description,
         instance_name: new_instance_name, top_area_name: new_top_area_name});
+}
 
+function import_esdl_helper(event, inline=false) {
+    // getting a hold of the file reference
+    var file = event.target.files[0];
+
+    // setting up the reader
+    var reader = new FileReader();
+    // reader.readAsText(file); // this is reading as data url
+    reader.readAsDataURL(file); // this is reading as data url
+
+    // here we tell the reader what to do when it's done reading...
+    reader.onload = readerEvent => {
+        var content = readerEvent.target.result; // this is the content!
+        // socket.emit('file_command', {cmd: 'import_esdl_from_file', filename: file.name, file_content: content, load_animation: true});
+        show_loader();
+        $.ajax({
+            url: resource_uri + '/esdl_file_import',
+            type: 'POST',
+            data: {file_content: content, filename: file.name, inline: inline},
+            success: function (data) {
+                hide_loader();
+
+                window.socket.emit('process_imported_energysystem');
+            },
+            error: function (data) {
+                hide_loader();
+                alert('Error importing ESDL file');
+            }
+        });
+    }
     window.PubSubManager.broadcast('NEW_ESDL', {});
 }
+
+function import_ESDL(event) {
+    import_esdl_helper(event, false);
+}
+
+// function import_esdl_with_inline_profiles(event) {
+//     import_esdl_helper(event, true);
+// }
 
 function save_ESDL(e, prefix) {
     let url = prefix+'/esdl';

@@ -1,5 +1,3 @@
-version: "3.3"
-
 services:
   mapeditor:
     build:
@@ -8,13 +6,16 @@ services:
     image: esdl-mapeditor:gunicorn
     networks:
       - mapeditor-net
+      - nwn
+    volumes:
+      - "../credentials/client_secrets_local-docker.json:/usr/src/app/credentials/client_secrets_local-docker.json"
     ports:
       - "${MAPEDITOR_PORT:-8111}:8111"
     env_file:
       - ../.env.local-docker
       - ../.env
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+#    extra_hosts:
+#      - "host.docker.internal:host-gateway"
 
 
 networks:

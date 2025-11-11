@@ -26,6 +26,41 @@ logger = log.get_logger(__name__)
 # Add new release notes at the beginning of this list
 release_notes = [
     {
+        "version": "25.10.0",
+        "date": "2025-10-20T16:00:00Z",
+        "general_message": "On October 20th 2025, we've released the new ESDL MapEditor version 25.10.0. " +
+                           "See below for a list of the most important new features and bug fixes",
+        "categories": [
+            {
+                "name": "New features",
+                "items": [
+                    "ESDL Analytics, providing detailed analysis functionality on ESDL files, scenario comparison and time series results from model runs",
+                    "Improved workflow engine, providing means to define workflows for users to configure external service calls, showing list of simulation runs with results",
+                    "Improved KPI dashboard, allowing export of data",
+                    "Spatial visualization, enabling showing information about the ESDL on the map",
+                    "Asset ownership editor",
+                    "Support for CompoundAssets, containing a number of other assets",
+                    "Support for ExposedPorts, for Buildings and CompoundAssets",
+                    "WMS layer management, including setting layer opacity",
+                    "Improve downloading ESDLs with inline profiles",
+                    "Replace asset by EDR asset",
+                    "Constraints editor",
+                    "Add support for PriorityStrategy"
+                ]
+            },
+            {
+                "name": "Bug fixes",
+                "items": [
+                    "Fixed load duration curve functionality",
+                    "Fixed DistributionKPI pie charts",
+                    "Fixed cleaning shapes cache",
+                    "Fixed port editor",
+                    "Fix EDR assets on AssetDrawToolbar"
+                ]
+            },
+        ]
+    },
+    {
         "version": "24.6.0",
         "date": "2024-06-27T13:00:00Z",
         "general_message": "On June 27th 2024, we've released the new ESDL MapEditor version 24.6.0. " +

@@ -21,12 +21,11 @@ import requests
 import json
 import uuid
 import re
-import os
 
 from esdl import esdl
 from esdl.processing import ESDLGeometry
 from esdl.undo_wrapper import undo_record_changes
-from extensions.session_manager import get_project_manager, get_session, set_session, get_session_for_esid, \
+from extensions.session_manager import get_project_manager, get_session, get_session_for_esid, \
     set_session_for_esid
 from extensions.settings_storage import SettingsStorage
 
@@ -552,7 +551,7 @@ class BoundaryService:
         """
          :param year: year for which the data must be obtained
          :param scope: any of the following: zipcode, neighbourhood, district, municipality, energyregion, province, country
-         :param id: the identifier of the 'scope'
+         :param scope_id: the identifier of the 'scope'
          :param type: the type of service area data to use, can be 'SA' (for VIVET) or 'CK' (for CapaciteitsKaart)
          :return: list of supply areas in the indicated 'scope'
          """
@@ -598,7 +597,7 @@ class BoundaryService:
          :param year: year for which the data must be obtained
          :param delta_year: delta of the year for which the data must be obtained (can be 0 (current), 3, 5, or 10)
          :param scope: any of the following: zipcode, neighbourhood, district, municipality, energyregion, province, country
-         :param id: the identifier of the 'scope'
+         :param scope_id: the identifier of the 'scope'
          :return: list of stations in the indicated 'scope'
          """
         if is_valid_boundary_id(scope_id):

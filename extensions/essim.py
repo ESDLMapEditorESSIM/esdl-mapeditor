@@ -11,6 +11,9 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+from itertools import islice
+from typing import TypedDict
+
 import base64
 import collections
 import json
@@ -20,6 +23,7 @@ import uuid
 from datetime import datetime
 from typing import TypedDict
 
+import pytz
 import requests
 from flask import Flask, abort, jsonify, session
 from flask_executor import Executor
@@ -35,6 +39,7 @@ from extensions.settings_storage import SettingsStorage
 from src.essim_kpis import ESSIM_KPIs
 from src.process_es_area_bld import process_energy_system
 from src.tno.shared import excel
+from utils.datetime_utils import parse_date
 
 logger = log.get_logger(__name__)
 
@@ -380,8 +385,11 @@ class ESSIM:
                                                          port=ESSIM_config['ESSIM_database_port'],
                                                          database=simulation_info['scenarioID'])
 
-                        sdt = datetime.strptime(simulation_info['startDate'], '%Y-%m-%dT%H:%M:%S%z')
-                        edt = datetime.strptime(simulation_info['endDate'], '%Y-%m-%dT%H:%M:%S%z')
+                        # Parse the datetimes from the simulation info (lots of datetime formats are accepted)
+                        sdt = self.parse_date_string(simulation_info['startDate'])
+                        edt = self.parse_date_string(simulation_info['endDate'])
+
+                        # format datetimes how influxdb wants them
                         influxdb_startdate = sdt.strftime('%Y-%m-%dT%H:%M:%SZ')
                         influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
 
@@ -420,6 +428,9 @@ class ESSIM:
                             for sheet_name in pp_results.keys():
                                 pp_result = pp_results[sheet_name]
 
+                                if not pp_result:
+                                    continue
+
                                 field_map = collections.OrderedDict()
                                 first_row = pp_result[0]
                                 for k, v in first_row.items():
@@ -442,6 +453,15 @@ class ESSIM:
                     else:
                         logger.error("Either simulation info or ESDL could not be retrieved")
                         return None
+
+    def parse_date_string(self, date_string):
+        dt = parse_date(date_string)
+        try:
+            aware_dt = pytz.utc.localize(dt)  # Assume timezone is UTC if no TZ was given
+        except ValueError:  # ValueError: Not naive datetime (tzinfo is already set)
+            aware_dt = dt
+
+        return aware_dt
 
     def retrieve_sim_fav_list(self, essim_list=ESSIM_SIMULATION_LIST):
         with self.flask_app.app_context():
@@ -777,10 +797,14 @@ class ESSIM:
         # The results are ordered using a key consisting of "ESDL energy system name + network name + index"
         # The ESDL energy system name is the same for all results. Excel only allows tabs of max 31 characters, so
         # we find out what the common name is of all simulation results and remove that part of the name
-        common_name = list(essim_results.keys())[0][0]
+        common_name = None
         for result_key in essim_results.keys():
-            result_key_name = result_key[0]
-            common_name = os.path.commonprefix([common_name, result_key_name])
+            if len(list(islice(essim_results[result_key], 2))) > 1:
+                result_key_name = result_key[0]
+                if common_name:
+                    common_name = os.path.commonprefix([common_name, result_key_name])
+                else:
+                    common_name = result_key_name
 
         post_processed_results = dict()
 
@@ -792,7 +816,15 @@ class ESSIM:
         # Iterate over all network results
         for result_key in essim_results.keys():
             result_key_name = result_key[0]
-            network_name = result_key_name.replace(common_name, "")
+            # Only remove the common part if it's not equal to the full name (this is the case when simulating one network)
+            if result_key_name != common_name:
+                network_name = result_key_name.replace(common_name, "")
+            else:
+                network_name = result_key_name
+
+            # If this name is too long, only use first 25 characters, then "_EinJ" or "_PinW" can still be added.
+            if len(network_name) > 25:
+                network_name = network_name[:25]
 
             for attribute in ["Power", "Energy"]:
                 sheet_name = network_name + "_" + attribute_to_name_mapping[attribute]

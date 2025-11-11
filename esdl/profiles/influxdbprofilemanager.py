@@ -14,6 +14,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 from uuid import uuid4
+from urllib.parse import urlparse
 
 import pytz
 from pyecore.ecore import EDate
@@ -84,7 +85,13 @@ class InfluxDBProfileManager(ProfileManager):
             if isinstance(source_profile, InfluxDBProfileManager):
                 self.database_settings = source_profile.database_settings
 
-    def load_influxdb(self, measurement: str, fields: list, from_datetime: datetime = None, to_datetime: datetime = None, filters: list = None):
+    def load_influxdb(self, 
+                      measurement: str,
+                      fields: list,
+                      from_datetime: datetime = None,
+                      to_datetime: datetime = None,
+                      filters: list = None,
+                      groupby_interval_sec: int = None):
         """
         Loads profile information from InfluxDB
 
@@ -93,6 +100,7 @@ class InfluxDBProfileManager(ProfileManager):
         :param from_datetime: the start datetime (included in the data)
         :param to_datetime: the end datetime (included in the data)
         :param filters: a list of dictionaries with 'tag' and 'value' keys, that can be used to filter on the data
+        :param groupby_interval_sec: optional groupby interval in second; if not `None`, `mean()` as an aggregation function is applied to field values
         :return: None
         """
         self.clear_profile()
@@ -110,9 +118,16 @@ class InfluxDBProfileManager(ProfileManager):
                 where_clause_list.append(f"{filter['tag']}='{filter['value']}'")
 
         fields_string = ','.join(['"'+field+'"' for field in fields])
+        if groupby_interval_sec is not None:
+            fields_string = ','.join([f"mean(\"{field}\") as \"{field}\""  for field in fields])
+
         query_string = f"SELECT {fields_string} FROM \"{measurement}\""
+        
         if where_clause_list:
             query_string += " WHERE (" + " AND ".join(where_clause_list) + ")"
+
+        if groupby_interval_sec is not None:
+            query_string += f" GROUP BY time({groupby_interval_sec}s) fill(null)"
 
         res = self.influxdb_client.query(query_string)
 
@@ -210,6 +225,51 @@ class InfluxDBProfileManager(ProfileManager):
         )
 
         return prof
+    
+    @staticmethod
+    def get_profile_influxdb_settings(profile: esdl.InfluxDBProfile, profiles_settings: dict) -> ConnectionSettings | None:
+        """
+        Method to retrieve InfluxDB connection settings for a given profile.
+
+        If the profile is hosted on a publicly accessible server, 
+        it additionally checks the InfluxDB connectivity and constructs the connection settings.
+        """
+        # Find profile server information for the InfluxDBProfile
+        for prof_server in profiles_settings["profiles_servers"]:
+            if prof_server["host"] in profile.host and prof_server["port"] == str(profile.port):
+                return ConnectionSettings(
+                    host=prof_server["host"],
+                    port=profile.port,
+                    database=profile.database,
+                    username=prof_server["username"],
+                    password=prof_server["password"],
+                    ssl=prof_server.get("ssl_enabled", False),
+                    verify_ssl=prof_server.get("ssl_enabled", False),
+                )
+
+        # Check additionally if the profile is hosted on a public accessible server
+        # Ensure host part only (without http:// or https://) 
+        host = urlparse(profile.host).netloc if profile.host.startswith(('http://', 'https://')) else profile.host
+        try:
+            influxdb_client = InfluxDBClient(host=host, port=profile.port, ssl=True, verify_ssl=True, retries=1, timeout=2)
+            db = influxdb_client.get_list_database()
+            if db:
+                return ConnectionSettings(
+                    host=host,
+                    port=profile.port,
+                    database=profile.database,
+                    username="",
+                    password="",
+                    ssl=True,
+                    verify_ssl=True,
+                )
+        except Exception as e:
+            raise ConnectionSettingsRetrivalError(f"Failed to retrieve ConnectionSettings: {e}") from e
+        finally:
+            if influxdb_client:
+                influxdb_client.close()
+
+        return None
 
     @staticmethod
     def _create_esdl_filters_from_tags_dict(tags: dict = None):
@@ -223,7 +283,7 @@ class InfluxDBProfileManager(ProfileManager):
 
             return " AND ".join(filter_list)
 
-    def get_esdl_influxdb_profile(self, measurement: str, field_names: list, tags: dict = None):
+    def get_esdl_influxdb_profile(self, measurement: str, field_names: list, tags: dict = None, profile_type: str = None):
         """
         Creates an esdl.InfluxDBProfile instance (or a list of instances) that refers to the data in the database.
         Is called by load_influxdb and save_influxdb
@@ -231,6 +291,7 @@ class InfluxDBProfileManager(ProfileManager):
         :param measurement: name of the InfluxDB measurement where the data must be written to
         :param field_names: list of the fields that should be written to InfluxDB
         :param tags: dictionary with tags and tag values, that should be used when writing this data to InfluxDB
+        :param profile_type: the type of the profile, defaults to None (deprecated, use QuantityAndUnits instead)
         :return: an esdl.InfluxDBProfile instance or a list of esdl.InfluxDBProfile instances in case multiple fields
                  were specified, with proper references to the data in the database
         """
@@ -246,6 +307,7 @@ class InfluxDBProfileManager(ProfileManager):
                 filters=InfluxDBProfileManager._create_esdl_filters_from_tags_dict(tags),
                 startDate=EDate.from_string(self.start_datetime.strftime('%Y-%m-%dT%H:%M:%S.%f%z')),
                 endDate=EDate.from_string(self.end_datetime.strftime('%Y-%m-%dT%H:%M:%S.%f%z')),
+                profileType=profile_type,
             )
             profile_list.append(esdl_profile)
 
@@ -254,13 +316,14 @@ class InfluxDBProfileManager(ProfileManager):
         else:
             return profile_list
 
-    def save_influxdb(self, measurement: str, field_names: list, tags: dict = None):
+    def save_influxdb(self, measurement: str, field_names: list, tags: dict = None, profile_type: str = None):
         """
         Saves profile information to InfluxDB
 
         :param measurement: name of the InfluxDB measurement where the data must be written to
         :param field_names: list of the fields that should be written to InfluxDB
         :param tags: dictionary with tags and tag values, that should be used when writing this data to InfluxDB
+        :param profile_type: the type of the profile, defaults to None (deprecated, use QuantityAndUnits instead)
         :return: an esdl.InfluxDBProfile instance or a list of esdl.InfluxDBProfile instances in case multiple fields
                  were specified, with proper references to the data in the database
         """
@@ -296,7 +359,7 @@ class InfluxDBProfileManager(ProfileManager):
 
         if json_body:
             self.influxdb_client.write_points(points=json_body, database=self.database_settings.database, batch_size=100)
-            return self.get_esdl_influxdb_profile(measurement, field_names, tags)
+            return self.get_esdl_influxdb_profile(measurement, field_names, tags=tags, profile_type=profile_type)
 
         else:
             return None
@@ -314,4 +377,8 @@ class WrongFilterFormatException(Exception):
 
 class WrongTagsFormatException(Exception):
     """Thrown when the tags parameter has the wrong structure"""
+    pass
+
+
+class ConnectionSettingsRetrivalError(Exception):
     pass

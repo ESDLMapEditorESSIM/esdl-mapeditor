@@ -47,7 +47,7 @@ def create_new_variant(parent_variant: Union[VariantCollection, Variant], varian
     if isinstance(parent_variant, VariantCollection):
         parent_variant = parent_variant.variant  #
     if variant_name is None:
-        variant_name = f"{parent_variant.name} variant {len(parent_variant.variant) + 1}"
+        variant_name = f"{parent_variant.name} ({len(parent_variant.variant) + 1})"
     new_variant = Variant(name=variant_name, id=variant_id or str(uuid4()), lastChanged=datetime.now(timezone.utc))
     parent_variant.variant.append(new_variant)
     return new_variant

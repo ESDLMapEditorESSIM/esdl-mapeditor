@@ -43,7 +43,7 @@ const layout = {
 
 const config = { 
   toImageButtonOptions: {
-    format: 'png', // one of png, svg, jpeg, webp
+    format: 'svg', // one of png, svg, jpeg, webp
     filename: props.title,
     height: 500,
     width: 900,

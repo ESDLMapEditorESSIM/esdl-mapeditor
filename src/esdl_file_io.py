@@ -13,7 +13,7 @@
 #      TNO
 import base64
 
-from flask import Flask, request, session, Request
+from flask import Flask, request, session
 from flask_executor import Executor
 from flask_socketio import SocketIO, emit
 
@@ -43,47 +43,48 @@ class ESDLFileIO:
         @self.flask_app.route("/esdl_file_io", methods=['POST'])
         def esdl_file_io():
             try:
-                # Set max to 20 MB.
-                request.max_form_memory_size = 20 * 1024 * 1024
-                is_import = request.values.get("is_import", 'true') == 'true'
-                if is_import:
-                    pm = get_project_manager()
-                else:
-                    pm = ProjectManager(create_empty_variant=False)
+                with self.flask_app.app_context():
+                    # Set max to 20 MB.
+                    request.max_form_memory_size = 20 * 1024 * 1024
+                    is_import = request.values.get("is_import", 'true') == 'true'
+                    if is_import:
+                        pm = get_project_manager()
+                    else:
+                        pm = ProjectManager(create_empty_variant=False)
 
-                added_variants = []
-                for i in range(int(len(request.values)/2)):
-                    base64_file_contents = request.values.get(f'file_info[{i}][file]')
-                    # base64_file_contents now contains something like
-                    # "data:application/octet-stream;base64,PD94bWwgdmVyc..."
-                    # Only take the part after the comma
-                    base64_file_contents = base64_file_contents.split(',')[1]
-                    filename = request.values.get(f'file_info[{i}][filename]')
+                    added_variants = []
+                    for i in range(int(len(request.values)/2)):
+                        base64_file_contents = request.values.get(f'file_info[{i}][file]')
+                        # base64_file_contents now contains something like
+                        # "data:application/octet-stream;base64,PD94bWwgdmVyc..."
+                        # Only take the part after the comma
+                        base64_file_contents = base64_file_contents.split(',')[1]
+                        filename = request.values.get(f'file_info[{i}][filename]')
 
-                    if base64_file_contents:
-                        esdlstr_base64_bytes = base64_file_contents.encode('utf-8')
-                        esdlstr_bytes = base64.b64decode(esdlstr_base64_bytes)
-                        esdl_str = esdlstr_bytes.decode('utf-8')
+                        if base64_file_contents:
+                            esdlstr_base64_bytes = base64_file_contents.encode('utf-8')
+                            esdlstr_bytes = base64.b64decode(esdlstr_base64_bytes)
+                            esdl_str = esdlstr_bytes.decode('utf-8')
 
-                        variant = self.add_esdl_to_project(pm, filename, esdl_str)
-                        added_variants.append(variant)
-                        #emit_active_esdl_project() # cant do emit here, because it is not socket io request
+                            variant = self.add_esdl_to_project(pm, filename, esdl_str)
+                            added_variants.append(variant)
+                            #emit_active_esdl_project() # cant do emit here, because it is not socket io request
 
-                client_id = session["client_id"]
-                if not is_import:
-                    # Now overwrite the project manager. We do this at the end to prevent the project manager from being
-                    # overwritten with an incomplete project manager in case of an error.
-                    set_project_manager(pm)
-                    init_mapeditor_change_handlers(pm, client_id)
-                send_project_manager_to_lmi_async(only_send_for_client_id=client_id)
-                last_variant = added_variants[-1]
-                if last_variant is not None:
-                    pm.set_active_variant(last_variant)
-                    # Ewoud: Not sure if this is necessary, as we already send the whole project manager
-                    send_add_variant_and_esdl_message_to_lmi(last_variant)
+                    client_id = session["client_id"]
+                    if not is_import:
+                        # Now overwrite the project manager. We do this at the end to prevent the project manager from being
+                        # overwritten with an incomplete project manager in case of an error.
+                        set_project_manager(pm)
+                        init_mapeditor_change_handlers(pm, client_id)
+                    send_project_manager_to_lmi_async(only_send_for_client_id=client_id)
+                    last_variant = added_variants[-1]
+                    if last_variant is not None:
+                        pm.set_active_variant(last_variant)
+                        # Ewoud: Not sure if this is necessary, as we already send the whole project manager
+                        send_add_variant_and_esdl_message_to_lmi(last_variant)
 
 
-                return {'message': 'all ESDL(s) received'}, 201
+                    return {'message': 'all ESDL(s) received'}, 201
             except Exception as e:
                 logger.exception("Error processing ESDL file(s)", exception=e)
                 return {'message': 'Error processing ESDL file(s): ' + str(e)}, 500
@@ -106,10 +107,12 @@ class ESDLFileIO:
         # emit('alert', message, namespace='/esdl')
 
     def clear_mapeditor_ui(self):
-        # clear these completely, but not when importing!
+        # clear these completely, but not when importing, only loading.
+        # but importing is not using the REST API, but socket.io, so this works
         del_session("shape_dictionary")
         del_session("conn_list")
         del_session("asset_list")
+        del_session("building_list")
         del_session("area_bld_list")
 
         es_info_list = {}

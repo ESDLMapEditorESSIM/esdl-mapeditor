@@ -100,7 +100,7 @@ export default {
           console.log(res);
           this.backendData = res;
           if (res === undefined) {
-            this.error.message = "Failed loading table data";
+            this.error.errorMessage = "Failed loading table data";
           } else {
             this.convertData(this.backendData)
           }

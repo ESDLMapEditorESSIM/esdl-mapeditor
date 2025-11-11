@@ -14,7 +14,16 @@
 
 from flask import Flask
 from flask_socketio import SocketIO, emit
+
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Any, Tuple
+from datetime import datetime
+import math
+import re
+
 from esdl import esdl
+from esdl.profiles.influxdbprofilemanager import InfluxDBProfileManager
+# TODO: phase out panel service
 from extensions.panel_service import get_panel_service_datasource, create_panel_multiple
 from extensions.settings_storage import SettingsStorage
 from extensions.session_manager import get_project_manager, get_session
@@ -32,6 +41,28 @@ def send_alert(message):
     print(message)
     emit("alert", message, namespace="/esdl")
 
+@dataclass
+class AssetsProfilesRequest:
+    es_id: str
+    asset_ids: List[str]
+
+@dataclass
+class ProfileTracesRequest:
+    es_id: str
+    profile_ids: List[str]
+    dt_range: Optional[List[str]] = None
+    max_datapoints: Optional[int] = None
+    """If specified, downsample profile data to approximately the given value."""
+
+class ProfileNotFoundError(Exception):
+    pass
+
+class ProfileRetrievalError(Exception):
+    pass
+
+class InfluxDBProfileLoadError(Exception):
+    pass
+
 
 class PortProfileViewer:
     def __init__(self, flask_app: Flask, socket: SocketIO, settings_storage: SettingsStorage):
@@ -44,10 +75,15 @@ class PortProfileViewer:
     def register(self):
         logger.info("Registering PortProfileViewer extension")
 
-        @self.socketio.on("port_profile_viewer_request_asset", namespace="/esdl")
-        def port_profile_viewer_request_asset(asset_id_list):
-            with self.flask_app.app_context():
-                return PortProfileViewer.get_port_profile_info_multiple_assets(asset_id_list)
+        @self.socketio.on("port_profile_viewer/assets_profiles", namespace="/esdl")
+        def _get_assets_profiles(params: dict):
+            req = AssetsProfilesRequest(**params)
+            return PortProfileViewer.get_assets_profiles(req.es_id, req.asset_ids)
+
+        @self.socketio.on("port_profile_viewer/profile_traces", namespace="/esdl")
+        def _get_profile_traces_from_profile_ids(params: dict):
+            req = ProfileTracesRequest(**params)
+            return self.get_profile_traces_from_profile_ids(req)
 
         @self.socketio.on("show_multiple_profiles", namespace="/esdl")
         def show_multiple_profiles(profile_id_list):
@@ -62,56 +98,58 @@ class PortProfileViewer:
 
             if profiles_list:
                 # Check if all profiles use same host / port / database
-                if Profiles.check_if_profiles_have_same_host_port_database(profiles_list):
-                    # Determine some parameters based on first profile
-                    profile_type, aggr_method = PortProfileViewer.determine_profile_type_and_aggr_method(
-                        profiles_list[0]
-                    )
-                    datasource = self.find_datasource(profiles_list[0])
-
-                    # Create a list with appropriate info for all datasets to be visualized
-                    dataset_info_list = list()
-                    for p in profiles_list:
-                        alias = PortProfileViewer.determine_profile_alias(p)
-
-                        dataset_info_list.append(
-                            {
-                                "measurement": p.measurement,
-                                "field": p.field,
-                                "prof_aggr_type": aggr_method,
-                                "alias": alias,
-                                "filters": p.filters,
-                            }
-                        )
-
-                    if len(profiles_list) == 1:
-                        graph_name = PortProfileViewer.determine_profile_name(profiles_list[0], profile_type)
-                    else:
-                        graph_name = "Multiple profiles (" + profile_type + ")"
-
-                    # Grafana datasources don't work anymore with host:443 as a configured host
-                    # needs to be https://host now
-                    if profile.port == 443 and not profile.host.startswith("https"):
-                        host = "https://" + profile.host
-                    else:
-                        host = profile.host + ":" + str(profile.port) if profile.port else profile.host
-
-                    embed_url = create_panel_multiple(
-                        graph_title=graph_name,
-                        axis_title="",
-                        host=host,
-                        database=profile.database,
-                        dataset_info=dataset_info_list,
-                        qau=profile.profileQuantityAndUnit,
-                        start_datetime=profile.startDate,
-                        end_datetime=profile.endDate,
-                        datasource=datasource,
-                    )
-                    return embed_url
-
-                else:
-                    logger.info("Not all profiles use same host, port, database")
+                try:
+                    Profiles.check_if_profiles_have_same_host_port_database(profiles_list)
+                except Exception as e:
+                    send_alert(f"Could not retrieve data: {str(e)}")
                     return None
+
+                # Determine some parameters based on first profile
+                profile_type, aggr_method = PortProfileViewer.determine_profile_type_and_aggr_method(
+                    profiles_list[0]
+                )
+                datasource = PortProfileViewer.find_datasource(profiles_list[0])
+
+                # Create a list with appropriate info for all datasets to be visualized
+                dataset_info_list = list()
+                for p in profiles_list:
+                    alias = PortProfileViewer.determine_profile_alias(p)
+
+                    dataset_info_list.append(
+                        {
+                            "measurement": p.measurement,
+                            "field": p.field,
+                            "prof_aggr_type": aggr_method,
+                            "alias": alias,
+                            "filters": p.filters,
+                        }
+                    )
+
+                if len(profiles_list) == 1:
+                    graph_name = PortProfileViewer.determine_profile_name(profiles_list[0], profile_type)
+                else:
+                    graph_name = "Multiple profiles (" + profile_type + ")"
+
+                # Grafana datasources don't work anymore with host:443 as a configured host
+                # needs to be https://host now
+                if profile.port == 443 and not profile.host.startswith("https"):
+                    host = "https://" + profile.host
+                else:
+                    host = profile.host + ":" + str(profile.port) if profile.port else profile.host
+
+                embed_url = create_panel_multiple(
+                    graph_title=graph_name,
+                    axis_title="",
+                    host=host,
+                    database=profile.database,
+                    dataset_info=dataset_info_list,
+                    qau=profile.profileQuantityAndUnit,
+                    start_datetime=profile.startDate,
+                    end_datetime=profile.endDate,
+                    datasource=datasource,
+                )
+                return embed_url
+
 
             else:
                 send_alert("ProfileType other than InfluxDBProfile not supported yet")
@@ -143,49 +181,50 @@ class PortProfileViewer:
 
                 if similar_profiles_list:
                     # Check if all profiles use same host / port / database
-                    if Profiles.check_if_profiles_have_same_host_port_database(similar_profiles_list):
-                        # Determine some parameters based on first profile
-                        profile_type, aggr_method = PortProfileViewer.determine_profile_type_and_aggr_method(profile)
-                        datasource = Profiles.get_instance().find_datasource(profile)
-
-                        # Create a list with appropriate info for all datasets to be visualized
-                        dataset_info_list = list()
-                        for p in similar_profiles_list:
-                            alias = PortProfileViewer.determine_profile_alias(p)
-
-                            dataset_info_list.append(
-                                {
-                                    "measurement": p.measurement,
-                                    "field": p.field,
-                                    "prof_aggr_type": aggr_method,
-                                    "alias": alias,
-                                    "filters": p.filters,
-                                }
-                            )
-
-                        # Grafana datasources don't work anymore with host:443 as a configured host
-                        # needs to be https://host now
-                        if profile.port == 443 and not profile.host.startswith("https"):
-                            host = "https://" + profile.host
-                        else:
-                            host = profile.host + ":" + str(profile.port) if profile.port else profile.host
-
-                        embed_url = create_panel_multiple(
-                            graph_title="Multiple profiles (asset type: " + type(asset).__name__ + ")",
-                            axis_title="",
-                            host=host,
-                            database=profile.database,
-                            dataset_info=dataset_info_list,
-                            qau=profile.profileQuantityAndUnit,
-                            start_datetime=profile.startDate,
-                            end_datetime=profile.endDate,
-                            datasource=datasource,
-                        )
-                        return embed_url
-
-                    else:
-                        logger.info("Not all profiles use same host, port, database")
+                    try:
+                        Profiles.check_if_profiles_have_same_host_port_database(similar_profiles_list)
+                    except Exception as e:
+                        send_alert(f"Could not retrieve data: {str(e)}")
                         return None
+
+                    # Determine some parameters based on first profile
+                    profile_type, aggr_method = PortProfileViewer.determine_profile_type_and_aggr_method(profile)
+                    datasource = PortProfileViewer.find_datasource(profile)
+
+                    # Create a list with appropriate info for all datasets to be visualized
+                    dataset_info_list = list()
+                    for p in similar_profiles_list:
+                        alias = PortProfileViewer.determine_profile_alias(p)
+
+                        dataset_info_list.append(
+                            {
+                                "measurement": p.measurement,
+                                "field": p.field,
+                                "prof_aggr_type": aggr_method,
+                                "alias": alias,
+                                "filters": p.filters,
+                            }
+                        )
+
+                    # Grafana datasources don't work anymore with host:443 as a configured host
+                    # needs to be https://host now
+                    if profile.port == 443 and not profile.host.startswith("https"):
+                        host = "https://" + profile.host
+                    else:
+                        host = profile.host + ":" + str(profile.port) if profile.port else profile.host
+
+                    embed_url = create_panel_multiple(
+                        graph_title="Multiple profiles (asset type: " + type(asset).__name__ + ")",
+                        axis_title="",
+                        host=host,
+                        database=profile.database,
+                        dataset_info=dataset_info_list,
+                        qau=profile.profileQuantityAndUnit,
+                        start_datetime=profile.startDate,
+                        end_datetime=profile.endDate,
+                        datasource=datasource,
+                    )
+                    return embed_url
 
             else:
                 send_alert("ProfileType other than InfluxDBProfile not supported yet")
@@ -294,75 +333,198 @@ class PortProfileViewer:
         return True
 
     @staticmethod
-    def get_port_profile_info_multiple_assets(asset_id_list):
+    def get_assets_profiles(es_id: str, asset_ids: List[str]) -> list:
         """
-        Get port profile information in case multiple assets are selected
+        Returns a list of dictionaries with asset and associated profiles information.
+
+        Example:
+        [
+            {
+                "asset_id": "asset123",
+                "asset_name": "Consumer",
+                "profiles": [
+                    {"id": "profile456", "name": "Heat flow [W]"},
+                    ...
+                ]
+            },
+            ...
+        ]
         """
+        assets_profiles = []
+        for asset_id in asset_ids:
+            asset_name, profiles = PortProfileViewer.get_asset_profiles(es_id, asset_id)
+            assets_profiles.append(
+                {
+                    "asset_id": asset_id,
+                    "asset_name": asset_name,
+                    "profiles": profiles
+                }
+            )
+
+        return assets_profiles
+
+    @staticmethod
+    def get_asset_profiles(es_id: str, asset_id: str):
         pm = get_project_manager()
-        active_es_id = get_session("active_es_id")
+        asset: esdl.Asset = pm.get_by_id(es_id, asset_id)
 
-        port_profile_info_per_asset = list()
-        for asset_id in asset_id_list:
-            asset = pm.get_by_id(active_es_id, asset_id)
-            port_profile_info = get_port_profile_info(asset, only_if_profile=True, only_of_type="InfluxDBProfile")
-            port_profile_info_per_asset.append(port_profile_info)
+        port_profile_info: list = get_port_profile_info(asset, only_if_profile=True, only_of_type="InfluxDBProfile")
 
-        units_found = {"InPort": list(), "OutPort": list()}
-        print(port_profile_info_per_asset)
+        profiles = []
+        for port in port_profile_info:
+            for p in port.get("profiles", []):
+                profile_id = p.get("id")
+                profile_name = p.get("uiname")
+                profile_qau = p.get("type")
+                profiles.append(
+                    {
+                        "id": profile_id,
+                        "name": f"{profile_name} [{profile_qau.split(' ')[-1]}]"
+                    }
+                )
 
-        # TODO: this only works properly for assets with single In/OutPorts of the same type (so not for assets that
-        #  have two InPorts both with "Energy in kWh" as the QaU)
-        asset_port_profile_info_first_asset = port_profile_info_per_asset[0]
-        for port_profile_info in asset_port_profile_info_first_asset:
-            # Find port type (InPort / OutPort) as it's not stored as part of the port_profile_info
-            port_id = port_profile_info["port_id"]
-            port = pm.get_by_id(active_es_id, port_id)
-            port_type = port.eClass.name
+        return asset.name, profiles
 
-            for profile in port_profile_info["profiles"]:
-                # Check if other assets have same profile
-                all_assets_have_same_profile = True
-                all_assets_have_same_profile_name = True
-                similar_profile_list = [profile["id"]]
-                for other_asset in port_profile_info_per_asset[1:]:
-                    for oa_port_profile_info in other_asset:
-                        oa_port_id = oa_port_profile_info["port_id"]
-                        oa_port = pm.get_by_id(active_es_id, oa_port_id)
-                        oa_port_type = oa_port.eClass.name
+    def get_profile_traces_from_profile_ids(self, req: ProfileTracesRequest) -> Dict[str, List[Dict[str, Any]]]:
+        """Return a dictionary with profile traces for plotly visualization or error messages."""
 
-                        if oa_port_type == port_type:
-                            same_profile_found = False
-                            same_profile_name_found = False
-                            for oa_profile in oa_port_profile_info["profiles"]:
-                                # Check for similar QaU
-                                if profile["type"] == oa_profile["type"]:
-                                    same_profile_found = True
-                                    similar_profile_list.append(oa_profile["id"])
-                                # Check for similar UI Name
-                                if profile["uiname"] == oa_profile["uiname"]:
-                                    same_profile_name_found = True
+        results = {"traces": [], "errors": []}
 
-                            if not same_profile_found:
-                                all_assets_have_same_profile = False
-                                break
+        for profile_id in req.profile_ids:
+            try:
+                trace = self.get_profile_trace(req.es_id, profile_id, req.dt_range, req.max_datapoints)
+                results["traces"].append({
+                    "profile_id": profile_id,
+                    "trace": trace
+                })
+            except Exception as e:
+                results["errors"].append({
+                    "profile_id": profile_id,
+                    "error": str(e)
+                })
 
-                            if not same_profile_name_found:
-                                all_assets_have_same_profile_name = False
+        return results
 
-                if all_assets_have_same_profile:
-                    final_profile_info = {"type": profile["type"], "id_list": similar_profile_list}
+    def get_profile_trace(
+            self,
+            es_id: str,
+            profile_id: str,
+            dt_range: Optional[List[str]],
+            max_datapoints: Optional[int]
+        ):
+        """
+        Return profile trace for plotly visualization.
 
-                    if all_assets_have_same_profile_name:
-                        final_profile_info["uiname"] = profile["uiname"]
-                    else:
-                        final_profile_info["uiname"] = ""
+        TODO: move to esdl/profiles/influxdbprofilemanager.py?
+        """
 
-                    units_found[port_type].append(final_profile_info)
+        pm = get_project_manager()
+        dt_str_format = '%Y-%m-%d %H:%M:%S'
 
-        result = list()
-        for pt in ["InPort", "OutPort"]:
-            for p in units_found[pt]:
-                p["port_type"] = pt
-                result.append(p)
+        profiles_settings = Profiles.get_instance().get_profiles_settings()
 
-        return result
+        try:
+            profile: esdl.InfluxDBProfile = pm.get_by_id(es_id, profile_id)
+            if not profile or not isinstance(profile, esdl.GenericProfile):
+                raise ProfileNotFoundError(f"Profile with ID {profile_id} (ESDL ID {es_id}) not found.")
+
+            influxdb_settings = InfluxDBProfileManager.get_profile_influxdb_settings(profile, profiles_settings)
+        except Exception as e:
+            raise ProfileRetrievalError(f"Failed to retrieve profile {profile_id}: {e}") from e
+
+        query_filters = self._parse_profile_filters(profile.filters)
+
+        try:
+            start_date, end_date = self._resolve_date_range(dt_range, profile, dt_str_format)
+        except ValueError as e:
+            raise ValueError(f"Invalid datetime range format: {e}")
+
+        groupby_interval_sec = self._calculate_groupby_interval(start_date, end_date, max_datapoints)
+
+        try:
+            prof_manager = InfluxDBProfileManager(influxdb_settings)
+            prof_manager.load_influxdb(
+                measurement=profile.measurement,
+                fields=[profile.field],
+                from_datetime=start_date,
+                to_datetime=end_date,
+                filters=query_filters,
+                groupby_interval_sec=groupby_interval_sec
+            )
+            # profile_data_list: a list of lists, with each list structure to be [datetime, field value, ...]
+            datetime_profile = prof_manager.profile_data_list
+        except Exception as e:
+            raise InfluxDBProfileLoadError(f"Failed to load profile data for {profile_id}: {e}") from e
+
+        datetimes, values = [], []
+        for d in datetime_profile:
+            # skip when value is None (this can occur when downsampling is applied)
+            if d[1] is None:
+                continue
+
+            date: datetime = d[0]
+            value = d[1] * profile.multiplier
+
+            datetimes.append(date.strftime(dt_str_format))
+            values.append(value)
+
+        trace_name = PortProfileViewer.get_profile_asset_name(profile)
+        profile_qau = PortProfileViewer.get_profile_qau_string(profile)
+
+        trace = {
+            "name": trace_name,
+            "x": datetimes,
+            "y": values,
+            "legendgroup": profile.field,
+            "legendgrouptitle": {"text": profile.field},
+            "subplotgroup": profile_qau
+        }
+
+        return trace
+
+    @staticmethod
+    def get_profile_qau_string(profile):
+        qau = profile.profileQuantityAndUnit
+        if qau and isinstance(qau, esdl.QuantityAndUnitReference):
+            qau = qau.reference
+        if qau:
+            return ESDLQuantityAndUnits.qau_to_string(qau)
+
+        return "Unknown"
+
+    @staticmethod
+    def get_profile_asset_name(profile):
+        profile_container = profile.eContainer().eContainer()
+        if isinstance(profile_container, esdl.EnergyAsset):
+            return str(profile_container.name)
+
+        return "Unknown"
+
+    def _parse_profile_filters(self, filters: Optional[str]) -> List[Dict[str, str]]:
+        """A helper function"""
+
+        if not filters:
+            return []
+        if "AND" in filters:
+            matches = re.findall(r"(\w+)='([^']*)'", filters)
+        else:
+            matches = re.findall(r'"(\w+)"=\'([^\']+)\'', filters)
+        return [{"tag": k, "value": v} for k, v in matches]
+
+    def _resolve_date_range(self, dt_range: Optional[List[str]], profile, fmt: str) -> Tuple[datetime, datetime]:
+        """A helper function"""
+
+        if dt_range:
+            return datetime.strptime(dt_range[0], fmt), datetime.strptime(dt_range[1], fmt)
+        return profile.startDate, profile.endDate
+
+    def _calculate_groupby_interval(self, start: datetime, end: datetime, max_points: Optional[int]) -> Optional[int]:
+        """A helper function"""
+
+        if not max_points:
+            return None
+        time_delta_sec = (end - start).total_seconds()
+        # To round to common (readable) interval: 1s, 30s, 1m, 30m, 1h, 6h, 12h, 1d
+        common_intervals = [1, 30, 60, 1800, 3600, 21600, 43200, 86400]
+        interval_sec = math.ceil(time_delta_sec / max_points)
+        return min(common_intervals, key=lambda x: abs(x - interval_sec))

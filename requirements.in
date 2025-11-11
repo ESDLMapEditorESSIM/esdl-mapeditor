@@ -3,7 +3,8 @@ Flask-Executor==1.0.0
 Flask-SocketIO==5.5.1
 simple-websocket==1.1.0
 Flask-Session==0.8.0
-flask-oidc==2.2.0
+flask-oidc==2.3.1
+authlib==1.5.1 # make sure we get the latest here, to avoid ever growing sessions
 geomet==0.2.1.post1
 geojson
 influxdb==5.3.0
@@ -39,3 +40,7 @@ pip-tools
 Flask-SQLAlchemy
 sqlalchemy
 sqlalchemy_utils
+
+# Pinned to prevent conflicts with requirements-gunicorn.txt.
+greenlet==3.0.3
+packaging==24.1
