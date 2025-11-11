@@ -16,11 +16,7 @@
 
 <!--
 TODO:
-- Tighter layout
-- Checkbox align top
-- Context menu integrated with tree
 - Remember expanded keys
-- Add line
 -->
 
 <template>
@@ -28,6 +24,7 @@ TODO:
     v-model:expanded-keys="expandedKeys"
     :selected-keys="selectedKeys"
     :show-icon="true"
+    :show-line="true"
     :tree-data="treeData"
     checkable
     :check-strictly="true"
@@ -39,6 +36,8 @@ TODO:
     <template #icon="{ iconClass }">
       <span v-if="iconClass" :class="iconClass" />
     </template>
+
+    <template #switcherIcon="{ switcherCls }"><caret-down-filled :class="switcherCls" /></template>
 
     <template #title="{ title }">
       <a-dropdown :trigger="['contextmenu']">
@@ -62,10 +61,11 @@ TODO:
 </template>
 
 <script setup>
-import {ref, computed, onMounted, watch} from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
+import { CaretDownFilled } from '@ant-design/icons-vue';
 import { useESDLProjects } from '@/composables/esdlProjects';
 import { useEsdlLayers } from '@/composables/esdlLayers';
-import {useSocketIO} from "@/composables/socketio";
+import { useSocketIO } from "@/composables/socketio";
 
 // Composables
 const { esdlProject, getESDLProject, activeVariant, setActiveVariant, getAllVariants } = useESDLProjects();
@@ -362,4 +362,5 @@ function flattenVariant(variant) {
 .menu-item-with-icon i {
   width: 18px;
 }
+
 </style>

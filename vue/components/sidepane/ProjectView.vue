@@ -15,12 +15,37 @@
   -->
 
 <template>
-  <BaseLayerTree />
-  <hr>
-  <ProjectTree />
+  <div id="project-view">
+    <BaseLayerTree />
+    <hr>
+    <ProjectTree />
+  </div>
 </template>
 
 <script setup>
 import BaseLayerTree from "@/components/sidepane/BaseLayerTree.vue";
 import ProjectTree from "@/components/sidepane/ProjectTree.vue";
 </script>
+
+
+<style lang="scss">
+
+#project-view  {
+  .ant-tree-treenode {
+    padding-bottom: 0;
+  }
+  .ant-tree-switcher {
+    line-height: inherit;
+
+    .ant-tree-switcher-line-icon {
+      display: none;
+    }
+  }
+  .ant-tree-checkbox {
+    align-self: flex-start;
+    margin-inline-end: auto;
+  }
+}
+
+
+</style>
