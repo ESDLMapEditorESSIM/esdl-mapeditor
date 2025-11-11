@@ -39,34 +39,26 @@ TODO:
     <template #icon="{ iconClass }">
       <span v-if="iconClass" :class="iconClass" />
     </template>
-  </a-tree>
 
-  <a-dropdown
-    v-if="contextMenu.open"
-    :open="true"
-  >
-    <span
-      :style="{
-        position: 'fixed',
-        left: `${contextMenu.x}px`,
-        top: `${contextMenu.y}px`,
-        zindex: 2000,
-      }"
-    />
-    <template #overlay>
-      <a-menu
-        :disabled="contextMenuItems.length === 0"
-        @click="onContextMenuClick"
-      >
-        <template v-for="item in contextMenuItems" :key="item.key">
-          <a-menu-item class="menu-item-with-icon">
-            <i :class="item.icon" />
-            {{ item.label }}
-          </a-menu-item>
+    <template #title="{ title }">
+      <a-dropdown :trigger="['contextmenu']">
+        <span>{{ title }}</span>
+        <template #overlay>
+          <a-menu
+            :disabled="contextMenuItems.length === 0"
+            @click="onContextMenuClick"
+          >
+            <template v-for="item in contextMenuItems" :key="item.key">
+              <a-menu-item class="menu-item-with-icon">
+                <i :class="item.icon" />
+                {{ item.label }}
+              </a-menu-item>
+            </template>
+          </a-menu>
         </template>
-      </a-menu>
+      </a-dropdown>
     </template>
-  </a-dropdown>
+  </a-tree>
 </template>
 
 <script setup>
