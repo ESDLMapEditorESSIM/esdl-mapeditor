@@ -500,6 +500,7 @@ class DataManager:
         for eobj in es.eAllContents():
             variable_name = None
             is_profile_variable = None
+            d = None
 
             if isinstance(eobj, esdl.SingleValue) or isinstance(eobj, esdl.TimeSeriesProfile):
                 # logger.debug(f"Handling {eobj.eClass.name}/{eobj.name}")
@@ -575,13 +576,14 @@ class DataManager:
                     variable_name = "Power (W)"
                     qau = esdl.QuantityAndUnitType(physicalQuantity=esdl.PhysicalQuantityEnum.POWER,
                                                    unit=esdl.UnitEnum.WATT, description="Power in W")# Handle compound asset
-                if eobj.containingBuilding or eobj.containingAsset:
-                    container_asset = eobj.eContainer()
-                    area = container_asset.area
-                    d.region = area.name
-                    d.labels['Parent asset'] = container_asset.name
-                else:
-                    d.region = eobj.area.name
+                    # Handle compound asset
+                    if eobj.containingBuilding or eobj.containingAsset:
+                        container_asset = eobj.eContainer()
+                        area = container_asset.area
+                        d.region = area.name
+                        d.labels['Parent asset'] = container_asset.name
+                    else:
+                        d.region = eobj.area.name
 
             elif isinstance(eobj, esdl.Storage) or isinstance(eobj, esdl.Transport):
                 if eobj.eIsSet('capacity'):
@@ -617,17 +619,17 @@ class DataManager:
                     variable_name = "Pipe Length (m)"
                     qau = esdl.QuantityAndUnitType(physicalQuantity=esdl.PhysicalQuantityEnum.LENGTH,
                                                    unit=esdl.UnitEnum.METRE, description="Length in m")
-                # Handle compound asset
-                if eobj.containingBuilding or eobj.containingAsset:
-                    container_asset = eobj.eContainer()
-                    area = container_asset.area
-                    d.region = area.name
-                    d.labels['Parent asset'] = container_asset.name
-                else:
-                    d.region = eobj.area.name
+                    # Handle compound asset
+                    if eobj.containingBuilding or eobj.containingAsset:
+                        container_asset = eobj.eContainer()
+                        area = container_asset.area
+                        d.region = area.name
+                        d.labels['Parent asset'] = container_asset.name
+                    else:
+                        d.region = eobj.area.name
 
             # Process asset ownership label
-            if isinstance(eobj, esdl.Asset):
+            if isinstance(eobj, esdl.Asset) and d is not None:
                 d.labels = d.labels if d.labels is not None else {}
                 d.labels["Ownership"] = "Unassigned"
                 if eobj.isOwnedBy is not None:
