@@ -1,89 +1,116 @@
 <template>
-  <h1>ESDL feedback</h1>
+  <a-row style="padding: 8px;">
+    <a-typography-title :level="3">
+      ESDL feedback
+    </a-typography-title>
+  </a-row>
   <template
-    v-if="asset_feedback_list.length || general_feedback_list.length"
+    v-if="Object.keys(currentAssetFeedbackList).length"
   >
-    <a-card style="width: 100%">
+    <a-col style="padding: 8px;">
       <p>
         The following feedback was given for the objects in the energy system.
         For object feedback messages, you can click on an item in the list to let the map zoom into the object.
       </p>
-    </a-card>
-    <a-input
-      v-model:value="search_text"
-      placeholder="Enter search term..."
-    />
-    <a-table
-      v-if="filtered_general_feedback_list.length"
-      :columns="generalColumns"
-      :data-source="filtered_general_feedback_list"
-      row-key="id"
-      :pagination="{ pageSize: 5 }"
-      :scroll="{ y: 'max-content' }"
-    >
-      <template #name="{ record }">
-        <b>{{ record.name }}</b><br>
-        <span
-          v-for="item in record.messages"
-          :key="item.key"
-          style="font-size: x-small"
-        >
-          <p style="margin: 0;">
-            <span :style="severity_color_mapping[item.severity]">{{ item.severity }}</span>
-            {{ ` - ${item.validationMessage }` }}
-          </p>
-          <ul 
-            v-if="Array.isArray(item.checkResultMessages)"
-            style="margin-left: -1rem; margin-bottom: 0.1rem;"
+      <div>
+        <a-input
+          v-model:value="search_text"
+          placeholder="Enter search term..."
+        />
+      </div>
+      <br>
+      <a-row>
+        <p>
+          Displayed severity
+          <a-checkbox-group 
+            v-model:value="selectedSeverityState"
+            :options="severityOptions"
+            @change="onCheckSeverity"
           >
-            <li v-for="(msg, index) in item.checkResultMessages" :key="index">
-              {{ msg }}
-            </li>
-          </ul>
-        </span>
-      </template>
-    </a-table>
-    <a-table
-      v-if="filtered_asset_feedback_list.length"
-      :columns="columns"
-      :data-source="filtered_asset_feedback_list"
-      row-key="id"
-      :custom-row="customRow"
-      :pagination="{ pageSize: 50 }"
-      :scroll="{ y: 'max-content' }"
-      class="table-with-hover"
-    >
-      <template #name="{ record }">
-        <b>{{ record.name }}</b><br>
-        <span
-          v-for="item in record.messages"
-          :key="item.key"
-          style="font-size: x-small"
-        >
-          <p style="margin: 0;">
-            <span :style="severity_color_mapping[item.severity]">{{ item.severity }}</span>
-            {{ ` - ${item.validationMessage }` }}
-          </p>
-          <ul 
-            v-if="Array.isArray(item.checkResultMessages)"
-            style="margin-left: -1rem; margin-bottom: 0.1rem;"
+            <template #label="{ label }">
+              <span>{{ label }}</span>
+            </template>
+          </a-checkbox-group>
+        </p>
+      </a-row>
+      <a-table
+        v-if="filtered_general_feedback_list.length"
+        :columns="generalColumns"
+        :data-source="filtered_general_feedback_list"
+        row-key="id"
+        :pagination="{ pageSize: 5 }"
+        :scroll="{ y: 'max-content' }"
+      >
+        <template #bodyCell="{ column, record }">
+          <b v-if="column.dataIndex === 'name'">
+            {{ record.name }}
+          </b>
+          <br>
+          <span
+            v-for="item in record.messages"
+            :key="item.key"
+            style="font-size: x-small"
           >
-            <li v-for="(msg, index) in item.checkResultMessages" :key="index">
-              {{ msg }}
-            </li>
-          </ul>
-        </span>
-      </template>
-    </a-table>
+            <p style="margin: 0;">
+              <span :style="severity_color_mapping[item.severity]">{{ item.severity }}</span>
+              {{ ` - ${item.validationMessage }` }}
+            </p>
+            <ul 
+              v-if="Array.isArray(item.checkResultMessages)"
+              style="margin-left: -1rem; margin-bottom: 0.1rem;"
+            >
+              <li v-for="(msg, index) in item.checkResultMessages" :key="index">
+                {{ msg }}
+              </li>
+            </ul>
+          </span>
+        </template>
+      </a-table>
+      <a-table
+        v-if="filtered_asset_feedback_list.length"
+        :columns="columns"
+        :data-source="filtered_asset_feedback_list"
+        row-key="id"
+        :custom-row="customRow"
+        :pagination="{ pageSize: 50 }"
+        :scroll="{ y: 'max-content' }"
+        class="table-with-hover"
+      >
+        <template #bodyCell="{ column, record }">
+          <b v-if="column.dataIndex === 'name'">
+            {{ record.name }}
+          </b>
+          <br>
+          <span
+            v-for="item in record.messages"
+            :key="item.key"
+            style="font-size: x-small"
+          >
+            <p style="margin: 0;">
+              <span :style="severity_color_mapping[item.severity]">{{ item.severity }}</span>
+              {{ ` - ${item.validationMessage }` }}
+            </p>
+            <ul 
+              v-if="Array.isArray(item.checkResultMessages)"
+              style="margin-left: -1rem; margin-bottom: 0.1rem;"
+            >
+              <li v-for="(msg, index) in item.checkResultMessages" :key="index">
+                {{ msg }}
+              </li>
+            </ul>
+          </span>
+        </template>
+      </a-table>
+    </a-col>
   </template>
   <template v-else>
-    <a-card style="width: 100%">
+    <a-row style="padding: 8px;">
       <p>
         The validation service could not detect any errors. Well done!
       </p>
-    </a-card>
+    </a-row>
   </template>
-  <a-space>
+  <a-space style="padding: 8px;">
     <a-button type="primary" @click="close_window">Ok</a-button>
     <a-button
       v-if="asset_feedback_list.length"
@@ -96,7 +123,7 @@
 </template>
 
 <script setup>
-import {ref, computed} from 'vue'
+import {ref, computed, onMounted, onUnmounted} from 'vue'
 import {useAssetFeedbackList} from '../composables/assetFeedback';
 import {v4 as uuidv4} from 'uuid';
 
@@ -107,7 +134,6 @@ const generalColumns = [
     title: 'Feedback message(s)',
     dataIndex: 'name',
     width: 150,
-    slots: {customRender: "name"},
   },
 ];
 
@@ -116,8 +142,13 @@ const columns = [
     title: 'Object feedback message(s): click to zoom',
     dataIndex: 'name',
     width: 150,
-    slots: {customRender: "name"},
   },
+];
+
+const selectedSeverityState = ref(['ERROR', 'WARNING']);
+const severityOptions = [
+  { label: 'ERROR', value: 'ERROR' },
+  { label: 'WARNING', value: 'WARNING' },
 ];
 
 const asset_feedback_list = ref([]);
@@ -126,9 +157,24 @@ const general_feedback_list = ref([]);
 const search_text = ref("");
 
 const severity_color_mapping = {
-  "INFO": "color:#00FF00",
+  // "INFO": "color:#00FF00",
   "WARNING": "color:#FFA500",
   "ERROR": "color:#FF0000",
+}
+
+onMounted(() => {
+  console.debug("AssetFeedback mounted");
+  create_asset_feedback_list();
+});
+
+onUnmounted(() => {
+  // Reset to default
+  asset_feedback_list.value = ['ERROR', 'WARNING'];
+  console.debug("AssetFeedback unmounted");
+});
+
+const onCheckSeverity = () => {
+  create_asset_feedback_list();
 }
 
 const filtered_general_feedback_list = computed(() => {
@@ -182,12 +228,14 @@ function create_asset_feedback_list() {
       let messages = [];
 
       currentAssetFeedbackList.value[assetId].forEach((validationResult) => {
-        messages.push({
-          key: uuidv4(),
-          severity: validationResult['severity'],
-          validationMessage: validationResult['validation_message'], 
-          checkResultMessages: validationResult['check_result_messages'],
-        });
+        if (selectedSeverityState.value.includes(validationResult['severity'])) {
+          messages.push({
+            key: uuidv4(),
+            severity: validationResult['severity'],
+            validationMessage: validationResult['validation_message'], 
+            checkResultMessages: validationResult['check_result_messages'],
+          });
+        }
       })
 
       const feedback_item = {
@@ -196,7 +244,10 @@ function create_asset_feedback_list() {
         messages: messages,
         layer: asset,
       }
-      tmp_asset_feedback_list.push(feedback_item);
+
+      if (messages.length) {
+        tmp_asset_feedback_list.push(feedback_item);
+      }
     }
   }
   asset_feedback_list.value = tmp_asset_feedback_list;
@@ -207,12 +258,14 @@ function create_asset_feedback_list() {
       let messages = [];
 
       currentAssetFeedbackList.value[messagesId].forEach((validationResult) => {
-        messages.push({
-          key: uuidv4(),
-          severity: validationResult['severity'],
-          validationMessage: validationResult['validation_message'], 
-          checkResultMessages: validationResult['check_result_messages']
-        });
+        if (selectedSeverityState.value.includes(validationResult['severity'])) {
+           messages.push({
+            key: uuidv4(),
+            severity: validationResult['severity'],
+            validationMessage: validationResult['validation_message'], 
+            checkResultMessages: validationResult['check_result_messages']
+          });
+        }
       })
 
       const feedback_item = {
@@ -220,13 +273,13 @@ function create_asset_feedback_list() {
         name: messagesId,
         messages: messages
       }
-      tmp_general_feedback_list.push(feedback_item)
+      if (messages.length) {
+        tmp_general_feedback_list.push(feedback_item);
+      }
     }
   }
   general_feedback_list.value = tmp_general_feedback_list;
 }
-
-create_asset_feedback_list();
 
 </script>
 
