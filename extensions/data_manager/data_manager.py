@@ -620,14 +620,14 @@ class DataManager:
                     variable_name = "Pipe Length (m)"
                     qau = esdl.QuantityAndUnitType(physicalQuantity=esdl.PhysicalQuantityEnum.LENGTH,
                                                    unit=esdl.UnitEnum.METRE, description="Length in m")
-                    # Handle compound asset
-                    if eobj.containingBuilding or eobj.containingAsset:
-                        container_asset = eobj.eContainer()
-                        area = container_asset.area
-                        d.region = area.name
-                        d.labels['Parent asset'] = container_asset.name
-                    else:
-                        d.region = eobj.area.name
+                # Handle compound asset
+                if eobj.containingBuilding or eobj.containingAsset:
+                    container_asset = eobj.eContainer()
+                    area = container_asset.area
+                    d.region = area.name
+                    d.labels['Parent asset'] = container_asset.name
+                else:
+                    d.region = eobj.area.name
 
             # variable_name and qau and d should be defined here
             if not variable_name or d is None or qau is None:
