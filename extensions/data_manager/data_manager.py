@@ -303,7 +303,7 @@ def handle_static_profile(profile: esdl.StaticProfile, ds: DataSet,
             d.technology = asset.eClass.name
         d.labels = labels
     # else:
-    #     # e.g. container is Profiles section, we can ignore these as they are not directy attached to an asset port
+    #     # e.g. container is Profiles section, we can ignore these as they are not directly attached to an asset port
     #     continue
 
     if d.value is None:
@@ -501,6 +501,7 @@ class DataManager:
             variable_name = None
             is_profile_variable = None
             d = None
+            qau = None
 
             if isinstance(eobj, esdl.SingleValue) or isinstance(eobj, esdl.TimeSeriesProfile):
                 # logger.debug(f"Handling {eobj.eClass.name}/{eobj.name}")
@@ -628,18 +629,18 @@ class DataManager:
                     else:
                         d.region = eobj.area.name
 
+            # variable_name and qau and d should be defined here
+            if not variable_name or d is None or qau is None:
+                #variable_name = eobj.name if hasattr(eobj, 'name') else None
+                #logger.debug(f"Ignoring {eobj.eClass.name}")
+                continue
+
             # Process asset ownership label
-            if isinstance(eobj, esdl.Asset) and d is not None:
+            if isinstance(eobj, esdl.Asset):
                 d.labels = d.labels if d.labels is not None else {}
                 d.labels["Ownership"] = "Unassigned"
                 if eobj.isOwnedBy is not None:
                     d.labels["Ownership"] = eobj.isOwnedBy.name
-
-            # variable_name and qau and d should be defined here
-            if not variable_name:
-                #variable_name = eobj.name if hasattr(eobj, 'name') else None
-                #logger.debug(f"Ignoring {eobj.eClass.name}")
-                continue
 
             variable: Variable = variables.get(variable_name, None)
             if variable is None:
@@ -755,6 +756,7 @@ class DataManager:
         :param session: SQLAlchemy session object for database operations.
         :param variant_id: The ID of the variant of the energy system to be added or updated.
         :param owner: Session owner (email)
+        :param energy_unit: target energy unit to convert to when input QaU for profiles is different
 
         :return: MetadataOperationResp contains status and message strings
         """
