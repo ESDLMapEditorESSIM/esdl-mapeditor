@@ -1168,17 +1168,7 @@ def process_energy_system(force_update_es_id=None, zoom=True, only_process_es_id
 
                     # Collecting area KPIs
                     logger.info('- Processing KPIs')
-                    es_area_kpis = {}
-                    # TODO: This is extremely inefficient, especially during parsing the ES.
-                    for content in es_instance.eAllContents():
-                        if isinstance(content, esdl.Area):
-                            area = content
-                            if area.KPIs:
-                                area_kpis = ESDLEnergySystem.process_area_KPIs(area)
-                                # Only updating es_area_kpis object if list of kpi_list is not empty.
-                                if len(area_kpis['kpi_list']):
-                                    area_key = area.name if area.name else area.id
-                                    es_area_kpis[area_key] = area_kpis
+                    es_area_kpis = ESDLEnergySystem.process_area_KPIs_recursive(top_area)
 
                     displayed_area_name = top_area.name if top_area.name else title
                     # Only emit KPI info when there are area KPIs available
@@ -1194,7 +1184,7 @@ def process_energy_system(force_update_es_id=None, zoom=True, only_process_es_id
                     # Probably the following call is not required anymore, everything is handled by find_boundaries_in_ESDL
                     # add_missing_coordinates(area)
                     logger.info(f'- Processing area, zoom={zoom}')
-                    process_area(pm, es.id, asset_list, building_list, area_bld_list, conn_list, area, 0)
+                    process_area(pm, es.id, asset_list, building_list, area_bld_list, conn_list, top_area, 0)
                     logger.info(
                         f'#assets: {len(asset_list)}, #buildings: {len(building_list)}, #area_bld: {len(area_bld_list)}, #conn: {len(conn_list)}')
                     notes_list = get_notes_list(es)

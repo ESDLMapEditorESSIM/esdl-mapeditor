@@ -207,3 +207,19 @@ def process_area_KPIs(area):
         'kpis_description': kpis_description,
         'kpi_list': kpi_list
     }
+
+def process_area_KPIs_recursive(area: esdl.Area) -> dict[str, dict]:
+    """
+    Recursively process area KPIs.
+    :param area: The ESDL area to start processing from.
+    :return: A dictionary mapping area names/IDs to their KPIs.
+    """
+    es_area_kpis = {}
+    area_kpis = process_area_KPIs(area)
+    area_key = area.name if area.name else area.id
+    es_area_kpis[area_key] = area_kpis
+    if area.area:
+        for child_area in area.area:
+            child_es_area_kpis = process_area_KPIs_recursive(child_area)
+            es_area_kpis.update(child_es_area_kpis)
+    return es_area_kpis
