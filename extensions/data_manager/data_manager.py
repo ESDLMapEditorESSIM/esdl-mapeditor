@@ -576,15 +576,7 @@ class DataManager:
                         d.input = eobj.port[0].carrier.name if eobj.port[0].carrier else None
                     variable_name = "Power (W)"
                     qau = esdl.QuantityAndUnitType(physicalQuantity=esdl.PhysicalQuantityEnum.POWER,
-                                                   unit=esdl.UnitEnum.WATT, description="Power in W")# Handle compound asset
-                    # Handle compound asset
-                    if eobj.containingBuilding or eobj.containingAsset:
-                        container_asset = eobj.eContainer()
-                        area = container_asset.area
-                        d.region = area.name
-                        d.labels['Parent asset'] = container_asset.name
-                    else:
-                        d.region = eobj.area.name
+                                                   unit=esdl.UnitEnum.WATT, description="Power in W")
 
             elif isinstance(eobj, esdl.Storage) or isinstance(eobj, esdl.Transport):
                 if eobj.eIsSet('capacity'):
@@ -620,14 +612,6 @@ class DataManager:
                     variable_name = "Pipe Length (m)"
                     qau = esdl.QuantityAndUnitType(physicalQuantity=esdl.PhysicalQuantityEnum.LENGTH,
                                                    unit=esdl.UnitEnum.METRE, description="Length in m")
-                # Handle compound asset
-                if eobj.containingBuilding or eobj.containingAsset:
-                    container_asset = eobj.eContainer()
-                    area = container_asset.area
-                    d.region = area.name
-                    d.labels['Parent asset'] = container_asset.name
-                else:
-                    d.region = eobj.area.name
 
             # variable_name and qau and d should be defined here
             if not variable_name or d is None or qau is None:
@@ -641,6 +625,15 @@ class DataManager:
                 d.labels["Ownership"] = "Unassigned"
                 if eobj.isOwnedBy is not None:
                     d.labels["Ownership"] = eobj.isOwnedBy.name
+
+                # Handle compound asset
+                if eobj.containingBuilding or eobj.containingAsset:
+                    container_asset = eobj.eContainer()
+                    area = container_asset.area
+                    d.region = area.name
+                    d.labels['Parent asset'] = container_asset.name
+                else:
+                    d.region = eobj.area.name
 
             variable: Variable = variables.get(variable_name, None)
             if variable is None:
