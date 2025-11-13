@@ -12,12 +12,12 @@
       @keyup="validateEvent"
     />
     <a-button
-      v-if="stepParams.nextStepTrigger === WorkflowNextStepTriggerOptions.BUTTON_CLICK && stepParams.buttonText"
+      v-if="stepParams.nextStepTrigger === WorkflowNextStepTriggerOptions.BUTTON_CLICK"
       type="primary"
       :disabled="!isAllInputValid()"
       @click="onSubmit"
     >
-      {{ stepParams.buttonText }}
+      {{ stepParams.buttonText || 'Submit' }}
     </a-button>
   </div>
 </template>

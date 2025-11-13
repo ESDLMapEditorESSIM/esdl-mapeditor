@@ -306,7 +306,10 @@ class ESDLServices:
                 else:
                     body = esdlstr
 
+        # The parameter values that were communicated by the frontend
         state_params = service_params.get("state_params")
+        # The parameter definition from the service config
+        config_service_params = service.get("query_parameters", {})
 
         if "body_config" in service:
             if service["body_config"].get("profiles") == "inline":
@@ -377,39 +380,16 @@ class ESDLServices:
                                             obj[p["parameter_name"]] = state_params[key]
                         body[param["parameter_name"]] = obj
 
-        # The parameter values that were communicated by the frontend
-        # TODO: Which one to use?
-        query_params = service_params["query_parameters"]
-        # The parameter definition from the service config
-        config_service_params = service.get("query_parameters", {})
-
         first_qp = True
         for cfg_service_param in config_service_params:
             param = None
             if "value" in cfg_service_param:  # get value direct from service json config
                 param = cfg_service_param["value"]
-            elif "type" in cfg_service_param and cfg_service_param["type"] == "constant":
-                # TODO: Backwards compatibility with rve-poc
-                param = cfg_service_param["value"]
-            elif "parameter" in cfg_service_param and query_params:
-                # TODO: Backwards compatibility with rve-poc
-                for key in query_params:
-                    if query_params[key] and cfg_service_param["parameter"] == key:
-                        param = query_params[key]
-                        break
-            elif "parameter_name" in cfg_service_param and query_params:
-                # TODO: Backwards compatibility with rve-poc
-                # If "parameter" is not specified in service config, use "parameter_name" if available
-                for key in query_params:
-                    if query_params[key] and cfg_service_param["parameter_name"] == key:
-                        param = query_params[key]
-                        break
             elif state_params:  # find state parameter value
                 for key in state_params:
                     if state_params[key]:  # to filter empty lists for multi-selection parameters
                         if cfg_service_param["parameter_name"] == key:
                             param = state_params[key]  # param now contains the communicated value (by the UI)
-            # TODO: The above is the new way. See what from below needs incorporating.
 
             if param:
                 # Is there any parameter formatting required...
@@ -436,10 +416,8 @@ class ESDLServices:
                         else:
                             param_value = param
                         # For backwards compatibility support both names. When using name, not all result handling will properly work.
-                    param_name = cfg_service_param.get("name",
-                            cfg_service_param.get("parameter_name"))
-                    body[param_name
-                        ] = param_value
+                        param_name = cfg_service_param.get("name", cfg_service_param.get("parameter_name"))
+                        body[param_name] = param_value
                 else:
                     # Parameter is a "real" URL parameter: ?key1=value1&key2=value2&...
                     if first_qp:
