@@ -625,7 +625,7 @@ function set_line_port_handlers(line) {
 //            weight: 3
 //        });
         if (layer.mouseOverArrowHead !== undefined) {
-            remove_object_from_layer(es_bld_id, 'connection_layer', layer.mouseOverArrowHead);
+            remove_object_from_layer(layer.esid, 'connection_layer', layer.mouseOverArrowHead);
             delete layer.mouseOverArrowHead;
         }
         // from assets.js
