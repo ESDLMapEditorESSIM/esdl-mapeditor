@@ -460,7 +460,8 @@ class ETMSankeyToESDL:
             "Solar thermal": {"id": "etm_carrier_solar_thermal", "name": "Solar thermal", "carrier": None},
             "Steam hot water": {"id": "etm_carrier_shw", "name": "Steam hot water", "carrier": None},
             "Uranium": {"id": "etm_carrier_uranium", "name": "Uranium", "carrier": None},
-            "Waste mix": {"id": "etm_carrier_waste_mix", "name": "Waste mix", "carrier": None}
+            "Waste mix": {"id": "etm_carrier_waste_mix", "name": "Waste mix", "carrier": None},
+            "biogenic waste": {"id": "etm_carrier_biogenic_waste", "name": "Biogenic waste", "carrier": None}
         }
 
         self.asset_to_carrier_mapping = {
