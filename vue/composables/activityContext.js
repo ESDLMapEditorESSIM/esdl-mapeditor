@@ -22,7 +22,8 @@ import { useToast } from "vue-toastification";
 import {useEsdlLayers} from "@/composables/esdlLayers";
 
 const { clearWmsLayers, showWmsLayer } = useWmsLayers();
-const { addAreaContextMenuItem, totalEntriesAndAreas, esdlAreasDict, removeAreaContextMenuItem } = useEsdlAreas();
+const { addAreaContextMenuItem, totalEntriesAndAreas, esdlAreasDict,
+    removeAreaContextMenuItem, saveAreaContextMenuState, restoreAreaContextMenuState } = useEsdlAreas();
 const { addBuildingContextMenuItem, removeBuildingContextMenuItem } = useEsdlBuildings();
 
 /**
@@ -46,6 +47,7 @@ const { addBuildingContextMenuItem, removeBuildingContextMenuItem } = useEsdlBui
  * @property {string} name - The name of the activity context.
  * @property {string|null} workflow - The workflow to activate.
  * @property {boolean|null} is_global - If true, the context is shown to all users.
+ * @property {boolean|null} clear_area_context_menu - If true, all existing options will be removed (and restored later)
  * @property {string|null} js_function - The JS function to execute when the context is activated.
  * @property {string[]|null} wms_layers - The WMS layers to activate.
  * @property {string[]|null} disable_esdl_layers - The ESDL layers to disable when activating this context.
@@ -78,6 +80,9 @@ function addContextMenuJsFunctions(activityContext) {
     if (contextMenuJsFunctions) {
         for (const contextMenuJsFunction of contextMenuJsFunctions) {
             if (contextMenuJsFunction.location === "area") {
+                if (activityContext.clear_area_context_menu) {
+                    saveAreaContextMenuState();
+                }
                 addAreaContextMenuItem(contextMenuJsFunction.title, contextMenuJsFunction.icon, window[contextMenuJsFunction.js_function]);
                 enabledAreaContextMenus.value.push(contextMenuJsFunction.title);
             } else if (contextMenuJsFunction.location === "map") {
@@ -233,7 +238,11 @@ const {hideEsdlLayerAllEsdls, showEsdlLayerAllEsdls} = useEsdlLayers();
         }
 
         for (const name of enabledAreaContextMenus.value) {
-            removeAreaContextMenuItem(name)
+            removeAreaContextMenuItem(name);
+
+            if (activityContext.clear_area_context_menu) {
+                restoreAreaContextMenuState();
+            }
         }
         for (const id of enabledMapContextMenus.value) {
             let [foundService,] = findServiceById(id);
