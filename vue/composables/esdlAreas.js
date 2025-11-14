@@ -87,10 +87,39 @@ export function useEsdlAreas() {
         }
     }
 
+    const saveAreaContextMenuState = () => {
+        console.log("save");
+        for (const [, esdlAreas] of Object.entries(esdlAreasDict.value)) {
+            for (const esdlArea of esdlAreas) {
+                const layer = esdlArea.layer;
+                // somehow this function is called twice, for now solve it like this
+                if ((layer.backupContextMenuItems === null) || (layer.backupContextMenuItems === undefined)) {
+                    layer.backupContextMenuItems = [...layer.options.contextmenuItems];
+                    layer.options.contextmenuItems = [];
+                }
+            }
+        }
+    }
+
+    const restoreAreaContextMenuState = () => {
+        console.log("restore");
+        for (const [, esdlAreas] of Object.entries(esdlAreasDict.value)) {
+            for (const esdlArea of esdlAreas) {
+                const layer = esdlArea.layer;
+                if ((layer.backupContextMenuItems !== null) && (layer.backupContextMenuItems !== undefined)) {
+                    layer.options.contextmenuItems = [...layer.backupContextMenuItems];
+                    layer.backupContextMenuItems = null;
+                }
+            }
+        }
+    }
+
     return {
         addAreaContextMenuItem,
         esdlAreasDict,
         totalEntriesAndAreas,
         removeAreaContextMenuItem,
+        saveAreaContextMenuState,
+        restoreAreaContextMenuState
     }
 }
