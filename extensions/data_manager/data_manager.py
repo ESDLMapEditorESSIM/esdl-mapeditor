@@ -169,15 +169,18 @@ def handle_influxdb_profile(profile: esdl.InfluxDBProfile, ds: DataSet):
         asset: esdl.EnergyAsset = port.energyasset
         capability = get_asset_capability_type(asset)
         labels['Capability'] = capability
-        area = asset.area
-        if asset.containingBuilding or asset.containingAsset:
-            container_asset = asset.eContainer()
-            area = container_asset.area
-            labels['Parent asset'] = container_asset.name
-        d.sector = asset.sector.name if asset.sector else None
-        d.node = asset.name or asset.id
-        d.region = area.name
-        d.technology = asset.eClass.name
+        asset_container = asset.eContainer()
+        if isinstance(asset_container, (esdl.Area, esdl.ExposedPortsAsset)):
+            # ignore assets in Measures, Templates and Energymarkets
+            area = asset.area
+            if asset.containingBuilding or asset.containingAsset:
+                container_asset = asset.eContainer()
+                area = container_asset.area
+                labels['Parent asset'] = container_asset.name
+            d.sector = asset.sector.name if asset.sector else None
+            d.node = asset.name or asset.id
+            d.region = area.name
+            d.technology = asset.eClass.name
         
         if isinstance(port, esdl.InPort):
             d.input = port.carrier.name if port.carrier else None
@@ -229,7 +232,7 @@ def handle_static_profile(profile: esdl.StaticProfile, ds: DataSet, variable_nam
     elif isinstance(profile, esdl.DateTimeProfile):
         logger.warn("DateTimeSeriesProfile not yet supported")
     elif isinstance(profile, esdl.InfluxDBProfile):
-        logger.warn("DateTimeSeriesProfile not yet supported")
+        logger.warn("InfluxDBProfile not yet supported")
 
     if isinstance(container, esdl.Port):  # usually a port
         port: esdl.Port = container
@@ -272,16 +275,19 @@ def handle_static_profile(profile: esdl.StaticProfile, ds: DataSet, variable_nam
             variable_name = f'{physical_q_to_str(qau)} [{unit_to_string(qau)}]'
             # variable_name =
         asset = container.eContainer()
-        if isinstance(asset, esdl.EnergyAsset):  # TODO: could also be measure
-            area = asset.area
-            if asset.containingBuilding or asset.containingAsset:
-                container_asset = asset.eContainer()
-                area = container_asset.area
-                labels['Parent asset'] = container_asset.name
-            d.sector = asset.sector.name if asset.sector else None
-            d.node = asset.name or asset.id
-            d.region = area.name
-            d.technology = asset.eClass.name
+        if isinstance(asset, esdl.EnergyAsset):  # Ignore Measure here as it should not be taken into account
+            asset_container = asset.eContainer()
+            if isinstance(asset_container, (esdl.Area, esdl.ExposedPortsAsset)):
+                # ignore assets in Measures, Templates and Energymarkets
+                area = asset.area
+                if asset.containingBuilding or asset.containingAsset:
+                    container_asset = asset.eContainer()
+                    area = container_asset.area
+                    labels['Parent asset'] = container_asset.name
+                d.sector = asset.sector.name if asset.sector else None
+                d.node = asset.name or asset.id
+                d.region = area.name
+                d.technology = asset.eClass.name
         d.labels = labels
     # else:
     #     # e.g. container is Profiles section, we can ignore these as they are not directy attached to an asset port
@@ -433,7 +439,11 @@ class DataManager:
 
         ds = DataSet(name=es.name, energy_system_id=es.id, created_by=owner, description=es.description, model="Unknown")
 
-        for eobj in es.eAllContents():
+        # iterate only over EObjects contained in main Instance, other information is not relevant for analytics
+        # profiles in ESI section should use references to get handled (which is the case)
+        # In principle we should iterate here over all the instance, but this is not supported elsewhere in the MapEditor
+        # adding an extra label for each instance might be consfusing.
+        for eobj in es.instance[0].eAllContents():
             variable_name = None
             is_profile_variable = None
 
@@ -499,12 +509,13 @@ class DataManager:
                 qau = esdl.QuantityAndUnitType(physicalQuantity=esdl.PhysicalQuantityEnum.POWER,
                                                unit=esdl.UnitEnum.WATT, description="Power in W")
                 # Handle compound asset
-                if eobj.containingBuilding or eobj.containingAsset:
-                    container_asset = eobj.eContainer()
+                container_asset = eobj.eContainer()
+                if isinstance(container_asset, esdl.ExposedPortsAsset):
                     area = container_asset.area
-                    d.region = area.name
+                    if area:
+                        d.region = area.name
                     d.labels['Parent asset'] = container_asset.name
-                else:
+                elif isinstance(container_asset, esdl.Area):
                     d.region = eobj.area.name
 
             elif isinstance(eobj, esdl.Storage) or isinstance(eobj, esdl.Transport):
@@ -539,12 +550,13 @@ class DataManager:
                     qau = esdl.QuantityAndUnitType(physicalQuantity=esdl.PhysicalQuantityEnum.LENGTH,
                                                    unit=esdl.UnitEnum.METRE, description="Length in m")
                 # Handle compound asset
-                if eobj.containingBuilding or eobj.containingAsset:
-                    container_asset = eobj.eContainer()
+                container_asset = eobj.eContainer()
+                if isinstance(container_asset, esdl.ExposedPortsAsset):
                     area = container_asset.area
-                    d.region = area.name
+                    if area:
+                        d.region = area.name
                     d.labels['Parent asset'] = container_asset.name
-                else:
+                elif isinstance(container_asset, esdl.Area):
                     d.region = eobj.area.name
 
             # Process asset ownership label
@@ -727,6 +739,7 @@ class DataManager:
                 msg = f"Failed to add dataset {es.name} [{es_id}]. The name must be unique. Please rename ESDL and try again."
             else:
                 msg = f"An error occurred while adding or updating metadata: {e}"
+                logger.exception(e)
             logger.error(msg)
             return MetadataOperationResp(MetadataCRUDStatus.ERROR.value, msg)
 
