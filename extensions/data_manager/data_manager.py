@@ -53,6 +53,8 @@ from src import settings
 from src.log import get_logger
 import statistics
 
+from utils.utils import camelCaseToWords
+
 logger = get_logger(__name__)
 
 
@@ -217,6 +219,7 @@ def handle_static_profile(profile: esdl.StaticProfile, ds: DataSet, variable_nam
     """
     container = profile.eContainer() # save profile container (e.g. asset, also in case it is a reference)
     multiplier = 1
+    original_profile = profile
     while isinstance(profile, esdl.ProfileReference):
         multiplier = multiplier * profile.multiplier
         profile = profile.reference
@@ -267,10 +270,11 @@ def handle_static_profile(profile: esdl.StaticProfile, ds: DataSet, variable_nam
             labels['Graph position'] = "Edge"
         d.labels = labels
     elif isinstance(container, esdl.CostInformation):  # handle costinformation
-        cost_type = profile.eContainmentFeature().name
+        # use containment feature name (e.g. investmentCosts) as cost type, unless a name is given.
+        cost_type = camelCaseToWords(original_profile.eContainmentFeature().name)
         labels = {"Cost type": cost_type}
-        if profile.name and profile.name != "":
-            labels["Cost type"] = profile.name
+        if original_profile.name and original_profile.name != "":
+            labels["Cost type"] = original_profile.name
         if not variable_name:
             variable_name = f'{physical_q_to_str(qau)} [{unit_to_string(qau)}]'
             # variable_name =
@@ -288,6 +292,11 @@ def handle_static_profile(profile: esdl.StaticProfile, ds: DataSet, variable_nam
                 d.node = asset.name or asset.id
                 d.region = area.name
                 d.technology = asset.eClass.name
+            labels["Ownership"] = "Unassigned"
+            if asset.isOwnedBy is not None:
+                labels["Ownership"] = asset.isOwnedBy.name
+            capability = get_asset_capability_type(asset)
+            labels['Capability'] = capability
         d.labels = labels
     # else:
     #     # e.g. container is Profiles section, we can ignore these as they are not directy attached to an asset port
