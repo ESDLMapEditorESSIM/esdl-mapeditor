@@ -3381,12 +3381,12 @@ def connect(*args):
     else:
         logger.debug('- Old socketio id={}, new socketio id={}'.format(None, request.sid))
     session['id'] = request.sid
-    set_session('socketio_sid', request.sid)
 
     # Client ID is used to retrieve session variables in handler_manager
     # So this is a very important session variable!!
     if 'client_id' in session:
         logger.debug('- Client id: {}'.format(session['client_id']))
+        set_session('socketio_sid', request.sid)
     else:
         logger.debug('- No client id in session')
     if not valid_session():
