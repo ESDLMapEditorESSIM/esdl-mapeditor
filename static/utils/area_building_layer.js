@@ -61,25 +61,26 @@ function get_area_id_from_mapeditor_id(id) {
 }
 
 /**
- * Flattens a list of areas such that KPIs can be properly processed
- * @param layer_data list of layers. Items in this list can be objects with grouped layers
- * @returns {*[]} flattened list of areas
+ * Recursively flattens a list of areas so that KPIs can be properly processed.
+ * Any element with an `area_list` is treated as a parent with nested layers.
+ *
+ * @param {Array} layer_data - list of layers (possibly nested)
+ * @returns {Array} - flattened list of all leaf areas
  */
 function flatten_area_list(layer_data) {
-    let flat_layer_data = [];
+    let result = [];
 
-    for (const l_index in layer_data) {
-        let layer = layer_data[l_index];
-        if (layer.hasOwnProperty('type') && layer['type']==='group') {
-            // current layer is a group of layers
-            flat_layer_data.push(...layer['area_list']);
+    for (const entry of layer_data) {
+        if (entry && Array.isArray(entry.area_list)) {
+            // Recurse into child areas
+            result.push(...flatten_area_list(entry.area_list));
         } else {
-            // current layer is a single layer
-            flat_layer_data.push(layer);
+            // Leaf node
+            result.push(entry);
         }
     }
 
-    return flat_layer_data;
+    return result;
 }
 
 /**
@@ -917,6 +918,10 @@ function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
             if (feature.properties.KPIs && Object.keys(feature.properties.KPIs).length != 0) {
                 feature.properties.get_area_color = get_area_range_colors;
             }
+            if (feature.properties && feature.properties.parent_area_id) {
+                // Set the parent area property, so we know which area this area is part of.
+                layer.parent_area_id = feature.properties.parent_area_id;
+            }
             if (feature.properties && feature.properties.id) {
                 window.PubSubManager.broadcast('ADD_AREA_TO_LAYER', { id: feature.properties.id, feature: feature, layer: layer });
                 layer.id = feature.properties.id;
@@ -1515,6 +1520,7 @@ function add_potential_geojson_layer(geojson_pontential_data) {
 function add_geojson_listener(socket, map) {
     initMapZoomLevel = map.getZoom();
     socket.on('geojson', function(message) {
+        console.debug("Received geojson", message);
         let layer = message['layer'];
 
         if (layer == 'area_layer') {

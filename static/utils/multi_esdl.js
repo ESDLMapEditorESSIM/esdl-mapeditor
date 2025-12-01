@@ -257,67 +257,119 @@ function remove_bld_layer(bld_id) {
     delete esdl_list[bld_id];
 }
 
-function show_esdl_layer_on_map(es_id, layer_name, parent_esdl_layer) {
-    if (layer_name) {
-        if (parent_esdl_layer) {
-            const parent_layer = esdl_list[es_id].layers[parent_esdl_layer];
-            parent_layer.eachLayer(function (layer) {
-                // ...check if it is the checked grouped area item
-                if (layer.options.group_name === layer_name) {
-                    // if it is not already on the map, add it to the map
-                    if (!map.hasLayer(layer)) {
-                        layer.addTo(map);
-                    }
-                }
-            });
-        } else {
-            const layer = esdl_list[es_id].layers[layer_name];
-            if (layer) {
-                if (!map.hasLayer(layer)) {
-                    layer.addTo(map);
-                }
-            } else {
-                console.warn("Unknown layer", es_id, layer_name)
-            }
-        }
-    } else {
-        // Recursively go through all layers inside the energysystem and show them.
-        const es = esdl_list[es_id];
-        for (const layerName of Object.keys(es.layers)) {
-            show_esdl_layer_on_map(es_id, layerName);
-        }
-    }
-}
-
-function hide_esdl_layer_from_map(es_id, layer_name, parent_esdl_layer) {
-    const es = esdl_list[es_id]
-    if (es === undefined) {
-        // No ESDL layer with this ID, so nothing to hide.
+/**
+ * Shows one or more ESDL layers on the Leaflet map.
+ *
+ * @param es_id - Identifier of the ESDL instance to show layers from.
+ * @param layer_name - Logical layer name (level_name) to show. If omitted, all base layers are shown.
+ * @param es_layer_name - Specific ESDL layer key to search within. If omitted, matches top-level layers.
+ */
+function show_esdl_layer_on_map(es_id, layer_name, es_layer_name) {
+    console.debug("Showing ESDL layer", es_id, layer_name, es_layer_name);
+    const es = esdl_list[es_id];
+    if (!es) {
         return;
     }
-    if (layer_name) {
-        if (parent_esdl_layer) {
-            const parent_layer = es.layers[parent_esdl_layer];
-            parent_layer.eachLayer(function (layer) {
-                // ...check if it is the unchecked grouped area item
-                if (layer.options.group_name === layer_name) {
-                    // if it is already on the map, remove it from the map
-                    if (map.hasLayer(layer)) {
-                        layer.removeFrom(map);
-                    }
-                }
-            });
+
+    if (!layer_name) {
+        // Show all base ESDL layers
+        for (const lname of Object.keys(es.layers)) {
+            show_esdl_layer_on_map(es_id, lname);
+        }
+        return;
+    }
+
+    if (!es_layer_name && es.layers[layer_name] !== undefined) {
+        const layer = es.layers[layer_name];
+        if (layer) {
+            if (!map.hasLayer(layer)) layer.addTo(map);
         } else {
-            const layer = es.layers[layer_name];
+            console.warn("Unknown layer", es_id, layer_name);
+        }
+        return;
+    }
+
+    const es_layer = es.layers[es_layer_name];
+    if (!es_layer) {
+        return;
+    }
+
+    // Recursively walk children and hide those matching layer_name
+    function show_recursive(layer) {
+        if (!layer) {
+            return;
+        }
+
+        // We match on level_name which is set by visibleLayers.js when creating layers.
+        if (layer.options && layer.options.level_name === layer_name) {
+            if (!map.hasLayer(layer)) {
+                layer.addTo(map);
+            }
+        }
+
+        if (typeof layer.eachLayer === "function") {
+            layer.eachLayer(child => show_recursive(child));
+        }
+    }
+
+    show_recursive(es_layer);
+}
+
+/**
+ * Hides one or more ESDL layers from the Leaflet map.
+ *
+ * @param es_id - Identifier of the ESDL instance whose layers should be hidden.
+ * @param layer_name - Logical layer name (level_name) to hide. If omitted, all layers are hidden.
+ * @param es_layer_name - Specific ESDL layer key to search within. If omitted, matches top-level layers.
+ */
+function hide_esdl_layer_from_map(es_id, layer_name, es_layer_name) {
+    console.debug("Hiding ESDL layer", es_id, layer_name, es_layer_name);
+    const es = esdl_list[es_id];
+    if (!es) {
+        return;
+    }
+
+    if (!layer_name) {
+        // No args: Hide all layers for this es_id
+        for (const layer_name of Object.keys(es.layers)) {
+            hide_esdl_layer_from_map(es_id, layer_name);
+        }
+        return;
+    }
+
+    if (!es_layer_name && es.layers[layer_name] !== undefined) {
+        // Hide the specified es layer.
+        const layer = es.layers[layer_name];
+        if (layer && map.hasLayer(layer)) {
+            layer.removeFrom(map);
+        }
+        return;
+    }
+
+    const esLayer = es.layers[es_layer_name];
+    if (!esLayer) {
+        return;
+    }
+
+    // Recursively walk children and hide those matching layer_name.
+    function hide_recursive(layer) {
+        if (!layer) {
+            return;
+        }
+
+        // We match on level_name which is set by visibleLayers.js when creating layers.
+        if (layer.options && layer.options.level_name === layer_name) {
             if (map.hasLayer(layer)) {
                 layer.removeFrom(map);
             }
         }
-    } else {
-        for (const layerName of Object.keys(es.layers)) {
-            hide_esdl_layer_from_map(es_id, layerName);
+
+        if (typeof layer.eachLayer === "function") {
+            layer.eachLayer(child => hide_recursive(child));
         }
     }
+
+    hide_recursive(esLayer);
 }
 
 function clear_esdl_layer_list() {
