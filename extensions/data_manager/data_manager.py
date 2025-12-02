@@ -27,7 +27,7 @@ import pandas as pd
 from flask import Flask
 from flask_socketio import SocketIO
 from pandas import DataFrame
-from sqlalchemy import select, delete, column
+from sqlalchemy import select, delete, column, create_engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select, delete, column
 from sqlalchemy.orm import Session
@@ -36,6 +36,8 @@ from sqlalchemy.exc import IntegrityError
 import pandas as pd
 from pandas import DataFrame
 from influxdb import InfluxDBClient
+from sqlalchemy.schema import DropTable
+from sqlalchemy.ext.compiler import compiles
 
 import esdl
 from esdl.processing.ESDLAsset import get_asset_capability_type
@@ -85,6 +87,11 @@ class Label(TypedDict):
     value: str
 
 dt_str_format = '%Y-%m-%d %H:%M:%S'
+
+@compiles(DropTable, "postgresql")
+def _compile_drop_table(element, compiler, **kwargs):
+    return compiler.visit_drop_table(element) + " CASCADE"
+
 
 def physical_q_to_str(qau: esdl.QuantityAndUnitType):
     if qau.physicalQuantity:
@@ -409,7 +416,24 @@ class DataManager:
                 create_db(self.flask_app.config["SQLALCHEMY_DATABASE_URI"])
             else:
                 # The sqlite approach doesn't work well with Postgres, so just dropping the tables.
-                drop_db_tables()
+                # drop_db_tables()
+                engine = create_engine(settings.SQLALCHEMY_DATABASE_URI)
+
+                try:
+                    DataSet.__table__.drop(bind=engine)
+                except:
+                    pass
+
+                try:
+                    Variable.__table__.drop(bind=engine)
+                except:
+                    pass
+
+                try:
+                    Data.__table__.drop(bind=engine)
+                except:
+                    pass
+
                 create_db_tables()
 
         @self.socketio.on("datamanager/metadata/add_update", namespace="/esdl")
