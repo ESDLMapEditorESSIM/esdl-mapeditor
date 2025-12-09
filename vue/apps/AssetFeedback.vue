@@ -10,112 +10,125 @@
     <a-col style="padding: 8px;">
       <p>
         The following feedback was given for the objects in the energy system.
-        For object feedback messages, you can click on an item in the list to let the map zoom into the object.
+        For asset feedback messages, you can select an item from the list to focus the asset on the map.
       </p>
-      <div>
-        <a-input
-          v-model:value="search_text"
-          placeholder="Enter search term..."
-        />
-      </div>
-      <br>
       <a-row>
-        <p>
+        <a-typography-title :level="5" style="padding-right: 8px;">
           Displayed severity
-          <a-checkbox-group 
-            v-model:value="selectedSeverityState"
-            :options="severityOptions"
-            @change="onCheckSeverity"
-          >
-            <template #label="{ label }">
-              <span>{{ label }}</span>
-            </template>
-          </a-checkbox-group>
-        </p>
+        </a-typography-title>
+        <a-checkbox-group 
+          v-model:value="selectedSeverityState"
+          :options="severityOptions"
+          @change="onCheckSeverity"
+        >
+          <template #label="{ label }">
+            <span>{{ label }}</span>
+          </template>
+        </a-checkbox-group>
       </a-row>
-      <a-table
-        v-if="filtered_general_feedback_list.length"
-        :columns="generalColumns"
-        :data-source="filtered_general_feedback_list"
-        row-key="id"
-        :pagination="{ pageSize: 5 }"
-        :scroll="{ y: 'max-content' }"
-      >
-        <template #bodyCell="{ column, record }">
-          <b v-if="column.dataIndex === 'name'">
-            {{ record.name }}
-          </b>
-          <br>
-          <span
-            v-for="item in record.messages"
-            :key="item.key"
-            style="font-size: x-small"
-          >
-            <p style="margin: 0;">
-              <span :style="severity_color_mapping[item.severity]">{{ item.severity }}</span>
-              {{ ` - ${item.validationMessage }` }}
-            </p>
-            <ul 
-              v-if="Array.isArray(item.checkResultMessages)"
-              style="margin-left: -1rem; margin-bottom: 0.1rem;"
+      <br>
+      <div>
+        <a-table
+          v-if="filtered_general_feedback_list.length"
+          :columns="generalColumns"
+          :data-source="filtered_general_feedback_list"
+          row-key="id"
+          :pagination="{ pageSize: 5 }"
+          :scroll="{ y: 'max-content' }"
+        >
+          <template #bodyCell="{ column, record }">
+            <b v-if="column.dataIndex === 'name'">
+              {{ record.name }}
+            </b>
+            <br>
+            <span
+              v-for="item in record.messages"
+              :key="item.key"
+              style="font-size: x-small"
             >
-              <li v-for="(msg, index) in item.checkResultMessages" :key="index">
-                {{ msg }}
-              </li>
-            </ul>
-          </span>
-        </template>
-      </a-table>
-      <a-table
-        v-if="filtered_asset_feedback_list.length"
-        :columns="columns"
-        :data-source="filtered_asset_feedback_list"
-        row-key="id"
-        :custom-row="customRow"
-        :pagination="{ pageSize: 50 }"
-        :scroll="{ y: 'max-content' }"
-        class="table-with-hover"
-      >
-        <template #bodyCell="{ column, record }">
-          <b v-if="column.dataIndex === 'name'">
-            {{ record.name }}
-          </b>
-          <br>
-          <span
-            v-for="item in record.messages"
-            :key="item.key"
-            style="font-size: x-small"
-          >
-            <p style="margin: 0;">
-              <span :style="severity_color_mapping[item.severity]">{{ item.severity }}</span>
-              {{ ` - ${item.validationMessage }` }}
-            </p>
-            <ul 
-              v-if="Array.isArray(item.checkResultMessages)"
-              style="margin-left: -1rem; margin-bottom: 0.1rem;"
+              <p style="margin: 0;">
+                <span :style="severity_color_mapping[item.severity]">{{ item.severity }}</span>
+                {{ ` - ${item.validationMessage }` }}
+              </p>
+              <ul 
+                v-if="Array.isArray(item.checkResultMessages)"
+                style="margin-left: -1rem; margin-bottom: 0.1rem;"
+              >
+                <li v-for="(msg, index) in item.checkResultMessages" :key="index">
+                  {{ msg }}
+                </li>
+              </ul>
+            </span>
+          </template>
+        </a-table>
+      </div>
+      <div>
+        <a-col style="padding-bottom: 8px;">
+          <a-typography-title :level="5">
+            Asset filter
+          </a-typography-title>
+          <a-select
+            v-model:value="selectedAssetKeys"
+            :options="assetSelectorOptions"
+            style="width: 100%"
+            mode="multiple"
+            :show-search="true"
+            allow-clear
+            max-tag-count="responsive"
+            @mouseleave="removeTooltipPopup"
+          />
+        </a-col>
+        <a-table
+          v-if="filtered_asset_feedback_list.length"
+          :columns="columns"
+          :data-source="filtered_asset_feedback_list"
+          row-key="id"
+          :custom-row="customRow"
+          :pagination="{ pageSize: 50 }"
+          :scroll="{ y: 'max-content' }"
+          class="table-with-hover"
+        >
+          <template #bodyCell="{ column, record }">
+            <b v-if="column.dataIndex === 'name'">
+              {{ record.name }}
+            </b>
+            <br>
+            <span
+              v-for="item in record.messages"
+              :key="item.key"
+              style="font-size: x-small"
             >
-              <li v-for="(msg, index) in item.checkResultMessages" :key="index">
-                {{ msg }}
-              </li>
-            </ul>
-          </span>
-        </template>
-      </a-table>
+              <p style="margin: 0;">
+                <span :style="severity_color_mapping[item.severity]">{{ item.severity }}</span>
+                {{ ` - ${item.validationMessage }` }}
+              </p>
+              <ul 
+                v-if="Array.isArray(item.checkResultMessages)"
+                style="margin-left: -1rem; margin-bottom: 0.1rem;"
+              >
+                <li v-for="(msg, index) in item.checkResultMessages" :key="index">
+                  {{ msg }}
+                </li>
+              </ul>
+            </span>
+          </template>
+        </a-table>
+      </div>
     </a-col>
   </template>
   <template v-else>
     <a-row style="padding: 8px;">
       <p>
-        The validation service could not detect any errors. Well done!
+        The validation service could not detect any errors.
       </p>
     </a-row>
   </template>
   <a-space style="padding: 8px;">
-    <a-button type="primary" @click="close_window">Ok</a-button>
+    <a-button type="primary" @click="onClose">Ok</a-button>
     <a-button
       v-if="asset_feedback_list.length"
       type="primary"
-      @click="clear_asset_feedback_from_map"
+      @click="clearAssetFeedbackFromMap"
     >
       Clear feedback from map
     </a-button>
@@ -126,6 +139,11 @@
 import {ref, computed, onMounted, onUnmounted} from 'vue'
 import {useAssetFeedbackList} from '../composables/assetFeedback';
 import {v4 as uuidv4} from 'uuid';
+
+// to prevent stuck popup on UI
+const removeTooltipPopup = () => {
+  window.jquery(".ui-tooltip-content").parents("div").remove();
+};
 
 const {currentAssetFeedbackList} = useAssetFeedbackList();
 
@@ -139,7 +157,7 @@ const generalColumns = [
 
 const columns = [
   {
-    title: 'Object feedback message(s): click to zoom',
+    title: 'Asset feedback message(s): click to zoom',
     dataIndex: 'name',
     width: 150,
   },
@@ -152,9 +170,12 @@ const severityOptions = [
 ];
 
 const asset_feedback_list = ref([]);
+// To be used as asset selector options
+const assetSelectorOptions = ref([]);
+const selectedAssetKeys = ref([]);
+
 // A list of feedback that can't be linked to the specific asset.
 const general_feedback_list = ref([]);
-const search_text = ref("");
 
 const severity_color_mapping = {
   // "INFO": "color:#00FF00",
@@ -170,6 +191,7 @@ onMounted(() => {
 onUnmounted(() => {
   // Reset to default
   asset_feedback_list.value = ['ERROR', 'WARNING'];
+  clearAssetFeedbackFromMap();
   console.debug("AssetFeedback unmounted");
 });
 
@@ -178,15 +200,15 @@ const onCheckSeverity = () => {
 }
 
 const filtered_general_feedback_list = computed(() => {
-  return general_feedback_list.value.filter((record) => {
-    return record.name.includes(search_text.value); // || record.message.includes(search_text.value);
-  });
+  return general_feedback_list.value;
 });
 
 const filtered_asset_feedback_list = computed(() => {
-  return asset_feedback_list.value.filter((record) => {
-    return record.name.includes(search_text.value); // || record.message.includes(search_text.value);
-  });
+  if (selectedAssetKeys.value.length) {
+    return asset_feedback_list.value.filter((f) => selectedAssetKeys.value.includes(f.key));
+  } else {
+    return asset_feedback_list.value;
+  }
 });
 
 function customRow(record) {
@@ -202,11 +224,12 @@ function customRow(record) {
   };
 }
 
-function clear_asset_feedback_from_map() {
+function clearAssetFeedbackFromMap() {
   window.clear_layers(window.active_layer_id, 'sim_layer');
 }
 
-function close_window() {
+function onClose() {
+  clearAssetFeedbackFromMap();
   window.sidebar.hide();
 }
 
@@ -252,6 +275,8 @@ function create_asset_feedback_list() {
   }
   asset_feedback_list.value = tmp_asset_feedback_list;
 
+  updateAssetSelectorOptions(asset_feedback_list.value);
+
   let tmp_general_feedback_list = [];
   for (const messagesId in currentAssetFeedbackList.value) {
     if (!found_feedback_ids.includes(messagesId)) {
@@ -279,6 +304,13 @@ function create_asset_feedback_list() {
     }
   }
   general_feedback_list.value = tmp_general_feedback_list;
+}
+
+const updateAssetSelectorOptions = (feedbackList) => {
+  assetSelectorOptions.value = feedbackList.map((f) => ({
+    label: f.name,
+    value: f.key,
+  }))
 }
 
 </script>
