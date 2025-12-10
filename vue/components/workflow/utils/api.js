@@ -51,7 +51,7 @@ export async function workflowGetData(remote_url, request_params, headers) {
  * 
  * Returns the response.
  */
-export async function workflowPostData(remote_url, request_params, headers) {
+export async function workflowPostData(remote_url, body, headers, request_params={}) {
     window.show_loader();
     if (!headers) {
         headers = {};
@@ -63,6 +63,7 @@ export async function workflowPostData(remote_url, request_params, headers) {
             const params = {
                 remote_url: remote_url,
                 request_params: request_params,
+                body: body,
             };
             const response = await fetch("workflow/post_data", {
                 method: "POST",
