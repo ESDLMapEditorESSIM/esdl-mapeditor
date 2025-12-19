@@ -164,6 +164,7 @@ def handle_influxdb_profile(profile: esdl.InfluxDBProfile, ds: DataSet):
     # Label profile id, so it can be retrieved when the query_influxdb_profile() method is called.
     labels['profile_id'] = profile.id
     labels['Measurement'] = profile.measurement
+    labels['Profile Type'] = profile.profileType.name
 
     # TODO: extract below code to avoid duplication in handle_static_profile()
     if isinstance(container, esdl.Port):
@@ -963,14 +964,15 @@ class DataManager:
             dataset_name = result.name
             es_id = result.energy_system_id
             profile_id = result.profile_id
-
+            profile_attached_node = result.attached_node
+            
             # To avoid duplicated profile label in the same dataset.
             if dataset_name not in ds_profile_labels:
                 ds_profile_labels[dataset_name] = []
-            if result.attached_node in ds_profile_labels[dataset_name]:
-                profile_label = f"{result.attached_node} ({profile_id})"
+            if profile_attached_node in ds_profile_labels[dataset_name]:
+                profile_label = f"{profile_attached_node} (id={profile_id})"
             else:
-                profile_label = result.attached_node
+                profile_label = profile_attached_node
                 ds_profile_labels[dataset_name].append(profile_label)
 
             # If group_by_enabled true,
@@ -999,8 +1001,6 @@ class DataManager:
                 err = f"Error connecting to {profile.host}:{profile.port} to query profile ({profile_id})."
                 resp['errors'].append(err)
             else:
-                profiles_datetimes.extend([profile.startDate, profile.endDate])
-
                 query_filters = []
                 if profile.filters:
                     # Parse filter string with regex
@@ -1017,8 +1017,12 @@ class DataManager:
                     start_date = datetime.strptime(range[0], dt_str_format).replace(tzinfo=timezone.utc)
                     end_date = datetime.strptime(range[1], dt_str_format).replace(tzinfo=timezone.utc)
                 else:
-                    start_date = profile.startDate
-                    end_date = profile.endDate
+                    if profile.startDate.tzinfo is None or profile.endDate.tzinfo is None:
+                        logger.warning("Datetime is missing timezone information; assuming UTC.")
+                    start_date = profile.startDate if profile.startDate.tzinfo else profile.startDate.replace(tzinfo=timezone.utc)
+                    end_date = profile.endDate if profile.endDate.tzinfo else profile.endDate.replace(tzinfo=timezone.utc)
+
+                profiles_datetimes.extend([start_date, end_date])
 
                 groupby_interval_sec = None
                 if max_datapoints:
@@ -1046,45 +1050,47 @@ class DataManager:
                     logger.error(err)
                     continue
 
-                datetimes, values = [], []
-                for d in datetime_profile:
-                    # skip when value is None (this can occur when downsampling is applied)
-                    if d[1] is None:
-                        continue
+                if datetime_profile:
+                    datetimes, values = [], []
+                    for d in datetime_profile:
+                        # skip when value is None (this can occur when downsampling is applied)
+                        if d[1] is None:
+                            continue
 
-                    date: datetime = d[0]
-                    value = d[1] * profile.multiplier
+                        date: datetime = d[0]
+                        value = d[1] * profile.multiplier
 
-                    datetimes.append(date)
-                    values.append(value)
+                        datetimes.append(date)
+                        values.append(value)
 
-                profile_data.append({
-                    "dataset": dataset_name,
-                    "groupby": group_by_category,
-                    "profile_label": profile_label,
-                    "datetime": datetimes,
-                    "value": values
-                })
+                    profile_data.append({
+                        "dataset": dataset_name,
+                        "groupby": group_by_category,
+                        "profile_label": profile_label,
+                        "datetime": datetimes,
+                        "value": values
+                    })
 
-        # Cast profile_data into a dataframe and flatten datetime and value list
-        df = pd.DataFrame(profile_data).explode(["datetime", "value"])
-
-        traces = self.process_profile_data(df, group_by_enabled, group_by_agg_func, viz_type, agg_interval, agg_func)
+        if len(resp['errors']):
+            logger.error(resp['errors'])
+            error_msg = f"{len(resp['errors'])} out of {len(profile_query)} requested profiles can not be retrieved due to connection errors."
+            resp['error_msg'] = error_msg
         
         if len(profiles_datetimes):
             min_dt = (min(profiles_datetimes) - timedelta(days=1)).strftime(dt_str_format)
             max_dt = (max(profiles_datetimes) + timedelta(days=1)).strftime(dt_str_format)
             resp['data_range'] = [min_dt, max_dt]
 
-        if len(resp['errors']):
-            logger.error(resp['errors'])
-            error_msg = f"{len(resp['errors'])} out of {len(profile_query)} requested profiles can not be retrieved due to connection errors."
-            resp['error_msg'] = error_msg
+        if len(profile_data):
+            # Cast profile_data into a dataframe and flatten datetime and value list
+            df = pd.DataFrame(profile_data).explode(["datetime", "value"])
 
-        if chart_type == ChartType.TABLE:
-            resp['traces'] = self.process_profile_table_trace(traces)
-        else:
-            resp['traces'] = traces
+            traces = self.process_profile_data(df, group_by_enabled, group_by_agg_func, viz_type, agg_interval, agg_func)
+
+            if chart_type == ChartType.TABLE:
+                resp['traces'] = self.process_profile_table_trace(traces)
+            else:
+                resp['traces'] = traces
 
         return resp
 
