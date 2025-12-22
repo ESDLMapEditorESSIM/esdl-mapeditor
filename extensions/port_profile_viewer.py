@@ -63,6 +63,9 @@ class ProfileRetrievalError(Exception):
 class InfluxDBProfileLoadError(Exception):
     pass
 
+class EmptyProfileWarning(Exception):
+    pass
+
 
 class PortProfileViewer:
     def __init__(self, flask_app: Flask, socket: SocketIO, settings_storage: SettingsStorage):
@@ -392,7 +395,7 @@ class PortProfileViewer:
     def get_profile_traces_from_profile_ids(self, req: ProfileTracesRequest) -> Dict[str, List[Dict[str, Any]]]:
         """Return a dictionary with profile traces for plotly visualization or error messages."""
 
-        results = {"traces": [], "errors": []}
+        results = {"traces": [], "warnings": [], "errors": []}
 
         for profile_id in req.profile_ids:
             try:
@@ -401,10 +404,15 @@ class PortProfileViewer:
                     "profile_id": profile_id,
                     "trace": trace
                 })
-            except Exception as e:
+            except EmptyProfileWarning as warning:
+                results["warnings"].append({
+                    "profile_id": profile_id,
+                    "warning": str(warning)
+                })
+            except Exception as err:
                 results["errors"].append({
                     "profile_id": profile_id,
-                    "error": str(e)
+                    "error": str(err)
                 })
 
         return results
@@ -436,16 +444,17 @@ class PortProfileViewer:
         except Exception as e:
             raise ProfileRetrievalError(f"Failed to retrieve profile {profile_id}: {e}") from e
 
-        query_filters = self._parse_profile_filters(profile.filters)
-
         try:
             start_date, end_date = self._resolve_date_range(dt_range, profile, dt_str_format)
         except ValueError as e:
             raise ValueError(f"Invalid datetime range format: {e}")
 
-        groupby_interval_sec = self._calculate_groupby_interval(start_date, end_date, max_datapoints)
+        metadata = PortProfileViewer.get_profile_metadata(profile)
 
         try:
+            query_filters = self._parse_profile_filters(profile.filters)
+            groupby_interval_sec = self._calculate_groupby_interval(start_date, end_date, max_datapoints)
+
             prof_manager = InfluxDBProfileManager(influxdb_settings)
             prof_manager.load_influxdb(
                 measurement=profile.measurement,
@@ -458,7 +467,10 @@ class PortProfileViewer:
             # profile_data_list: a list of lists, with each list structure to be [datetime, field value, ...]
             datetime_profile = prof_manager.profile_data_list
         except Exception as e:
-            raise InfluxDBProfileLoadError(f"Failed to load profile data for {profile_id}: {e}") from e
+            raise InfluxDBProfileLoadError(f"Failed to load profile data for [{metadata.get('displayed_name')}]: {e}") from e
+
+        if len(datetime_profile) == 0:
+            raise EmptyProfileWarning(f"Profile [{metadata.get('displayed_name')}] has no data.")
 
         datetimes, values = [], []
         for d in datetime_profile:
@@ -471,8 +483,6 @@ class PortProfileViewer:
 
             datetimes.append(date.strftime(dt_str_format))
             values.append(value)
-
-        metadata = PortProfileViewer.get_profile_metadata(profile)
 
         trace = {
             "name": metadata.get("displayed_name"),

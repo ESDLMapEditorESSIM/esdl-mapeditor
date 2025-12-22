@@ -926,7 +926,7 @@ class DataManager:
 
         logger.info(f"Querying influxdb profile traces with {vars(options)}")
         
-        resp = { "data_range": [], "traces": [], "errors": [], "error_msg": "" }
+        resp = { "data_range": [], "traces": [], "warnings": [], "errors": [], "warning_msg": "", "error_msg": "" }
 
         profiles_settings = Profiles.get_instance().get_profiles_settings()
         esh = get_handler()
@@ -1047,34 +1047,42 @@ class DataManager:
                 except Exception as e:
                     err = f"Error retrieving {profile.host}:{profile.port} profile ({profile_id}): {e}"
                     resp['errors'].append(err)
-                    logger.error(err)
                     continue
 
-                if datetime_profile:
-                    datetimes, values = [], []
-                    for d in datetime_profile:
-                        # skip when value is None (this can occur when downsampling is applied)
-                        if d[1] is None:
-                            continue
+                if len(datetime_profile) == 0:
+                    warning = f"Profile [{dataset_name}] (id={profile_id}) has no data."
+                    resp['warnings'].append(warning)
+                    continue
 
-                        date: datetime = d[0]
-                        value = d[1] * profile.multiplier
+                datetimes, values = [], []
+                for d in datetime_profile:
+                    # skip when value is None (this can occur when downsampling is applied)
+                    if d[1] is None:
+                        continue
 
-                        datetimes.append(date)
-                        values.append(value)
+                    date: datetime = d[0]
+                    value = d[1] * profile.multiplier
 
-                    profile_data.append({
-                        "dataset": dataset_name,
-                        "groupby": group_by_category,
-                        "profile_label": profile_label,
-                        "datetime": datetimes,
-                        "value": values
-                    })
+                    datetimes.append(date)
+                    values.append(value)
+
+                profile_data.append({
+                    "dataset": dataset_name,
+                    "groupby": group_by_category,
+                    "profile_label": profile_label,
+                    "datetime": datetimes,
+                    "value": values
+                })
 
         if len(resp['errors']):
             logger.error(resp['errors'])
             error_msg = f"{len(resp['errors'])} out of {len(profile_query)} requested profiles can not be retrieved due to connection errors."
             resp['error_msg'] = error_msg
+
+        if len(resp['warnings']):
+            logger.warning(resp['warnings'])
+            warning_msg = f"{len(resp['warnings'])} out of {len(profile_query)} requested profiles have no data."
+            resp['warning_msg'] = warning_msg
         
         if len(profiles_datetimes):
             min_dt = (min(profiles_datetimes) - timedelta(days=1)).strftime(dt_str_format)
