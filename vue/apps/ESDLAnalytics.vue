@@ -808,6 +808,9 @@ const onSyncBtnClick = async() => {
     console.error(error);
     displayNotification("error", `An error occurred while synchronizing metadata: ${error}`);
   } finally {
+    // Reset selection
+    resetMenuToDefault();
+
     isSyncingMetaData.value = false;
   }  
 };
@@ -1049,6 +1052,10 @@ const updateTrace = async() => {
       if (results['error_msg'] !== '') {
         displayNotification('error', results['error_msg']);
         console.error(results['errors']);
+      }
+      if (results['warning_msg'] !== '') {
+        displayNotification('warning', results['warning_msg']);
+        console.warn(results['warnings']);
       }
       const formattedData = chartType.value === 'table' ? 
         tableTraceHandler(traces) : profileTraceHandler(traces);
