@@ -253,6 +253,14 @@ function set_marker_handlers(marker) {
             }
 
             marker.options.contextmenuItems.push({
+                text: 'Set port profile',
+                icon: 'icons/Graph.png',
+                callback: function() {
+                    window.activate_port_profile_editor(asset_id)
+                }
+            });
+
+            marker.options.contextmenuItems.push({
                 text: 'Set constraint',
                 icon: 'icons/Chain.png',
                 callback: function() {

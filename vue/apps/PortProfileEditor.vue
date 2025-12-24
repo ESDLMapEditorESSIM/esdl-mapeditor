@@ -1,0 +1,317 @@
+<template>
+  <a-space
+    id="port-profile-editor"
+    direction="vertical"
+    style="width: 100%; padding: 8px; height: 100%"
+  >
+    <!-- Header -->
+    <a-row>
+      <a-typography-title :level="3">
+        <img src="/static/icons/Graph.png" style="width: 24px; height: 24px">
+        Port Profile Editor
+      </a-typography-title>
+    </a-row>
+
+    <!----------------------------------->
+    <!------------- Content ------------->
+    <!----------------------------------->
+    <a-col style="height: 100%">
+      <a-segmented
+        v-if="portOptions.length"
+        v-model:value="activePortId"
+        :options="portOptions"
+        style="width: 100%"
+        block
+        @change="onSelectPortSegment"
+      />
+      <br>
+      <div style="width: 100%">
+        <a-col v-if="listedPortProfiles.length">
+          <a-table
+            :data-source="listedPortProfiles"
+            :columns="columns"
+            :pagination="false"
+            size="middle"
+            :scroll="{ y: 'calc(100vh - 180px)' }"
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'action'">
+                <div class="action-buttons">
+                  <a-button
+                    type="text"
+                    size="small"
+                    @click="onEditRecord(record)"
+                  >
+                    <edit-outlined />
+                  </a-button>
+                  <!-- TODO: check sometimes need double click -->
+                  <a-button
+                    type="text"
+                    size="small"
+                    danger
+                    @click="onDeleteRecord(record.id)"
+                  >
+                    <delete-outlined />
+                  </a-button>
+                </div>
+              </template>
+            </template>
+          </a-table>
+          <DataTableProfileFormEdit
+            :visible="profileModalVisible"
+            :profile-tag="activeProfileTag"
+            :profile-info="activeProfile"
+            @on-save="onSaveProfileFormData"
+            @on-cancel="onCancelProfileFormData"
+          />
+        </a-col>
+        <!-- No profiles defined -->
+        <a-col v-else>
+          <a-empty
+            :description="'No profiles defined'"
+            :image-style="{ height: '150px' }"
+          />
+        </a-col>
+        <a-col
+          v-if="activePortId !== null"
+          style="display: flex; justify-content: flex-end; margin-top: 16px"
+        >
+          <a-button type="primary" style="width: 50%" @click="onAddRecord">
+            Add profile
+          </a-button>
+        </a-col>
+      </div>
+    </a-col>
+  </a-space>
+</template>
+
+<script setup>
+import { ref, onMounted, onUnmounted } from "vue";
+import { EditOutlined, DeleteOutlined } from "@ant-design/icons-vue";
+import { useEsdlLayers } from "@/composables/esdlLayers";
+import { useObject } from "../composables/ObjectID";
+
+import { fetchData } from "@/utils/api";
+import { displayNotification } from "@/utils/notification";
+
+// TODO: replace?
+import ProfileFormEdit from "@/components/forms/ProfileFormEdit.vue";
+import DataTableProfileFormEdit from "@/components/forms/DataTableProfileFormEdit.vue";
+
+const { currentObjectID } = useObject();
+const { getActiveEsdlLayerId } = useEsdlLayers();
+
+// ----------------------------------------- //
+// ------------ Component states ----------- //
+// ----------------------------------------- //
+
+const activeEsdlId = ref(null);
+const assetId = ref(null);
+
+const isLoadingData = ref(false);
+
+const portsProfiles = ref([]);
+const portOptions = ref([]);
+const activePortId = ref(null);
+
+const listedPortProfiles = ref([]);
+
+const profileModalVisible = ref(false);
+const activeProfileTag = ref(null);
+const activeProfile = ref({});
+
+// ----------------------------------------- //
+// ---------- Component constant ----------- //
+// ----------------------------------------- //
+
+// Table configuration
+const columns = [
+  {
+    title: "Profile Name",
+    dataIndex: "columnName",
+    key: "profileName",
+  },
+  {
+    title: "Unit",
+    dataIndex: ["profileQuantityAndUnit", "description"],
+    key: "profileUnit",
+    width: 100,
+  },
+  {
+    title: "Actions",
+    key: "action",
+    width: 100,
+    align: "right",
+  },
+];
+
+onMounted(async () => {
+  console.debug("Port profile editor component mounted");
+  resetState();
+
+  activeEsdlId.value = getActiveEsdlLayerId().value;
+  assetId.value = currentObjectID.value;
+
+  initPortsProfiles();
+});
+
+onUnmounted(() => {
+  resetState();
+  console.debug("Port profile editor component unmounted");
+});
+
+// Reset to default state.
+const resetState = () => {
+  activeEsdlId.value = null;
+  assetId.value = null;
+};
+
+/**
+ * Reset all port-related reactive state.
+ */
+const resetPortsState = () => {
+  portsProfiles.value = [];
+  portOptions.value = [];
+  activePortId.value = null;
+  listedPortProfiles.value = [];
+};
+
+/**
+ * Initialize asset ports profiles and related UI state.
+ */
+const initPortsProfiles = async () => {
+  const assetPortsProfiles = await fetchAssetPortsProfiles(
+    activeEsdlId.value,
+    assetId.value
+  );
+
+  // No response or failed fetch
+  if (!assetPortsProfiles) {
+    resetPortsState();
+    return;
+  }
+
+  const ports = assetPortsProfiles.ports_profiles ?? [];
+
+  // No ports defined
+  if (ports.length === 0) {
+    displayNotification(
+      "warning",
+      `Asset (id=${assetId.value}) has no ports defined.`
+    );
+    resetPortsState();
+    return;
+  }
+
+  portsProfiles.value = ports;
+  portOptions.value = ports.map((port) => ({
+    label: `${port["port_type"]} - ${port["port_name"]}`,
+    value: port["port_id"],
+  }));
+
+  // Auto-select first port if none selected
+  if (activePortId.value === null) {
+    activePortId.value = portOptions.value[0].value;
+  }
+
+  listedPortProfiles.value = listPortProfiles(activePortId.value);
+};
+
+const fetchAssetPortsProfiles = async (esId, assetId) => {
+  isLoadingData.value = true;
+
+  try {
+    const reqBody = {
+      es_id: esId,
+      asset_id: assetId,
+    };
+
+    // TODO: a more generic endpoint
+    const assetPortsProfiles = await fetchData(
+      "port_profile_viewer/asset_ports_profiles",
+      reqBody
+    );
+    return assetPortsProfiles;
+  } catch (e) {
+    console.error(e);
+    displayNotification(
+      "error",
+      `Failed to retrieve ports and profiles for asset (id=${assetId}). Please verify that the corresponding ESDL is active.`
+    );
+  } finally {
+    isLoadingData.value = false;
+  }
+};
+
+const listPortProfiles = (activePortId) => {
+  let profiles = [];
+  if (portsProfiles.value.length) {
+    profiles = portsProfiles.value.find(
+      (portProfiles) => portProfiles.port_id === activePortId
+    )["port_profiles"];
+  }
+  return profiles;
+};
+
+const onSelectPortSegment = (portId) => {
+  listedPortProfiles.value = listPortProfiles(portId);
+  console.debug(listedPortProfiles.value); // TODO: remove
+};
+
+// Open modal with default form value
+const onAddRecord = () => {
+  activeProfile.value = null;
+  profileModalVisible.value = true;
+};
+
+const onEditRecord = (record) => {
+  // Pass also activeEsdlId for retrieving profile trace
+  activeProfile.value = {
+    activeEsdlId: activeEsdlId.value,
+    ...record,
+  };
+  profileModalVisible.value = true;
+};
+
+const onDeleteRecord = async (recordId) => {
+  const portId = activePortId.value;
+  const profileId = recordId;
+
+  // Remove profile from port
+  window.remove_profile_from_port(portId, profileId);
+
+  // Reinitialize asset ports profiles
+  initPortsProfiles();
+};
+
+const onSaveProfileFormData = (profileFormData) => {
+  console.debug(profileFormData);
+
+  closeProfileModal();
+};
+
+const onCancelProfileFormData = () => {
+  closeProfileModal();
+};
+
+const closeProfileModal = () => {
+  activeProfileTag.value = null;
+  activeProfile.value = {};
+  profileModalVisible.value = false;
+};
+</script>
+
+<style scoped>
+::v-deep(.ant-segmented-item, .ant-segmented-item::selection) {
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+</style>

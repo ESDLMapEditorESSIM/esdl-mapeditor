@@ -1,5 +1,5 @@
 <template>
-  <div v-show="trace.length === 0" class="no-analytics-data">Not configured</div>
+  <div v-show="trace.length === 0" class="no-analytics-data">No data</div>
   <div v-show="trace.length" class="with-data">
     <div id="plot" ref="plotDiv" class="plotly-plot" />
   </div>

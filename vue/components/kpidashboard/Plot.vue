@@ -1,6 +1,6 @@
 <template>
   <div v-if="trace.length" :id="plotId" ref="plotDiv" class="plot-div" />
-  <div v-else class="no-data">Not configured</div>
+  <div v-else class="no-data">No data</div>
 </template>
 
 <script setup>
