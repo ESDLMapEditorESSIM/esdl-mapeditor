@@ -19,12 +19,11 @@ from sys import getsizeof
 from flask import session
 from flask_socketio import emit
 from shapely import MultiPoint
-from typing import Dict
 
 import esdl
-import esdl.units.parser
+from esdl.units.parser import unit_to_string
 from esdl import esdl
-from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEnergySystem, ESDLQuantityAndUnits
+from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEnergySystem
 from esdl.processing.ESDLEnergySystem import get_notes_list
 from extensions.boundary_service import BoundaryService, is_valid_boundary_id
 from extensions.mapeditor_settings import MapEditorSettings
@@ -317,7 +316,7 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, sho
                 if not kpi_qau:  # Reference field in the ESDL could be "" (but should never be)
                     unit = ''
                 else:
-                    unit = esdl.units.parser.unit_to_string(kpi_qau)
+                    unit = unit_to_string(kpi_qau)
             else:
                 unit = ''
 
