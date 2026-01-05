@@ -608,6 +608,13 @@ const onDeleteConstraint = async (id) => {
   padding: 16px;
 }
 
+::v-deep(.ant-segmented-item, .ant-segmented-item::selection) {
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 .constraints-table {
   height: 100%;
 }

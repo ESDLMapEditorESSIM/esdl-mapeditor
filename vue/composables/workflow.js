@@ -82,6 +82,7 @@ function evaluateConditions(conditions, data) {
 }
 
 // The currently active workflow.
+/** @type {import('vue').Ref<Workflow|null>} */
 export const currentWorkflow = ref(null);
 // Saved workflows that the user can load.
 export const savedWorkflows = ref([]);
@@ -302,12 +303,24 @@ export function useWorkflow() {
                     }
                 });
             }
+            let body = {};
+            if ("body" in urlConfig) {
+                urlConfig.body.forEach(function (param) {
+                    if ("value" in param) {
+                        body[param.name] = param.value;
+                    } else if ("parameter_name" in param) {
+                        body[param.name] = getFromState(param.parameter_name);
+                    } else {
+                        console.error("body parameter found in service config without 'value' or 'parameter_name'");
+                    }
+                });
+            }
 
             try {
                 let response;
-                if (method.toLowerCase() === 'POST') {
-                    const body = urlConfig.body || request_params;
-                    response = await workflowPostData(url, body, headers);
+                if (method.toLowerCase() === 'post') {
+                    response = await workflowPostData(url, body, headers, request_params);
+                    response = await response.json();
                 } else {
                     response = await workflowGetData(url, request_params, headers);
                 }
@@ -568,10 +581,24 @@ export class Workflow {
 
         const nextStep = this.getWorkflowStep(targetStepId);
 
+
         // Don't add to previous steps if staying on the same step which happens with the 'composite' step
         if (nextStep !== null && nextStep !== this.workflowStep) {
-            this.prevWorkflowSteps.push(this.workflowStep);
             this.inputValidDict = {};
+
+            // Check if the nextStep is already in the previous steps. If it is, just go back there.
+            for (let i = this.prevWorkflowSteps.length - 1; i >= 0; i--) {
+                const prevStep = this.prevWorkflowSteps[i];
+                if (prevStep.id === nextStep.id) {
+                    // Found the step in previous steps. Pop until we reach it.
+                    while (this.prevWorkflowSteps.length > i) {
+                        this.workflowStep = this.prevWorkflowSteps.pop();
+                    }
+                    return;
+                }
+            }
+
+            this.prevWorkflowSteps.push(this.workflowStep);
             this.workflowStep = nextStep;
         }
     }

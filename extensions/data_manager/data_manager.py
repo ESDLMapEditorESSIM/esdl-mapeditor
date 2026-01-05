@@ -33,7 +33,7 @@ from influxdb import InfluxDBClient
 import esdl
 from esdl.processing.ESDLAsset import get_asset_capability_type
 from esdl.processing.ESDLQuantityAndUnits import unit_to_string
-from esdl.profiles.influxdbprofilemanager import InfluxDBProfileManager, ConnectionSettings
+from esdl.profiles.influxdbprofilemanager import InfluxDBProfileManager
 from extensions.data_manager.db_interaction import create_db_tables, get_db_driver_type, DriverType, create_db, drop_db, \
     drop_db_tables
 from extensions.profiles import Profiles
@@ -52,6 +52,8 @@ from extensions.session_manager import get_handler, get_session
 from src import settings
 from src.log import get_logger
 import statistics
+
+from utils.utils import camelCaseToWords
 
 logger = get_logger(__name__)
 
@@ -162,6 +164,7 @@ def handle_influxdb_profile(profile: esdl.InfluxDBProfile, ds: DataSet):
     # Label profile id, so it can be retrieved when the query_influxdb_profile() method is called.
     labels['profile_id'] = profile.id
     labels['Measurement'] = profile.measurement
+    labels['Profile Type'] = profile.profileType.name
 
     # TODO: extract below code to avoid duplication in handle_static_profile()
     if isinstance(container, esdl.Port):
@@ -169,15 +172,18 @@ def handle_influxdb_profile(profile: esdl.InfluxDBProfile, ds: DataSet):
         asset: esdl.EnergyAsset = port.energyasset
         capability = get_asset_capability_type(asset)
         labels['Capability'] = capability
-        area = asset.area
-        if asset.containingBuilding or asset.containingAsset:
-            container_asset = asset.eContainer()
-            area = container_asset.area
-            labels['Parent asset'] = container_asset.name
-        d.sector = asset.sector.name if asset.sector else None
-        d.node = asset.name or asset.id
-        d.region = area.name
-        d.technology = asset.eClass.name
+        asset_container = asset.eContainer()
+        if isinstance(asset_container, (esdl.Area, esdl.ExposedPortsAsset)):
+            # ignore assets in Measures, Templates and Energymarkets
+            area = asset.area
+            if asset.containingBuilding or asset.containingAsset:
+                container_asset = asset.eContainer()
+                area = container_asset.area
+                labels['Parent asset'] = container_asset.name
+            d.sector = asset.sector.name if asset.sector else None
+            d.node = asset.name or asset.id
+            d.region = area.name
+            d.technology = asset.eClass.name
         
         if isinstance(port, esdl.InPort):
             d.input = port.carrier.name if port.carrier else None
@@ -214,6 +220,7 @@ def handle_static_profile(profile: esdl.StaticProfile, ds: DataSet, variable_nam
     """
     container = profile.eContainer() # save profile container (e.g. asset, also in case it is a reference)
     multiplier = 1
+    original_profile = profile
     while isinstance(profile, esdl.ProfileReference):
         multiplier = multiplier * profile.multiplier
         profile = profile.reference
@@ -229,7 +236,7 @@ def handle_static_profile(profile: esdl.StaticProfile, ds: DataSet, variable_nam
     elif isinstance(profile, esdl.DateTimeProfile):
         logger.warn("DateTimeSeriesProfile not yet supported")
     elif isinstance(profile, esdl.InfluxDBProfile):
-        logger.warn("DateTimeSeriesProfile not yet supported")
+        logger.warn("InfluxDBProfile not yet supported")
 
     if isinstance(container, esdl.Port):  # usually a port
         port: esdl.Port = container
@@ -264,24 +271,33 @@ def handle_static_profile(profile: esdl.StaticProfile, ds: DataSet, variable_nam
             labels['Graph position'] = "Edge"
         d.labels = labels
     elif isinstance(container, esdl.CostInformation):  # handle costinformation
-        cost_type = profile.eContainmentFeature().name
+        # use containment feature name (e.g. investmentCosts) as cost type, unless a name is given.
+        cost_type = camelCaseToWords(original_profile.eContainmentFeature().name)
         labels = {"Cost type": cost_type}
-        if profile.name and profile.name != "":
-            labels["Cost type"] = profile.name
+        if original_profile.name and original_profile.name != "":
+            labels["Cost type"] = original_profile.name
         if not variable_name:
             variable_name = f'{physical_q_to_str(qau)} [{unit_to_string(qau)}]'
             # variable_name =
         asset = container.eContainer()
-        if isinstance(asset, esdl.EnergyAsset):  # TODO: could also be measure
-            area = asset.area
-            if asset.containingBuilding or asset.containingAsset:
-                container_asset = asset.eContainer()
-                area = container_asset.area
-                labels['Parent asset'] = container_asset.name
-            d.sector = asset.sector.name if asset.sector else None
-            d.node = asset.name or asset.id
-            d.region = area.name
-            d.technology = asset.eClass.name
+        if isinstance(asset, esdl.EnergyAsset):  # Ignore Measure here as it should not be taken into account
+            asset_container = asset.eContainer()
+            if isinstance(asset_container, (esdl.Area, esdl.ExposedPortsAsset)):
+                # ignore assets in Measures, Templates and Energymarkets
+                area = asset.area
+                if asset.containingBuilding or asset.containingAsset:
+                    container_asset = asset.eContainer()
+                    area = container_asset.area
+                    labels['Parent asset'] = container_asset.name
+                d.sector = asset.sector.name if asset.sector else None
+                d.node = asset.name or asset.id
+                d.region = area.name
+                d.technology = asset.eClass.name
+            labels["Ownership"] = "Unassigned"
+            if asset.isOwnedBy is not None:
+                labels["Ownership"] = asset.isOwnedBy.name
+            capability = get_asset_capability_type(asset)
+            labels['Capability'] = capability
         d.labels = labels
     # else:
     #     # e.g. container is Profiles section, we can ignore these as they are not directy attached to an asset port
@@ -307,50 +323,6 @@ def preprocess_column(column_name: str) -> Any:
             return func.jsonb_extract_path_text(Data.labels, key_name).label(column_name)
     else:
         return column(column_name)
-    
-def get_profile_influxdb_settings(profile: esdl.InfluxDBProfile, profiles_settings: dict) -> ConnectionSettings | None:
-    """
-    Retrieves InfluxDB connection settings for a given profile.
-
-    If the profile is hosted on a publicly accessible server, 
-    it additionally checks the InfluxDB connectivity and constructs the connection settings.
-    """
-    # Find profile server information for the InfluxDBProfile
-    for prof_server in profiles_settings["profiles_servers"]:
-        if prof_server["host"] in profile.host and prof_server["port"] == str(profile.port):
-            return ConnectionSettings(
-                host=prof_server["host"],
-                port=profile.port,
-                database=profile.database,
-                username=prof_server["username"],
-                password=prof_server["password"],
-                ssl=prof_server.get("ssl_enabled", False),
-                verify_ssl=prof_server.get("ssl_enabled", False),
-            )
-
-    # Check additionally if the profile is hosted on a public accessible server
-    # Ensure host part only (without http:// or https://) 
-    host = urlparse(profile.host).netloc if profile.host.startswith(('http://', 'https://')) else profile.host
-    try:
-        influxdb_client = InfluxDBClient(host=host, port=profile.port, ssl=True, verify_ssl=True, retries=1, timeout=2)
-        db = influxdb_client.get_list_database()
-        if db:
-            return ConnectionSettings(
-                host=host,
-                port=profile.port,
-                database=profile.database,
-                username="",
-                password="",
-                ssl=True,
-                verify_ssl=True,
-            )
-    except Exception as e:
-        logger.warn(e)
-    finally:
-        if influxdb_client:
-            influxdb_client.close()
-
-    return None
 
 def aggregate_profile_data_by_interval(df: DataFrame, interval: str, agg_func: str) -> DataFrame:
     """
@@ -477,7 +449,11 @@ class DataManager:
 
         ds = DataSet(name=es.name, energy_system_id=es.id, created_by=owner, description=es.description, model="Unknown")
 
-        for eobj in es.eAllContents():
+        # iterate only over EObjects contained in main Instance, other information is not relevant for analytics
+        # profiles in ESI section should use references to get handled (which is the case)
+        # In principle we should iterate here over all the instance, but this is not supported elsewhere in the MapEditor
+        # adding an extra label for each instance might be consfusing.
+        for eobj in es.instance[0].eAllContents():
             variable_name = None
             is_profile_variable = None
 
@@ -543,12 +519,13 @@ class DataManager:
                 qau = esdl.QuantityAndUnitType(physicalQuantity=esdl.PhysicalQuantityEnum.POWER,
                                                unit=esdl.UnitEnum.WATT, description="Power in W")
                 # Handle compound asset
-                if eobj.containingBuilding or eobj.containingAsset:
-                    container_asset = eobj.eContainer()
+                container_asset = eobj.eContainer()
+                if isinstance(container_asset, esdl.ExposedPortsAsset):
                     area = container_asset.area
-                    d.region = area.name
+                    if area:
+                        d.region = area.name
                     d.labels['Parent asset'] = container_asset.name
-                else:
+                elif isinstance(container_asset, esdl.Area):
                     d.region = eobj.area.name
 
             elif isinstance(eobj, esdl.Storage) or isinstance(eobj, esdl.Transport):
@@ -583,12 +560,13 @@ class DataManager:
                     qau = esdl.QuantityAndUnitType(physicalQuantity=esdl.PhysicalQuantityEnum.LENGTH,
                                                    unit=esdl.UnitEnum.METRE, description="Length in m")
                 # Handle compound asset
-                if eobj.containingBuilding or eobj.containingAsset:
-                    container_asset = eobj.eContainer()
+                container_asset = eobj.eContainer()
+                if isinstance(container_asset, esdl.ExposedPortsAsset):
                     area = container_asset.area
-                    d.region = area.name
+                    if area:
+                        d.region = area.name
                     d.labels['Parent asset'] = container_asset.name
-                else:
+                elif isinstance(container_asset, esdl.Area):
                     d.region = eobj.area.name
 
             # Process asset ownership label
@@ -771,6 +749,7 @@ class DataManager:
                 msg = f"Failed to add dataset {es.name} [{es_id}]. The name must be unique. Please rename ESDL and try again."
             else:
                 msg = f"An error occurred while adding or updating metadata: {e}"
+                logger.exception(e)
             logger.error(msg)
             return MetadataOperationResp(MetadataCRUDStatus.ERROR.value, msg)
 
@@ -947,7 +926,7 @@ class DataManager:
 
         logger.info(f"Querying influxdb profile traces with {vars(options)}")
         
-        resp = { "data_range": [], "traces": [], "errors": [], "error_msg": "" }
+        resp = { "data_range": [], "traces": [], "warnings": [], "errors": [], "warning_msg": "", "error_msg": "" }
 
         profiles_settings = Profiles.get_instance().get_profiles_settings()
         esh = get_handler()
@@ -985,14 +964,15 @@ class DataManager:
             dataset_name = result.name
             es_id = result.energy_system_id
             profile_id = result.profile_id
-
+            profile_attached_node = result.attached_node
+            
             # To avoid duplicated profile label in the same dataset.
             if dataset_name not in ds_profile_labels:
                 ds_profile_labels[dataset_name] = []
-            if result.attached_node in ds_profile_labels[dataset_name]:
-                profile_label = f"{result.attached_node} ({profile_id})"
+            if profile_attached_node in ds_profile_labels[dataset_name]:
+                profile_label = f"{profile_attached_node} (id={profile_id})"
             else:
-                profile_label = result.attached_node
+                profile_label = profile_attached_node
                 ds_profile_labels[dataset_name].append(profile_label)
 
             # If group_by_enabled true,
@@ -1010,7 +990,7 @@ class DataManager:
                 profile: esdl.InfluxDBProfile = esh.get_by_id(es_id, profile_id)
                 if not profile:
                     raise ValueError(f"Profile with ID {profile_id} (ESDL ID {es_id}) not found.")
-                influxdb_settings = get_profile_influxdb_settings(profile, profiles_settings)
+                influxdb_settings = InfluxDBProfileManager.get_profile_influxdb_settings(profile, profiles_settings)
             except Exception as e:
                 err = f"Error retrieving ESDL profile {profile_id} and associated influxdb settings: {e}"
                 logger.error(err)
@@ -1021,8 +1001,6 @@ class DataManager:
                 err = f"Error connecting to {profile.host}:{profile.port} to query profile ({profile_id})."
                 resp['errors'].append(err)
             else:
-                profiles_datetimes.extend([profile.startDate, profile.endDate])
-
                 query_filters = []
                 if profile.filters:
                     # Parse filter string with regex
@@ -1039,8 +1017,12 @@ class DataManager:
                     start_date = datetime.strptime(range[0], dt_str_format).replace(tzinfo=timezone.utc)
                     end_date = datetime.strptime(range[1], dt_str_format).replace(tzinfo=timezone.utc)
                 else:
-                    start_date = profile.startDate
-                    end_date = profile.endDate
+                    if profile.startDate.tzinfo is None or profile.endDate.tzinfo is None:
+                        logger.warning("Datetime is missing timezone information; assuming UTC.")
+                    start_date = profile.startDate if profile.startDate.tzinfo else profile.startDate.replace(tzinfo=timezone.utc)
+                    end_date = profile.endDate if profile.endDate.tzinfo else profile.endDate.replace(tzinfo=timezone.utc)
+
+                profiles_datetimes.extend([start_date, end_date])
 
                 groupby_interval_sec = None
                 if max_datapoints:
@@ -1065,7 +1047,11 @@ class DataManager:
                 except Exception as e:
                     err = f"Error retrieving {profile.host}:{profile.port} profile ({profile_id}): {e}"
                     resp['errors'].append(err)
-                    logger.error(err)
+                    continue
+
+                if len(datetime_profile) == 0:
+                    warning = f"Profile [{dataset_name}] (id={profile_id}) has no data."
+                    resp['warnings'].append(warning)
                     continue
 
                 datetimes, values = [], []
@@ -1088,25 +1074,31 @@ class DataManager:
                     "value": values
                 })
 
-        # Cast profile_data into a dataframe and flatten datetime and value list
-        df = pd.DataFrame(profile_data).explode(["datetime", "value"])
+        if len(resp['errors']):
+            logger.error(resp['errors'])
+            error_msg = f"{len(resp['errors'])} out of {len(profile_query)} requested profiles can not be retrieved due to connection errors."
+            resp['error_msg'] = error_msg
 
-        traces = self.process_profile_data(df, group_by_enabled, group_by_agg_func, viz_type, agg_interval, agg_func)
+        if len(resp['warnings']):
+            logger.warning(resp['warnings'])
+            warning_msg = f"{len(resp['warnings'])} out of {len(profile_query)} requested profiles have no data."
+            resp['warning_msg'] = warning_msg
         
         if len(profiles_datetimes):
             min_dt = (min(profiles_datetimes) - timedelta(days=1)).strftime(dt_str_format)
             max_dt = (max(profiles_datetimes) + timedelta(days=1)).strftime(dt_str_format)
             resp['data_range'] = [min_dt, max_dt]
 
-        if len(resp['errors']):
-            logger.error(resp['errors'])
-            error_msg = f"{len(resp['errors'])} out of {len(profile_query)} requested profiles can not be retrieved due to connection errors."
-            resp['error_msg'] = error_msg
+        if len(profile_data):
+            # Cast profile_data into a dataframe and flatten datetime and value list
+            df = pd.DataFrame(profile_data).explode(["datetime", "value"])
 
-        if chart_type == ChartType.TABLE:
-            resp['traces'] = self.process_profile_table_trace(traces)
-        else:
-            resp['traces'] = traces
+            traces = self.process_profile_data(df, group_by_enabled, group_by_agg_func, viz_type, agg_interval, agg_func)
+
+            if chart_type == ChartType.TABLE:
+                resp['traces'] = self.process_profile_table_trace(traces)
+            else:
+                resp['traces'] = traces
 
         return resp
 

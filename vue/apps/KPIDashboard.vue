@@ -56,10 +56,11 @@
   </a-row>
   <div v-if="selectorOptionsKpiScope.length">
     <a-row>
+      <a-typography-title :level="5" style="padding-right: 8px;">KPI Scope</a-typography-title>
       <a-select
         v-model:value="selectedKPIScope"
         placeholder="Please select a KPI scope"
-        style="width: 50%"
+        style="width: 50%; display: flex; align-items: center;"
         @change="onSelectKPIScope"
       >
         <a-select-opt-group
@@ -224,14 +225,20 @@ const selectorOptionsKpiScope = esIds.map((esId) => (
 const selectedKPIScope = ref({});
 
 /**
- * Initialize dashboard contents based on the first ES and the first KPI scope.
+ * Initialize dashboard contents based on the active ESDL and the first KPI scope.
  */
 const initDashboard = () => {
-  const initESId = selectorOptionsKpiScope[0].label;
-  const initSelectedKPIScope = selectorOptionsKpiScope[0].options[0];
-  selectedKPIScope.value = initSelectedKPIScope;
+  const activeEsdlId = window.active_layer_id;
+  const activeEsdlKPIScope = selectorOptionsKpiScope.find(obj => obj.label === activeEsdlId);
 
-  updateDashboard(initESId, initSelectedKPIScope.label);
+  if (activeEsdlKPIScope) {
+    const initSelectedKPIScope = activeEsdlKPIScope.options[0];
+    selectedKPIScope.value = initSelectedKPIScope;
+
+    updateDashboard(activeEsdlId, initSelectedKPIScope.label);
+  } else {
+    console.error(`Unable to find KPI scope of ESDL: ${activeEsdlId}`);
+  }
 };
 
 if (Object.keys(esKPIs).length) {
