@@ -71,34 +71,74 @@ export function useEsdlLayers() {
             return;
         }
         enabledEsdlIdList.value.push(es_id);
+        /** @type {import('@/composables/visibleLayers').VisibleLayer[]} */
         const sublayers = [];
-        Object.entries(es.layers).reverse().forEach(([key, esdl_layer]) => {
+
+        Object.entries(es.layers).reverse().forEach(([esLayerName, esdl_layer]) => {
             esdl_layer.eachLayer(function (sublayer) {
+                // Handle logical groups. Add each logical group as their own sublayer, and descend recursively
                 if (sublayer.options.group_name) {
-                    const sublayerId = es_id + "_" + key + "_" + sublayer.options.group_name;
-                    const sublayerDescription = sublayer.options.group_name;
-                    const sublayerVisibleLayer = {
-                        id: sublayerId,
+                    // A logical group.
+                    const logicalGroupId = es_id + "_" + esLayerName + "_" + sublayer.options.group_name;
+                    const logicalGroupName = sublayer.options.group_name;
+
+                    const logicalGroupVisibleLayer = {
+                        id: logicalGroupId,
                         visible: true,
-                        description: sublayerDescription,
+                        description: logicalGroupName,
                         es_id: es_id,
-                        parent_esdl_layer: key,
+                        es_layer_name: esLayerName,
                         es: es,
-                        layer_ref: sublayer
+                        layer_refs: [sublayer],
+                        child_layers: [],
                     };
-                    sublayers.push(sublayerVisibleLayer);
+                    sublayers.push(logicalGroupVisibleLayer);
+
+                    // Recursively collect deeper levels.
+                    const descendants = collectAllLayers(sublayer);
+                    // Group into L1, L2, L3...
+                    const levels = groupByLevels(descendants);
+
+                    // For each level, create a visible layer entry
+                    levels.forEach((levelNodes, index) => {
+                        const levelNumber = index + 1;
+                        const levelId = `${logicalGroupId}_L${levelNumber}`;
+                        const levelName = `${logicalGroupName} L${levelNumber}`;
+
+                        const sublevelVisibleLayer = {
+                            id: levelId,
+                            visible: true,
+                            description: levelName,
+                            es_id: es_id,
+                            es_layer_name: esLayerName,
+                            es: es,
+                            layer_refs: levelNodes.map(n => n.layer_ref ?? n)
+                        };
+                        logicalGroupVisibleLayer.child_layers.push(sublevelVisibleLayer);
+                        sublayers.push(sublevelVisibleLayer);
+                        levelNodes.forEach(n => {
+                            // Set this for use in hiding and showing them on the map. See multi_esdl.js.
+                            n.options.level_name = levelName;
+                            n.options.group_name = logicalGroupName;
+                        });
+                    });
                 }
             });
+
+            // Add the root esdl_layer. This is "area" or "kpi".
+            /** @type {import('@/composables/visibleLayers').VisibleLayer} */
             const visibleEsdlLayer = {
-                id: es_id + "_" + key,
+                id: `${es_id}_${esLayerName}`,
                 visible: true,
-                description: key,
+                description: esLayerName,
                 es_id: es_id,
                 es: es,
-                layer_ref: esdl_layer
+                layer_refs: [esdl_layer]
             };
             sublayers.push(visibleEsdlLayer);
+
         });
+        console.log(sublayers)
         createVisibleLayerGroup(es_id, es.title, sublayers);
     }
 
@@ -204,6 +244,59 @@ function addEsdlLoadingStatus(es_id, status) {
  */
 function isEsdlLoaded(es_id) {
     return MANDATORY_ESDL_LOADING_MESSAGES.every((messageName) => esdlLoadingStatus.value[es_id]?.has(messageName));
+}
+
+
+/**
+ * Recursively collect sublayers of a given layer.
+ * @param layer - The layer to collect sublayers from.
+ */
+function collectAllLayers(layer) {
+    if (typeof layer.eachLayer !== 'function') {
+        return [layer];
+    }
+    const result = [];
+    layer.eachLayer(function (child) {
+        const descendants = collectAllLayers(
+            child,
+        );
+        result.push(...descendants);
+    });
+    return result;
+}
+
+function groupByLevels(descendants) {
+    const byId = new Map(descendants.map(d => [d.id, d]));
+    const allIds = new Set(byId.keys());
+
+    // Level 1 = nodes whose parent is not one of the other IDs.
+    const level1 = descendants.filter(
+        d => !allIds.has(d.parent_area_id)
+    );
+
+    const build = (currentLevel, assigned) => {
+        if (currentLevel.length === 0) {
+            return [];
+        }
+
+        const nextAssigned = new Set([
+            ...assigned,
+            ...currentLevel.map(d => d.id),
+        ]);
+
+        const currentLevelIds = new Set(currentLevel.map(d => d.id));
+
+        const nextLevel = descendants.filter(
+            d => !nextAssigned.has(d.id) && currentLevelIds.has(d.parent_area_id)
+        );
+
+        return [
+            currentLevel,
+            ...build(nextLevel, nextAssigned),
+        ];
+    };
+
+    return build(level1, new Set());
 }
 
 /**

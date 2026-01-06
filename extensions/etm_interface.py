@@ -22,6 +22,8 @@ import requests
 from flask import Flask
 from flask_socketio import SocketIO, emit
 from pyecore.ecore import EObject
+from sqlalchemy import create_engine, exc, MetaData, Column, String, Numeric
+from sqlalchemy.orm import declarative_base, Session
 
 import src.log as log
 from esdl import esdl, EnergySystem
@@ -31,8 +33,11 @@ from esdl.profiles.influxdbprofilemanager import InfluxDBProfileManager
 from esdl.undo import UndoRedoCommandStack
 from esdl.undo_wrapper import undo_record_changes
 from esdl.units.conversion import convert_to_unit, ENERGY_IN_PJ
+from extensions.data_manager import db
+from extensions.data_manager.db_interaction import get_db_driver_type, DriverType
 from extensions.session_manager import get_project_manager, get_session
 from extensions.settings_storage import SettingsStorage
+from src import settings
 from src.edr_client import EDRClient
 from src.process_es_area_bld import get_area_id_from_mapeditor_id, find_and_send_KPI_information_in_ESDL, \
     call_process_energy_system
@@ -43,7 +48,8 @@ logger = log.get_logger(__name__)
 ETM_INTERFACE_SYSTEM_CONFIG = 'ETM_INTERFACE_SYSTEM_CONFIG'
 ETM_INTERFACE_DEFAULT_SYSTEM_CONFIG = {
     # 'etm_base_url': 'https://engine.energytransitionmodel.com/api/v3',
-    'etm_base_url': 'https://beta.energytransitionmodel.com/api/v3',
+    # 'etm_base_url': 'https://beta.energytransitionmodel.com/api/v3',
+    'etm_base_url': 'https://2025-01.engine.energytransitionmodel.com/api/v3',
     'etm_municipalities_file': 'data/ETM_municipalities.csv'
 }
 
@@ -69,6 +75,23 @@ etm_scenarios = {
     996009: {"name": "IP2024 Internationale ambitie 2030", "area_id": 31, "area_name": "Nederland", "scope": esdl.AreaScopeEnum.COUNTRY, "year": 2030},
     996011: {"name": "IP2024 Internationale ambitie 2035", "area_id": 31, "area_name": "Nederland", "scope": esdl.AreaScopeEnum.COUNTRY, "year": 2035},
 }
+
+
+Base = declarative_base()
+
+class ETMSankeyData(Base):
+    __tablename__ = 'etmsankeydata'
+
+    id = Column(String, primary_key=True)
+    mun_id = Column('mun_id', String)
+
+    carrier = Column('carrier', String)
+    category = Column('category', String)
+    group = Column('group', String)
+    type = Column('type', String)
+    value_unit = Column('value_unit', String)
+    future_year = Column('future_year', Numeric)
+    present_year = Column('present_year', Numeric)
 
 
 class ETMInterface:
@@ -327,6 +350,57 @@ class ETMInterface:
 
     @timed
     def request_sankey_info_municipality(self, municipality_code):
+        res = self.request_sankey_info_municipality_via_db(municipality_code)
+        if res is None:
+            res = self.request_sankey_info_municipality_via_api(municipality_code)
+        return res
+
+    def request_sankey_info_municipality_via_db(self, municipality_code):
+        if municipality_code not in self.etm_municipalities:
+            return None
+        else:
+            logger.info(f"Querying ETMSankey Database for municipality {municipality_code}")
+
+            etm_sankey_data = list()
+            with self.flask_app.app_context():
+                db_driver_type = get_db_driver_type()
+                if db_driver_type == DriverType.POSTGRES:
+                    try:
+                        engine = create_engine(settings.SQLALCHEMY_DATABASE_URI)
+                    except exc.SQLAlchemyError as sqlalchemyerror:
+                        print(f"got the following SQLAlchemyError: {sqlalchemyerror}")
+                    except Exception as exception:
+                        print(f"got the following Exception: {exception}")
+
+                    metadata = MetaData()
+                    metadata.reflect(bind=engine)
+                    etm_sankey_data_table = metadata.tables["etmsankeydata"]
+
+                    if etm_sankey_data_table is not None:
+                        with Session(bind=engine) as session:
+                            query_result = session.query(ETMSankeyData) \
+                                .filter(ETMSankeyData.mun_id == self.etm_municipalities[municipality_code]) \
+                                .all()
+
+                        for row in query_result:
+                            etm_sankey_data.append({
+                                "Carrier": row.carrier,
+                                "Category": row.category,
+                                "Group": row.group,
+                                "Type": row.type,
+                                "Value Unit": row.value_unit,
+                                "future_year": row.future_year,
+                                "present_year": row.present_year
+                            })
+
+                        if len(etm_sankey_data) > 0:
+                            return etm_sankey_data
+                        else:
+                            return None
+
+            return None
+
+    def request_sankey_info_municipality_via_api(self, municipality_code):
         if municipality_code not in self.etm_municipalities:
             return None
         else:

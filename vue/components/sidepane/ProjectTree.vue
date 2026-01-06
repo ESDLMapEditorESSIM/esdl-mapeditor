@@ -38,7 +38,6 @@ TODO:
     </template>
 
     <template #switcherIcon="{ switcherCls }"><caret-down-filled :class="switcherCls" /></template>
-
     <template #title="{ title }">
       <a-dropdown :trigger="['contextmenu']">
         <span>{{ title }}</span>

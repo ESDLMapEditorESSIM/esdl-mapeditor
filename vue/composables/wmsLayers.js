@@ -52,7 +52,7 @@ const updateGlobalWmsLayerList = (wmsLayerList, visibleId) => {
         for (const layerId in globalWmsLayerList.value['layers']) {
             if (layerId in wmsLayerList['layers']) {
                 // make sure not to lose the map reference
-                wmsLayerList['layers'][layerId].layer_ref = globalWmsLayerList.value['layers'][layerId].layer_ref;
+                wmsLayerList['layers'][layerId].layer_refs = globalWmsLayerList.value['layers'][layerId].layer_refs;
             } else {
                 // hide layer present in global (old) list, but not in new list from database: was deleted
                 removeLayerFromMapAndVisibleLayers(layerId);
@@ -75,14 +75,14 @@ const updateGlobalWmsLayerList = (wmsLayerList, visibleId) => {
     for (const key in globalWmsLayerList.value['layers']) {
         const layer_info = globalWmsLayerList.value['layers'][key];
         layer_info.id = key;
-        if (!layer_info.layer_ref) {
-            layer_info.layer_ref = L.tileLayer.wms(layer_info.url, {
+        if (!layer_info.layer_refs) {
+            layer_info.layer_refs = [L.tileLayer.wms(layer_info.url, {
                 layers: layer_info.layer_name,
                 format: 'image/png',
                 transparent: true,
                 opacity: 0.7,
                 attribution: layer_info.attribution
-            });
+            })];
         }
         layer_info.visible = layerIsVisible(layer_info.id);
         if (visibleId !== undefined) {
@@ -91,8 +91,10 @@ const updateGlobalWmsLayerList = (wmsLayerList, visibleId) => {
             }
         }
         if (layer_info.visible) {
-            layer_info.layer_ref.addTo(map);
-            layer_info.layer_ref.bringToFront();
+            layer_info.layer_refs.forEach(layerRef => {
+                layerRef.addTo(map);
+                layerRef.bringToFront();
+            });
         }
     }
 };
@@ -174,7 +176,7 @@ export function useWmsLayers() {
 
     const updateLayer = (layerId, layerDescr, layerUrl, layerName, legendUrl, layerattr, minZoomLevel) => {
         deactivateWmsLayer(layerId);
-        globalWmsLayerList.value['layers'][layerId].layer_ref = null; // make sure map ref gets updated in updateGlobalWmsLayerList
+        globalWmsLayerList.value['layers'][layerId].layer_refs = null; // make sure map ref gets updated in updateGlobalWmsLayerList
         socket.emit('save_wms_layer', {
             id: layerId,
             lyr_info: {
@@ -196,12 +198,14 @@ export function useWmsLayers() {
         const wms_layer = globalWmsLayerList.value['layers'][layerId];
         if (!layerIsVisible(layerId)) {
             if (!wms_layer.min_zoom_level || (wms_layer.min_zoom_level && map.getZoom() >= wms_layer.min_zoom_level)) {
-                wms_layer.layer_ref.addTo(map);
-                wms_layer.layer_ref.bringToFront();
                 wms_layer.visible = true;
-                if (wms_layer.opacity !== undefined) {
-                    wms_layer.layer_ref.setOpacity(wms_layer.opacity);
-                }
+                wms_layer.layer_refs.forEach(layerRef => {
+                    layerRef.addTo(map);
+                    layerRef.bringToFront();
+                    if (wms_layer.opacity !== undefined) {
+                        layerRef.setOpacity(wms_layer.opacity);
+                    }
+                });
             }
             if (globalWmsLayerList.value['layers'][layerId].legend_url !== "") {
                 showWmsLegend(wms_layer.legend_url);
@@ -221,7 +225,10 @@ export function useWmsLayers() {
 
     const deleteWmsLayer = (layerId, parentId) => {
         socket.emit('remove_wms_layer', {id: layerId, parent_id: parentId}, updateGlobalWmsLayerList);
-        map.removeLayer(globalWmsLayerList.value['layers'][layerId].layer_ref);
+        const layer = globalWmsLayerList.value['layers'][layerId];
+        layer.layer_refs.forEach(layerRef => {
+            map.removeLayer(layerRef);
+        });
         removeFromVisibleLayerList(layerId);
     };
 
@@ -349,7 +356,10 @@ export function useWmsLayers() {
 }
 
 const removeLayerFromMap = (layerId) => {
-    map.removeLayer(globalWmsLayerList.value['layers'][layerId].layer_ref);
+    const layer = globalWmsLayerList.value['layers'][layerId];
+    layer.layer_refs.forEach(layer_ref => {
+        map.removeLayer(layer_ref);
+    });
     if (globalWmsLayerList.value['layers'][layerId].legend_url !== "") {
         removeWmsLegend();
     }
@@ -396,7 +406,10 @@ const removeGroupChildrenFromMap = (layerGroupId) => {
         if (childId in globalWmsLayerList.value['layer_groups']) {
             removeGroupChildrenFromMap(childId);
         } else if (childId in globalWmsLayerList.value['layers']) {
-            map.removeLayer(globalWmsLayerList.value['layers'][childId].layer_ref);
+            const layer = globalWmsLayerList.value['layers'][childId];
+            layer.layer_refs.forEach(layerRef => {
+                map.removeLayer(layerRef);
+            });
             removeFromVisibleLayerList(childId);
         }
     }

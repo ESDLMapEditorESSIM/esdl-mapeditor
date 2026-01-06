@@ -397,7 +397,7 @@ def find_area_info_KPIs(area_list, this_area):
             area_list.append(grouped_area_info)
 
 
-def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, show_assets_without_location=True):
+def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, show_assets_without_location=True, parent_area=None):
     """
     This function collects information about the areas, potentials and KPIs belonging to those and results in a geojson
     data structure
@@ -412,6 +412,7 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, sho
     :param this_area: the area to start collecting the information from. Function is called recursively on sub areas
     :param shape_dictionary: a dictionary (cache) for storing shapes of areas
     :param show_assets_without_location: a boolean specifying whether to show assets without location
+    :param parent_area: the parent area of this area (if any)
     :return:
     """
     area_id = this_area.id
@@ -434,7 +435,8 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, sho
             "id": area_id,
             "name": area_name,
             "KPIs": geojson_KPIs,
-            "dist_KPIs": geojson_dist_kpis
+            "dist_KPIs": geojson_dist_kpis,
+            "parent_area_id": parent_area.id if parent_area else None,
         }
 
         if this_area.scope == esdl.AreaScopeEnum.SERVICE_AREA:
@@ -492,7 +494,7 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, sho
                     "id": area_id + area_id_number,
                     "name": boundary_wgs['name'],
                     "KPIs": geojson_KPIs,
-                    "dist_KPIs": geojson_dist_kpis
+                    "dist_KPIs": geojson_dist_kpis,
                 }))
 
             area_shape = sh
@@ -530,18 +532,19 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, sho
         if not area.logicalGroup:
             logical_group = False
 
-    if not logical_group:
-        for area in this_area.area:
-            find_area_info_geojson(area_list, pot_list, area, shape_dictionary, show_assets_without_location)
-    else:
+    if logical_group:
         for area in this_area.area:
             grouped_area_info = {
                 "name": area.name,
                 "type": "group",
-                "area_list": list()
+                "area_list": list(),
             }
-            find_area_info_geojson(grouped_area_info["area_list"], pot_list, area, shape_dictionary, show_assets_without_location)
+            find_area_info_geojson(grouped_area_info["area_list"], pot_list, area, shape_dictionary,
+                                   show_assets_without_location, this_area)
             area_list.append(grouped_area_info)
+    else:
+        for area in this_area.area:
+            find_area_info_geojson(area_list, pot_list, area, shape_dictionary, show_assets_without_location, this_area)
 
 
 def calculate_imaginary_area_shape(this_area: esdl.Area) -> Shape | None:
