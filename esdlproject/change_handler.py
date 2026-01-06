@@ -167,7 +167,10 @@ def undoChange(change, resource: XMLResource):
             feature: EStructuralFeature = owner.eClass.findEStructuralFeature(change.feature)
             if isinstance(feature, EAttribute):
                 #owner.eSet(change.feature, feature.eType.from_string(change.stringValue))
-                owner.eSet(change.feature, feature.eType.from_string(change.previousValue))
+                if not change.previousValue:
+                    owner.eSet(change.feature, feature.eType.from_string(feature.get_default_value()))
+                else:
+                    owner.eSet(change.feature, feature.eType.from_string(change.previousValue))
             else:  # eReference and not many
                 if change.previousValue == "" or change.previousValue is None:
                     owner.eSet(change.feature, None)
