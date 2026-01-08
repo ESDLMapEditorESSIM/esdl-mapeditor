@@ -67,12 +67,10 @@
 
     <WorkflowChoice
       v-if="currentWorkflow.workflowStep.type === WorkflowStepTypes.CHOICE"
-      :key="currentWorkflow.workflowStep.id"
       :workflow-step="currentWorkflow.workflowStep"
     />
     <WorkflowSelect
       v-else-if="currentWorkflow.workflowStep.type === WorkflowStepTypes.SELECT"
-      :key="currentWorkflow.workflowStep.id"
       :workflow-step="currentWorkflow.workflowStep"
     />
     <WorkflowTable
@@ -165,6 +163,17 @@ import WorkflowDataIO from "@/components/workflow/WorkflowDataIO.vue";
 import {MessageNames, PubSubManager} from "@/bridge";
 import {useEsdlLayers} from "@/composables/esdlLayers";
 import {ref} from "vue";
+import DOMPurify from "dompurify";
+
+// Hook to ensure rel="noopener noreferrer" on all <a> tags
+DOMPurify.addHook('afterSanitizeAttributes', function (node) {
+  if (node.tagName === 'A') {
+    // Only add rel if target="_blank"
+    if (node.target === '_blank') {
+      node.setAttribute('rel', 'noopener noreferrer');
+    }
+  }
+});
 
 const {getActiveEsdlLayerId} = useEsdlLayers();
 

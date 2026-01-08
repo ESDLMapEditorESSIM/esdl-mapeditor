@@ -61,10 +61,11 @@
 
 <script setup="props">
 
-import {computed, onMounted, ref, watch} from "vue";
+import {computed, onMounted, ref, watch, h} from "vue";
 import {useWorkflow} from "@/composables/workflow";
 import {useOngoingBackendProcesses} from "@/composables/ongoingBackendProcesses";
 import {WorkflowNextStepTriggerOptions} from "@/composables/workflow";
+import {convertUnit} from "@/utils/unitConversion";
 
 const props = defineProps({
   workflowStep: {
@@ -219,11 +220,6 @@ const handleData = (data) => {
       ...value
     }));
   }
-  if (props.rows === null) {
-    tableRows.value = data;
-  } else {
-    tableRows.value = props.rows;
-  }
 
   const config = stepParams.value.config;
   columns.value = config.columns;
@@ -231,24 +227,86 @@ const handleData = (data) => {
   rowIdKey.value = config.value_field;
   additional_fields.value = config.additional_fields;
 
+  if (props.rows === null) {
+    tableRows.value = data;
+  } else {
+    tableRows.value = props.rows;
+  }
+
   // process defined columns in workflow config
   // column syntax follows AntDV table column definition.
   columns.value.forEach((column) => {
-    if (column.formatter) {  // special property for this component
+    if (column.formatter) {
       if (column.formatter === 'formatDate') {
         column.customRender = formatDate;
         column.sorter = (a, b) => {
-          if (a[column.dataIndex] != null && a[column.dataIndex] !== "" && b[column.dataIndex] != null && b[column.dataIndex] !== "") {
-            return (new Date(a[column.dataIndex])) - (new Date(b[column.dataIndex]));
+          if (a[column.dataIndex] != null && b[column.dataIndex] != null) {
+            return new Date(a[column.dataIndex]) - new Date(b[column.dataIndex]);
           } else {
             return -10000000;
           }
-        }
-        //column.sortOrder = 'descend'; -> moved to config
+        };
       }
     } else {
+      column.customRender = (row) => {
+        let value = row.text;
+
+        if (value === undefined || value === null || value === "" || isNaN(Number(value))) {
+          return value; // return text values directly
+        }
+
+        try {
+          let numericValue = Number(value);
+
+          // Unit conversion if both sourceUnit and targetUnit are defined
+          if (column.sourceUnit && column.targetUnit) {
+            numericValue = convertUnit(numericValue, column.sourceUnit, column.targetUnit);
+          }
+
+          const fullValue = numericValue; // full converted value for tooltip
+
+          // Apply rounding if nrOfDecimals is defined
+          let displayValue = numericValue;
+          if ("nrOfDecimals" in column && column.nrOfDecimals !== undefined) {
+            displayValue = numericValue.toFixed(column.nrOfDecimals);
+          }
+
+          return h(
+              'a-tooltip',
+              {title: fullValue.toString()},
+              {default: () => displayValue}
+          );
+
+        } catch (e) {
+          console.error("Column formatting error:", e.message);
+          return value;
+        }
+      };
       // add default sorter otherwise
-      column.sorter = (a, b) => ('' + a[column.dataIndex]).localeCompare(b[column.dataIndex]);  // '' forces a string comparison
+      if ("sortable" in column && column.sortable) {
+        column.sorter = (a, b) => {
+          const v1 = a[column.dataIndex];
+          const v2 = b[column.dataIndex];
+
+          const n1 = Number(v1);
+          const n2 = Number(v2);
+
+          const n1Valid = !Number.isNaN(n1);
+          const n2Valid = !Number.isNaN(n2);
+
+          // Both numeric → numeric sort
+          if (n1Valid && n2Valid) {
+            return n1 - n2;
+          }
+
+          // One numeric → numeric first
+          if (n1Valid) return -1;
+          if (n2Valid) return 1;
+
+          // Fallback → string comparison
+          return String(v1).localeCompare(String(v2));
+        }
+      }
     }
   });
 
