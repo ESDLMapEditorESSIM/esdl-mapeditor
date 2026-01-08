@@ -16,8 +16,8 @@
     </p>
     <div v-if="textBelowButton !== ''">
       <a-divider />
-      <!-- eslint-disable vue/no-v-html -->
-      <p v-html="textBelowButton" />
+      <!-- eslint-disable vue/no-v-html (sanitized with DOMPurify) -->
+      <p v-html="DOMPurify.sanitize(textBelowButton, {ADD_ATTR: ['target', 'rel']})" />
     </div>
   </div>
 </template>
@@ -25,6 +25,7 @@
 <script setup="props">
 import {onMounted, ref, watch} from "vue";
 import {useWorkflow, WorkflowNextStepTriggerOptions} from "@/composables/workflow";
+import DOMPurify from "dompurify";
 
 const {getWorkflowStepParameters, goToStep, getInputData, sendOutputData} = useWorkflow();
 

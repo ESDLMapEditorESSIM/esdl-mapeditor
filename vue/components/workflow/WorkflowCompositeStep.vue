@@ -2,7 +2,8 @@
   <div v-for="(step, key) in workflowSteps" :key="key">
     <br v-if="step.name">
     <h3>{{ step.name }}</h3>
-    <p>{{ step.description }}</p>
+    <!-- eslint-disable vue/no-v-html (sanitized with DOMPurify) -->
+    <p v-html="DOMPurify.sanitize(step.description, {ADD_ATTR: ['target', 'rel']})" />
 
     <WorkflowChoice
       v-if="step.type === WorkflowStepTypes.CHOICE"
@@ -95,6 +96,7 @@ import {default as WorkflowJsonForm} from "@/components/workflow/WorkflowJsonFor
 import {default as WorkflowJsonForm2} from "@/components/workflow/WorkflowJsonForm2";
 import {default as WorkflowCallJsFunction} from "@/components/workflow/WorkflowCallJsFunction";
 import {default as WorkflowDataIO} from "@/components/workflow/WorkflowDataIO";
+import DOMPurify from "dompurify";
 
 const props = defineProps({
   workflowStep: {
