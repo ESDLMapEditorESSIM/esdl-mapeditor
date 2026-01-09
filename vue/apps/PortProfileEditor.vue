@@ -59,6 +59,8 @@
           </a-table>
           <DataTableProfileFormEdit
             :visible="profileModalVisible"
+            :active-esdl-id="activeEsdlId"
+            :active-port-id="activePortId"
             :profile-tag="activeProfileTag"
             :profile-info="activeProfile"
             @on-save="onSaveProfileFormData"
@@ -221,16 +223,11 @@ const fetchAssetPortsProfiles = async (esId, assetId) => {
   isLoadingData.value = true;
 
   try {
-    const reqBody = {
+    const assetPortsProfilesRequest = {
       es_id: esId,
       asset_id: assetId,
     };
-
-    // TODO: a more generic endpoint
-    const assetPortsProfiles = await fetchData(
-      "port_profile_viewer/asset_ports_profiles",
-      reqBody
-    );
+    const assetPortsProfiles = await fetchData("get_asset_ports_profiles", assetPortsProfilesRequest);
     return assetPortsProfiles;
   } catch (e) {
     console.error(e);
@@ -255,7 +252,6 @@ const listPortProfiles = (activePortId) => {
 
 const onSelectPortSegment = (portId) => {
   listedPortProfiles.value = listPortProfiles(portId);
-  console.debug(listedPortProfiles.value); // TODO: remove
 };
 
 // Open modal with default form value
@@ -265,11 +261,7 @@ const onAddRecord = () => {
 };
 
 const onEditRecord = (record) => {
-  // Pass also activeEsdlId for retrieving profile trace
-  activeProfile.value = {
-    activeEsdlId: activeEsdlId.value,
-    ...record,
-  };
+  activeProfile.value = {...record};
   profileModalVisible.value = true;
 };
 
@@ -284,10 +276,11 @@ const onDeleteRecord = async (recordId) => {
   initPortsProfiles();
 };
 
-const onSaveProfileFormData = (profileFormData) => {
-  console.debug(profileFormData);
-
+const onSaveProfileFormData = () => {
   closeProfileModal();
+
+  // Reinitialize asset ports profiles
+  initPortsProfiles();
 };
 
 const onCancelProfileFormData = () => {
