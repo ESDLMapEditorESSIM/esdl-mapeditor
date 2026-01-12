@@ -97,8 +97,8 @@
       :ajv="ajv"
       @change="onChange"
     />
-    <!-- eslint-disable vue/no-v-html -->
-    <p v-if="runDetailsText !== ''" v-html="runDetailsText" />
+    <!-- eslint-disable vue/no-v-html (sanitized with DOMPurify) -->
+    <p v-if="runDetailsText !== ''" v-html="DOMPurify.sanitize(runDetailsText, {ADD_ATTR: ['target', 'rel']})" />
   </a-modal>
 </template>
 
@@ -115,6 +115,7 @@ import {Tooltip} from 'ant-design-vue';
 import addFormats from "ajv-formats";
 import {vanillaRenderers,} from "@jsonforms/vue-vanilla";
 import "@jsonforms/vue-vanilla/vanilla.css";
+import DOMPurify from 'dompurify';
 
 const renderers = Object.freeze([...vanillaRenderers]);
 const ajv = new Ajv({allErrors: true, useDefaults: true, $data: true});

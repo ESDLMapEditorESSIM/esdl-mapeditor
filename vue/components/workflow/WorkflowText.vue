@@ -1,8 +1,8 @@
 <template>
   <p v-if="isLoading">Loading...</p>
   <div v-else>
-    <!-- eslint-disable vue/no-v-html -->
-    <p v-html="text" />
+    <!-- eslint-disable vue/no-v-html (sanitized with DOMPurify) -->
+    <p v-html="DOMPurify.sanitize(text, {ADD_ATTR: ['target', 'rel']})" />
     <a-button
       v-if="stepParams.nextStepTrigger === WorkflowNextStepTriggerOptions.BUTTON_CLICK && stepParams.buttonText"
       type="primary"
@@ -16,6 +16,7 @@
 <script setup="props">
 import {onMounted, onUnmounted, ref, watch} from "vue";
 import {useWorkflow, WorkflowNextStepTriggerOptions} from "@/composables/workflow";
+import DOMPurify from "dompurify";
 
 const props = defineProps({
   workflowStep: {

@@ -6,15 +6,17 @@
     <a-row class="header">
       <a-typography-title :level="4"> Port Profile Viewer </a-typography-title>
       <a-space direction="horizontal" size="large" style="padding-left: 32px">
-        <a-row style="width: 450px; align-items: center">
-          <a-select
+        <a-row style="width: 500px; align-items: center">
+          <a-tree-select
             v-model:value="selectedProfiles"
-            :options="profileOptions"
-            style="width: 400px"
-            mode="multiple"
+            :tree-data="profileOptions"
+            style="width: 450px"
+            allow-clear
+            tree-checkable
+            tree-default-expand-all
             max-tag-count="responsive"
             :placeholder="
-              selectedProfiles.length === 0 ? 'Select profiles' : ''
+              selectedProfiles.length === 0 ? 'Select asset profiles' : ''
             "
             :disabled="isLoadingData"
             @change="onSelectProfiles"
@@ -168,20 +170,50 @@ const getProfileOptions = async (esId, selectedAssetIds) => {
     esId,
     selectedAssetIds
   );
+
   if (assetsProfilesOptions) {
-    // assetsProfilesOptions has structure as [ { asset_id: str, asset_name: str, profiles: [ {id: str, name: str} ] } ]
-    // cast it to AntDV optionGroup object for selector UI
-    const optionGroup = assetsProfilesOptions.map((obj) => {
-      const assetName = obj.asset_name;
-      const assetProfiles = obj.profiles;
-      return {
-        label: assetName,
-        options: assetProfiles.map((p) => ({
-          label: p.name,
+    // assetsProfilesOptions has structure as [ { asset_id: str, asset_name: str, profiles: [ {port_name: str, id: str, name: str} ] } ]
+    const optionGroup = assetsProfilesOptions.map((asset) => {   
+      if (asset.profiles.length === 0) {
+        return {
+          title: `${asset.asset_name} (No profile)`,
+          value: asset.asset_id,
+          checkable: false,
+          disabled: true,
+          children: []   // explicitly empty
+        };
+      }
+
+      // Group profiles by port_name
+      const portsMap = {};
+      asset.profiles.forEach((p) => {
+        if (!portsMap[p.port_name]) {
+          portsMap[p.port_name] = [];
+        }
+        portsMap[p.port_name].push({
+          title: p.name,
           value: p.id,
-        })),
+          checkable: true,
+        });
+      });
+
+      // Build port nodes
+      const portNodes = Object.entries(portsMap).map(([portName, profiles]) => ({
+        title: `Port - ${portName}`,
+        value: `${asset.asset_id}-${portName}`,
+        checkable: false,
+        children: profiles,
+      }));
+
+      // Build asset node
+      return {
+        title: asset.asset_name,
+        value: asset.asset_id,
+        checkable: false,
+        children: portNodes,
       };
     });
+
     profileOptions.value = optionGroup;
   }
 
@@ -203,7 +235,7 @@ const fetchAssetsProfiles = async (esId, assetIds) => {
     console.error(e);
     displayNotification(
       "error",
-      `Error listing port profiles from the active ESDL [${esId}] and selected assets with Ids [${assetIds}]`
+      `Error listing port profiles from the active ESDL (id=${esId}) and selected assets with Ids [${assetIds}].`
     );
   }
 };
@@ -251,14 +283,25 @@ const updateTrace = async () => {
       reqBody
     );
 
-    // Handle errors per profile
+    // Handle warning per profile
+    if (results.warnings && results.warnings.length > 0) {
+      results.warnings.forEach((warningObj) => {
+        displayNotification(
+          "warning",
+          `${warningObj.warning}`
+        );
+        console.warn(warningObj)
+      });
+    }
+
+    // Handle error per profile
     if (results.errors && results.errors.length > 0) {
-      results.errors.forEach((err) => {
+      results.errors.forEach((errObj) => {
         displayNotification(
           "error",
-          `Error retrieving profile [${err.profile_id}]`
+          `Error retrieving profile [${errObj.profile_id}]`
         );
-        console.error(err);
+        console.error(errObj);
       });
     }
 

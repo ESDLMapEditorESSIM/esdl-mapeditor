@@ -15,7 +15,7 @@ services:
     environment:
       - INSTALL_EXTENSIONS=trueF
       - STABLE_EXTENSIONS=vectortiles,css-plugin
-      - GEOSERVER_ADMIN_USER=admin
-      - GEOSERVER_ADMIN_PASSWORD=admin
+      - GEOSERVER_ADMIN_USER=${GEOSERVER_ADMIN_USER:-admin}
+      - GEOSERVER_ADMIN_PASSWORD=${GEOSERVER_ADMIN_PASSWORD:-admin}
     networks:
       - mapeditor-net

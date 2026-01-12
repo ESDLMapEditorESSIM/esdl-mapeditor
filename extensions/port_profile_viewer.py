@@ -63,6 +63,9 @@ class ProfileRetrievalError(Exception):
 class InfluxDBProfileLoadError(Exception):
     pass
 
+class EmptyProfileWarning(Exception):
+    pass
+
 
 class PortProfileViewer:
     def __init__(self, flask_app: Flask, socket: SocketIO, settings_storage: SettingsStorage):
@@ -365,6 +368,7 @@ class PortProfileViewer:
 
     @staticmethod
     def get_asset_profiles(es_id: str, asset_id: str):
+        """TODO: migrate to DataTableProfile implementation when ready"""
         pm = get_project_manager()
         asset: esdl.Asset = pm.get_by_id(es_id, asset_id)
 
@@ -372,14 +376,16 @@ class PortProfileViewer:
 
         profiles = []
         for port in port_profile_info:
+            port_name = port.get("port_name")
             for p in port.get("profiles", []):
                 profile_id = p.get("id")
                 profile_name = p.get("uiname")
                 profile_qau = p.get("type")
                 profiles.append(
                     {
+                        "port_name": port_name,
                         "id": profile_id,
-                        "name": f"{profile_name} [{profile_qau.split(' ')[-1]}]"
+                        "name": f"{profile_name} [{profile_qau.split(' ')[-1]}]",
                     }
                 )
 
@@ -388,7 +394,7 @@ class PortProfileViewer:
     def get_profile_traces_from_profile_ids(self, req: ProfileTracesRequest) -> Dict[str, List[Dict[str, Any]]]:
         """Return a dictionary with profile traces for plotly visualization or error messages."""
 
-        results = {"traces": [], "errors": []}
+        results = {"traces": [], "warnings": [], "errors": []}
 
         for profile_id in req.profile_ids:
             try:
@@ -397,10 +403,15 @@ class PortProfileViewer:
                     "profile_id": profile_id,
                     "trace": trace
                 })
-            except Exception as e:
+            except EmptyProfileWarning as warning:
+                results["warnings"].append({
+                    "profile_id": profile_id,
+                    "warning": str(warning)
+                })
+            except Exception as err:
                 results["errors"].append({
                     "profile_id": profile_id,
-                    "error": str(e)
+                    "error": str(err)
                 })
 
         return results
@@ -432,16 +443,17 @@ class PortProfileViewer:
         except Exception as e:
             raise ProfileRetrievalError(f"Failed to retrieve profile {profile_id}: {e}") from e
 
-        query_filters = self._parse_profile_filters(profile.filters)
-
         try:
             start_date, end_date = self._resolve_date_range(dt_range, profile, dt_str_format)
         except ValueError as e:
             raise ValueError(f"Invalid datetime range format: {e}")
 
-        groupby_interval_sec = self._calculate_groupby_interval(start_date, end_date, max_datapoints)
+        metadata = PortProfileViewer.get_profile_metadata(profile)
 
         try:
+            query_filters = self._parse_profile_filters(profile.filters)
+            groupby_interval_sec = self._calculate_groupby_interval(start_date, end_date, max_datapoints)
+
             prof_manager = InfluxDBProfileManager(influxdb_settings)
             prof_manager.load_influxdb(
                 measurement=profile.measurement,
@@ -454,7 +466,10 @@ class PortProfileViewer:
             # profile_data_list: a list of lists, with each list structure to be [datetime, field value, ...]
             datetime_profile = prof_manager.profile_data_list
         except Exception as e:
-            raise InfluxDBProfileLoadError(f"Failed to load profile data for {profile_id}: {e}") from e
+            raise InfluxDBProfileLoadError(f"Failed to load profile data for [{metadata.get('displayed_name')}]: {e}") from e
+
+        if len(datetime_profile) == 0:
+            raise EmptyProfileWarning(f"Profile [{metadata.get('displayed_name')}] has no data.")
 
         datetimes, values = [], []
         for d in datetime_profile:
@@ -468,37 +483,63 @@ class PortProfileViewer:
             datetimes.append(date.strftime(dt_str_format))
             values.append(value)
 
-        trace_name = PortProfileViewer.get_profile_asset_name(profile)
-        profile_qau = PortProfileViewer.get_profile_qau_string(profile)
-
         trace = {
-            "name": trace_name,
+            "name": metadata.get("displayed_name"),
             "x": datetimes,
             "y": values,
-            "legendgroup": profile.field,
-            "legendgrouptitle": {"text": profile.field},
-            "subplotgroup": profile_qau
+            "legendgroup": metadata.get("asset_name"),
+            "legendgrouptitle": {"text": metadata.get("asset_name")},
+            "subplotgroup": metadata.get("profile_qau")
         }
 
         return trace
 
     @staticmethod
-    def get_profile_qau_string(profile):
+    def get_profile_metadata(profile):
+        container_name = None
+        port_name = None
+        profile_qau = None
+        profile_type = None
+
+        profile_container = profile.eContainer().eContainer()
+        if isinstance(profile_container, esdl.EnergyAsset):
+            container_name = str(profile_container.name)
+
+        profile_port = profile.eContainer()
+        if isinstance(profile_port, esdl.Port):
+            port_name = str(profile_port.name)
+
+        if profile.profileType and profile.profileType != esdl.ProfileTypeEnum.UNDEFINED:
+            profile_type = str(profile.profileType.name)
+
         qau = profile.profileQuantityAndUnit
         if qau and isinstance(qau, esdl.QuantityAndUnitReference):
             qau = qau.reference
         if qau:
-            return ESDLQuantityAndUnits.qau_to_string(qau)
+            profile_qau = ESDLQuantityAndUnits.qau_to_string(qau)
 
-        return "Unknown"
+        meta_parts = []
+        if port_name is not None:
+            meta_parts.append(f"Port={port_name}")
+        if profile_type is not None:
+            meta_parts.append(f"profileType={profile_type}")
 
-    @staticmethod
-    def get_profile_asset_name(profile):
-        profile_container = profile.eContainer().eContainer()
-        if isinstance(profile_container, esdl.EnergyAsset):
-            return str(profile_container.name)
+        meta_suffix = ""
+        if meta_parts:
+            meta_suffix = " (" + ", ".join(meta_parts) + ")"
 
-        return "Unknown"
+        qau_unit = profile_qau.split(" ")[-1]
+        displayed_name = f"{profile.field} [{qau_unit}]{meta_suffix}"
+
+        return {
+            "displayed_name": displayed_name,
+            "profile_field_name": profile.field,
+            "profile_qau": profile_qau,
+            "profile_type": profile_type,
+            "asset_name": container_name,
+            "port_name": port_name,
+        }
+
 
     def _parse_profile_filters(self, filters: Optional[str]) -> List[Dict[str, str]]:
         """A helper function"""

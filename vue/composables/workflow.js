@@ -303,12 +303,24 @@ export function useWorkflow() {
                     }
                 });
             }
+            let body = {};
+            if ("body" in urlConfig) {
+                urlConfig.body.forEach(function (param) {
+                    if ("value" in param) {
+                        body[param.name] = param.value;
+                    } else if ("parameter_name" in param) {
+                        body[param.name] = getFromState(param.parameter_name);
+                    } else {
+                        console.error("body parameter found in service config without 'value' or 'parameter_name'");
+                    }
+                });
+            }
 
             try {
                 let response;
-                if (method.toLowerCase() === 'POST') {
-                    const body = urlConfig.body || request_params;
-                    response = await workflowPostData(url, body, headers);
+                if (method.toLowerCase() === 'post') {
+                    response = await workflowPostData(url, body, headers, request_params);
+                    response = await response.json();
                 } else {
                     response = await workflowGetData(url, request_params, headers);
                 }

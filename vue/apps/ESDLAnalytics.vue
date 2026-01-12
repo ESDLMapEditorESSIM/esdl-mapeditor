@@ -292,7 +292,6 @@
                         @change="onProfileSubplotView"
                     />
                   </a-row>
-                  <!-- TODO: show load duration curve -->
                   <a-row v-if="profileVizTypeSelected === 'Aggregated'">
                     <a-typography-title :level="5">Aggregation interval</a-typography-title>
                     <a-segmented
@@ -1084,6 +1083,9 @@ const onSyncBtnClick = async() => {
     console.error(error);
     displayNotification("error", `An error occurred while synchronizing metadata: ${error}`);
   } finally {
+    // Reset selection
+    resetMenuToDefault();
+
     isSyncingMetaData.value = false;
   }  
 };
@@ -1106,16 +1108,37 @@ const onDeleteBtnClick = async() => {
     displayNotification("error", `An error occurred while deleting metadata: ${error}`);
   } finally {
     // Reset selection
-    datasetSelected.value = [];
-    variableSelected.value = null;
-    groupbySelected.value = [];
-    filterSelected.value = [];
-    currentTrace.value = [];
-    currentLayout.value = {};
+    resetMenuToDefault();
 
     isDeletingMetaData.value = false;
   }
 };
+
+/**
+ * Reset menu to the default configuration state.
+ */
+const resetMenuToDefault = () => {
+  title.value = initOptions.title;
+  chartType.value = initOptions.chartType;
+  currentTrace.value = initOptions.currentTrace;
+  currentLayout.value = initOptions.currentLayout;
+  datasetSelected.value = initOptions.datasetSelected;
+  variableSelected.value = initOptions.variableSelected;
+  groupbySelected.value = initOptions.groupbySelected;
+  filterSelected.value = initOptions.filterSelected;
+  isProfileVariable.value = initOptions.isProfileVariable;
+  profileDataRangeSelected.value = initOptions.profileDataRangeSelected;
+  profileVizTypeSelected.value = initOptions.profileVizTypeSelected;
+  profileDownsampling.value = initOptions.profileDownsampling;
+  profileSubplotView.value = initOptions.profileSubplotView;
+  profileGroupbyEnabled.value = initOptions.profileGroupbyEnabled;
+  profileGroupbyAggFuncSelected.value = initOptions.profileGroupbyAggFuncSelected;
+  profileAggIntervalSelected.value = initOptions.profileAggIntervalSelected;
+  profileIntervalAggFuncSelected.value = initOptions.profileIntervalAggFuncSelected;
+  dataGrouping.value = initOptions.dataGrouping;
+  showBarNumbers.value = initOptions.showBarNumbers;
+  paletteSelected.value = initOptions.paletteSelected;
+}
 
 /**
  * Asynchronously fetches DataManager datasets and updates the dataset options.
@@ -1304,6 +1327,10 @@ const updateTrace = async() => {
       if (results['error_msg'] !== '') {
         displayNotification('error', results['error_msg']);
         console.error(results['errors']);
+      }
+      if (results['warning_msg'] !== '') {
+        displayNotification('warning', results['warning_msg']);
+        console.warn(results['warnings']);
       }
       const formattedData = chartType.value === 'table' ?
         tableTraceHandler(traces) : profileTraceHandler(traces);

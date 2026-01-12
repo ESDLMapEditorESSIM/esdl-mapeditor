@@ -168,9 +168,11 @@ class Workflow:
             )
 
             request_params = request.json.get("request_params")
+            body = request.json.get("body")
             r = requests.post(
-                url, json=request_params, headers=headers, timeout=DEFAULT_TIMEOUT
+                url, params=request_params, json=body, headers=headers, timeout=DEFAULT_TIMEOUT
             )
+
             try:
                 resp_json = r.json()
             except Exception:

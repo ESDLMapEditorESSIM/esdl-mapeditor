@@ -25,6 +25,7 @@
     "chartjs-chart-sankey": "^0.8.1",
     "core-js": "^3.21.1",
     "dayjs": "^1.11.10",
+    "dompurify": "3.3.1",
     "plotly.js-dist": "2.35.1",
     "reqwest": "^2.0.5",
     "sass-loader": "^10.2.1",
