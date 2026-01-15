@@ -33,6 +33,8 @@ from esdl.units.parser import qau_to_string
 from esdl.processing import ESDLQuantityAndUnits
 from esdl.profiles.influxdbprofilemanager import ConnectionSettings, InfluxDBProfileManager
 import src.esdl_config as esdl_config
+from extensions.profile_server import InfluxDBServer, InfluxDBConnectionSettings, PostgreSQLServer, \
+    PostgreSQLConnectionSettings
 from extensions.settings_storage import SettingType, SettingsStorage
 from extensions.session_manager import get_session, get_handler
 from extensions.panel_service import create_panel, get_panel_service_datasource
@@ -318,6 +320,14 @@ class Profiles:
         ntime = time + ":00+0000"
         return ndate + "T" + ntime
 
+    def guess_profile_server_type(self, profile_settings):
+        if "type" in profile_settings:
+            return profile_settings["type"]
+        else:
+            if ("port" in profile_settings and profile_settings["port"] == 8086) or \
+                    ("host" in profile_settings and "influxdb" in profile_settings["host"]):
+                return "InfluxDB"
+
     def process_csv_file(self, name, uuid, content):
         logger.debug("Processing csv file(s) (threaded): ".format(name))
 
@@ -325,7 +335,7 @@ class Profiles:
 
         try:
             logger.info("process CSV")
-            measurement = name.split('.')[0]
+            csv_file_name_without_extension = name.split('.')[0]
 
             try:
                 csv_file = StringIO(content)
@@ -339,7 +349,7 @@ class Profiles:
 
             column_names = next(reader)
             num_fields = len(column_names)
-            json_body = []
+            timeseries_data = []
 
             locale.setlocale(locale.LC_ALL, '')
             start_datetime = None
@@ -371,8 +381,7 @@ class Profiles:
                 else:
                     end_datetime = dt_string
 
-                json_body.append({
-                    "measurement": measurement,
+                timeseries_data.append({
                     "time": dt_string,
                     "fields": fields
                 })
@@ -382,42 +391,60 @@ class Profiles:
             with self.flask_app.app_context():
                 profiles_settings = self.get_profiles_settings()
                 profiles_server_index = int(self.csv_files[uuid]['profiles_server_index'])
-
                 database = profiles_settings['profiles_servers'][profiles_server_index]['database']
-                client = InfluxDBClient(
-                    host=profiles_settings['profiles_servers'][profiles_server_index]['host'],
-                    port=profiles_settings['profiles_servers'][profiles_server_index]['port'],
-                    username=profiles_settings['profiles_servers'][profiles_server_index]['username'],
-                    password=profiles_settings['profiles_servers'][profiles_server_index]['password'],
-                    database=database,
-                    ssl=profiles_settings['profiles_servers'][profiles_server_index]['ssl_enabled'],
-                )
 
-            available_databases = client.get_list_database()
-            # if database not in client.get_list_database():
-            if not (any(db['name'] == database for db in available_databases)):
-                logger.debug('Database does not exist, creating a new one')
-                client.create_database(database)
-            client.write_points(points=json_body, database=database, batch_size=100)
+                profile_server_type = self.guess_profile_server_type(profiles_settings['profiles_servers'][profiles_server_index])
+                if profile_server_type == "INFLUXDB":
+                    influxdb_profile_server = InfluxDBServer(
+                        connection_settings=InfluxDBConnectionSettings(
+                            host=profiles_settings['profiles_servers'][profiles_server_index]['host'],
+                            port=int(profiles_settings['profiles_servers'][profiles_server_index]['port']),
+                            username=profiles_settings['profiles_servers'][profiles_server_index]['username'],
+                            password=profiles_settings['profiles_servers'][profiles_server_index]['password'],
+                            database=database,
+                            ssl=profiles_settings['profiles_servers'][profiles_server_index]['ssl_enabled'],
+                        )
+                    )
 
-            if profiles_settings['profiles_servers'][profiles_server_index]['ssl_enabled']:
-                protocol = "https://"
-            else:
-                protocol = "http://"
-            profiles_server_host = protocol + \
-                                   profiles_settings['profiles_servers'][profiles_server_index]['host'] + \
-                                   ":" + \
-                                   profiles_settings['profiles_servers'][profiles_server_index]['port']
-            datasource = get_panel_service_datasource(
-                database=database,
-                host=profiles_server_host,
-                username=profiles_settings['profiles_servers'][profiles_server_index]['username'],
-                password=profiles_settings['profiles_servers'][profiles_server_index]['password'],
-            )
+                    influxdb_profile_server.connect()
+                    influxdb_profile_server.convert_data(data=timeseries_data, measurement=csv_file_name_without_extension)
+                    influxdb_profile_server.write_data()
 
-            logger.info("Store profile information in settings")
+                    # Get or create a datasource in Grafana using the panalservice
+                    if profiles_settings['profiles_servers'][profiles_server_index]['ssl_enabled']:
+                        protocol = "https://"
+                    else:
+                        protocol = "http://"
+                    profiles_server_host = protocol + \
+                                           profiles_settings['profiles_servers'][profiles_server_index]['host'] + \
+                                           ":" + \
+                                           profiles_settings['profiles_servers'][profiles_server_index]['port']
+                    datasource = get_panel_service_datasource(
+                        database=database,
+                        host=profiles_server_host,
+                        username=profiles_settings['profiles_servers'][profiles_server_index]['username'],
+                        password=profiles_settings['profiles_servers'][profiles_server_index]['password'],
+                    )
+
+                elif profile_server_type == "POSTGRESQL":
+                    postgres_profile_server = PostgreSQLServer(
+                        connection_settings=PostgreSQLConnectionSettings(
+                            host=profiles_settings['profiles_servers'][profiles_server_index]['host'],
+                            port=int(profiles_settings['profiles_servers'][profiles_server_index]['port']),
+                            username=profiles_settings['profiles_servers'][profiles_server_index]['username'],
+                            password=profiles_settings['profiles_servers'][profiles_server_index]['password'],
+                            database=database,
+                            ssl=profiles_settings['profiles_servers'][profiles_server_index]['ssl_enabled'] if "ssl_enabled" in profiles_settings['profiles_servers'][profiles_server_index] else False,
+                        )
+                    )
+
+                    postgres_profile_server.connect()
+                    postgres_profile_server.convert_data(data=timeseries_data, table_name=csv_file_name_without_extension)
+                    postgres_profile_server.write_data()
 
             # Store profile information in settings
+            logger.info("Store profile information in settings")
+
             group = self.csv_files[uuid]['group']
             prof_aggr_type = self.csv_files[uuid]['prof_aggr_type']
             for i in range(1, num_fields):
@@ -426,37 +453,43 @@ class Profiles:
                 # Stop if empty column was found
                 if field.strip() == '':
                     break
+
                 # Create a dictionary with all relevant information about the new profile
                 profile = self.create_new_profile(
                     group=group,
-                    uiname=measurement + '_' + field,
+                    uiname=csv_file_name_without_extension + '_' + field,
                     multiplier=1,
                     database=database,
-                    measurement=measurement,
-                    field=field,
                     profile_type="",
                     start_datetime=start_datetime,
                     end_datetime=end_datetime
                 )
+
+                if profile_server_type == "INFLUXDB":
+                    self.add_influxdb_details(profile, csv_file_name_without_extension, field)
+                elif profile_server_type == "POSTGRESQL":
+                    self.add_postgres_details(profile, csv_file_name_without_extension, field)
+
                 if profiles_server_index != 0:  # Only non standard profiles server
                     profile['host'] = profiles_settings['profiles_servers'][profiles_server_index]['host']
                     profile['port'] = profiles_settings['profiles_servers'][profiles_server_index]['port']
 
-                # Create a grafana panel for visualization and add the embedURL to the dictionary
-                profile["embedUrl"] = create_panel(
-                    graph_title=group + " - " + field,
-                    axis_title="",
-                    datasource=datasource,
-                    host=profiles_server_host,
-                    database=database,
-                    measurement=measurement,
-                    field=field,
-                    filters=[],
-                    qau=None,
-                    prof_aggr_type=prof_aggr_type,
-                    start_datetime=start_datetime,
-                    end_datetime=end_datetime
-                )
+                if profile_server_type == "INFLUXDB":
+                    # Create a grafana panel for visualization and add the embedURL to the dictionary
+                    profile["embedUrl"] = create_panel(
+                        graph_title=group + " - " + field,
+                        axis_title="",
+                        datasource=datasource,
+                        host=profiles_server_host,
+                        database=database,
+                        measurement=csv_file_name_without_extension,
+                        field=field,
+                        filters=[],
+                        qau=None,
+                        prof_aggr_type=prof_aggr_type,
+                        start_datetime=start_datetime,
+                        end_datetime=end_datetime
+                    )
                 # Store the new profile in the profiles settings
                 self.add_profile(str(uuid4()), profile)
 
@@ -705,7 +738,7 @@ class Profiles:
 
         return edr_profiles
 
-    def create_new_profile(self, group, uiname, multiplier, database, measurement, field, profile_type, start_datetime,
+    def create_new_profile(self, group, uiname, multiplier, database, profile_type, start_datetime,
                            end_datetime):
         setting_type, project_name = self.get_setting_type_project_name(group)
         profile = {
@@ -714,13 +747,21 @@ class Profiles:
             "profile_uiname": uiname,
             "multiplier": multiplier,
             "database": database,
-            "measurement": measurement,
-            "field": field,
             "profileType": profile_type,
             "start_datetime": start_datetime,
             "end_datetime": end_datetime,
             "embedUrl": None
         }
+        return profile
+
+    def add_influxdb_details(self, profile, measurement, field):
+        profile["measurement"] = measurement
+        profile["field"] = field
+        return profile
+
+    def add_postgres_details(self, profile, table, column):
+        profile["table"] = table
+        profile["column"] = column
         return profile
 
     def get_profiles_settings(self):
