@@ -101,7 +101,7 @@ openpyxl==3.1.2
     # via -r requirements.in
 ordered-set==4.1.0
     # via pyecore
-packaging==24.0
+packaging==24.1
     # via
     #   -r requirements.in
     #   build
