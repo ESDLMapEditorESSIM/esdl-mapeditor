@@ -192,14 +192,11 @@ For more details see the json example below.
 - `external_model`: name of the external model.
 - `model_short_name`: a short name to be displayed in the result visualization.
 - `has_feedback_messages`: boolean flag for feedback messages from a model run.
-- `result_animation`: activates the ESDL animation option with the optional `influxdb_host_override` which can be useful
-  for local development when the profiles in the esdl point to another host, the `filter_on_tag` determines how to
-  extract data from influxdb.
 - `result_external_link`: activates the option of displaying an external link to model run results.
 - `delete_result_url`: optional external model endpoint to also delete data from the external model database when
   deleting a run.
 - `time_series_xlsx_download`: activates the time series download to xlsx option. There are quite some configuration
-  settings, see below for essim format, here is also an optional `influxdb_host_override`.
+  settings, see below for essim format.
 
 #### required input data
 
@@ -220,13 +217,6 @@ Example config:
   "config": {
     "external_model": "essim",
     "model_short_name": "essim",
-    "result_animation": {
-      "filter_on_tag": {
-        "tag_name": "simulationRun",
-        "value_database_key": "model_job_id"
-      },
-      "influxdb_host_override": "localhost"
-    },
     "result_external_link": {
       "description": "Open Dashboard",
       "value_database_key": "model_specific_output.dashboardURL"
@@ -265,8 +255,7 @@ Example config:
             ]
           }
         }
-      ],
-      "influxdb_host_override": "localhost"
+      ]
     }
   },
   "data": {

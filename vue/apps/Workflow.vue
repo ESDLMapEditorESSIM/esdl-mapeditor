@@ -61,7 +61,7 @@
           </a-menu>
         </template>
       </a-dropdown>
-      <span style="color: var(--gray); margin-left: 20px;">{{ activeEnergySystemTitle }}</span>
+      <span style="color: var(--gray); margin-left: 20px;">{{ activeVariant().name }}</span>
     </div>
 
     <template v-if="showPreviousSteps()">
@@ -187,9 +187,7 @@ import {default as WorkflowJsonForm2} from "@/components/workflow/WorkflowJsonFo
 import {default as WorkflowCallJsFunction} from "@/components/workflow/WorkflowCallJsFunction";
 import {default as WorkflowCompositeStep} from "@/components/workflow/WorkflowCompositeStep.vue";
 import WorkflowDataIO from "@/components/workflow/WorkflowDataIO.vue";
-import {MessageNames, PubSubManager} from "@/bridge";
-import {useEsdlLayers} from "@/composables/esdlLayers";
-import {ref} from "vue";
+import {useESDLProjects} from "@/composables/esdlProjects";
 import DOMPurify from "dompurify";
 
 // Hook to ensure rel="noopener noreferrer" on all <a> tags
@@ -202,8 +200,7 @@ DOMPurify.addHook('afterSanitizeAttributes', function (node) {
   }
 });
 
-const {getActiveEsdlLayerId} = useEsdlLayers();
-
+const { activeVariant } = useESDLProjects();
 const {
   currentWorkflow,
   goToFirstStep,
@@ -215,19 +212,6 @@ const {
   deletePersistedWorkflow,
   getState
 } = useWorkflow();
-
-const activeEnergySystemTitle = ref("Please select an energy system");
-const activeEnergySystemId = ref("");
-try {
-  activeEnergySystemTitle.value = window.esdl_list[getActiveEsdlLayerId().value].title;
-} catch (e) {
-  // Skip.
-}
-
-PubSubManager.subscribe(MessageNames.SELECT_ACTIVE_LAYER, () => {
-  activeEnergySystemTitle.value = window.esdl_list[getActiveEsdlLayerId().value].title;
-  activeEnergySystemId.value = window.esdl_list[getActiveEsdlLayerId().value].id;
-});
 
 const confirmPersistWorkflow = () => {
   let workflowName = currentWorkflow.value.name;

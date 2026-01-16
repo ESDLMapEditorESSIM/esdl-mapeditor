@@ -234,9 +234,6 @@ const doAction = (record, action) => {
     if (action.title === LOAD_RESULT) {
       params.service_config.external_model = "output_or_input_esdl";
       params.service_config.result[0].model_short_name = stepParams.value.config.model_short_name;
-      if (stepParams.value.config.result_animation) {
-        params.service_config.result[0].animation = stepParams.value.config.result_animation;
-      }
       if (stepParams.value.config.result_external_link) {
         params.service_config.result[0].external_link = stepParams.value.config.result_external_link;
       }

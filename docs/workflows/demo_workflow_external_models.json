@@ -431,14 +431,6 @@
         "config": {
           "model_short_name": "essim",
           "has_feedback_messages": false,
-          "result_animation": {
-            "influxdb_host_override": "influxdb",
-            "influxdb_port_override": "8086",
-            "filter_on_tag": {
-              "tag_name": "simulationRun",
-              "value_database_key": "model_job_id"
-            }
-          },
           "result_external_link": {
             "description": "Open Dashboard",
             "value_database_key": "model_specific_output.dashboardURL"
@@ -715,7 +707,6 @@
         "type": "table-external-model",
         "config": {
           "model_short_name": "omotes",
-          "result_animation": {},
           "has_feedback_messages": true,
           "delete_result_url": "http://omotes-rest:9200/job/<MODEL_JOB_ID>",
           "load_input_esdl": true,

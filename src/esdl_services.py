@@ -40,7 +40,7 @@ from extensions.external_models.external_models_storage import (
     INPUT_ESDL,
     RunStatus,
 )
-from extensions.profiles import Profiles
+from extensions.projects import update_visualization_options
 from extensions.session_manager import get_project_manager, get_session, set_session, del_session
 from extensions.settings_storage import SettingsStorage
 from src.esdl2inlineprofile import copy_and_convert_esdl_profiles
@@ -551,6 +551,8 @@ class ESDLServices:
                     esdl_response = esdlstr_base64_bytes.decode("utf-8")
 
             variant, parse_info = pm.add_energy_system(StringURI(service["name"], esdl_response))
+            pm.set_active_variant(variant)
+            update_visualization_options(pm.get_active_energy_system())
             # TODO deal with parse_info?
             es = pm.get_energy_system(variant)
 
@@ -569,48 +571,6 @@ class ESDLServices:
                 message = {"asset_feedback": feedback}
                 backend_action["run_after_esdl_loaded"] = True
 
-            if "animation" in result_config:
-                influxdb_host_override = None
-                if "influxdb_host_override" in result_config["animation"]:
-                    influxdb_host_override = result_config["animation"]["influxdb_host_override"]
-                influxdb_port_override = None
-                if "influxdb_port_override" in result_config["animation"]:
-                    influxdb_port_override = result_config["animation"]["influxdb_port_override"]
-
-                try:
-                    animation_fields = Profiles.get_animation_fields(
-                        es.id,
-                        influxdb_host_override=influxdb_host_override,
-                        influxdb_port_override=influxdb_port_override,
-                    )
-                    if animation_fields:
-                        filter_tag_name = None
-                        filter_tag_value = None
-                        if "filter_on_tag" in service["result"][0]["animation"]:
-                            model_run_data = self.models_storage.get_model_run(state_params["run_id"])
-                            filter_tag_name = service["result"][0]["animation"]["filter_on_tag"]["tag_name"]
-                            filter_tag_value = get_nested_dict_value(
-                                model_run_data,
-                                service["result"][0]["animation"]["filter_on_tag"]["value_database_key"],
-                            )
-                        emit(
-                            "animation_esdl_data",
-                            {
-                                "es_id": es.id,
-                                "fields": animation_fields,
-                                "message": f"For {model_short_name} result: '{state_params['run_name']}'",
-                                "filter_tag_name": filter_tag_name,
-                                "filter_tag_value": filter_tag_value,
-                                "influxdb_host_override": influxdb_host_override,
-                                "influxdb_port_override": influxdb_port_override,
-                            },
-                        )
-                except Exception as e:
-                    logger.error(e)
-                    return False, str(e), None
-
-                # TODO: Check if this is correct?!
-                return True, {}, {"es": pm.get_energy_system(variant)}
             if "external_link" in result_config:
                 model_run_data = self.models_storage.get_model_run(state_params["run_id"])
                 external_link_url = get_nested_dict_value(
@@ -686,7 +646,6 @@ class ESDLServices:
 
                     area_shape = None
                     possible_locations = None
-                    # TODO add similar mode and emit animation possible
                     if "mode" in result_config and result_config["mode"] == "give_coordinates":
                         # The assets that will be added must be placed on a grid within the area boundary
                         shape_dictionary = get_session("shape_dictionary")

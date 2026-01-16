@@ -625,19 +625,12 @@ esdl_config = {
                         "external_model": "essim",
                         "model_short_name": "ESSIM",
                         "has_feedback_messages": False,
-                        "result_animation": {
-                            "influxdb_host_override": "influxdb",
-                            "influxdb_port_override": "8086",
-                            "filter_on_tag": {"tag_name": "simulationRun", "value_database_key": "model_job_id"},
-                        },
                         "result_external_link": {
                             "description": "Open Dashboard",
                             "value_database_key": "model_specific_output.dashboardURL",
                         },
                         "delete_result_url": "",
                         "time_series_xlsx_download": {
-                            "influxdb_host_override": "influxdb",
-                            "influxdb_port_override": "8086",
                             "filter_on_tag": {"tag_name": "simulationRun", "value_database_key": "model_job_id"},
                             "esdl_object_name_field": "assetName",
                             "excel_sheets_per_table": [
@@ -2000,9 +1993,6 @@ esdl_config = {
                         "config": {
                             "model_short_name": "essim",
                             "has_feedback_messages": False,
-                            "result_animation": {
-                                "filter_on_tag": {"tag_name": "simulationRun", "value_database_key": "model_job_id"}
-                            },
                             "result_external_link": {
                                 "description": "Open Dashboard",
                                 "value_database_key": "model_specific_output.dashboardURL",

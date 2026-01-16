@@ -1102,7 +1102,7 @@ def call_process_energy_system(force_update_es_id=None, zoom=True, only_process_
         emit('esdl_service_result', result_post_esdl_load)
 
 @timed
-def process_energy_system(force_update_es_id=None, zoom=True, only_process_es_id=None, load_animation=False):
+def process_energy_system(force_update_es_id=None, zoom=True, only_process_es_id=None):
     """
     Initialization after an update to the energy system.
 
@@ -1169,16 +1169,6 @@ def process_energy_system(force_update_es_id=None, zoom=True, only_process_es_id
                     if sector_list:
                         emit('sector_list', {'es_id': es.id, 'sector_list': sector_list})
 
-                    # Collecting area KPIs
-                    logger.info('- Processing KPIs')
-                    es_area_kpis = ESDLEnergySystem.process_area_KPIs_recursive(top_area)
-
-                    displayed_area_name = top_area.name if top_area.name else title
-                    # Only emit KPI info when there are area KPIs available
-                    if len(es_area_kpis) > 0:
-                        emit('kpis', {'es_id': es.id, 'scope': displayed_area_name, 'kpi_info': es_area_kpis})
-                        emit('kpis_present', {'es_id': es.id, "message": es.name})
-
                     # measures can contain assets that still need to be added to the energysystem
                     assets_to_be_added = AssetsToBeAdded.get_assets_from_measures(es)
                     if assets_to_be_added:
@@ -1203,21 +1193,6 @@ def process_energy_system(force_update_es_id=None, zoom=True, only_process_es_id
                     set_session_for_esid(es.id, 'asset_list', asset_list)
                     set_session_for_esid(es.id, 'building_list', building_list)
                     set_session_for_esid(es.id, 'area_bld_list', area_bld_list)
-
-                    if load_animation:
-                        animation_fields = Profiles.get_animation_fields(es.id)
-                        if animation_fields:
-                            emit(
-                                "animation_esdl_data",
-                                {
-                                    "es_id": es.id,
-                                    "fields": animation_fields,
-                                    "message": es.name,
-                                    "filter_tag_name": None,
-                                    "filter_tag_value": None,
-                                    "influxdb_host_override": None,
-                                },
-                            )
 
                     es_info_list[es.id] = {
                         "processed": True
