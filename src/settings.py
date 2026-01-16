@@ -38,6 +38,8 @@ ALLOWED_ORIGINS = os.environ.get('ALLOWED_ORIGINS', '*')
 OIDC_CLIENT_SECRETS = os.environ.get('OIDC_CLIENT_SECRETS', None) # 'credentials/client_secrets_opensource.json'
 _use_gevent = os.environ.get('MAPEDITOR_USE_GEVENT', '')
 USE_GEVENT = (_use_gevent.upper() == 'TRUE' or _use_gevent == '1')
+_use_rabbitmq = os.environ.get('USE_RABBITMQ', '')
+USE_RABBITMQ = (_use_rabbitmq.upper() == 'TRUE' or _use_rabbitmq == '1')
 
 # Database settings
 POSTGRES_HOST = os.environ.get('POSTGRES_HOST', 'localhost')

@@ -20,6 +20,7 @@ from pika.exchange_type import ExchangeType
 import src.log as log
 import pika
 
+from src import settings
 from src.tno.envsettings import EnvSettings
 from src.tno.live_model_interface.shared.config import PIKA_CONNECTION_PARAMETERS, RABBITMQ_APP_ID
 from src.tno.live_model_interface.shared.message_types import LmiMessage
@@ -349,6 +350,9 @@ def send_rabbitmq_message(message: LmiMessage, routing_key, delivery_mode=None):
 
     Message is send as JSON.
     """
+    if not settings.USE_RABBITMQ:
+        logger.debug("RabbitMQ disabled; skipping publish")
+        return
     channel = get_rabbitmq_topic_channel()
     body = json.dumps(message, default=_json_serializer).encode()
     properties = pika.BasicProperties(app_id=RABBITMQ_APP_ID, content_type='application/json')

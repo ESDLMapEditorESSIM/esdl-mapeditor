@@ -21,6 +21,7 @@ from threading import Thread
 
 from src.app import socketio
 from src.log import get_logger
+from src import settings
 from src.tno.envsettings import EnvSettings
 from src.tno.live_model_interface.shared.config import AMQP_URL
 from src.tno.live_model_interface.shared.consumer import RabbitMQConsumerConfig, ReconnectingConsumer
@@ -50,6 +51,9 @@ def on_result_message(channel, basic_deliver: Basic.Deliver, properties: BasicPr
 
 def start_rmq_thread():
     """Start the RabbitMQ thread."""
+    if not settings.USE_RABBITMQ:
+        logger.info("RabbitMQ disabled; skipping live_model_interface results listener")
+        return
     logger.info("Starting RabbitMQ thread for live_model_interface listener")
     thread = RMQThread()
     thread.start()

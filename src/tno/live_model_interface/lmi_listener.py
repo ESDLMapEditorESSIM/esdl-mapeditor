@@ -29,6 +29,7 @@ from esdlproject.change_handler import applyChange
 from esdlproject.variant_api import create_new_variant
 from extensions.session_manager import get_project_manager_for_client_id, managed_sessions
 from src.log import get_logger
+from src import settings
 from src.tno.envsettings import EnvSettings
 from src.tno.live_model_interface.api import activate_live_model_interface, send_project_manager_to_lmi
 from src.tno.live_model_interface.shared.config import AMQP_URL, RABBITMQ_APP_ID
@@ -209,6 +210,9 @@ def start_live_model_interface_thread(app: Flask):
     """Start the RabbitMQ thread."""
     global LMI_THREAD
     global LOCAL_APP
+    if not settings.USE_RABBITMQ:
+        logger.info("RabbitMQ disabled; skipping LMI listener thread")
+        return
     # Initialize the local_app variable so we have access to the app context in the thread.
     LOCAL_APP = app
 
@@ -265,4 +269,3 @@ class LiveModelInterfaceThread(Thread):
                 consumer.run()
             except Exception:
                 logger.exception("RabbitMQ consumer died unexexpectedly")
-
