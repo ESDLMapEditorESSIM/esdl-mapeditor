@@ -989,7 +989,7 @@ class Profiles:
         except ConnectionError as nre:
             emit(
                 "alert",
-                f"Could connect to influxdb '{influxdb_client._host}:{influxdb_client._port}'"
+                f"Could not connect to influxdb '{influxdb_client._host}:{influxdb_client._port}'"
                 f" for time series animation data retrieval.",
                 namespace="/esdl",
             )

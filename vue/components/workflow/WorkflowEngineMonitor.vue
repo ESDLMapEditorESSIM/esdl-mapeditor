@@ -9,8 +9,8 @@
       :status="getProgressStatus(stepProgress)"
     />
     <p v-if="stepProgress['status'] !== null">Status: {{ stepProgress["status"] }}</p>
-    <!-- eslint-disable vue/no-v-html -->
-    <p v-if="stepProgress['message'] !== null" v-html="stepProgress['message']" />
+    <!-- eslint-disable vue/no-v-html (sanitized with DOMPurify) -->
+    <p v-if="stepProgress['message'] !== null" v-html="DOMPurify.sanitize(stepProgress['message'], {ADD_ATTR: ['target', 'rel']})" />
   </div>
   <a-button
     v-if="stepParams.nextStepTrigger === WorkflowNextStepTriggerOptions.BUTTON_CLICK && stepParams.buttonText"
@@ -24,6 +24,7 @@
 <script setup="props">
 import {onMounted, ref, watch} from "vue";
 import {useWorkflow, WorkflowNextStepTriggerOptions} from "@/composables/workflow";
+import DOMPurify from "dompurify";
 
 const props = defineProps({
   workflowStep: {

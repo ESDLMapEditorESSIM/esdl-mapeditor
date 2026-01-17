@@ -52,6 +52,9 @@ class ProfileRetrievalError(Exception):
 class InfluxDBProfileLoadError(Exception):
     pass
 
+class EmptyProfileWarning(Exception):
+    pass
+
 
 class PortProfileViewer:
     def __init__(self, flask_app: Flask, socket: SocketIO, settings_storage: SettingsStorage):
@@ -350,6 +353,8 @@ class PortProfileViewer:
     # TODO: replace this with reusable func from profiles.py? and update PortProfileViewer frontend.
     @staticmethod
     def get_asset_profiles(es_id: str, asset_id: str):
+        """TODO: migrate to DataTableProfile implementation when ready"""
+
         esh = get_handler()
         asset: esdl.Asset = esh.get_by_id(es_id, asset_id)
 
@@ -357,14 +362,16 @@ class PortProfileViewer:
 
         profiles = []
         for port in port_profile_info:
+            port_name = port.get("port_name")
             for p in port.get("profiles", []):
                 profile_id = p.get("id")
                 profile_name = p.get("uiname")
                 profile_qau = p.get("type")
                 profiles.append(
                     {
+                        "port_name": port_name,
                         "id": profile_id,
-                        "name": f"{profile_name} [{profile_qau.split(' ')[-1]}]"
+                        "name": f"{profile_name} [{profile_qau.split(' ')[-1]}]",
                     }
                 )
 
