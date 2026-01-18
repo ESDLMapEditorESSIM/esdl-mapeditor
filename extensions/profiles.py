@@ -1335,7 +1335,7 @@ class Profiles:
                     multiplier=float(dtp_obj.get("multiplier")),
                     startDate=_dt_str_to_datetime(dtp_obj.get("startDate")),
                     endDate=_dt_str_to_datetime(dtp_obj.get("endDate")),
-                    profileType=esdl.ProfileTypeEnum.eGet(dtp_obj.get("profileType")),
+                    profileType=esdl.ProfileTypeEnum.eGet(dtp_obj.get("profileType")) if dtp_obj.get("profileType") else None,
                 )
             else:
                 raise ProfileClassError(f"Unsupported profile class: {profile_class}")
@@ -1486,27 +1486,24 @@ def _convert_dtp_obj_into_dtp(dtp_obj: dict) -> esdl.DataTableProfile:
         'configuration' dict with database connection info.
     """
 
-    # Extract and convert configuration
-    config_obj = dtp_obj.pop("configuration", None)
-    db_type_str = config_obj.get("type")
-    try:
-        config_obj["type"] = esdl.DatabaseTypeEnum.eGet(db_type_str)
-    except KeyError:
-        raise ValueError(f"Unsupported database type: {db_type_str}")
-
-    dtp_obj["multiplier"] = float(dtp_obj.get("multiplier"))
-    dtp_obj["startDate"] = _dt_str_to_datetime(dtp_obj.get("startDate"))
-    dtp_obj["endDate"] = _dt_str_to_datetime(dtp_obj.get("endDate"))
-
-    if dtp_obj.get("profileType"):
-        dtp_obj["profileType"] = esdl.ProfileTypeEnum.eGet(dtp_obj.get("profileType"))
-
-    configuration = esdl.DatabaseConfiguration(**config_obj)
-
-    # TODO: handle configuration error
     dtp = esdl.DataTableProfile(
-        **dtp_obj,
-        configuration=configuration,
+        tableName=dtp_obj.get("tableName"),
+        columnName=dtp_obj.get("columnName"),
+        filter=dtp_obj.get("filter"),
+        multiplier=float(dtp_obj.get("multiplier")),
+        startDate=_dt_str_to_datetime(dtp_obj.get("startDate")),
+        endDate=_dt_str_to_datetime(dtp_obj.get("endDate")),
+        profileType=esdl.ProfileTypeEnum.eGet(dtp_obj.get("profileType")) if dtp_obj.get("profileType") else None,
+    )
+
+    # Extract configuration
+    config_obj = dtp_obj.pop("configuration", None)
+
+    dtp.configuration = esdl.DatabaseConfiguration(
+        database=config_obj.get("database"),
+        type=esdl.DatabaseTypeEnum.eGet(config_obj.get("type")),
+        host=config_obj.get("host"),
+        port=int(config_obj.get("port"))
     )
 
     return dtp

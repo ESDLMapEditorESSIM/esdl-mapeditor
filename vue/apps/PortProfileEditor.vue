@@ -57,15 +57,6 @@
               </template>
             </template>
           </a-table>
-          <DataTableProfileFormEdit
-            :visible="profileModalVisible"
-            :active-esdl-id="activeEsdlId"
-            :active-port-id="activePortId"
-            :profile-tag="activeProfileTag"
-            :profile-info="activeProfile"
-            @on-save="onSaveProfileFormData"
-            @on-cancel="onCancelProfileFormData"
-          />
         </a-col>
         <!-- No profiles defined -->
         <a-col v-else>
@@ -74,6 +65,15 @@
             :image-style="{ height: '150px' }"
           />
         </a-col>
+        <DataTableProfileFormEdit
+          :visible="profileModalVisible"
+          :active-esdl-id="activeEsdlId"
+          :active-port-id="activePortId"
+          :profile-tag="activeProfileTag"
+          :profile-info="activeProfile"
+          @on-save="onSaveProfileFormData"
+          @on-cancel="onCancelProfileFormData"
+        />
         <a-col
           v-if="activePortId !== null"
           style="display: flex; justify-content: flex-end; margin-top: 16px"
@@ -295,7 +295,8 @@ const closeProfileModal = () => {
 </script>
 
 <style scoped>
-::v-deep(.ant-segmented-item, .ant-segmented-item::selection) {
+:deep(.ant-segmented-item),
+:deep(.ant-segmented-item::selection) {
   height: 100%;
   display: flex;
   justify-content: center;

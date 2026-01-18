@@ -431,11 +431,11 @@ const formatAsDateTimeStr = (dtString, datetimeFormat) => {
   z-index: 100;
 }
 
-::v-deep(.with-data) {
+:v-deep(.with-data) {
   overflow-y: scroll;
 }
 
-::v-deep(.plotly-plot) {
+:v-deep(.plotly-plot) {
   height: 100%;
 }
 </style>
