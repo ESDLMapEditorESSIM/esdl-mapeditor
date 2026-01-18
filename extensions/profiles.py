@@ -1224,8 +1224,12 @@ class Profiles:
         """
 
         # Apply visualization overrides
-        start_dt = viz_options.get("start_datetime", dtp.startDate) if viz_options else dtp.startDate 
-        end_dt = viz_options.get("end_datetime", dtp.endDate) if viz_options else dtp.endDate 
+        start_dt = viz_options.get("start_datetime", dtp.startDate) if viz_options else dtp.startDate
+        if isinstance(start_dt, str):
+            start_dt = _dt_str_to_datetime(start_dt)
+        end_dt = viz_options.get("end_datetime", dtp.endDate) if viz_options else dtp.endDate
+        if isinstance(end_dt, str):
+            end_dt = _dt_str_to_datetime(end_dt)
         multiplier = viz_options.get("multiplier", dtp.multiplier) if viz_options else dtp.multiplier 
         max_datapoints = viz_options.get("max_datapoints") if viz_options else None
 
@@ -1258,6 +1262,9 @@ class Profiles:
                 )
                 # profile_data_list: a list of lists, with each list structure to be [datetime, field value, ...]
                 datetime_profile = influxdb_pm.profile_data_list
+
+                if len(datetime_profile) == 0:
+                    raise EmptyProfileWarning(f"Profile [{dtp.columnName}] has no data.")
 
                 datetimes, values = [], []
                 for datetime, value, *_ in datetime_profile:
@@ -1589,4 +1596,7 @@ class ProfilePortNotFoundError(Exception):
     pass
 
 class ProfileUpdateError(Exception):
+    pass
+
+class EmptyProfileWarning(Exception):
     pass

@@ -25,8 +25,7 @@ from esdl import esdl
 from extensions.panel_service import get_panel_service_datasource, create_panel_multiple
 from extensions.settings_storage import SettingsStorage
 from extensions.session_manager import get_handler, get_session
-from src.esdl_helper import get_port_profile_info
-from extensions.profiles import Profiles
+from extensions.profiles import Profiles, ProfileTracesRequest, EmptyProfileWarning
 import src.log as log
 
 logger = log.get_logger(__name__)
@@ -39,21 +38,9 @@ def send_alert(message):
     emit("alert", message, namespace="/esdl")
 
 @dataclass
-class AssetsProfilesRequest:
+class AssetsPortsProfilesRequest:
     es_id: str
     asset_ids: List[str]
-
-class ProfileNotFoundError(Exception):
-    pass
-
-class ProfileRetrievalError(Exception):
-    pass
-
-class InfluxDBProfileLoadError(Exception):
-    pass
-
-class EmptyProfileWarning(Exception):
-    pass
 
 
 class PortProfileViewer:
@@ -67,10 +54,15 @@ class PortProfileViewer:
     def register(self):
         logger.info("Registering PortProfileViewer extension")
             
-        @self.socketio.on("port_profile_viewer/assets_profiles", namespace="/esdl")
-        def _get_assets_profiles(params: dict):
-            req = AssetsProfilesRequest(**params)
-            return PortProfileViewer.get_assets_profiles(req.es_id, req.asset_ids)
+        @self.socketio.on("port_profile_viewer/assets_ports_profiles", namespace="/esdl")
+        def _get_assets_ports_profiles(params: dict):
+            req = AssetsPortsProfilesRequest(**params)
+            return PortProfileViewer.get_assets_ports_profiles(req.es_id, req.asset_ids)
+        
+        @self.socketio.on("port_profile_viewer/profile_traces", namespace="/esdl")
+        def _get_port_profile_traces_from_profile_ids(params: dict):
+            req = ProfileTracesRequest(**params)
+            return PortProfileViewer.get_port_profile_traces_from_profile_ids(req)
 
         @self.socketio.on("show_multiple_profiles", namespace="/esdl")
         def show_multiple_profiles(profile_id_list):
@@ -320,59 +312,122 @@ class PortProfileViewer:
         return True
 
     @staticmethod
-    def get_assets_profiles(es_id: str, asset_ids: List[str]) -> list:
+    def get_assets_ports_profiles(es_id: str, asset_ids: List[str]) -> List[dict]:
         """
-        Returns a list of dictionaries with asset and associated profiles information.
+        Returns a list of dictionaries with asset and associated ports profiles information.
 
         Example:
         [
             {
                 "asset_id": "asset123",
                 "asset_name": "Consumer",
-                "profiles": [
-                    {"id": "profile456", "name": "Heat flow [W]"},
+                "ports_profiles": [
+                    {
+                        "port_id": "port123",
+                        "port_name": "In",
+                        "port_profiles": [
+                            {
+                                "id": "profile123",
+                                "profileClass": "InfluxDBProfile"
+                                ...
+                            },
+                            ...
+                        ]
+                    },
                     ...
                 ]
             },
             ...
         ]
         """
-        assets_profiles = []
+        assets_ports_profiles = []
         for asset_id in asset_ids:
-            asset_name, profiles = PortProfileViewer.get_asset_profiles(es_id, asset_id)
-            assets_profiles.append(
-                {
-                    "asset_id": asset_id,
-                    "asset_name": asset_name,
-                    "profiles": profiles
-                }
-            )
+            asset_ports_profiles = Profiles.get_asset_ports_profiles(es_id=es_id, asset_id=asset_id)
+            assets_ports_profiles.append(asset_ports_profiles)
 
-        return assets_profiles
+        return assets_ports_profiles
     
-    # TODO: replace this with reusable func from profiles.py? and update PortProfileViewer frontend.
-    @staticmethod
-    def get_asset_profiles(es_id: str, asset_id: str):
-        """TODO: migrate to DataTableProfile implementation when ready"""
+    def get_port_profile_traces_from_profile_ids(req: ProfileTracesRequest) -> dict[str, list]:
+        """Return a dictionary with profile traces for plotly visualization or warning/error messages."""
 
-        esh = get_handler()
-        asset: esdl.Asset = esh.get_by_id(es_id, asset_id)
+        results = {"traces": [], "warnings": [], "errors": []}
 
-        port_profile_info: list = get_port_profile_info(asset, only_if_profile=True, only_of_type="InfluxDBProfile")
+        for profile_id in req.profile_ids:
+            try:
+                trace = Profiles.get_esdl_profile_trace_from_id(req.es_id, profile_id, req.viz_options)
+                
+                # Enrich trace with profile metadata for legend and subplot grouping
+                profile_metadata = _get_profile_metadata(req.es_id, profile_id)                
+                trace["legendgroup"] = profile_metadata.get("container_name")
+                trace["legendgrouptitle"] = {}
+                trace["legendgrouptitle"]["text"] = profile_metadata.get("container_name")
+                trace["subplotgroup"] = profile_metadata.get("profile_qau")
+                # Replace trace name with displayed name
+                trace["name"] = profile_metadata.get("displayed_name")
 
-        profiles = []
-        for port in port_profile_info:
-            port_name = port.get("port_name")
-            for p in port.get("profiles", []):
-                profile_id = p.get("id")
-                profile_name = p.get("uiname")
-                profile_qau = p.get("type")
-                profiles.append(
-                    {
-                        "port_name": port_name,
-                        "id": profile_id,
-                        "name": f"{profile_name} [{profile_qau.split(' ')[-1]}]",
-                    }
-                )
+                results["traces"].append({
+                    "profile_id": profile_id,
+                    "trace": trace
+                })
+            except EmptyProfileWarning as warning:
+                results["warnings"].append({
+                    "profile_id": profile_id,
+                    "warning": str(warning)
+                })
+            except Exception as e:
+                results["errors"].append({
+                    "profile_id": profile_id,
+                    "error": str(e)
+                })
 
-        return asset.name, profiles
+        return results
+    
+def _get_profile_metadata(es_id: str, profile_id: str) -> dict:
+    """A util function to get and return profile metadata in a dictionary for frontend visualization."""
+
+    esh = get_handler()
+    profile = esh.get_by_id(es_id, profile_id)
+
+    container_name = None 
+    port_name = None
+    qau_description = None
+    profile_type = None
+    
+    profile_container = profile.eContainer().eContainer()
+    if isinstance(profile_container, esdl.EnergyAsset):
+        container_name = str(profile_container.name)
+
+    profile_port = profile.eContainer()
+    if isinstance(profile_port, esdl.Port):
+        port_name = str(profile_port.name)
+
+    if profile.profileType and profile.profileType != esdl.ProfileTypeEnum.UNDEFINED:
+        profile_type = str(profile.profileType.name)
+
+    qau = profile.profileQuantityAndUnit
+    if qau and isinstance(qau, esdl.QuantityAndUnitReference):
+        qau = qau.reference
+    if qau:
+        qau_description = qau.description if qau.description else qau_to_string(qau)
+
+    meta_parts = [] 
+    if port_name is not None:
+        meta_parts.append(f"Port={port_name}")
+    if profile_type is not None:
+        meta_parts.append(f"profileType={profile_type}")
+
+    meta_suffix = ""
+    if meta_parts:
+        meta_suffix = " (" + ", ".join(meta_parts) + ")"
+
+    qau_unit = qau_description.split(" ")[-1]
+    displayed_name = f"{profile.field} [{qau_unit}]{meta_suffix}"
+
+    return {
+        "displayed_name": displayed_name,
+        "profile_name": profile.field,
+        "profile_qau": qau_description,
+        "profile_type": profile_type,
+        "container_name": container_name,
+        "port_name": port_name,
+    }
