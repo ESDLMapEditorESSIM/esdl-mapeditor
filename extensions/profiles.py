@@ -34,7 +34,7 @@ from esdl.processing import ESDLQuantityAndUnits
 from esdl.profiles.influxdbprofilemanager import ConnectionSettings, InfluxDBProfileManager
 import src.esdl_config as esdl_config
 from extensions.profile_server import InfluxDBServer, InfluxDBConnectionSettings, PostgreSQLServer, \
-    PostgreSQLConnectionSettings
+    PostgreSQLConnectionSettings, ProfileServerTypeEnum
 from extensions.settings_storage import SettingType, SettingsStorage
 from extensions.session_manager import get_session, get_handler
 from extensions.panel_service import create_panel, get_panel_service_datasource
@@ -320,13 +320,16 @@ class Profiles:
         ntime = time + ":00+0000"
         return ndate + "T" + ntime
 
-    def guess_profile_server_type(self, profile_settings):
+    def guess_profile_server_type(self, profile_settings) -> ProfileServerTypeEnum:
         if "type" in profile_settings:
             return profile_settings["type"]
         else:
             if ("port" in profile_settings and profile_settings["port"] == 8086) or \
                     ("host" in profile_settings and "influxdb" in profile_settings["host"]):
-                return "InfluxDB"
+                return ProfileServerTypeEnum.INFLUXDB
+            elif ("port" in profile_settings and profile_settings["port"] == 5432) or \
+                    ("host" in profile_settings and "postgres" in profile_settings["host"]):
+                return ProfileServerTypeEnum.POSTGRESQL
 
     def process_csv_file(self, name, uuid, content):
         logger.debug("Processing csv file(s) (threaded): ".format(name))
@@ -394,7 +397,7 @@ class Profiles:
                 database = profiles_settings['profiles_servers'][profiles_server_index]['database']
 
                 profile_server_type = self.guess_profile_server_type(profiles_settings['profiles_servers'][profiles_server_index])
-                if profile_server_type == "INFLUXDB":
+                if profile_server_type == ProfileServerTypeEnum.INFLUXDB:
                     influxdb_profile_server = InfluxDBServer(
                         connection_settings=InfluxDBConnectionSettings(
                             host=profiles_settings['profiles_servers'][profiles_server_index]['host'],
@@ -426,7 +429,7 @@ class Profiles:
                         password=profiles_settings['profiles_servers'][profiles_server_index]['password'],
                     )
 
-                elif profile_server_type == "POSTGRESQL":
+                elif profile_server_type == ProfileServerTypeEnum.POSTGRESQL:
                     postgres_profile_server = PostgreSQLServer(
                         connection_settings=PostgreSQLConnectionSettings(
                             host=profiles_settings['profiles_servers'][profiles_server_index]['host'],
@@ -465,16 +468,16 @@ class Profiles:
                     end_datetime=end_datetime
                 )
 
-                if profile_server_type == "INFLUXDB":
+                if profile_server_type == ProfileServerTypeEnum.INFLUXDB:
                     self.add_influxdb_details(profile, csv_file_name_without_extension, field)
-                elif profile_server_type == "POSTGRESQL":
+                elif profile_server_type == ProfileServerTypeEnum.POSTGRESQL:
                     self.add_postgres_details(profile, csv_file_name_without_extension, field)
 
                 if profiles_server_index != 0:  # Only non standard profiles server
                     profile['host'] = profiles_settings['profiles_servers'][profiles_server_index]['host']
                     profile['port'] = profiles_settings['profiles_servers'][profiles_server_index]['port']
 
-                if profile_server_type == "INFLUXDB":
+                if profile_server_type == ProfileServerTypeEnum.INFLUXDB:
                     # Create a grafana panel for visualization and add the embedURL to the dictionary
                     profile["embedUrl"] = create_panel(
                         graph_title=group + " - " + field,
