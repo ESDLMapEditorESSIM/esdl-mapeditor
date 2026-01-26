@@ -1204,6 +1204,7 @@ class Profiles:
 
         try:
             dtp = _convert_dtp_obj_into_dtp(dtp_obj)
+            dtp.configuration = _convert_config_obj_into_databaseconfiguration(dtp_obj.get("configuration"))
             trace = Profiles.get_datatableprofile_trace(dtp, viz_options)
             results["traces"].append({
                 "profile_id": None,
@@ -1327,6 +1328,9 @@ class Profiles:
 
             if profile_class == esdl.DataTableProfile.__name__:
                 new_profile = _convert_dtp_obj_into_dtp(dtp_obj)
+                db_config = _convert_config_obj_into_databaseconfiguration(dtp_obj.get("configuration"))
+                esi_db_config = get_or_add_esi_databaseconfiguration(es_id, db_config)
+                new_profile.configuration = esi_db_config
             elif profile_class == esdl.InfluxDBProfile.__name__:
                 new_profile = esdl.InfluxDBProfile(
                     host=dtp_obj.get("configuration").get("host"),
@@ -1485,8 +1489,7 @@ def _convert_dtp_obj_into_dtp(dtp_obj: dict) -> esdl.DataTableProfile:
     Parameters
     ----------
     dtp_obj : dict
-        Dictionary containing DataTableProfile-like fields, including a nested
-        'configuration' dict with database connection info.
+        Dictionary containing DataTableProfile-like fields.
     """
 
     dtp = esdl.DataTableProfile(
@@ -1499,17 +1502,80 @@ def _convert_dtp_obj_into_dtp(dtp_obj: dict) -> esdl.DataTableProfile:
         profileType=esdl.ProfileTypeEnum.eGet(dtp_obj.get("profileType")) if dtp_obj.get("profileType") else None,
     )
 
-    # Extract configuration
-    config_obj = dtp_obj.pop("configuration", None)
+    return dtp
 
-    dtp.configuration = esdl.DatabaseConfiguration(
+def _convert_config_obj_into_databaseconfiguration(config_obj: dict) -> esdl.DatabaseConfiguration:
+    """
+    Convert a frontend DatabaseConfiguration-like object (dict) into an ESDL DatabaseConfiguration.
+
+    Parameters
+    ----------
+    config_obj : dict
+        Dictionary containing DatabaseConfiguration-like fields.
+    """
+
+    db_config = esdl.DatabaseConfiguration(
+        id=config_obj.get("id"),
+        name=config_obj.get("name"),
         database=config_obj.get("database"),
         type=esdl.DatabaseTypeEnum.eGet(config_obj.get("type")),
         host=config_obj.get("host"),
-        port=int(config_obj.get("port"))
+        port=int(config_obj.get("port")),
+        tls=bool(config_obj.get("tls")) if config_obj.get("tls") else None
     )
 
-    return dtp
+    return db_config
+
+def get_or_add_esi_databaseconfiguration(es_id: str, db_config: esdl.DatabaseConfiguration):
+    """
+    Return an existing DatabaseConfiguration from EnergySystemInformation if present.
+    Otherwise, add the given DatabaseConfiguration (or reuse a duplicate) and return it.
+    """
+    esh = get_handler()
+
+    if not db_config.id:
+        db_config.id = str(uuid4())
+
+    # Check if databaseconfiguration is already present in the ESDL
+    try:
+        return esh.get_by_id(es_id, db_config.id)
+    except KeyError:
+        pass
+        
+    # Ensure EnergySystemInformation and DataConfigurations exist
+    es: esdl.EnergySystem = esh.get_energy_system(es_id)
+    if not es.energySystemInformation:
+        esi: esdl.EnergySystemInformation = esdl.EnergySystemInformation(id=str(uuid4()))
+        es.energySystemInformation = esi
+        esh.add_object_to_dict(es_id, esi)
+    if not es.energySystemInformation.dataconfigurations:
+        dataconfigs = esdl.DataConfigurations(id=str(uuid4()))
+        es.energySystemInformation.dataconfigurations = dataconfigs
+        esh.add_object_to_dict(es_id, dataconfigs)
+
+    configs = es.energySystemInformation.dataconfigurations.configurations 
+    
+    # Look for an existing duplicate by attributes 
+    duplicate = next(
+        (
+            cfg for cfg in configs 
+            if isinstance(cfg, esdl.DatabaseConfiguration)
+            and cfg.database == db_config.database
+            and cfg.type == db_config.type
+            and cfg.host == db_config.host
+            and cfg.port == db_config.port
+        ),
+        None
+    )
+
+    if duplicate:
+        return duplicate
+
+    # Otherwise, append and register the new config
+    configs.append(db_config)
+    esh.add_object_to_dict(es_id, db_config)
+
+    return db_config
 
 def _convert_qau_obj_into_profile_qau(es_id: str, qau_obj: dict):
     """

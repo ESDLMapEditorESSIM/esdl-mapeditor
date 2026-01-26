@@ -420,12 +420,18 @@ def _get_profile_metadata(es_id: str, profile_id: str) -> dict:
     if meta_parts:
         meta_suffix = " (" + ", ".join(meta_parts) + ")"
 
+    if isinstance(profile, esdl.DataTableProfile):
+        profile_name = profile.columnName
+    elif isinstance(profile, esdl.InfluxDBProfile):
+        profile_name = profile.field
+    else:
+        profile_name = "Unknown"
     qau_unit = qau_description.split(" ")[-1]
-    displayed_name = f"{profile.field} [{qau_unit}]{meta_suffix}"
+    displayed_name = f"{profile_name} [{qau_unit}]{meta_suffix}"
 
     return {
         "displayed_name": displayed_name,
-        "profile_name": profile.field,
+        "profile_name": profile_name,
         "profile_qau": qau_description,
         "profile_type": profile_type,
         "container_name": container_name,
