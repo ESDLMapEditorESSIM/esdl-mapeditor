@@ -368,7 +368,8 @@ class ESDLServices:
                         if cfg_service_param["parameter_name"] == key:
                             param = state_params[key]  # param now contains the communicated value (by the UI)
 
-            if param:
+            # Explicitly compare with "not None", as param can also be "false" and then this if statement must evaluate to true
+            if param is not None:
                 # Is there any parameter formatting required...
                 if "formatter" in cfg_service_param:
                     if (
