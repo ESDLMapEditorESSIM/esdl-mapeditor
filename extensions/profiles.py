@@ -1342,7 +1342,7 @@ class Profiles:
                     multiplier=float(dtp_obj.get("multiplier")),
                     startDate=_dt_str_to_datetime(dtp_obj.get("startDate")),
                     endDate=_dt_str_to_datetime(dtp_obj.get("endDate")),
-                    profileType=esdl.ProfileTypeEnum.eGet(dtp_obj.get("profileType")) if dtp_obj.get("profileType") else None,
+                    profileType=esdl.ProfileTypeEnum.from_string(dtp_obj.get("profileType"))
                 )
             else:
                 raise ProfileClassError(f"Unsupported profile class: {profile_class}")
@@ -1375,7 +1375,7 @@ class Profiles:
             if "multiplier" in updates:
                 profile.multiplier = float(updates["multiplier"])
             if "profileType" in updates:
-                profile.profileType = esdl.ProfileTypeEnum.eGet(updates["profileType"])
+                profile.profileType = esdl.ProfileTypeEnum.from_string(updates["profileType"])
             if "profileQuantityAndUnit" in updates:
                 qau_obj = updates["profileQuantityAndUnit"]
                 profile_qau = _convert_qau_obj_into_profile_qau(es_id, qau_obj)
@@ -1499,7 +1499,7 @@ def _convert_dtp_obj_into_dtp(dtp_obj: dict) -> esdl.DataTableProfile:
         multiplier=float(dtp_obj.get("multiplier")),
         startDate=_dt_str_to_datetime(dtp_obj.get("startDate")),
         endDate=_dt_str_to_datetime(dtp_obj.get("endDate")),
-        profileType=esdl.ProfileTypeEnum.eGet(dtp_obj.get("profileType")) if dtp_obj.get("profileType") else None,
+        profileType=esdl.ProfileTypeEnum.from_string(dtp_obj.get("profileType"))
     )
 
     return dtp
@@ -1518,7 +1518,7 @@ def _convert_config_obj_into_databaseconfiguration(config_obj: dict) -> esdl.Dat
         id=config_obj.get("id"),
         name=config_obj.get("name"),
         database=config_obj.get("database"),
-        type=esdl.DatabaseTypeEnum.eGet(config_obj.get("type")),
+        type=esdl.DatabaseTypeEnum.from_string(config_obj.get("type")),
         host=config_obj.get("host"),
         port=int(config_obj.get("port")),
         tls=bool(config_obj.get("tls")) if config_obj.get("tls") else None
