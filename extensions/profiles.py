@@ -396,7 +396,8 @@ class Profiles:
                 profiles_server_index = int(self.csv_files[uuid]['profiles_server_index'])
                 database = profiles_settings['profiles_servers'][profiles_server_index]['database']
 
-                profile_server_type = self.guess_profile_server_type(profiles_settings['profiles_servers'][profiles_server_index])
+                profile_server_type_str = self.guess_profile_server_type(profiles_settings['profiles_servers'][profiles_server_index])
+                profile_server_type = ProfileServerTypeEnum(profile_server_type_str)
                 if profile_server_type == ProfileServerTypeEnum.INFLUXDB:
                     influxdb_profile_server = InfluxDBServer(
                         connection_settings=InfluxDBConnectionSettings(
@@ -462,6 +463,7 @@ class Profiles:
                     group=group,
                     uiname=csv_file_name_without_extension + '_' + field,
                     multiplier=1,
+                    database_type=profile_server_type.value,
                     database=database,
                     profile_type="",
                     start_datetime=start_datetime,
@@ -741,7 +743,7 @@ class Profiles:
 
         return edr_profiles
 
-    def create_new_profile(self, group, uiname, multiplier, database, profile_type, start_datetime,
+    def create_new_profile(self, group, uiname, multiplier, database_type, database, profile_type, start_datetime,
                            end_datetime):
         setting_type, project_name = self.get_setting_type_project_name(group)
         profile = {
@@ -749,6 +751,7 @@ class Profiles:
             "project_name": project_name,
             "profile_uiname": uiname,
             "multiplier": multiplier,
+            "type": database_type,
             "database": database,
             "profileType": profile_type,
             "start_datetime": start_datetime,
