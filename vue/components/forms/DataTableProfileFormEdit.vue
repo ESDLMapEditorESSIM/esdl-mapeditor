@@ -66,7 +66,10 @@
         >
           <template #label>
             <span>Profile</span>
-            <a-tooltip v-if="formMode === formModeEnum.CREATE" title="Type to search profile">
+            <a-tooltip
+              v-if="formMode === formModeEnum.CREATE"
+              :title="profileForm.profileClass === profileClassEnum.INFLUXDBPROFILE ? influxDBProfileTooltip : profileTooltip"
+            >
               <a-button size="small" type="text" style="vertical-align: top; margin-left: 4px;">
                 <component :is="InfoCircleOutlined" style="vertical-align: 0.1rem" />
               </a-button>
@@ -77,7 +80,7 @@
           </template>
           <a-select
             v-model:value="profileForm.profile"
-            :options="profileOptions"
+            :options="profileForm.profileClass === profileClassEnum.INFLUXDBPROFILE ? influxDBProfileOptions : profileOptions"
             show-search
             allow-clear
             :disabled="formMode === formModeEnum.UPDATE"
@@ -238,6 +241,11 @@ const profileClassOptions = Object.entries(profileClassEnum).map(([_, label]) =>
   disabled: label === "SingleValue" ? true : false
 }));
 
+const DatabaseTypeEnum = Object.freeze({
+  INFLUXDB: "INFLUXDB",
+  POSTGRESQL: "POSTGRESQL",
+});
+
 const QaUType = Object.freeze({
   PREDEFINED: "Predefined quantity and units",
   CUSTOM: "Custom quantity and units"
@@ -309,8 +317,10 @@ const initForm = (type) => {
   });
 }
 
+const profileTooltip = "Type to search profile.";
+const influxDBProfileTooltip = profileTooltip + " PostgreSQL profiles are unavailable with InfluxDBProfile, please use DataTableProfile instead.";
 const previewTooltip = "The preview displays a downsampled profile for improved chart readability and performance. "
-                       + "To view the full profile data, use ESDL Analytics or Port Profile Viewer."
+                       + "To view the full profile data, use ESDL Analytics or Port Profile Viewer.";
 
 // ----------------------------------------- //
 // ------------ Component states ----------- //
@@ -322,12 +332,29 @@ const profileFormRef = ref(null);
 const profileForm = reactive({});
 
 const profileOptions = ref([]);
+const influxDBProfileOptions = ref([]);
 const profileQaUOptions = ref([]);
 
 const isLoadingData = ref(false);
 
 onMounted(() => {
-  profileOptions.value = listProfileOptions();
+  const fullProfileOptions = listProfileOptions();
+  profileOptions.value = fullProfileOptions;
+  // Disable PostgreSQL profiles for InfluxDBProfile profile options.
+  influxDBProfileOptions.value = fullProfileOptions.map((gr) => {
+    return {
+      ...gr,
+      options: gr.options.map((p) => {
+        if (p.databaseType === DatabaseTypeEnum.POSTGRESQL) {
+          return {
+            ...p,
+            disabled: true
+          };
+        }
+        return p;
+      })
+    };
+  });
   profileQaUOptions.value = listPredefQaU();
 });
 
@@ -549,7 +576,7 @@ const updateProfile = async () => {
 }
 
 /**
- * 
+ * TODO: clean up
  * @param profileName 
  */
 const getProfileInfoFromProfilePlugin = (profileName) => {
@@ -563,17 +590,28 @@ const getProfileInfoFromProfilePlugin = (profileName) => {
 
   if (profile) {
     const settingType = profile["setting_type"];
-    const databaseType = profile["item_type"] && profile["item_type"] === "InfluxDBProfile" ? "INFLUXDB" : "UNKNOWN";
     const profileGroupName = groups.find(g => g["setting_type"] === settingType)["name"];
+    const databaseType = deriveProfileDatabaseType(profile);
 
+    let tableName;
+    let columnName;
+    if (databaseType === DatabaseTypeEnum.INFLUXDB) {
+      tableName = profile["measurement"];
+      columnName = profile["field"];
+    } else if (databaseType === DatabaseTypeEnum.POSTGRESQL) {
+      tableName = profile["table"];
+      columnName = profile["column"];
+    }
+
+    // TODO: maybe the object should follow DTP structure?
     // TODO: properly handle personl, system, project profile connection info.
     // TODO: profileQaU?
     result = {
       host: profile["host"] || "localhost",
       port: profile["port"] || 443,
       database: profile["database"] || null,
-      measurement: profile["measurement"],
-      field: profile["field"],
+      measurement: tableName,
+      field: columnName,
       multiplier: profile["multiplier"],
       startDatetime: profile["start_datetime"],
       endDatetime: profile["end_datetime"],
@@ -698,6 +736,7 @@ const listProfileOptions = () => {
         groupProfiles.push({
           value: profileInfo[pr][1]["profile_uiname"],
           label: profileInfo[pr][1]["profile_uiname"], // TODO: replace this with profile id?
+          databaseType: deriveProfileDatabaseType(profileInfo[pr][1])
         });
       }
     }
@@ -710,6 +749,22 @@ const listProfileOptions = () => {
 
   return options;
 };
+
+/**
+ * An until function to derive profile database type from a profilePlugin profile record.
+ * 
+ * @param profileInfo {Object} A profile object stored in the profilePlugin profiles list.
+ */
+const deriveProfileDatabaseType = (profileInfo) => {
+  let databaseType = "Unknown";
+  if (profileInfo["type"]) {
+    databaseType = DatabaseTypeEnum[profileInfo["type"]];
+  } // To handle a record without 'type' attribute (introduced in esdl.DatabaseConfiguration)  
+  else if (profileInfo["item_type"] && profileInfo["item_type"] === "InfluxDBProfile") {
+    databaseType = DatabaseTypeEnum.INFLUXDB;
+  }
+  return databaseType;
+} 
 
 const listPredefQaU = () => {
   const options = [];

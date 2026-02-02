@@ -15,6 +15,7 @@ import base64
 from datetime import datetime
 from typing import Optional, Dict, List, Optional, Any
 
+import psycopg2
 import pytz
 import math
 import re
@@ -32,6 +33,7 @@ from esdl.esdl_handler import EnergySystemHandler
 from esdl.units.parser import qau_to_string
 from esdl.processing import ESDLQuantityAndUnits
 from esdl.profiles.influxdbprofilemanager import ConnectionSettings, InfluxDBProfileManager
+from esdl.profiles.datatableprofilemanager import DataTableProfileManager, Credentials
 import src.esdl_config as esdl_config
 from extensions.profile_server import InfluxDBServer, InfluxDBConnectionSettings, PostgreSQLServer, \
     PostgreSQLConnectionSettings, ProfileServerTypeEnum
@@ -1052,11 +1054,37 @@ class Profiles:
                     ssl=True,
                     verify_ssl=True,
                 )
+        # TODO: performance issue with _test_influxdb_connection?
         if _test_influxdb_connection(settings):
             return settings
         
         return None
-    
+
+    @staticmethod
+    def get_profile_postgres_settings(host: str, port: int, database: str, profiles_settings: dict) -> PostgreSQLConnectionSettings | None:
+        """
+        Retrieve PostgreSQL connection settings for a given profile host, port, and database.
+        """
+        settings = None
+
+        # Find profile server information for the PostgreSQL
+        for prof_server in profiles_settings.get("profiles_servers", []):
+            if (prof_server.get("type") and ProfileServerTypeEnum(prof_server["type"]) == ProfileServerTypeEnum.POSTGRESQL and
+                prof_server["host"] in host and prof_server["port"] == str(port)):
+                settings = PostgreSQLConnectionSettings(
+                    host=prof_server["host"],
+                    port=port,
+                    database=database,
+                    username=prof_server["username"],
+                    password=prof_server["password"],
+                )
+                break
+        # TODO: performance issue with _test_postgresql_connection?
+        if settings is not None and _test_postgresql_connection(settings):
+            return settings
+        
+        return None
+
     @staticmethod
     def influxdbprofile_to_datatableprofile(profile: esdl.InfluxDBProfile) -> esdl.DataTableProfile:
         """The method translates InfluxDBProfile into DataTableProfile."""
@@ -1240,18 +1268,26 @@ class Profiles:
         multiplier = viz_options.get("multiplier", dtp.multiplier) if viz_options else dtp.multiplier 
         max_datapoints = viz_options.get("max_datapoints") if viz_options else None
 
+        # groupby_interval to be used for profile downsampling
+        groupby_interval_sec = _calculate_profile_groupby_interval(start_dt, end_dt, max_datapoints)
+
+        # Profile connection settings retrieved from MongoDB
+        profiles_settings = Profiles.get_instance().get_profiles_settings()
+
         dtp_config: esdl.DatabaseConfiguration = dtp.configuration
 
         # --- INFLUXDB HANDLING ---
         # NOTE: InfluxDB profile will be phased out eventually.
         if dtp_config.type == esdl.DatabaseTypeEnum.INFLUXDB:
-            profiles_settings = Profiles.get_instance().get_profiles_settings()
             influxdb_settings = Profiles.get_profile_influxdb_settings(
                 host=dtp_config.host,
                 port=dtp_config.port,
                 database=dtp_config.database,
                 profiles_settings=profiles_settings
             )
+            if influxdb_settings is None:
+                raise InfluxDBConnectionError(f"Unable to retrieve credentials to connect to InfluxDB database at \
+                                                {dtp_config.host}:{dtp_config.port}/{dtp_config.database}")
             try:
                 influxdb_pm = InfluxDBProfileManager(influxdb_settings)
                 groupby_interval_sec = _calculate_profile_groupby_interval(
@@ -1288,12 +1324,65 @@ class Profiles:
                     "y": values,
                 }
             except Exception as e:
-                raise InfluxDBProfileLoadTraceError(f"Failed to load influxdb profile trace: {e}") from e
+                raise ProfileTraceLoadError(f"Failed to load influxdb profile trace: {e}") from e
         
-        # --- POSTGRES HANDLING (NOT IMPLEMENTED) ---
+        # --- POSTGRES HANDLING ---
         elif dtp_config.type == esdl.DatabaseTypeEnum.POSTGRESQL:
-            # TODO: implement postgres handling 
-            return {}
+            postgres_settings = Profiles.get_profile_postgres_settings(
+                host=dtp_config.host,
+                port=dtp_config.port,
+                database=dtp_config.database,
+                profiles_settings=profiles_settings
+            )
+            if postgres_settings is None:
+                raise PostgreSQLConnectionError(f"Unable to retrieve credentials to connect to Postgres database at \
+                                                {dtp_config.host}:{dtp_config.port}/{dtp_config.database}")
+            try:
+                db_config_id = f"{dtp_config.host}:{dtp_config.port}/{dtp_config.database}"
+                if dtp.configuration.id is None:
+                    dtp.configuration.id = db_config_id
+                
+                credentials_dict = Credentials.create_dict(
+                    id=dtp.configuration.id,
+                    username=postgres_settings.username,
+                    password=postgres_settings.password
+                )
+
+                # Clone a dtp and apply visualization override values when retrieving profile
+                dtp_viz = copy.deepcopy(dtp)
+                dtp_viz.configuration = copy.deepcopy(dtp.configuration)
+                # TODO: maybe use dtp.filter instead of startDate/endDate for dynamic time range visualization? 
+                dtp_viz.startDate = start_dt
+                dtp_viz.endDate = end_dt
+
+                # TODO: implement load_influxdb() like method to avoid dtp mutation?
+                dtpmanager = DataTableProfileManager.load(dtp_viz, credentials_dict)
+                # TODO: handle Postgres profile downsampling
+                datetime_profile = dtpmanager.get_esdl_datetime_profile(dtp_viz.columnName).element
+
+                if len(datetime_profile) == 0:
+                    raise EmptyProfileWarning(f"Profile [{dtp.columnName}] has no data.")
+
+                datetimes, values = [], []
+                for element in datetime_profile:
+                    dt = element.from_
+                    value = element.value
+
+                    # skip when value is None (this can occur when downsampling is applied)
+                    if value is None:
+                        continue
+
+                    datetimes.append(dt.strftime(dt_str_format)) 
+                    values.append(value * multiplier)
+
+                return {
+                    "name": dtp.columnName,
+                    "x": datetimes,
+                    "y": values,
+                }
+            except Exception as e:
+                raise ProfileTraceLoadError(f"Failed to load postgres profile trace: {e}") from e
+            
         
         # --- UNSUPPORTED TYPE ---
         logger.error(f"Unsupported datatableprofile configuration type: {dtp.configuration.type}")
@@ -1480,10 +1569,26 @@ def _test_influxdb_connection(settings: ConnectionSettings) -> bool:
         client.get_list_database()
         return True
     except (ConnectionError, TimeoutError) as e:
-        raise InfluxDBConnectionError(f"InfluxDB database {settings.database} unreachable at {settings.host}:{settings.port} - {e}")
+        raise InfluxDBConnectionError(f"Unable to reach InfluxDB database at {settings.host}:{settings.port}/{settings.database} - {e}")
     finally:
         if client:
             client.close()
+
+def _test_postgresql_connection(settings: PostgreSQLConnectionSettings) -> bool:
+    """Return True if the PostgreSQL instance is reachable."""
+    try:
+        conn = psycopg2.connect(
+            host=settings.host,
+            port=settings.port,
+            dbname=settings.database,
+            user=settings.username,
+            password=settings.password,
+            connect_timeout=3
+        )
+        conn.close()
+        return True
+    except psycopg2.OperationalError as e:
+        raise PostgreSQLConnectionError(f"Unable to reach PostgreSQL database at {settings.host}:{settings.port}/{settings.database} - {e}")
 
 def _convert_dtp_obj_into_dtp(dtp_obj: dict) -> esdl.DataTableProfile:
     """
@@ -1655,7 +1760,7 @@ class ProfileClassError(Exception):
 class InfluxDBConnectionError(Exception):
     pass
 
-class InfluxDBProfileLoadTraceError(Exception):
+class ProfileTraceLoadError(Exception):
     pass
 
 class ProfileCreateError(Exception):
@@ -1668,4 +1773,7 @@ class ProfileUpdateError(Exception):
     pass
 
 class EmptyProfileWarning(Exception):
+    pass
+
+class PostgreSQLConnectionError(Exception):
     pass

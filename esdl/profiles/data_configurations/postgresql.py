@@ -87,23 +87,45 @@ class PostgresqlConfiguration:
 
         with self.connection.cursor() as cursor:
             if self.datatable_profile.schema:
-                table = self.datatable_profile.schema + "." + self.datatable_profile.tableName
+                table_ident = sql.Identifier(self.datatable_profile.schema, self.datatable_profile.tableName)
             else:
-                table = self.datatable_profile.tableName
+                table_ident = sql.Identifier(self.datatable_profile.tableName)
 
-            # warning: this is unquoted SQL...
+            # Base query
+            query = sql.SQL("SELECT {dt}, {col} FROM {tbl}").format(
+                dt=sql.Identifier(self.datatable_profile.datetimeColumnName),
+                col=sql.Identifier(self.datatable_profile.columnName),
+                tbl=table_ident
+            )
+
+            # Collect WHERE clauses
+            where_clauses = []
+            params = []
+            if self.datatable_profile.startDate and self.datatable_profile.endDate:
+                where_clauses.append(
+                    sql.SQL("{dt} >= %s").format(dt=sql.Identifier(self.datatable_profile.datetimeColumnName))
+                )
+                where_clauses.append(
+                    sql.SQL("{dt} <= %s").format(dt=sql.Identifier(self.datatable_profile.datetimeColumnName))
+                )
+                params.extend([
+                    self.datatable_profile.startDate.strftime('%Y-%m-%dT%H:%M:%SZ'),
+                    self.datatable_profile.endDate.strftime('%Y-%m-%dT%H:%M:%SZ')
+                ])
+
+            # TODO: support optional filter
             if self.datatable_profile.filter:
-                where = f"WHERE {self.datatable_profile.filter}"
-            else:
-                where = ""
+                pass
+            
+            if where_clauses:
+                query += sql.SQL(" WHERE ") + sql.SQL(" AND ").join(where_clauses)
 
             if self.datatable_profile.columnName:
-                # todo make this safe SQL
-                cursor.execute(f'SELECT '
-                               f'{self.datatable_profile.datetimeColumnName},{self.datatable_profile.columnName} '
-                               f'FROM {table} {where};')
+                cursor.execute(query, params)
             else:
-                cursor.execute(f'SELECT * FROM {table} {where};')
+                # Fallback to select all columns
+                query = sql.SQL("SELECT * FROM {tbl}").format(tbl=table_ident)
+                cursor.execute(query)
             result = cursor.fetchall()
             # process results
             columns = cursor.description
