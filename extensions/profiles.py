@@ -398,6 +398,8 @@ class Profiles:
             with self.flask_app.app_context():
                 profiles_settings = self.get_profiles_settings()
                 profiles_server_index = int(self.csv_files[uuid]['profiles_server_index'])
+                host = profiles_settings['profiles_servers'][profiles_server_index]['host']
+                port = int(profiles_settings['profiles_servers'][profiles_server_index]['port'])
                 database = profiles_settings['profiles_servers'][profiles_server_index]['database']
 
                 profile_server_type_str = self.guess_profile_server_type(profiles_settings['profiles_servers'][profiles_server_index])
@@ -405,8 +407,8 @@ class Profiles:
                 if profile_server_type == ProfileServerTypeEnum.INFLUXDB:
                     influxdb_profile_server = InfluxDBServer(
                         connection_settings=InfluxDBConnectionSettings(
-                            host=profiles_settings['profiles_servers'][profiles_server_index]['host'],
-                            port=int(profiles_settings['profiles_servers'][profiles_server_index]['port']),
+                            host=host,
+                            port=port,
                             username=profiles_settings['profiles_servers'][profiles_server_index]['username'],
                             password=profiles_settings['profiles_servers'][profiles_server_index]['password'],
                             database=database,
@@ -423,10 +425,7 @@ class Profiles:
                         protocol = "https://"
                     else:
                         protocol = "http://"
-                    profiles_server_host = protocol + \
-                                           profiles_settings['profiles_servers'][profiles_server_index]['host'] + \
-                                           ":" + \
-                                           profiles_settings['profiles_servers'][profiles_server_index]['port']
+                    profiles_server_host = f"{protocol}{host}:{port}"
                     datasource = get_panel_service_datasource(
                         database=database,
                         host=profiles_server_host,
@@ -437,8 +436,8 @@ class Profiles:
                 elif profile_server_type == ProfileServerTypeEnum.POSTGRESQL:
                     postgres_profile_server = PostgreSQLServer(
                         connection_settings=PostgreSQLConnectionSettings(
-                            host=profiles_settings['profiles_servers'][profiles_server_index]['host'],
-                            port=int(profiles_settings['profiles_servers'][profiles_server_index]['port']),
+                            host=host,
+                            port=port,
                             username=profiles_settings['profiles_servers'][profiles_server_index]['username'],
                             password=profiles_settings['profiles_servers'][profiles_server_index]['password'],
                             database=database,
@@ -468,6 +467,8 @@ class Profiles:
                     uiname=csv_file_name_without_extension + '_' + field,
                     multiplier=1,
                     database_type=profile_server_type.value,
+                    host=host,
+                    port=port,
                     database=database,
                     profile_type="",
                     start_datetime=start_datetime,
@@ -478,10 +479,6 @@ class Profiles:
                     self.add_influxdb_details(profile, csv_file_name_without_extension, field)
                 elif profile_server_type == ProfileServerTypeEnum.POSTGRESQL:
                     self.add_postgres_details(profile, csv_file_name_without_extension, field)
-
-                if profiles_server_index != 0:  # Only non standard profiles server
-                    profile['host'] = profiles_settings['profiles_servers'][profiles_server_index]['host']
-                    profile['port'] = profiles_settings['profiles_servers'][profiles_server_index]['port']
 
                 if profile_server_type == ProfileServerTypeEnum.INFLUXDB:
                     # Create a grafana panel for visualization and add the embedURL to the dictionary
@@ -747,7 +744,7 @@ class Profiles:
 
         return edr_profiles
 
-    def create_new_profile(self, group, uiname, multiplier, database_type, database, profile_type, start_datetime,
+    def create_new_profile(self, group, uiname, multiplier, database_type, host, port, database, profile_type, start_datetime,
                            end_datetime):
         setting_type, project_name = self.get_setting_type_project_name(group)
         profile = {
@@ -756,6 +753,8 @@ class Profiles:
             "profile_uiname": uiname,
             "multiplier": multiplier,
             "type": database_type,
+            "host": host,
+            "port": int(port),
             "database": database,
             "profileType": profile_type,
             "start_datetime": start_datetime,

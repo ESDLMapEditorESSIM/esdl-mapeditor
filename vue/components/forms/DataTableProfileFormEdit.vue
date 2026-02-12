@@ -603,12 +603,13 @@ const getProfileInfoFromProfilePlugin = (profileName) => {
       columnName = profile["column"];
     }
 
+    // TODO: proper handling of host, port, and database when not given as profile properties.
     // TODO: maybe the object should follow DTP structure?
     // TODO: properly handle personl, system, project profile connection info.
     // TODO: profileQaU?
     result = {
       host: profile["host"] || "localhost",
-      port: profile["port"] || 443,
+      port: profile["port"] || 8086,
       database: profile["database"] || null,
       measurement: tableName,
       field: columnName,
