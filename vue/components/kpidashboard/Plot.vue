@@ -1,6 +1,6 @@
 <template>
   <div v-if="trace.length" :id="plotId" ref="plotDiv" class="plot-div" />
-  <div v-else class="no-data">No data</div>
+  <div v-else class="no-data">Not configured</div>
 </template>
 
 <script setup>
@@ -131,7 +131,7 @@ $(document).on('kpiDashboardIsClosed', (_, data) => {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  font-size: 20pt;
+  font-size: 16pt;
   color: grey;
   font-style: italic;
   border: solid 3px lightgrey;

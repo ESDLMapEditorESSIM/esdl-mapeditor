@@ -563,6 +563,7 @@ class Profiles {
             .append($('<li>').text('different profiles can be added using more than one column'))
             .append($('<li>').text('profiles are uploaded to the standard database, using the csv filename and the'+
                 ' column name as identifiers (they must be unique, else data will be overwritten)'))
+            .append($('<li>').text('use a semicolon \';\' as a delimiter'))
             .append($('<li>').text('use a \'.\' as a decimal seperator'))
             .append($('<li>').text('a full year profile contains 8760 profile elements (or 8784 for a leap year)'))
         );

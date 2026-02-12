@@ -56,6 +56,7 @@
       <AnalyticsPlot
         :trace="currentTrace"
         :layout="currentLayout"
+        :plot-message="profileOptions.length > 0 && selectedProfiles.length === 0 ? 'Select one or more profiles from the menu to visualize' : ''"
         @on-relayout="onPlotRelayout"
       />
     </a-col>
@@ -177,7 +178,7 @@ const listProfileOptions = async (esId, selectedAssetIds) => {
     const optionGroup = assetsPortsProfiles.map((asset) => {   
       if (asset.ports_profiles.length === 0) {
         return {
-          title: `${asset.asset_name} (No profile)`,
+          title: `${asset.asset_name} (No profile found)`,
           value: asset.asset_id,
           checkable: false,
           disabled: true,

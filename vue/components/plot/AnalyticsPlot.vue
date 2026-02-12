@@ -1,5 +1,5 @@
 <template>
-  <div v-show="trace.length === 0" class="no-analytics-data">No data</div>
+  <div v-show="trace.length === 0" class="no-analytics-data">{{ props.plotMessage || "Not configured" }}</div>
   <div v-show="trace.length" class="with-data">
     <div id="plot" ref="plotDiv" class="plotly-plot" />
   </div>
@@ -27,6 +27,10 @@ const props = defineProps({
 		default: function () {
 			return {};
 		}
+	},
+	plotMessage: {
+		type: String,
+		default: ""
 	}
 });
 
@@ -141,7 +145,7 @@ $(document).on("esdlAnalyticsIsClosed kpiDashboardIsClosed", (_, data) => {
 	flex-direction: column;
 	justify-content: center;
 	align-items: center;
-	font-size: 20pt;
+	font-size: 16pt;
 	color: grey;
 	border: 1px solid rgba(100, 100, 100, 0.15);
 	border-radius: .5rem;

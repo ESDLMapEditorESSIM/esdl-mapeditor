@@ -345,9 +345,11 @@ class Profiles:
             try:
                 csv_file = StringIO(content)
                 dialect = csv.Sniffer().sniff(csv_file.read(4096))
+                if dialect.delimiter == ',':
+                    raise ValueError(f"CSV file '{name}' uses comma ',' as delimiter. Please use semicolon ';' to avoid parsing errors.")
                 csv_file = StringIO(content)
                 reader = csv.reader(csv_file, dialect)
-            except:
+            except csv.Error:
                 # If format cannot be determined automatically, try ; as a default
                 csv_file = StringIO(content)
                 reader = csv.reader(csv_file, delimiter=';')
@@ -1254,7 +1256,6 @@ class Profiles:
         """
         Load and return a profile trace in a dict.
 
-        Only InfluxDB profile type is supported at the moment, but will be migrated to Postgres.
         If viz_options is provided, they override the inherent attributes of the profile.
         """
 
