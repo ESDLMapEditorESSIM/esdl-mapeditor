@@ -32,7 +32,7 @@ from influxdb import InfluxDBClient
 
 import esdl
 from esdl.processing.ESDLAsset import get_asset_capability_type
-from esdl.processing.ESDLQuantityAndUnits import unit_to_string
+from esdl.units.parser import unit_to_string
 from esdl.profiles.influxdbprofilemanager import InfluxDBProfileManager
 from extensions.data_manager.db_interaction import create_db_tables, get_db_driver_type, DriverType, create_db, drop_db, \
     drop_db_tables

@@ -56,6 +56,7 @@
       <AnalyticsPlot
         :trace="currentTrace"
         :layout="currentLayout"
+        :plot-message="profileOptions.length > 0 && selectedProfiles.length === 0 ? 'Select one or more profiles from the menu to visualize' : ''"
         @on-relayout="onPlotRelayout"
       />
     </a-col>
@@ -128,7 +129,7 @@ onMounted(() => {
   assetId.value = currentObjectID.value;
 
   const selectedAssetIds = getSelectedAssetIds();
-  getProfileOptions(activeEsdlId.value, selectedAssetIds);
+  listProfileOptions(activeEsdlId.value, selectedAssetIds);
 });
 
 onUnmounted(() => {
@@ -162,21 +163,22 @@ const getSelectedAssetIds = () => {
   return activeAssetIds;
 };
 
-// Get profile options from a list of selectedAssetIds
-const getProfileOptions = async (esId, selectedAssetIds) => {
+// List profile options for a given list of selectedAssetIds
+const listProfileOptions = async (esId, selectedAssetIds) => {
   isLoadingData.value = true;
 
-  const assetsProfilesOptions = await fetchAssetsProfiles(
+  // assetsPortsProfiles has structure as
+  // [ { asset_id: str, asset_name: str, ports_profiles: [ { port_id: str, port_name: str, port_profiles: [ {id: str, name: str, ...} ] } ] } ]
+  const assetsPortsProfiles = await fetchAssetsPortsProfiles(
     esId,
     selectedAssetIds
   );
 
-  if (assetsProfilesOptions) {
-    // assetsProfilesOptions has structure as [ { asset_id: str, asset_name: str, profiles: [ {port_name: str, id: str, name: str} ] } ]
-    const optionGroup = assetsProfilesOptions.map((asset) => {   
-      if (asset.profiles.length === 0) {
+  if (assetsPortsProfiles) {
+    const optionGroup = assetsPortsProfiles.map((asset) => {   
+      if (asset.ports_profiles.length === 0) {
         return {
-          title: `${asset.asset_name} (No profile)`,
+          title: `${asset.asset_name} (No profile found)`,
           value: asset.asset_id,
           checkable: false,
           disabled: true,
@@ -184,33 +186,30 @@ const getProfileOptions = async (esId, selectedAssetIds) => {
         };
       }
 
-      // Group profiles by port_name
-      const portsMap = {};
-      asset.profiles.forEach((p) => {
-        if (!portsMap[p.port_name]) {
-          portsMap[p.port_name] = [];
-        }
-        portsMap[p.port_name].push({
-          title: p.name,
-          value: p.id,
-          checkable: true,
-        });
-      });
-
       // Build port nodes
-      const portNodes = Object.entries(portsMap).map(([portName, profiles]) => ({
-        title: `Port - ${portName}`,
-        value: `${asset.asset_id}-${portName}`,
-        checkable: false,
-        children: profiles,
-      }));
+      const portsProfiles = [];
+      asset.ports_profiles.forEach((port) => {
+        portsProfiles.push({
+          title: `Port - ${port.port_name}`,
+          value: `${asset.asset_id}-${port.port_name}`,
+          checkable: false,
+          children: port.port_profiles.map((p) => {
+            const profileDisplayedName = `${p.columnName} [${p.profileQuantityAndUnit?.description?.split(" ").at(-1) ?? "Unknown"}]`;
+            return {
+              title: profileDisplayedName,
+              value: p.id,
+              checkable: true,
+            }
+          }),
+        });
+      })
 
       // Build asset node
       return {
         title: asset.asset_name,
         value: asset.asset_id,
         checkable: false,
-        children: portNodes,
+        children: portsProfiles,
       };
     });
 
@@ -220,16 +219,16 @@ const getProfileOptions = async (esId, selectedAssetIds) => {
   isLoadingData.value = false;
 };
 
-const fetchAssetsProfiles = async (esId, assetIds) => {
-  const reqBody = {
+/**
+ * Fetches ports profiles for a given list of assetIds.
+ */
+const fetchAssetsPortsProfiles = async (esId, assetIds) => {
+  const assetsPortsProfilesRequest = {
     es_id: esId,
     asset_ids: assetIds,
   };
   try {
-    const assetsProfiles = await fetchData(
-      "port_profile_viewer/assets_profiles",
-      reqBody
-    );
+    const assetsProfiles = await fetchData("port_profile_viewer/assets_ports_profiles", assetsPortsProfilesRequest);
     return assetsProfiles;
   } catch (e) {
     console.error(e);
@@ -271,17 +270,19 @@ const onPlotRelayout = (newLayoutRanges) => {
 const updateTrace = async () => {
   isLoadingData.value = true;
   try {
-    const reqBody = {
+    const profileTracesRequest = {
       es_id: activeEsdlId.value,
       profile_ids: selectedProfiles.value,
-      dt_range: profileDateTimeRange.value,
-      max_datapoints: profileDownsampling.value ? profileMaxDataPoints : null,
+      viz_options: {
+        max_datapoints: profileDownsampling.value ? profileMaxDataPoints : null
+      }
     };
+    if (profileDateTimeRange.value) {
+      profileTracesRequest.viz_options["start_datetime"] = profileDateTimeRange.value[0];
+      profileTracesRequest.viz_options["end_datetime"] = profileDateTimeRange.value[1];
+    }
+    const results = await fetchData("port_profile_viewer/profile_traces", profileTracesRequest);
 
-    const results = await fetchData(
-      "port_profile_viewer/profile_traces",
-      reqBody
-    );
 
     // Handle warning per profile
     if (results.warnings && results.warnings.length > 0) {
@@ -297,10 +298,14 @@ const updateTrace = async () => {
     // Handle error per profile
     if (results.errors && results.errors.length > 0) {
       results.errors.forEach((errObj) => {
-        displayNotification(
-          "error",
-          `Error retrieving profile [${errObj.profile_id}]`
-        );
+        let errMsg = "Error retrieving profile";
+        if (errObj.profile_id) {
+          errMsg += ` (id=${errObj.profile_id})`
+        }
+        if (errObj.error.includes("unreachable")) {
+          errMsg = `Unable to display profile (id=${errObj.profile_id}) due to database connection error.`;
+        }
+        displayNotification("error", errMsg);
         console.error(errObj);
       });
     }
@@ -314,6 +319,7 @@ const updateTrace = async () => {
       "error",
       `Failed to fetch profile traces: ${e.message || e}`
     );
+    console.error(e);
     currentTrace.value = [];
     currentLayout.value = {};
   } finally {
@@ -426,11 +432,11 @@ const formatAsDateTimeStr = (dtString, datetimeFormat) => {
   z-index: 100;
 }
 
-::v-deep(.with-data) {
+:v-deep(.with-data) {
   overflow-y: scroll;
 }
 
-::v-deep(.plotly-plot) {
+:v-deep(.plotly-plot) {
   height: 100%;
 }
 </style>

@@ -15,7 +15,7 @@
 from pyecore.ecore import EReference
 from extensions.session_manager import get_session, set_session, get_handler
 from esdl import esdl
-from esdl.processing.ESDLQuantityAndUnits import unit_to_string
+from esdl.units.parser import unit_to_string
 from esdl.esdl_handler import EnergySystemHandler
 import src.log as log
 from uuid import uuid4

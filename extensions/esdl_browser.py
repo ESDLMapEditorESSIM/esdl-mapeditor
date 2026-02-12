@@ -21,7 +21,7 @@ from flask import Flask
 from flask_socketio import SocketIO, emit
 from extensions.session_manager import get_handler, get_session
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
-from esdl.processing.ESDLQuantityAndUnits import qau_to_string
+from esdl.units.parser import qau_to_string
 from esdl import esdl
 import esdl.processing.ESDLEcore as ESDLEcore
 from pyecore.ecore import EObject, EReference, ECollection

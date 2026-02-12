@@ -1,5 +1,5 @@
 from esdl.esdl_handler import EnergySystemHandler
-from esdl.processing.ESDLQuantityAndUnits import qau_to_string
+from esdl.units.parser import qau_to_string
 from esdl import esdl
 from uuid import uuid4
 from pyecore.resources import ResourceSet, Resource, URI
