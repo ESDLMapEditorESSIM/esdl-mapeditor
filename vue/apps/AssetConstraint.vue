@@ -312,7 +312,12 @@ const ProfileTag = Object.freeze({
 });
 
 // Default to support power; can be extended or made dynamic in the future.
-const attributeReferenceOptions = [{ value: "power", label: "power" }];
+const attributeReferenceOptions = [
+    { value: "power", label: "power" },
+    { value: "capacity", label: "capacity" },
+    { value: "volume", label: "volume" },
+    { value: "aggregationCount", label: "aggregationCount" }
+];
 
 // State
 const activeEsdlId = ref(getActiveEsdlLayerId().value);

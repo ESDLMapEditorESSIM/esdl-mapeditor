@@ -364,11 +364,13 @@ class ESDLServices:
                 param = cfg_service_param["value"]
             elif state_params:  # find state parameter value
                 for key in state_params:
-                    if state_params[key]:  # to filter empty lists for multi-selection parameters
+                    # 28-1-2026: Added "is not None", state parameters can be false and now the if statement still evaluates to true
+                    if state_params[key] is not None:  # to filter empty lists for multi-selection parameters
                         if cfg_service_param["parameter_name"] == key:
                             param = state_params[key]  # param now contains the communicated value (by the UI)
 
-            if param:
+            # Explicitly compare with "not None", as param can also be "false" and then this if statement must evaluate to true
+            if param is not None:
                 # Is there any parameter formatting required...
                 if "formatter" in cfg_service_param:
                     if (

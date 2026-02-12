@@ -634,6 +634,7 @@ function add_service_to_area_contextmenu(layer, service, idx) {
     add_service_to_contextmenu(layer, service, function (e) {
         const state = {
             area_id: layer.id,
+            area_name: layer.name,
             wkt: toWKT(layer),
         }
         if (service['type'] === 'vueworkflow' || service['type'] === 'workflow') {
@@ -664,6 +665,7 @@ function update_esdl_services(event) {
                         const service = esdl_services_information[i];
                         const state = {
                             asset_id: id,
+                            asset_name: layer.name,
                         }
                         if ("options" in service && "send_esdl" in service["options"] && service["options"]["send_esdl"]) {
                             $.ajax({
