@@ -59,8 +59,11 @@ function load_esdl_files(event) {
             url: load_esdl_url,
             type: 'POST',
             data: { file_info: array_with_file_info, is_import: false },
-            success: function () {
+            success: function (response) {
                 window.hide_loader();
+                if (response && (response.status === 'pending_prompt' || response.status === 'error_prompt_sent')) {
+                    return;
+                }
                 socket.emit('process_loaded_energysystems');
             },
             error: handle_esdl_file_upload_error,
@@ -99,8 +102,11 @@ function import_esdl_helper(event) {
             type: 'POST',
             // data: {file_content: content, filename: file.name, import: true},
             data: { file_info: array_with_file_info, is_import: true },
-            success: function () {
+            success: function (response) {
                 window.hide_loader();
+                if (response && (response.status === 'pending_prompt' || response.status === 'error_prompt_sent')) {
+                    return;
+                }
                 window.socket.emit('process_loaded_energysystems');
             },
             error: handle_esdl_file_upload_error,

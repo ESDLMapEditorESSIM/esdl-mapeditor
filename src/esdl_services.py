@@ -32,7 +32,8 @@ from esdl.processing.string_uri import StringURI
 from esdl.undo import UndoRedoCommandStack
 from esdl.undo_wrapper import undo_record_changes
 from esdl.processing import ESDLAsset, ESDLGeometry
-from esdlproject.ProjectManager import ProjectManager
+from esdlproject.ProjectManager import ProjectManager, load_external_string
+from extensions.prompt_manager import PromptManager
 from extensions.external_models.external_models_storage import (
     ExternalModelsStorage,
     ESDL_FEEDBACK,
@@ -45,10 +46,16 @@ from extensions.session_manager import get_project_manager, get_session, set_ses
 from extensions.settings_storage import SettingsStorage
 from src.esdl2inlineprofile import copy_and_convert_esdl_profiles
 from src.esdl_helper import energy_asset_to_ui
-from src.process_es_area_bld import calc_possible_locations_in_area, choose_location, find_area_location_based, \
-    get_area_id_from_mapeditor_id
+from src.process_es_area_bld import (
+    calc_possible_locations_in_area,
+    choose_location,
+    find_area_location_based,
+    get_area_id_from_mapeditor_id,
+    call_process_energy_system,
+)
 from src.tno.shared.util import get_nested_dict_value
 from utils.datetime_utils import parse_date
+from src.tno.projects.duplicate_detection import DuplicatePrompt, find_duplicate_variant_collection, generate_renamed_esdl_string
 
 logger = log.get_logger(__name__)
 
@@ -70,6 +77,7 @@ class ESDLServices:
         self.models_storage = models_storage
 
         self.register()
+        PromptManager.register_handler("esdl_duplicate_service_import", self._handle_esdl_duplicate_service_import)
 
     def register(self):
         logger.info("Registering ESDLServices extension")
@@ -550,82 +558,28 @@ class ESDLServices:
                     esdlstr_base64_bytes = base64.b64decode(esdlstr_bytes)
                     esdl_response = esdlstr_base64_bytes.decode("utf-8")
 
-            variant, parse_info = pm.add_energy_system(StringURI(service["name"], esdl_response))
-            # TODO deal with parse_info?
-            es = pm.get_energy_system(variant)
-
-            message = None
-            backend_action = {"force_update_es_id": es.id}
-
-            if "show_asset_feedback" in result_config and result_config["show_asset_feedback"]:
-                model_run_data = self.models_storage.get_model_run(state_params["run_id"])
-                if ESDL_FEEDBACK in model_run_data:
-                    feedback = model_run_data[ESDL_FEEDBACK]
-                else:
-                    feedback = {}
-
-                variant, parse_info = pm.add_energy_system(StringURI(service["name"], esdl_response))
-                # TODO deal with parse_info?
-                message = {"asset_feedback": feedback}
-                backend_action["run_after_esdl_loaded"] = True
-
-            if "animation" in result_config:
-                influxdb_host_override = None
-                if "influxdb_host_override" in result_config["animation"]:
-                    influxdb_host_override = result_config["animation"]["influxdb_host_override"]
-                influxdb_port_override = None
-                if "influxdb_port_override" in result_config["animation"]:
-                    influxdb_port_override = result_config["animation"]["influxdb_port_override"]
-
-                try:
-                    animation_fields = Profiles.get_animation_fields(
-                        es.id,
-                        influxdb_host_override=influxdb_host_override,
-                        influxdb_port_override=influxdb_port_override,
-                    )
-                    if animation_fields:
-                        filter_tag_name = None
-                        filter_tag_value = None
-                        if "filter_on_tag" in service["result"][0]["animation"]:
-                            model_run_data = self.models_storage.get_model_run(state_params["run_id"])
-                            filter_tag_name = service["result"][0]["animation"]["filter_on_tag"]["tag_name"]
-                            filter_tag_value = get_nested_dict_value(
-                                model_run_data,
-                                service["result"][0]["animation"]["filter_on_tag"]["value_database_key"],
-                            )
-                        emit(
-                            "animation_esdl_data",
-                            {
-                                "es_id": es.id,
-                                "fields": animation_fields,
-                                "message": f"For {model_short_name} result: '{state_params['run_name']}'",
-                                "filter_tag_name": filter_tag_name,
-                                "filter_tag_value": filter_tag_value,
-                                "influxdb_host_override": influxdb_host_override,
-                                "influxdb_port_override": influxdb_port_override,
-                            },
-                        )
-                except Exception as e:
-                    logger.error(e)
-                    return False, str(e), None
-
-                # TODO: Check if this is correct?!
-                return True, {}, {"es": pm.get_energy_system(variant)}
-            if "external_link" in result_config:
-                model_run_data = self.models_storage.get_model_run(state_params["run_id"])
-                external_link_url = get_nested_dict_value(
-                    model_run_data, result_config["external_link"]["value_database_key"]
-                )
-                emit(
-                    "results_external_link",
-                    {
-                        "description": result_config["external_link"]["description"],
-                        "url": external_link_url,
-                        "es_id": es.id,
-                        "message": f"For {model_short_name} result: '{state_params['run_name']}'",
+            temp_es, _ = load_external_string(esdl_string=esdl_response, name=service["name"])
+            duplicate_vc, match_id, match_name, matched_es = find_duplicate_variant_collection(
+                pm, temp_es.id, temp_es.name
+            )
+            if duplicate_vc:
+                user_email = get_session("user-email")
+                PromptManager.get_instance().send(DuplicatePrompt(
+                    user_email=user_email,
+                    continuation_id="esdl_duplicate_service_import",
+                    match_id=match_id,
+                    match_name=match_name,
+                    matched_es=matched_es,
+                    context={
+                        "esdl_response": esdl_response,
+                        "service": service,
+                        "result_config": result_config,
+                        "state_params": state_params,
                     },
-                )
-            return True, message, backend_action
+                ))
+                return True, {"prompt_pending": True}, {"skip_processing": True}
+
+            return self._handle_esdl_result(pm, esdl_response, result_config, service, state_params, model_short_name)
         elif service["result"][0]["action"] == "esdl_store":
             # Temporarily store the ESDL for later use in next steps
             if "encoding" in service["result"][0]:
@@ -930,3 +884,139 @@ class ESDLServices:
                 None,
             )
         return None
+
+    def _handle_esdl_result(
+        self,
+        pm: ProjectManager,
+        esdl_response: str,
+        result_config,
+        service: dict,
+        state_params,
+        model_short_name: str,
+    ) -> Tuple[bool, str | dict | None, dict | None]:
+        """Apply an ESDL result and build backend actions."""
+        variant, parse_info = pm.add_energy_system(StringURI(service["name"], esdl_response))
+        # TODO deal with parse_info?
+        es = pm.get_energy_system(variant)
+
+        message = None
+        backend_action = {"force_update_es_id": es.id}
+
+        if "show_asset_feedback" in result_config and result_config["show_asset_feedback"]:
+            model_run_data = self.models_storage.get_model_run(state_params["run_id"])
+            if ESDL_FEEDBACK in model_run_data:
+                feedback = model_run_data[ESDL_FEEDBACK]
+            else:
+                feedback = {}
+
+            variant, parse_info = pm.add_energy_system(StringURI(service["name"], esdl_response))
+            # TODO deal with parse_info?
+            message = {"asset_feedback": feedback}
+            backend_action["run_after_esdl_loaded"] = True
+
+        if "animation" in result_config:
+            influxdb_host_override = None
+            if "influxdb_host_override" in result_config["animation"]:
+                influxdb_host_override = result_config["animation"]["influxdb_host_override"]
+            influxdb_port_override = None
+            if "influxdb_port_override" in result_config["animation"]:
+                influxdb_port_override = result_config["animation"]["influxdb_port_override"]
+
+            try:
+                animation_fields = Profiles.get_animation_fields(
+                    es.id,
+                    influxdb_host_override=influxdb_host_override,
+                    influxdb_port_override=influxdb_port_override,
+                )
+                if animation_fields:
+                    filter_tag_name = None
+                    filter_tag_value = None
+                    if "filter_on_tag" in service["result"][0]["animation"]:
+                        model_run_data = self.models_storage.get_model_run(state_params["run_id"])
+                        filter_tag_name = service["result"][0]["animation"]["filter_on_tag"]["tag_name"]
+                        filter_tag_value = get_nested_dict_value(
+                            model_run_data,
+                            service["result"][0]["animation"]["filter_on_tag"]["value_database_key"],
+                        )
+                    emit(
+                        "animation_esdl_data",
+                        {
+                            "es_id": es.id,
+                            "fields": animation_fields,
+                            "message": f"For {model_short_name} result: '{state_params['run_name']}'",
+                            "filter_tag_name": filter_tag_name,
+                            "filter_tag_value": filter_tag_value,
+                            "influxdb_host_override": influxdb_host_override,
+                            "influxdb_port_override": influxdb_port_override,
+                        },
+                    )
+            except Exception as e:
+                logger.error(e)
+                return False, str(e), None
+
+            # TODO: Check if this is correct?!
+            return True, {}, {"es": pm.get_energy_system(variant)}
+        if "external_link" in result_config:
+            model_run_data = self.models_storage.get_model_run(state_params["run_id"])
+            external_link_url = get_nested_dict_value(
+                model_run_data, result_config["external_link"]["value_database_key"]
+            )
+            emit(
+                "results_external_link",
+                {
+                    "description": result_config["external_link"]["description"],
+                    "url": external_link_url,
+                    "es_id": es.id,
+                    "message": f"For {model_short_name} result: '{state_params['run_name']}'",
+                },
+            )
+        return True, message, backend_action
+
+    def _handle_esdl_duplicate_service_import(self, choice_key: str, context: dict):
+        """Apply user choice for duplicate service-import prompts."""
+        if choice_key == "cancel":
+            return
+
+        esdl_response = context.get("esdl_response")
+        service = context.get("service")
+        result_config = context.get("result_config")
+        state_params = context.get("state_params")
+        if not esdl_response or not service or not result_config or not state_params:
+            logger.warning("Missing context for ESDL service duplicate prompt")
+            return
+
+        pm = get_project_manager()
+        temp_es, _ = load_external_string(esdl_string=esdl_response, name=service["name"])
+
+        if choice_key == "overwrite":
+            duplicate_vc, _, _, _ = find_duplicate_variant_collection(pm, temp_es.id, temp_es.name)
+            if duplicate_vc:
+                pm.delete_variant(duplicate_vc)
+        elif choice_key == "rename":
+            new_name = f"{temp_es.name} ({temp_es.id[:8]})"
+            esdl_response = generate_renamed_esdl_string(esdl_response, service["name"], new_name=new_name)
+
+        model_short_name = result_config["model_short_name"] if "model_short_name" in result_config else "Model"
+        esdl_service_ok, esdl_service_result, backend_action = self._handle_esdl_result(
+            pm, esdl_response, result_config, service, state_params, model_short_name
+        )
+
+        esdl_service_result_post_esdl_load = None
+        if esdl_service_ok:
+            if esdl_service_result is not None:
+                if backend_action and backend_action.get("run_after_esdl_loaded"):
+                    esdl_service_result_post_esdl_load = esdl_service_result
+                else:
+                    emit('esdl_service_result', esdl_service_result)
+            else:
+                emit('esdl_service_result', esdl_service_result)
+        else:
+            logger.warning("ESDL service duplicate import failed", result=esdl_service_result)
+
+        force_update_es_id = None
+        if backend_action and "force_update_es_id" in backend_action:
+            force_update_es_id = backend_action["force_update_es_id"]
+        call_process_energy_system.submit(
+            force_update_es_id=force_update_es_id,
+            result_post_esdl_load=esdl_service_result_post_esdl_load,
+        )
