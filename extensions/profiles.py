@@ -15,7 +15,7 @@ import base64
 from datetime import datetime
 from typing import Optional, Dict, List, Optional, Any
 
-import psycopg2
+import psycopg
 import pytz
 import math
 import re
@@ -1577,7 +1577,7 @@ def _test_influxdb_connection(settings: ConnectionSettings) -> bool:
 def _test_postgresql_connection(settings: PostgreSQLConnectionSettings) -> bool:
     """Return True if the PostgreSQL instance is reachable."""
     try:
-        conn = psycopg2.connect(
+        conn = psycopg.connect(
             host=settings.host,
             port=settings.port,
             dbname=settings.database,
@@ -1587,7 +1587,7 @@ def _test_postgresql_connection(settings: PostgreSQLConnectionSettings) -> bool:
         )
         conn.close()
         return True
-    except psycopg2.OperationalError as e:
+    except psycopg.OperationalError as e:
         raise PostgreSQLConnectionError(f"Unable to reach PostgreSQL database at {settings.host}:{settings.port}/{settings.database} - {e}")
 
 def _convert_dtp_obj_into_dtp(dtp_obj: dict) -> esdl.DataTableProfile:
