@@ -125,6 +125,7 @@ from src.version import __git_commit__ as mapeditor_commit
 from src.version import __long_version__ as mapeditor_long_version
 from src.version import __version__ as mapeditor_version
 from src.wms_layers import WMSLayers
+from extensions.prompt_manager import PromptManager
 from utils.datetime_utils import parse_date
 
 print('MapEditor version {}'.format(mapeditor_version))
@@ -177,6 +178,7 @@ logger.info('Running inside uWSGI: {}'.format(is_running_in_uwsgi()))
 #extensions
 schedule_session_clean_up()
 toast_notifications = ToastNotifications(app, socketio)
+prompt_manager = PromptManager(app, socketio)
 wms_layers = WMSLayers(app, socketio, settings_storage)
 HeatNetwork(app, socketio)
 IBISBedrijventerreinen(app, socketio)
@@ -3181,6 +3183,8 @@ def query_esdl_services(params):
     for result in results:
         esdl_service_ok, esdl_service_result, backend_action = result
         logger.debug('emitting result to browser')
+        if backend_action and backend_action.get("skip_processing"):
+            continue
         esdl_service_result_post_esdl_load = None
         if esdl_service_ok:
             if esdl_service_result is not None:

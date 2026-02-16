@@ -1,4 +1,5 @@
 import base64
+import traceback
 import uuid
 from typing import Dict
 
@@ -14,10 +15,56 @@ from esdl.processing.string_uri import StringURI
 from esdl.profiles.influxdbprofilemanager import InfluxDBProfileManager, ConnectionSettings
 from esdlproject.ProjectManager import load_external_string
 from extensions.profiles import Profiles
-from extensions.session_manager import set_session, get_project_manager
+from extensions.prompt_manager import PromptManager
+from extensions.session_manager import set_session, get_project_manager, get_session
 from src.process_es_area_bld import process_energy_system, call_process_energy_system
+from src.tno.projects.duplicate_detection import (
+    DuplicateChoice,
+    DuplicatePrompt,
+    find_duplicate_variant_collection,
+    generate_renamed_esdl_string,
+    next_available_name,
+)
 
 logger = log.get_logger(__name__)
+
+ESDL_DUPLICATE_INLINE_IMPORT = "esdl_duplicate_inline_import"
+
+
+def handle_esdl_duplicate_inline_import(choice_key: str, context: dict):
+    """Apply user choice for duplicate inline-import prompts."""
+    pm = get_project_manager()
+    filename = context.get("filename")
+    file_content = context.get("file_content")
+    if not filename or not file_content:
+        logger.warning("Missing context for inline import prompt")
+        return
+
+    if choice_key == DuplicateChoice.CANCEL:
+        return
+
+    temp_es, _ = load_external_string(name=filename, esdl_string=file_content)
+
+    if choice_key == DuplicateChoice.OVERWRITE:
+        duplicate_vc, _, _, _ = find_duplicate_variant_collection(pm, temp_es.id, temp_es.name)
+        if duplicate_vc:
+            pm.delete_variant(duplicate_vc)
+    elif choice_key == DuplicateChoice.RENAME:
+        new_name = next_available_name(pm, temp_es.name)
+        file_content = generate_renamed_esdl_string(file_content, filename, new_name=new_name)
+
+    imported_es, parse_info = pm.add_from_string(name=filename, esdl_string=file_content)
+    if len(parse_info) > 0:
+        info = ""
+        for line in parse_info:
+            info += line + "\n"
+        logger.warning("Warnings while importing {}:\n\n{}".format(filename, info))
+    set_session('active_es_id', imported_es.id)
+    set_session('es_filename', filename)
+    call_process_energy_system.submit()
+
+
+PromptManager.register_handler(ESDL_DUPLICATE_INLINE_IMPORT, handle_esdl_duplicate_inline_import)
 
 
 class ESDLFileImport:
@@ -60,6 +107,27 @@ class ESDLFileImport:
                         file_content = uri.getvalue()
                         logger.debug("Inline ESDL converted to InfluxDB profiles")
 
+                    temp_es, parse_info = load_external_string(name=filename, esdl_string=file_content)
+                    duplicate_vc, match_id, match_name, matched_es = find_duplicate_variant_collection(
+                        pm, temp_es.id, temp_es.name
+                    )
+                    if duplicate_vc:
+                        user_email = get_session("user-email")
+                        details = "\n".join(parse_info) if parse_info else None
+                        PromptManager.get_instance().send(DuplicatePrompt(
+                            user_email=user_email,
+                            continuation_id=ESDL_DUPLICATE_INLINE_IMPORT,
+                            match_id=match_id,
+                            match_name=match_name,
+                            matched_es=matched_es,
+                            context={
+                                "filename": filename,
+                                "file_content": file_content,
+                            },
+                            details=details,
+                        ))
+                        return {'status': 'pending_prompt'}, 202
+
                     imported_es, parse_info = pm.add_from_string(
                         name=filename, esdl_string=file_content
                     )
@@ -74,9 +142,13 @@ class ESDLFileImport:
                     return {'message': 'ESDL imported'}, 201
                 except Exception as e:
                     logger.error("Error importing {}: {}".format(filename, e))
-                    # send_alert('Error interpreting ESDL from file - Exception: ' + str(e))
-
-                return {'message': 'Error importing ESDL'}, 500
+                    PromptManager.get_instance().send_error(
+                        user_email=get_session("user-email"),
+                        title=f"Error importing {filename}",
+                        exception=e,
+                        details=traceback.format_exc(),
+                    )
+                    return {'status': 'error_prompt_sent'}, 200
 
 
         @self.socketio.on("process_imported_energysystem", namespace='/esdl')

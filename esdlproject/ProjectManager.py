@@ -657,6 +657,7 @@ class ProjectManager:
             snapshot = snapshot_resource.contents[0]  # link to snapshot resource energy system
             variant.snapshotRef = snapshot
             snapshot.name = variant.name  # overwrite name of ES to match the variant name
+            # TODO: Should we keep these the same? ID's should probably be unique
             snapshot.id = variant.id  # str(uuid4())  # generate a new energy system id for this variant
 
             #snapshot_resource.uuid_dict = dict(es.eResource.uuid_dict) # copy uuid_dict to speed up lookups by id

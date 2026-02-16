@@ -69,6 +69,7 @@ import ResultVisualizationsToolbar from "@/components/toolbars/ResultVisualizati
 import ETMInterface from "@/apps/ETMInterface.vue";
 import {useReplaceEDRAsset} from "@/composables/replaceEDRAsset";
 import ToastNotifications from "@/apps/ToastNotifications.vue";
+import PromptDialog from "@/apps/PromptDialog.vue";
 
 // Vue.config.productionTip = false
 
@@ -232,6 +233,8 @@ const [,toastNotificationInstance] = mountApp(ToastNotifications, '#toast_notifi
 import {useToastNotifications} from "@/composables/toastNotifications";
 const {setToastNotificationsInstance } = useToastNotifications();
 setToastNotificationsInstance(toastNotificationInstance);
+
+mountApp(PromptDialog, '#prompt_dialog');
 
 createVueLControl(AssetsToBeAddedToolbar, {
     position: 'bottomright',

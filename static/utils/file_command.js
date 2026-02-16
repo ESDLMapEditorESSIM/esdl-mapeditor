@@ -64,7 +64,9 @@ function import_esdl_helper(event, inline=false) {
             data: {file_content: content, filename: file.name, inline: inline},
             success: function (data) {
                 hide_loader();
-
+                if (data && (data.status === 'pending_prompt' || data.status === 'error_prompt_sent')) {
+                    return;
+                }
                 window.socket.emit('process_imported_energysystem');
             },
             error: function (data) {
