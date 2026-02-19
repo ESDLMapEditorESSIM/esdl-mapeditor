@@ -234,12 +234,12 @@ class PostgresqlConfiguration:
                     f" in database '{self.datatable_profile.configuration.database}', cannot derive units")
 
 
-
-    def save_data(self, profile_values: List[List[Any]], header: List[str]):
+    def save_data(self, profile_values: List[List[Any]], header: List[str], overwrite: bool = True):
         """
         Saves data to Postgres. It will insert all the columns in the profile_values by default.
         :param profile_values:
         :param header:
+        :param overwrite: If True, truncate the existing table rows and insert new ones.
         :return:
         """
         if not self.connection:
@@ -265,12 +265,14 @@ class PostgresqlConfiguration:
             insert_columns = [f'"{c}" DOUBLE PRECISION' for c in non_datetime_columns]
             insert_columns.insert(0, f'"{self.datatable_profile.datetimeColumnName}" TIMESTAMP')
             insert_column_statement = ",\n".join(insert_columns)
+
             # create schema and table if not exists
             if self.datatable_profile.schema:
                 query = sql.SQL('CREATE SCHEMA IF NOT EXISTS {schema}').format(schema=sql.Identifier(self.datatable_profile.schema))
                 if DEBUG_SQL:
                     print(query.as_string(cursor))
                 cursor.execute(query)
+
             sql_string = f"CREATE TABLE IF NOT EXISTS " + "{table}" + f" ({insert_column_statement})"
             query = sql.SQL(sql_string).format(table=table)
             if DEBUG_SQL:
@@ -278,6 +280,11 @@ class PostgresqlConfiguration:
             cursor.execute(query)
             self.connection.commit()
 
+            if overwrite:
+                query = sql.SQL('TRUNCATE TABLE {table}').format(table=table)
+                if DEBUG_SQL:
+                    print(query.as_string(cursor))
+                cursor.execute(query)
 
             columns = sql.SQL(', ').join(sql.Identifier(h) for h in header)
             query = sql.SQL("COPY {table} ({columns}) FROM STDIN").format(table=table, columns=columns)

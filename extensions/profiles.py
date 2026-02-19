@@ -553,6 +553,7 @@ class Profiles:
             logger.info('Deleting profile', profile=profiles[profile_id])
             del (profiles[profile_id])
             self.settings_storage.set(setting_type, identifier, PROFILES_LIST, profiles)
+            # TODO: also remove record from DB?
 
     def _get_identifier(self, setting_type: SettingType, project_name=None):
         if setting_type is None:
