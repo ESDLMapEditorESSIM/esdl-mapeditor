@@ -166,7 +166,6 @@ def handle_profile(profile: esdl.InfluxDBProfile | esdl.DataTableProfile, ds: Da
     labels['Measurement'] = profile.tableName
     labels['Profile Type'] = profile.profileType.name
 
-    # TODO: extract below code to avoid duplication in handle_static_profile()
     if isinstance(container, esdl.Port):
         port: esdl.Port = container
         asset: esdl.EnergyAsset = port.energyasset
@@ -454,6 +453,7 @@ class DataManager:
         # In principle we should iterate here over all the instance, but this is not supported elsewhere in the MapEditor
         # adding an extra label for each instance might be consfusing.
         for eobj in es.instance[0].eAllContents():
+            d = None
             variable_name = None
             is_profile_variable = None
 
@@ -573,7 +573,7 @@ class DataManager:
                     d.region = eobj.area.name
 
             # Process asset ownership label
-            if isinstance(eobj, esdl.Asset):
+            if d is not None and isinstance(eobj, esdl.Asset):
                 d.labels = d.labels if d.labels is not None else {}
                 d.labels["Ownership"] = "Unassigned"
                 if eobj.isOwnedBy is not None:

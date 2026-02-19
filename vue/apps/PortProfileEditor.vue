@@ -65,7 +65,7 @@
             :image-style="{ height: '150px' }"
           />
         </a-col>
-        <DataTableProfileFormEdit
+        <ProfileEditForm
           :visible="profileModalVisible"
           :active-esdl-id="activeEsdlId"
           :active-port-id="activePortId"
@@ -96,9 +96,7 @@ import { useObject } from "../composables/ObjectID";
 import { fetchData } from "@/utils/api";
 import { displayNotification } from "@/utils/notification";
 
-// TODO: replace?
-import ProfileFormEdit from "@/components/forms/ProfileFormEdit.vue";
-import DataTableProfileFormEdit from "@/components/forms/DataTableProfileFormEdit.vue";
+import ProfileEditForm from "@/components/forms/ProfileEditForm.vue";
 
 const { currentObjectID } = useObject();
 const { getActiveEsdlLayerId } = useEsdlLayers();
