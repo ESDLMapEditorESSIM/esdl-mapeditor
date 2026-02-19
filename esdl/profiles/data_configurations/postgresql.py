@@ -2,6 +2,7 @@ import logging
 from dataclasses import dataclass
 from logging import warning, error
 from typing import Any, Optional, List, Tuple
+import re
 
 import psycopg
 from psycopg import Connection, sql
@@ -91,36 +92,77 @@ class PostgresqlConfiguration:
             else:
                 table_ident = sql.Identifier(self.datatable_profile.tableName)
 
-            # Base query
-            query = sql.SQL("SELECT {dt}, {col} FROM {tbl}").format(
-                dt=sql.Identifier(self.datatable_profile.datetimeColumnName),
-                col=sql.Identifier(self.datatable_profile.columnName),
-                tbl=table_ident
-            )
+            dt_ident = sql.Identifier(self.datatable_profile.datetimeColumnName)
+            col_ident = sql.Identifier(self.datatable_profile.columnName)
 
             # Collect WHERE clauses
             where_clauses = []
             params = []
             if self.datatable_profile.startDate and self.datatable_profile.endDate:
-                where_clauses.append(
-                    sql.SQL("{dt} >= %s").format(dt=sql.Identifier(self.datatable_profile.datetimeColumnName))
-                )
-                where_clauses.append(
-                    sql.SQL("{dt} <= %s").format(dt=sql.Identifier(self.datatable_profile.datetimeColumnName))
-                )
+                where_clauses.append(sql.SQL("{dt} >= %s").format(dt=dt_ident))
+                where_clauses.append(sql.SQL("{dt} <= %s").format(dt=dt_ident))
                 params.extend([
                     self.datatable_profile.startDate.strftime('%Y-%m-%dT%H:%M:%SZ'),
                     self.datatable_profile.endDate.strftime('%Y-%m-%dT%H:%M:%SZ')
                 ])
 
-            # TODO: support optional filter
+            bucket_seconds = None
+
+            # NOTE: The filter string parsing here does not yet support 'OR' or more complex filtering.
             if self.datatable_profile.filter:
-                pass
-            
+                """
+                Parse a filter string like:
+                "col"='a' AND "colB"=50
+                into: [('col', 'a', ''), ('colB', '', '50')]
+                """
+                pattern = r'"?(\w+)"?\s*=\s*(?:\'([^\']*)\'|(\d+))'
+                matches = re.findall(pattern, self.datatable_profile.filter)
+
+                if not matches:
+                    logging.error(f"Failed to parse filter string: {self.datatable_profile.filter}")
+                for col, str_val, num_val in matches:
+                    value = str_val if str_val else float(num_val)
+                    if col == "groupby_interval_sec":
+                        bucket_seconds = value
+                    else:
+                        where_clauses.append(sql.SQL("{tag} = %s").format(tag=sql.Identifier(col)))
+                        params.append(value)
+
             if where_clauses:
-                query += sql.SQL(" WHERE ") + sql.SQL(" AND ").join(where_clauses)
+                where_sql = sql.SQL(" WHERE ") + sql.SQL(" AND ").join(where_clauses)
+            else:
+                where_sql = sql.SQL("")
+
+            # Downsampled query by grouping them into fixed-size buckets.
+            if bucket_seconds:
+                query = sql.SQL("""
+                    SELECT
+                        to_timestamp(
+                            floor(extract(epoch from {dt}) / %s) * %s
+                        )::timestamp AS {dt},
+                        AVG({col}) AS {col}
+                    FROM {tbl}
+                    {where}
+                    GROUP BY 1
+                    ORDER BY 1
+                """).format(
+                    dt=dt_ident,
+                    col=col_ident,
+                    tbl=table_ident,
+                    where=where_sql
+                )
+                params = [bucket_seconds, bucket_seconds, *params]
+            # Normal query
+            else:
+                query = sql.SQL("SELECT {dt}, {col} FROM {tbl} {where}").format(
+                    dt=dt_ident,
+                    col=col_ident,
+                    tbl=table_ident,
+                    where=where_sql
+                )
 
             if self.datatable_profile.columnName:
+                # print(query.as_string(cursor), params)
                 cursor.execute(query, params)
             else:
                 # Fallback to select all columns
