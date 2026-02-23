@@ -107,14 +107,16 @@ class AddProfileRequest:
     es_id: str
     port_id: str
     profileClass: str
-    """The class name of the profile to create (e.g., "DataTableProfile", "InfluxDBProfile")"""
-    dtp_obj: dict
-    """A dict (frontend object) that can be converted into an esdl.DataTableProfile"""
+    """The class name of the profile to create (e.g., "SingleValue", "DataTableProfile", "InfluxDBProfile")"""
+    profile_obj: dict
+    """A dict (frontend object) that can be converted into an ESDL profile class e.g, esdl.DataTableProfile"""
 
 @dataclass
 class UpdateProfileRequest:
     es_id: str
     profile_id: str
+    profileClass: str
+    """The class name of the profile to be updated (e.g., "SingleValue", "DataTableProfile", "InfluxDBProfile")"""
     updates: dict
 
 def send_alert(message):
@@ -311,7 +313,7 @@ class Profiles:
             """Add a new profile to a given port in an ESDL."""
             try:
                 req = AddProfileRequest(**params)
-                Profiles.add_esdl_profile(req.es_id, req.port_id, req.profileClass, req.dtp_obj)
+                Profiles.add_esdl_profile(req.es_id, req.port_id, req.profileClass, req.profile_obj)
                 return {"success": True, "message": f"Successfully added profile."}
             except Exception as e: 
                 return {"success": False, "message": str(e)}
@@ -321,7 +323,7 @@ class Profiles:
             """Update an existing ESDL profile for a given profile id and updates dict."""
             try:
                 req = UpdateProfileRequest(**params)
-                Profiles.update_esdl_profile(req.es_id, req.profile_id, req.updates)
+                Profiles.update_esdl_profile(req.es_id, req.profile_id, req.profileClass, req.updates)
                 return {"success": True, "message": f"Successfully updated profile."}
             except Exception as e: 
                 return {"success": False, "message": str(e)}
@@ -1172,6 +1174,16 @@ class Profiles:
                     dtp = profile
                 elif isinstance(profile, esdl.InfluxDBProfile):
                     dtp = Profiles.influxdbprofile_to_datatableprofile(profile)
+                elif isinstance(profile, esdl.SingleValue):
+                    profiles.append({
+                        "profileClass": profile_class,
+                        "id": profile.id,
+                        "name": profile.name,
+                        "profileType": _get_enum_name(profile.profileType),
+                        "profileQuantityAndUnit": _serialize_qau(profile.profileQuantityAndUnit),
+                        "value": profile.value
+                    })
+                    continue
                 else:
                     raise ProfileClassError(f"Unsupported profile class: {profile_class}")
                     
@@ -1413,11 +1425,9 @@ class Profiles:
         return {}
 
     @staticmethod
-    def add_esdl_profile(es_id: str, port_id: str, profile_class: str, dtp_obj: dict) -> None:
+    def add_esdl_profile(es_id: str, port_id: str, profile_class: str, profile_obj: dict) -> None:
         """
         Add a new profile to a given port in an ESDL.
-
-        TODO: support SingleValue handling
 
         Parameters
         ----------
@@ -1426,9 +1436,9 @@ class Profiles:
         port_id : str
             The identifier of the port within the ESDL file.
         profile_class : str
-            The class name of the profile to create (e.g., "DataTableProfile", "InfluxDBProfile").
-        dtp_obj : dict
-            Dictionary containing DataTableProfile-like fields and configuration.
+            The class name of the profile to create (e.g., "SingleValue", "DataTableProfile", "InfluxDBProfile").
+        profile_obj : dict
+            Dictionary containing SingleValue or DataTableProfile-like fields and configuration.
         """
         esh = get_handler()
 
@@ -1436,28 +1446,35 @@ class Profiles:
         if not port or not isinstance(port, esdl.Port):
             raise ProfilePortNotFoundError(f"Unable to attach profile to a given port (id={port_id}) from ESDL (id={es_id}).")
         try:
-            qau_obj = dtp_obj.get("profileQuantityAndUnit")
+            # First extract and parse profile qau.
+            qau_obj = profile_obj.get("profileQuantityAndUnit")
             if qau_obj:
                 profile_qau = _convert_qau_obj_into_profile_qau(es_id, qau_obj)
-                dtp_obj["profileQuantityAndUnit"] = None
+                profile_obj["profileQuantityAndUnit"] = None
 
-            if profile_class == esdl.DataTableProfile.__name__:
-                new_profile = _convert_dtp_obj_into_dtp(dtp_obj)
-                db_config = _convert_config_obj_into_databaseconfiguration(dtp_obj.get("configuration"))
+            if profile_class == esdl.SingleValue.__name__:
+                new_profile = esdl.SingleValue(
+                    name=profile_obj.get("name"),
+                    value=float(profile_obj.get("value")),
+                    profileType=esdl.ProfileTypeEnum.from_string(profile_obj.get("profileType"))
+                )
+            elif profile_class == esdl.DataTableProfile.__name__:
+                new_profile = _convert_dtp_obj_into_dtp(profile_obj)
+                db_config = _convert_config_obj_into_databaseconfiguration(profile_obj.get("configuration"))
                 esi_db_config = get_or_add_esi_databaseconfiguration(es_id, db_config)
                 new_profile.configuration = esi_db_config
             elif profile_class == esdl.InfluxDBProfile.__name__:
                 new_profile = esdl.InfluxDBProfile(
-                    host=dtp_obj.get("configuration").get("host"),
-                    port=dtp_obj.get("configuration").get("port"),
-                    database=dtp_obj.get("configuration").get("database"),
-                    measurement=dtp_obj.get("tableName"),
-                    field=dtp_obj.get("columnName"),
-                    filters=dtp_obj.get("filter"),
-                    multiplier=float(dtp_obj.get("multiplier")),
-                    startDate=_dt_str_to_tz_aware_datetime(dtp_obj.get("startDate")),
-                    endDate=_dt_str_to_tz_aware_datetime(dtp_obj.get("endDate")),
-                    profileType=esdl.ProfileTypeEnum.from_string(dtp_obj.get("profileType"))
+                    host=profile_obj.get("configuration").get("host"),
+                    port=profile_obj.get("configuration").get("port"),
+                    database=profile_obj.get("configuration").get("database"),
+                    measurement=profile_obj.get("tableName"),
+                    field=profile_obj.get("columnName"),
+                    filters=profile_obj.get("filter"),
+                    multiplier=float(profile_obj.get("multiplier")),
+                    startDate=_dt_str_to_tz_aware_datetime(profile_obj.get("startDate")),
+                    endDate=_dt_str_to_tz_aware_datetime(profile_obj.get("endDate")),
+                    profileType=esdl.ProfileTypeEnum.from_string(profile_obj.get("profileType"))
                 )
             else:
                 raise ProfileClassError(f"Unsupported profile class: {profile_class}")
@@ -1475,7 +1492,7 @@ class Profiles:
             raise ProfileCreateError(f"An error occurs while adding profile: {e}") from e
 
     @staticmethod
-    def update_esdl_profile(es_id: str, profile_id: str, updates: dict) -> None:
+    def update_esdl_profile(es_id: str, profile_id: str, profile_class: str, updates: dict) -> None:
         """
         Update attributes of an existing profile in an ESDL.
         """
@@ -1486,9 +1503,17 @@ class Profiles:
             raise ProfileNotFoundError(f"Profile (id={profile_id}) from ESDL (id={es_id}) not found.")
         
         try:
-            # Apply updates 
-            if "multiplier" in updates:
-                profile.multiplier = float(updates["multiplier"])
+            # Profile class specific attributes
+            if profile_class == esdl.SingleValue.__name__:
+                if "name" in updates:
+                    profile.name = updates["name"]
+                if "value" in updates:
+                    profile.value = float(updates["value"])
+            else:
+                if "multiplier" in updates:
+                    profile.multiplier = float(updates["multiplier"])
+
+            # Attributes or references inherited from GenericProfile
             if "profileType" in updates:
                 profile.profileType = esdl.ProfileTypeEnum.from_string(updates["profileType"])
             if "profileQuantityAndUnit" in updates:
