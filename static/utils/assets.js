@@ -495,6 +495,14 @@ function set_line_handlers(line) {
     //     });
     // }
 
+    line.options.contextmenuItems.push({
+        text: 'Set constraint',
+        icon: 'icons/Chain.png',
+        callback: function() {
+            window.activate_asset_constraint(line_id)
+        }
+    });
+
     // line.options.contextmenuItems.push('-');
     line.options.contextmenuItems.push({
         text: 'Set carrier',

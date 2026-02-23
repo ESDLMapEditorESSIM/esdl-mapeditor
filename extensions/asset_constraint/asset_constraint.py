@@ -14,6 +14,7 @@
 
 from flask import Flask, request, Response
 from typing import List, Optional
+from uuid import uuid4
 
 import esdl
 from extensions.asset_constraint.asset_constraint_message import (
@@ -23,9 +24,11 @@ from extensions.asset_constraint.asset_constraint_message import (
     RangeMsg,
     ProfileConstraintMsg,
     RangedConstraintMsg,
+    PipeDiameterConstraintMsg,
 )
 from extensions.session_manager import get_handler
 from extensions.profiles import Profiles
+from esdl.processing.ESDLEcore import get_asset_attributes, get_asset_references
 from esdl.processing import ESDLQuantityAndUnits
 import src.esdl_config as esdl_config
 from src.esdl_helper import generate_profile_info
@@ -45,6 +48,12 @@ class AssetConstraint:
         logger.info("Registering AssetConstraint extension")
 
         @self.flask_app.route(
+            "/asset_constraint/<string:constraint_type>", methods=["GET"]
+        )
+        def _get_new_empty_constraint(constraint_type: str):
+            return self.get_new_empty_constraint(constraint_type)
+
+        @self.flask_app.route(
             "/asset_constraint/<string:es_id>/<string:asset_id>", methods=["GET"]
         )
         def _get_asset_constraint(es_id: str, asset_id: str):
@@ -54,7 +63,7 @@ class AssetConstraint:
             "/asset_constraint/<string:es_id>/<string:asset_id>", methods=["POST"]
         )
         def _set_asset_constraint(es_id: str, asset_id: str) -> Response:
-            asset_constraints: List[ProfileConstraintMsg | RangedConstraintMsg] = (
+            asset_constraints: List[ProfileConstraintMsg | RangedConstraintMsg | PipeDiameterConstraintMsg] = (
                 request.get_json()
             )
             try:
@@ -63,16 +72,55 @@ class AssetConstraint:
             except Exception as e:
                 return Response(f"Error: {e}", 500)
 
+    def get_new_empty_constraint(self, constraint_type: str) -> dict:
+        """
+        Create and return a new empty ESDL constraint object of the requested type,
+        including its attribute and reference metadata.
+
+        Parameters
+        ----------
+        constraint_type : str
+            The name of the ESDL constraint class to instantiate.
+
+        Returns
+        -------
+        dict
+            A dictionary containing:
+            - "attrs": list of attribute definitions for the new constraint
+            - "refs": list of reference definitions for the new constraint
+        """
+        if constraint_type == esdl.ProfileConstraint.__name__:
+            constraint = esdl.ProfileConstraint()
+        elif constraint_type == esdl.RangedConstraint.__name__:
+            constraint = esdl.RangedConstraint()
+        elif constraint_type == esdl.PipeDiameterConstraint.__name__:
+            constraint = esdl.PipeDiameterConstraint()
+        else:
+            err = f"Unsupport constraint type {constraint_type}"
+            logger.error(err)
+            raise ValueError(err)
+
+        if constraint:
+            constraint.id = str(uuid4())
+
+        attrs = get_asset_attributes(constraint)
+        refs = get_asset_references(constraint)
+        
+        return {
+            "attrs": attrs,
+            "refs": refs
+        }
+
     def get_asset_constraint(
         self, es_id: str, asset_id: str
-    ) -> List[ProfileConstraintMsg | RangedConstraintMsg]:
+    ) -> List[ProfileConstraintMsg | RangedConstraintMsg | PipeDiameterConstraintMsg]:
         """
         Get and return a list of ProfileConstraint or RangedConstraint of the asset.
         """
 
         esh = get_handler()
         asset: esdl.Asset = esh.get_by_id(es_id, asset_id)
-        asset_constraints: List[ProfileConstraintMsg | RangedConstraintMsg] = []
+        asset_constraints: List[ProfileConstraintMsg | RangedConstraintMsg | PipeDiameterConstraintMsg] = []
 
         if asset:
             constraints = asset.constraint
@@ -81,6 +129,8 @@ class AssetConstraint:
                     constraint_msg = self._get_profile_constraint_msg(c)
                 elif isinstance(c, esdl.RangedConstraint):
                     constraint_msg = self._get_ranged_constraint_msg(c)
+                elif isinstance(c, esdl.PipeDiameterConstraint):
+                    constraint_msg = self._get_pipediameter_constraint_msg(c)
                 else:
                     raise ValueError("Unsupported constraint class")
 
@@ -156,12 +206,27 @@ class AssetConstraint:
         )
 
         return ranged_constraint_msg
+    
+    def _get_pipediameter_constraint_msg(
+        self, constraint: esdl.PipeDiameterConstraint
+    ) -> PipeDiameterConstraintMsg:
+        msg = PipeDiameterConstraintMsg(
+            type=ConstraintType.PIPEDIAMETER.value,
+            id=constraint.id,
+            name=constraint.name,
+            description=constraint.description,
+            attributeReference=constraint.attributeReference,
+            maximum=getattr(constraint.maximum, "name", None),
+            minimum=getattr(constraint.minimum, "name", None)
+        )
+
+        return msg
 
     def set_asset_constraint(
         self,
         es_id: str,
         asset_id: str,
-        asset_constraints: List[ProfileConstraintMsg | RangedConstraintMsg],
+        asset_constraints: List[ProfileConstraintMsg | RangedConstraintMsg | PipeDiameterConstraintMsg],
     ):
         """
         Set asset constraint from the given list of asset_constraints.
@@ -170,12 +235,14 @@ class AssetConstraint:
         esh = get_handler()
         asset: esdl.Asset = esh.get_by_id(es_id, asset_id)
 
-        new_constraints: List[esdl.ProfileConstraint | esdl.RangedConstraint] = []
+        new_constraints: List[esdl.ProfileConstraint | esdl.RangedConstraint | esdl.PipeDiameterConstraint] = []
         for c in asset_constraints:
             if c["type"] == ConstraintType.PROFILE.value:
                 esdl_constraint = self._handle_profile_constraint(es_id, c)
             elif c["type"] == ConstraintType.RANGED.value:
                 esdl_constraint = self._handle_ranged_constraint(c)
+            elif c["type"] == ConstraintType.PIPEDIAMETER.value:
+                esdl_constraint = self._handle_pipediameter_constraint(c)
             else:
                 raise ValueError(f"Unsupported constraint type: {c['type']}")
             new_constraints.append(esdl_constraint)
@@ -253,5 +320,19 @@ class AssetConstraint:
             c.range.midValue = float(constraintMsg["range"]["mid_value"])
         if constraintMsg["range"]["max_value"] is not None:
             c.range.maxValue = float(constraintMsg["range"]["max_value"])
+
+        return c
+
+    def _handle_pipediameter_constraint(
+        self, constraintMsg: PipeDiameterConstraintMsg
+    ) -> esdl.PipeDiameterConstraint:
+        c = esdl.PipeDiameterConstraint(
+            id=constraintMsg["id"],
+            name=constraintMsg["name"],
+            description=constraintMsg.get("description"),
+            attributeReference=constraintMsg.get("attributeReference"),
+            maximum=esdl.PipeDiameterEnum.from_string(constraintMsg.get("maximum")),
+            minimum=esdl.PipeDiameterEnum.from_string(constraintMsg.get("minimum"))
+        )
 
         return c
