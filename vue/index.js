@@ -89,9 +89,12 @@ window.control_strategy_window = (object_id) => {
     mountSidebarComponent(ControlStrategy);
 }
 
-window.activate_port_profile_editor = (object_id) => {
+window.activate_port_profile_editor = (es_id, object_id) => {
     const { newObject } = useObject();
-    newObject(object_id);
+    newObject({
+        es_id: es_id,
+        object_id: object_id
+    });
     mountSidebarComponent(PortProfileEditor);
 }
 
@@ -101,9 +104,12 @@ window.activate_asset_constraint = (object_id) => {
     mountSidebarComponent(AssetConstraint);
 }
 
-window.activate_port_profile_viewer = (object_id) => {
+window.activate_port_profile_viewer = (es_id, object_id) => {
     const { newObject } = useObject();
-    newObject(object_id);
+    newObject({
+        es_id: es_id,
+        object_id: object_id
+    });
     mountSidebarBottomComponent(PortProfileViewer);
 }
 

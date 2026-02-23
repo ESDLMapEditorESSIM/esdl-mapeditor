@@ -255,8 +255,9 @@ function set_marker_handlers(marker) {
             marker.options.contextmenuItems.push({
                 text: 'Set port profile',
                 icon: 'icons/Graph.png',
-                callback: function() {
-                    window.activate_port_profile_editor(asset_id)
+                callback: function(e) {
+                    const es_id = e.relatedTarget?.esid;
+                    window.activate_port_profile_editor(es_id, asset_id)
                 }
             });
 

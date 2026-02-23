@@ -125,8 +125,8 @@ onMounted(() => {
   console.debug("Port profile viewer component mounted");
   resetState();
 
-  activeEsdlId.value = getActiveEsdlLayerId().value;
-  assetId.value = currentObjectID.value;
+  activeEsdlId.value = currentObjectID.value["es_id"] ? currentObjectID.value["es_id"] : getActiveEsdlLayerId().value;
+  assetId.value = currentObjectID.value["object_id"] ? currentObjectID.value["object_id"] : null;
 
   const selectedAssetIds = getSelectedAssetIds();
   listProfileOptions(activeEsdlId.value, selectedAssetIds);
@@ -194,11 +194,25 @@ const listProfileOptions = async (esId, selectedAssetIds) => {
           value: `${asset.asset_id}-${port.port_name}`,
           checkable: false,
           children: port.port_profiles.map((p) => {
-            const profileDisplayedName = `${p.columnName} [${p.profileQuantityAndUnit?.description?.split(" ").at(-1) ?? "Unknown"}]`;
-            return {
-              title: profileDisplayedName,
-              value: p.id,
-              checkable: true,
+            if (p["profileClass"] == "InfluxDBProfile" || p["profileClass"] == "DataTableProfile") {
+              const profileDisplayedName = `${p.columnName} [${p.profileQuantityAndUnit?.description?.split(" ").at(-1) ?? "Unknown"}]`;
+              return {
+                title: profileDisplayedName,
+                value: p.id,
+                checkable: true,
+              }
+            } else {
+              const profileDisplayedName = `${p.name || p.id} [${p.profileQuantityAndUnit?.description?.split(" ").at(-1) ?? "Unknown"}]`;
+              displayNotification(
+                "warning",
+                `${p["profileClass"]} profile ${profileDisplayedName} is not supported for visualization in Port Profile Viewer.`
+              );
+              return {
+                title: profileDisplayedName,
+                value: p.id,
+                checkable: true,
+                disabled: true
+              }
             }
           }),
         });
