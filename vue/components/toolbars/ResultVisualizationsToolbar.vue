@@ -72,8 +72,6 @@ class VisualParams {
     this.anim_selected_field = "Choose field ...";
     this.anim_filter_tag_name = null;
     this.anim_filter_tag_value = null;
-    this.anim_influxdb_host_override = null;
-    this.anim_influxdb_port_override = null;
     this.message = null;
     this.external_link_url = null;
     this.external_link_description = null;
@@ -88,7 +86,12 @@ const activeEsdlParams = ref(null);
 onMounted(() => {
   window.addEventListener('load', () => {
     // run after everything is in-place
-    window.socket.on('kpis_present', function (data) {
+    window.socket.on('clear_visualization_options', function () {
+      console.log('clear_visualization_options');
+      clearData();
+    });
+
+    window.socket.on('kpis', function (data) {
       console.log('kpis_present:', data['es_id']);
       setActiveEsdlParams(data['es_id']);
 
@@ -114,8 +117,6 @@ onMounted(() => {
       activeEsdlParams.value.message = data['message'];
       activeEsdlParams.value.anim_filter_tag_name = data["filter_tag_name"];
       activeEsdlParams.value.anim_filter_tag_value = data["filter_tag_value"];
-      activeEsdlParams.value.anim_influxdb_host_override = data["influxdb_host_override"];
-      activeEsdlParams.value.anim_influxdb_port_override = data["influxdb_port_override"];
     });
     window.socket.on('results_external_link', function (data) {
       console.log('results_external_link:', data['es_id']);
@@ -175,9 +176,7 @@ const handleLoadAnimation = () => {
       activeEsdlParams.value.anim_filter_tag_name,
       activeEsdlParams.value.anim_filter_tag_value,
       [],
-      activeEsdlParams.value.anim_selected_field,
-      activeEsdlParams.value.anim_influxdb_host_override,
-      activeEsdlParams.value.anim_influxdb_port_override
+      activeEsdlParams.value.anim_selected_field
   );
 };
 

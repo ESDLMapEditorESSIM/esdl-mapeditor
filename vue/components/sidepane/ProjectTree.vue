@@ -227,12 +227,12 @@ async function onCheck(_, info) {
     if (isChecked) {
       if (data.esId in window.esdl_list) {
         enableEsdl(data.esId);
-        if (!ctrlPressed) {
+        // if (!ctrlPressed) {
           // If the currently active variant is not the one we just enabled, make it active.
           if (activeVariant().es_id !== data.esId) {
             setActiveVariant(data.variant.id);
           }
-        }
+        // }
       } else {
         // We have no way to just get the energy system without activating it right now. I don't think it's a problem.
         console.debug("check_node: set active variant");

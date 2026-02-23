@@ -759,33 +759,27 @@ class Profiles:
         return None
 
     @staticmethod
-    def connect_to_animation_profiles_database(
-            es_id: str, database: str = None, influxdb_host: str = None, influxdb_port: str = None
-    ):
-        # get influxdb host and port from first pipe/cable
-        anim_profile_info_from_esdl = Profiles.get_profiles_for_asset_type(es_id, [esdl.ElectricityCable, esdl.Pipe])
-        if not anim_profile_info_from_esdl:  # profile info not in esdl (essim type)
-            if not influxdb_host or not influxdb_port or not database:
-                return None  # No animation data available
-        elif Profiles.check_if_profiles_have_same_host_port_database(anim_profile_info_from_esdl):
-            profile = anim_profile_info_from_esdl[0]
-            if not influxdb_host:
-                influxdb_host = profile.host
-            if not influxdb_port:
-                influxdb_port = profile.port
-            if not database:
-                database = profile.database
-        else:
-            error_message = (
-                "Could not load animation data: "
-                "not all ElectricityCable/Pipe profiles use the same host, port, database"
-            )
+    def connect_to_animation_profiles_database(es_id: str):
+        anim_profiles = Profiles.get_profiles_for_asset_type(es_id, [esdl.ElectricityCable, esdl.Pipe])
+        if not anim_profiles:
+            return None
+
+        # make sure all cable/pipe profiles are in the same database
+        try:
+            Profiles.check_if_profiles_have_same_host_port_database(anim_profiles)
+        except IOError as ioe:
+            error_message = f"Could not load animation data: \n{ioe.message}"
             logger.error(error_message)
             raise ConnectionError(error_message)
 
-        credentials = Profiles.get_instance().determine_database_credentials(
-            influxdb_host, influxdb_port, database
-        )
+        # get influxdb host, port, database from first cable/pipe
+        profile = anim_profiles[0]
+        influxdb_host = profile.host
+        influxdb_port = profile.port
+        database = profile.database
+
+        # get credentials (if available)
+        credentials = Profiles.get_instance().determine_database_credentials(influxdb_host, influxdb_port, database)
         if credentials:
             influxdb_client = InfluxDBClient(
                 host=influxdb_host,
@@ -836,14 +830,10 @@ class Profiles:
         return True
 
     @staticmethod
-    def get_animation_fields(
-            esdl_id: str, influxdb_host_override=None, influxdb_port_override=None
-    ) -> Optional[list[str]]:
+    def get_animation_fields(esdl_id: str) -> Optional[list[str]]:
         # Get all fields available for all 'Pipe' and/or 'ElectricityCable' assets.
         try:
-            influxdb_client = Profiles.connect_to_animation_profiles_database(
-                esdl_id, esdl_id, influxdb_host_override, influxdb_port_override
-            )
+            influxdb_client = Profiles.connect_to_animation_profiles_database(esdl_id)
 
             if not influxdb_client:
                 return None
@@ -851,6 +841,9 @@ class Profiles:
             query_collections_with_asset_id = 'SHOW TAG VALUES WITH KEY="assetId"'
             collections_with_asset_id = influxdb_client.query(query_collections_with_asset_id)
             carrier_ids = collections_with_asset_id.keys()[0]
+
+            if not carrier_ids:
+                return None
 
             fields = []
             for carrier_id in carrier_ids:

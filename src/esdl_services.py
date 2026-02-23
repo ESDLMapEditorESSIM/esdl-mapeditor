@@ -41,7 +41,7 @@ from extensions.external_models.external_models_storage import (
     INPUT_ESDL,
     RunStatus,
 )
-from extensions.profiles import Profiles
+from extensions.projects import update_visualization_options
 from extensions.session_manager import get_project_manager, get_session, set_session, del_session
 from extensions.settings_storage import SettingsStorage
 from src.esdl2inlineprofile import copy_and_convert_esdl_profiles
@@ -640,7 +640,6 @@ class ESDLServices:
 
                     area_shape = None
                     possible_locations = None
-                    # TODO add similar mode and emit animation possible
                     if "mode" in result_config and result_config["mode"] == "give_coordinates":
                         # The assets that will be added must be placed on a grid within the area boundary
                         shape_dictionary = get_session("shape_dictionary")
