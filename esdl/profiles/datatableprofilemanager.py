@@ -237,7 +237,7 @@ class DataTableProfileManager(ProfileManager):
         if self.data_table_profile.configuration.type == esdl.DatabaseTypeEnum.POSTGRESQL:
             # handle postgres
             postgres = PostgresqlConfiguration(self.data_table_profile, credentials_dict)
-            postgres.save_data(self.profile_data_list, self.profile_header)
+            postgres.save_data(self.profile_data_list, self.profile_header, overwrite=True)
             postgres.disconnect()
         else:
             raise UnsupportedDataConfiguration(

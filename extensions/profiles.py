@@ -12,7 +12,7 @@
 #  Manager:
 #      TNO
 import base64
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, List, Optional, Any
 
 import psycopg
@@ -69,14 +69,26 @@ class AssetPortsProfilesRequest:
 @dataclass
 class ProfileVizOptions:
     """The dataclass specifies profile trace visualization overrides options."""
-    start_datetime: Optional[str]
-    """Start datetime with format as dt_str_format"""
-    end_datetime: Optional[str]
-    """End datetime with format as dt_str_format"""
-    multiplier: Optional[float]
+    start_datetime: Optional[datetime | str] = None
+    """Timezone aware start datetime. If a string is given, it is converted into a timezone aware datetime object."""
+    end_datetime: Optional[datetime | str] = None
+    """Timezone aware end datetime. If a string is given, it is converted into a timezone aware datetime object."""
+    multiplier: Optional[float] = None
     """If specified, scale the profile trace based on this value; otherwise, based on ESDL profile instance multiplier attribute."""
-    max_datapoints: Optional[int]
+    max_datapoints: Optional[int] = None
     """If specified, downsample profile datapoints to approximately the given value."""
+
+    def __post_init__(self):
+        if isinstance(self.start_datetime, str):
+            self.start_datetime = _dt_str_to_tz_aware_datetime(self.start_datetime)
+
+        if isinstance(self.end_datetime, str):
+            self.end_datetime = _dt_str_to_tz_aware_datetime(self.end_datetime)
+
+    def __setattr__(self, key, value):
+        if key in ("start_datetime", "end_datetime") and isinstance(value, str): 
+            value = _dt_str_to_tz_aware_datetime(value)
+        super().__setattr__(key, value)
 
 @dataclass
 class ProfileTracesRequest:
@@ -95,14 +107,16 @@ class AddProfileRequest:
     es_id: str
     port_id: str
     profileClass: str
-    """The class name of the profile to create (e.g., "DataTableProfile", "InfluxDBProfile")"""
-    dtp_obj: dict
-    """A dict (frontend object) that can be converted into an esdl.DataTableProfile"""
+    """The class name of the profile to create (e.g., "SingleValue", "DataTableProfile", "InfluxDBProfile")"""
+    profile_obj: dict
+    """A dict (frontend object) that can be converted into an ESDL profile class e.g, esdl.DataTableProfile"""
 
 @dataclass
 class UpdateProfileRequest:
     es_id: str
     profile_id: str
+    profileClass: str
+    """The class name of the profile to be updated (e.g., "SingleValue", "DataTableProfile", "InfluxDBProfile")"""
     updates: dict
 
 def send_alert(message):
@@ -281,6 +295,7 @@ class Profiles:
         def _get_profile_traces_from_profile_ids(params: dict):
             """Return ESDL profile traces (or error messages) for a given ESDL profile ids."""
             req = ProfileTracesRequest(**params)
+            req.viz_options = ProfileVizOptions(**req.viz_options)
             return Profiles.get_profile_traces_from_profile_ids(req)
 
         @self.socketio.on('get_profile_trace_from_dtp_obj', namespace='/esdl')
@@ -290,14 +305,15 @@ class Profiles:
             This can be used to request a profile trace from a publicly registered profile, such as EDR.
             """
             req = ProfileTraceDtpRequest(**params)
-            return Profiles.get_profile_trace_from_dtp_obj(req.dtp_obj, req.viz_options)
+            viz_options = ProfileVizOptions(**req.viz_options)
+            return Profiles.get_profile_trace_from_dtp_obj(req.dtp_obj, viz_options)
 
         @self.socketio.on('add_esdl_profile', namespace='/esdl')
         def _add_esdl_profile(params: dict) -> dict:
             """Add a new profile to a given port in an ESDL."""
             try:
                 req = AddProfileRequest(**params)
-                Profiles.add_esdl_profile(req.es_id, req.port_id, req.profileClass, req.dtp_obj)
+                Profiles.add_esdl_profile(req.es_id, req.port_id, req.profileClass, req.profile_obj)
                 return {"success": True, "message": f"Successfully added profile."}
             except Exception as e: 
                 return {"success": False, "message": str(e)}
@@ -307,7 +323,7 @@ class Profiles:
             """Update an existing ESDL profile for a given profile id and updates dict."""
             try:
                 req = UpdateProfileRequest(**params)
-                Profiles.update_esdl_profile(req.es_id, req.profile_id, req.updates)
+                Profiles.update_esdl_profile(req.es_id, req.profile_id, req.profileClass, req.updates)
                 return {"success": True, "message": f"Successfully updated profile."}
             except Exception as e: 
                 return {"success": False, "message": str(e)}
@@ -539,6 +555,7 @@ class Profiles:
             logger.info('Deleting profile', profile=profiles[profile_id])
             del (profiles[profile_id])
             self.settings_storage.set(setting_type, identifier, PROFILES_LIST, profiles)
+            # TODO: also remove record from DB?
 
     def _get_identifier(self, setting_type: SettingType, project_name=None):
         if setting_type is None:
@@ -1157,6 +1174,16 @@ class Profiles:
                     dtp = profile
                 elif isinstance(profile, esdl.InfluxDBProfile):
                     dtp = Profiles.influxdbprofile_to_datatableprofile(profile)
+                elif isinstance(profile, esdl.SingleValue):
+                    profiles.append({
+                        "profileClass": profile_class,
+                        "id": profile.id,
+                        "name": profile.name,
+                        "profileType": _get_enum_name(profile.profileType),
+                        "profileQuantityAndUnit": _serialize_qau(profile.profileQuantityAndUnit),
+                        "value": profile.value
+                    })
+                    continue
                 else:
                     raise ProfileClassError(f"Unsupported profile class: {profile_class}")
                     
@@ -1215,7 +1242,7 @@ class Profiles:
         elif isinstance(profile, esdl.InfluxDBProfile):
             dtp = Profiles.influxdbprofile_to_datatableprofile(profile)
         else:
-            raise ProfileClassError(f"Unsupported profile class: {type(profile).__name__}")
+            raise ProfileClassError(f"Unsupported profile (id={profile_id}) class: {type(profile).__name__}")
 
         return Profiles.get_datatableprofile_trace(dtp, viz_options)
 
@@ -1255,22 +1282,26 @@ class Profiles:
         """
         Load and return a profile trace in a dict.
 
-        If viz_options is provided, they override the inherent attributes of the profile.
+        If viz_options is provided, they override the inherent attributes of the DataTableProfile instance.
         """
 
         # Apply visualization overrides
-        start_dt = viz_options.get("start_datetime", dtp.startDate) if viz_options else dtp.startDate
-        if isinstance(start_dt, str):
-            start_dt = _dt_str_to_datetime(start_dt)
-        end_dt = viz_options.get("end_datetime", dtp.endDate) if viz_options else dtp.endDate
-        if isinstance(end_dt, str):
-            end_dt = _dt_str_to_datetime(end_dt)
-        multiplier = viz_options.get("multiplier", dtp.multiplier) if viz_options else dtp.multiplier 
-        max_datapoints = viz_options.get("max_datapoints") if viz_options else None
+        if viz_options and viz_options.start_datetime is not None:
+            start_dt = viz_options.start_datetime
+        else:
+            start_dt = dtp.startDate
+
+        if viz_options and viz_options.end_datetime is not None:
+            end_dt = viz_options.end_datetime
+        else:
+            end_dt = dtp.endDate
+
+        multiplier = viz_options.multiplier if viz_options and viz_options.multiplier is not None else dtp.multiplier
+        max_datapoints = viz_options.max_datapoints if viz_options and viz_options.max_datapoints is not None else None
 
         # groupby_interval to be used for profile downsampling
         groupby_interval_sec = _calculate_profile_groupby_interval(start_dt, end_dt, max_datapoints)
-
+        
         # Profile connection settings retrieved from MongoDB
         profiles_settings = Profiles.get_instance().get_profiles_settings()
 
@@ -1290,11 +1321,9 @@ class Profiles:
                                                 {dtp_config.host}:{dtp_config.port}/{dtp_config.database}")
             try:
                 influxdb_pm = InfluxDBProfileManager(influxdb_settings)
-                groupby_interval_sec = _calculate_profile_groupby_interval(
-                    start_dt, end_dt, max_datapoints
-                )
+
                 query_filters = _parse_profile_filter(dtp.filter)
-                
+
                 influxdb_pm.load_influxdb(
                     measurement=dtp.tableName,
                     fields=[dtp.columnName],
@@ -1351,13 +1380,19 @@ class Profiles:
                 # Clone a dtp and apply visualization override values when retrieving profile
                 dtp_viz = copy.deepcopy(dtp)
                 dtp_viz.configuration = copy.deepcopy(dtp.configuration)
-                # TODO: maybe use dtp.filter instead of startDate/endDate for dynamic time range visualization? 
                 dtp_viz.startDate = start_dt
                 dtp_viz.endDate = end_dt
 
+                # NOTE: Apply a trick here to pass groupby_interval_sec as a filter string,
+                # which subsequently triggers a downsampled query when loading profile data.
+                if groupby_interval_sec is not None:
+                    if dtp_viz.filter:
+                        dtp_viz.filter = f"{dtp_viz.filter} AND groupby_interval_sec={groupby_interval_sec}"
+                    else:
+                        dtp_viz.filter = f"groupby_interval_sec={groupby_interval_sec}"
+
                 # TODO: implement load_influxdb() like method to avoid dtp mutation?
                 dtpmanager = DataTableProfileManager.load(dtp_viz, credentials_dict)
-                # TODO: handle Postgres profile downsampling
                 datetime_profile = dtpmanager.get_esdl_datetime_profile(dtp_viz.columnName).element
 
                 if len(datetime_profile) == 0:
@@ -1390,11 +1425,9 @@ class Profiles:
         return {}
 
     @staticmethod
-    def add_esdl_profile(es_id: str, port_id: str, profile_class: str, dtp_obj: dict) -> None:
+    def add_esdl_profile(es_id: str, port_id: str, profile_class: str, profile_obj: dict) -> None:
         """
         Add a new profile to a given port in an ESDL.
-
-        TODO: support SingleValue handling
 
         Parameters
         ----------
@@ -1403,9 +1436,9 @@ class Profiles:
         port_id : str
             The identifier of the port within the ESDL file.
         profile_class : str
-            The class name of the profile to create (e.g., "DataTableProfile", "InfluxDBProfile").
-        dtp_obj : dict
-            Dictionary containing DataTableProfile-like fields and configuration.
+            The class name of the profile to create (e.g., "SingleValue", "DataTableProfile", "InfluxDBProfile").
+        profile_obj : dict
+            Dictionary containing SingleValue or DataTableProfile-like fields and configuration.
         """
         esh = get_handler()
 
@@ -1413,28 +1446,35 @@ class Profiles:
         if not port or not isinstance(port, esdl.Port):
             raise ProfilePortNotFoundError(f"Unable to attach profile to a given port (id={port_id}) from ESDL (id={es_id}).")
         try:
-            qau_obj = dtp_obj.get("profileQuantityAndUnit")
+            # First extract and parse profile qau.
+            qau_obj = profile_obj.get("profileQuantityAndUnit")
             if qau_obj:
                 profile_qau = _convert_qau_obj_into_profile_qau(es_id, qau_obj)
-                dtp_obj["profileQuantityAndUnit"] = None
+                profile_obj["profileQuantityAndUnit"] = None
 
-            if profile_class == esdl.DataTableProfile.__name__:
-                new_profile = _convert_dtp_obj_into_dtp(dtp_obj)
-                db_config = _convert_config_obj_into_databaseconfiguration(dtp_obj.get("configuration"))
+            if profile_class == esdl.SingleValue.__name__:
+                new_profile = esdl.SingleValue(
+                    name=profile_obj.get("name"),
+                    value=float(profile_obj.get("value")),
+                    profileType=esdl.ProfileTypeEnum.from_string(profile_obj.get("profileType"))
+                )
+            elif profile_class == esdl.DataTableProfile.__name__:
+                new_profile = _convert_dtp_obj_into_dtp(profile_obj)
+                db_config = _convert_config_obj_into_databaseconfiguration(profile_obj.get("configuration"))
                 esi_db_config = get_or_add_esi_databaseconfiguration(es_id, db_config)
                 new_profile.configuration = esi_db_config
             elif profile_class == esdl.InfluxDBProfile.__name__:
                 new_profile = esdl.InfluxDBProfile(
-                    host=dtp_obj.get("configuration").get("host"),
-                    port=dtp_obj.get("configuration").get("port"),
-                    database=dtp_obj.get("configuration").get("database"),
-                    measurement=dtp_obj.get("tableName"),
-                    field=dtp_obj.get("columnName"),
-                    filters=dtp_obj.get("filter"),
-                    multiplier=float(dtp_obj.get("multiplier")),
-                    startDate=_dt_str_to_datetime(dtp_obj.get("startDate")),
-                    endDate=_dt_str_to_datetime(dtp_obj.get("endDate")),
-                    profileType=esdl.ProfileTypeEnum.from_string(dtp_obj.get("profileType"))
+                    host=profile_obj.get("configuration").get("host"),
+                    port=profile_obj.get("configuration").get("port"),
+                    database=profile_obj.get("configuration").get("database"),
+                    measurement=profile_obj.get("tableName"),
+                    field=profile_obj.get("columnName"),
+                    filters=profile_obj.get("filter"),
+                    multiplier=float(profile_obj.get("multiplier")),
+                    startDate=_dt_str_to_tz_aware_datetime(profile_obj.get("startDate")),
+                    endDate=_dt_str_to_tz_aware_datetime(profile_obj.get("endDate")),
+                    profileType=esdl.ProfileTypeEnum.from_string(profile_obj.get("profileType"))
                 )
             else:
                 raise ProfileClassError(f"Unsupported profile class: {profile_class}")
@@ -1452,7 +1492,7 @@ class Profiles:
             raise ProfileCreateError(f"An error occurs while adding profile: {e}") from e
 
     @staticmethod
-    def update_esdl_profile(es_id: str, profile_id: str, updates: dict) -> None:
+    def update_esdl_profile(es_id: str, profile_id: str, profile_class: str, updates: dict) -> None:
         """
         Update attributes of an existing profile in an ESDL.
         """
@@ -1463,9 +1503,17 @@ class Profiles:
             raise ProfileNotFoundError(f"Profile (id={profile_id}) from ESDL (id={es_id}) not found.")
         
         try:
-            # Apply updates 
-            if "multiplier" in updates:
-                profile.multiplier = float(updates["multiplier"])
+            # Profile class specific attributes
+            if profile_class == esdl.SingleValue.__name__:
+                if "name" in updates:
+                    profile.name = updates["name"]
+                if "value" in updates:
+                    profile.value = float(updates["value"])
+            else:
+                if "multiplier" in updates:
+                    profile.multiplier = float(updates["multiplier"])
+
+            # Attributes or references inherited from GenericProfile
             if "profileType" in updates:
                 profile.profileType = esdl.ProfileTypeEnum.from_string(updates["profileType"])
             if "profileQuantityAndUnit" in updates:
@@ -1507,7 +1555,10 @@ default_profiles = {
 # ------------------------------------------------ #
 
 def _clone_qau(qau):
-    """Deep clone if it is of QuantityAndUnitReference type."""
+    """A util function which returns a deep clone of qau."""
+    if not qau:
+        return None
+
     if isinstance(qau, esdl.QuantityAndUnitReference):
         qau = qau.reference
     return qau.deepcopy()
@@ -1605,8 +1656,8 @@ def _convert_dtp_obj_into_dtp(dtp_obj: dict) -> esdl.DataTableProfile:
         columnName=dtp_obj.get("columnName"),
         filter=dtp_obj.get("filter"),
         multiplier=float(dtp_obj.get("multiplier")),
-        startDate=_dt_str_to_datetime(dtp_obj.get("startDate")),
-        endDate=_dt_str_to_datetime(dtp_obj.get("endDate")),
+        startDate=_dt_str_to_tz_aware_datetime(dtp_obj.get("startDate")),
+        endDate=_dt_str_to_tz_aware_datetime(dtp_obj.get("endDate")),
         profileType=esdl.ProfileTypeEnum.from_string(dtp_obj.get("profileType"))
     )
 
@@ -1710,21 +1761,18 @@ def _convert_qau_obj_into_profile_qau(es_id: str, qau_obj: dict):
     else:
         return None
 
-def _dt_str_to_datetime(dt_str: str) -> datetime:
+def _dt_str_to_tz_aware_datetime(dt_str: str, default_tz=timezone.utc) -> datetime:
     """
-    A util function to convert datetime string into a datetime object.
-    Handles ISO-8601 strings with timezone offsets like '2039-12-31T23:00:00+0000'.
+    Parse a datetime string using parse_date() utility,
+    and ensure the result is timezone-aware by applying `default_tz`
+    when no timezone is present.
     """
-    try:
-        # Normalize timezone offset: '+0000' → '+00:00'
-        if dt_str.endswith(("+0000", "-0000")) or "+" in dt_str or "-" in dt_str:
-            # Replace last 5 chars like '+0000' with '+00:00'
-            if dt_str[-5] in ["+", "-"]:
-                dt_str = dt_str[:-5] + dt_str[-5:-2] + ":" + dt_str[-2:]
-        return datetime.fromisoformat(dt_str)
-    except ValueError:
-        # fallback: try parsing with common formats
-        return datetime.strptime(dt_str, "%Y-%m-%d")
+    dt = parse_date(dt_str)
+
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=default_tz)
+
+    return dt
             
 def _parse_profile_filter(filter: Optional[str]) -> List[Dict[str, str]]:
     """A util function to parse profile filter string into a list of dict."""

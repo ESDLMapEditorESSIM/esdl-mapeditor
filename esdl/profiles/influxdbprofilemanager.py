@@ -14,7 +14,6 @@
 from dataclasses import dataclass
 from datetime import datetime
 from uuid import uuid4
-from urllib.parse import urlparse
 
 import pytz
 from pyecore.ecore import EDate
@@ -225,51 +224,6 @@ class InfluxDBProfileManager(ProfileManager):
         )
 
         return prof
-    
-    @staticmethod
-    def get_profile_influxdb_settings(profile: esdl.InfluxDBProfile, profiles_settings: dict) -> ConnectionSettings | None:
-        """
-        Method to retrieve InfluxDB connection settings for a given profile.
-
-        If the profile is hosted on a publicly accessible server, 
-        it additionally checks the InfluxDB connectivity and constructs the connection settings.
-        """
-        # Find profile server information for the InfluxDBProfile
-        for prof_server in profiles_settings["profiles_servers"]:
-            if prof_server["host"] in profile.host and prof_server["port"] == str(profile.port):
-                return ConnectionSettings(
-                    host=prof_server["host"],
-                    port=profile.port,
-                    database=profile.database,
-                    username=prof_server["username"],
-                    password=prof_server["password"],
-                    ssl=prof_server.get("ssl_enabled", False),
-                    verify_ssl=prof_server.get("ssl_enabled", False),
-                )
-
-        # Check additionally if the profile is hosted on a public accessible server
-        # Ensure host part only (without http:// or https://) 
-        host = urlparse(profile.host).netloc if profile.host.startswith(('http://', 'https://')) else profile.host
-        try:
-            influxdb_client = InfluxDBClient(host=host, port=profile.port, ssl=True, verify_ssl=True, retries=1, timeout=2)
-            db = influxdb_client.get_list_database()
-            if db:
-                return ConnectionSettings(
-                    host=host,
-                    port=profile.port,
-                    database=profile.database,
-                    username="",
-                    password="",
-                    ssl=True,
-                    verify_ssl=True,
-                )
-        except Exception as e:
-            raise ConnectionSettingsRetrivalError(f"Failed to retrieve ConnectionSettings: {e}") from e
-        finally:
-            if influxdb_client:
-                influxdb_client.close()
-
-        return None
 
     @staticmethod
     def _create_esdl_filters_from_tags_dict(tags: dict = None):

@@ -25,7 +25,7 @@ from esdl import esdl
 from extensions.panel_service import get_panel_service_datasource, create_panel_multiple
 from extensions.settings_storage import SettingsStorage
 from extensions.session_manager import get_handler, get_session
-from extensions.profiles import Profiles, ProfileTracesRequest, EmptyProfileWarning
+from extensions.profiles import Profiles, ProfileTracesRequest, ProfileVizOptions, EmptyProfileWarning
 import src.log as log
 
 logger = log.get_logger(__name__)
@@ -62,6 +62,7 @@ class PortProfileViewer:
         @self.socketio.on("port_profile_viewer/profile_traces", namespace="/esdl")
         def _get_port_profile_traces_from_profile_ids(params: dict):
             req = ProfileTracesRequest(**params)
+            req.viz_options = ProfileVizOptions(**req.viz_options)
             return PortProfileViewer.get_port_profile_traces_from_profile_ids(req)
 
         @self.socketio.on("show_multiple_profiles", namespace="/esdl")

@@ -2,6 +2,7 @@ import logging
 from dataclasses import dataclass
 from logging import warning, error
 from typing import Any, Optional, List, Tuple
+import re
 
 import psycopg
 from psycopg import Connection, sql
@@ -91,36 +92,77 @@ class PostgresqlConfiguration:
             else:
                 table_ident = sql.Identifier(self.datatable_profile.tableName)
 
-            # Base query
-            query = sql.SQL("SELECT {dt}, {col} FROM {tbl}").format(
-                dt=sql.Identifier(self.datatable_profile.datetimeColumnName),
-                col=sql.Identifier(self.datatable_profile.columnName),
-                tbl=table_ident
-            )
+            dt_ident = sql.Identifier(self.datatable_profile.datetimeColumnName)
+            col_ident = sql.Identifier(self.datatable_profile.columnName)
 
             # Collect WHERE clauses
             where_clauses = []
             params = []
             if self.datatable_profile.startDate and self.datatable_profile.endDate:
-                where_clauses.append(
-                    sql.SQL("{dt} >= %s").format(dt=sql.Identifier(self.datatable_profile.datetimeColumnName))
-                )
-                where_clauses.append(
-                    sql.SQL("{dt} <= %s").format(dt=sql.Identifier(self.datatable_profile.datetimeColumnName))
-                )
+                where_clauses.append(sql.SQL("{dt} >= %s").format(dt=dt_ident))
+                where_clauses.append(sql.SQL("{dt} <= %s").format(dt=dt_ident))
                 params.extend([
                     self.datatable_profile.startDate.strftime('%Y-%m-%dT%H:%M:%SZ'),
                     self.datatable_profile.endDate.strftime('%Y-%m-%dT%H:%M:%SZ')
                 ])
 
-            # TODO: support optional filter
+            bucket_seconds = None
+
+            # NOTE: The filter string parsing here does not yet support 'OR' or more complex filtering.
             if self.datatable_profile.filter:
-                pass
-            
+                """
+                Parse a filter string like:
+                "col"='a' AND "colB"=50
+                into: [('col', 'a', ''), ('colB', '', '50')]
+                """
+                pattern = r'"?(\w+)"?\s*=\s*(?:\'([^\']*)\'|(\d+))'
+                matches = re.findall(pattern, self.datatable_profile.filter)
+
+                if not matches:
+                    logging.error(f"Failed to parse filter string: {self.datatable_profile.filter}")
+                for col, str_val, num_val in matches:
+                    value = str_val if str_val else float(num_val)
+                    if col == "groupby_interval_sec":
+                        bucket_seconds = value
+                    else:
+                        where_clauses.append(sql.SQL("{tag} = %s").format(tag=sql.Identifier(col)))
+                        params.append(value)
+
             if where_clauses:
-                query += sql.SQL(" WHERE ") + sql.SQL(" AND ").join(where_clauses)
+                where_sql = sql.SQL(" WHERE ") + sql.SQL(" AND ").join(where_clauses)
+            else:
+                where_sql = sql.SQL("")
+
+            # Downsampled query by grouping them into fixed-size buckets.
+            if bucket_seconds:
+                query = sql.SQL("""
+                    SELECT
+                        to_timestamp(
+                            floor(extract(epoch from {dt}) / %s) * %s
+                        )::timestamp AS {dt},
+                        AVG({col}) AS {col}
+                    FROM {tbl}
+                    {where}
+                    GROUP BY 1
+                    ORDER BY 1
+                """).format(
+                    dt=dt_ident,
+                    col=col_ident,
+                    tbl=table_ident,
+                    where=where_sql
+                )
+                params = [bucket_seconds, bucket_seconds, *params]
+            # Normal query
+            else:
+                query = sql.SQL("SELECT {dt}, {col} FROM {tbl} {where}").format(
+                    dt=dt_ident,
+                    col=col_ident,
+                    tbl=table_ident,
+                    where=where_sql
+                )
 
             if self.datatable_profile.columnName:
+                # print(query.as_string(cursor), params)
                 cursor.execute(query, params)
             else:
                 # Fallback to select all columns
@@ -192,12 +234,12 @@ class PostgresqlConfiguration:
                     f" in database '{self.datatable_profile.configuration.database}', cannot derive units")
 
 
-
-    def save_data(self, profile_values: List[List[Any]], header: List[str]):
+    def save_data(self, profile_values: List[List[Any]], header: List[str], overwrite: bool = True):
         """
         Saves data to Postgres. It will insert all the columns in the profile_values by default.
         :param profile_values:
         :param header:
+        :param overwrite: If True, truncate the existing table rows and insert new ones.
         :return:
         """
         if not self.connection:
@@ -223,12 +265,14 @@ class PostgresqlConfiguration:
             insert_columns = [f'"{c}" DOUBLE PRECISION' for c in non_datetime_columns]
             insert_columns.insert(0, f'"{self.datatable_profile.datetimeColumnName}" TIMESTAMP')
             insert_column_statement = ",\n".join(insert_columns)
+
             # create schema and table if not exists
             if self.datatable_profile.schema:
                 query = sql.SQL('CREATE SCHEMA IF NOT EXISTS {schema}').format(schema=sql.Identifier(self.datatable_profile.schema))
                 if DEBUG_SQL:
                     print(query.as_string(cursor))
                 cursor.execute(query)
+
             sql_string = f"CREATE TABLE IF NOT EXISTS " + "{table}" + f" ({insert_column_statement})"
             query = sql.SQL(sql_string).format(table=table)
             if DEBUG_SQL:
@@ -236,6 +280,11 @@ class PostgresqlConfiguration:
             cursor.execute(query)
             self.connection.commit()
 
+            if overwrite:
+                query = sql.SQL('TRUNCATE TABLE {table}').format(table=table)
+                if DEBUG_SQL:
+                    print(query.as_string(cursor))
+                cursor.execute(query)
 
             columns = sql.SQL(', ').join(sql.Identifier(h) for h in header)
             query = sql.SQL("COPY {table} ({columns}) FROM STDIN").format(table=table, columns=columns)

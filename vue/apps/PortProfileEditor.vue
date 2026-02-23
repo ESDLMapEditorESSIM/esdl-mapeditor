@@ -65,7 +65,7 @@
             :image-style="{ height: '150px' }"
           />
         </a-col>
-        <DataTableProfileFormEdit
+        <ProfileEditForm
           :visible="profileModalVisible"
           :active-esdl-id="activeEsdlId"
           :active-port-id="activePortId"
@@ -96,9 +96,7 @@ import { useObject } from "../composables/ObjectID";
 import { fetchData } from "@/utils/api";
 import { displayNotification } from "@/utils/notification";
 
-// TODO: replace?
-import ProfileFormEdit from "@/components/forms/ProfileFormEdit.vue";
-import DataTableProfileFormEdit from "@/components/forms/DataTableProfileFormEdit.vue";
+import ProfileEditForm from "@/components/forms/ProfileEditForm.vue";
 
 const { currentObjectID } = useObject();
 const { getActiveEsdlLayerId } = useEsdlLayers();
@@ -130,8 +128,8 @@ const activeProfile = ref({});
 const columns = [
   {
     title: "Profile Name",
-    dataIndex: "columnName",
     key: "profileName",
+    customRender: ({ record }) => { return getProfileDisplayedName(record) },
   },
   {
     title: "Unit",
@@ -151,8 +149,8 @@ onMounted(async () => {
   console.debug("Port profile editor component mounted");
   resetState();
 
-  activeEsdlId.value = getActiveEsdlLayerId().value;
-  assetId.value = currentObjectID.value;
+  activeEsdlId.value = currentObjectID.value["es_id"] ? currentObjectID.value["es_id"] : getActiveEsdlLayerId().value;
+  assetId.value = currentObjectID.value["object_id"] ? currentObjectID.value["object_id"] : null;
 
   initPortsProfiles();
 });
@@ -249,6 +247,14 @@ const listPortProfiles = (activePortId) => {
   }
   return profiles;
 };
+
+const getProfileDisplayedName = (profileObj) => {
+  if (profileObj["profileClass"] === "SingleValue") {
+    return profileObj["name"] || profileObj["id"];
+  } else {
+    return profileObj["columnName"];
+  }
+}
 
 const onSelectPortSegment = (portId) => {
   listedPortProfiles.value = listPortProfiles(portId);

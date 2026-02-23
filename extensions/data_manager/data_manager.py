@@ -12,13 +12,10 @@
 #  Manager:
 #      TNO
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime
 from enum import Enum
-from typing import Any, TypedDict, List, Dict, Optional, Sequence, Iterable, Tuple
+from typing import Any, TypedDict, List, Dict, Optional, Sequence, Iterable
 import json
-import re
-import math
-from urllib.parse import urlparse
 
 from flask import Flask
 from flask_socketio import SocketIO
@@ -28,15 +25,13 @@ from sqlalchemy.sql import text, func
 from sqlalchemy.exc import IntegrityError
 import pandas as pd
 from pandas import DataFrame
-from influxdb import InfluxDBClient
 
 import esdl
 from esdl.processing.ESDLAsset import get_asset_capability_type
 from esdl.units.parser import unit_to_string
-from esdl.profiles.influxdbprofilemanager import InfluxDBProfileManager
 from extensions.data_manager.db_interaction import create_db_tables, get_db_driver_type, DriverType, create_db, drop_db, \
     drop_db_tables
-from extensions.profiles import Profiles
+from extensions.profiles import Profiles, ProfileVizOptions, EmptyProfileWarning
 from extensions.data_manager import db
 from extensions.data_manager.data_manager_message import (ChartType,
                                                           MetadataUpdateRequestBody,
@@ -146,27 +141,31 @@ def check_qau(qau: esdl.AbstractQuantityAndUnit) -> esdl.QuantityAndUnitType:
         qau = esdl.QuantityAndUnitType()  # empty/unknown unit
     return qau
 
-def handle_influxdb_profile(profile: esdl.InfluxDBProfile, ds: DataSet):
+def handle_profile(profile: esdl.InfluxDBProfile | esdl.DataTableProfile, ds: DataSet):
     """
-    Process an esdl InfluxDBProfile
+    Process an esdl (legacy) InfluxDBProfile or DataTableProfile
 
-    :param profile: InfluxDBProfile to process
+    :param profile: InfluxDBProfile or DataTableProfile to process
     :param ds: Data set this data belongs to
     :return: Data point, its unit and variable_name of this data point
     """
     container = profile.eContainer()
 
+    # First translate InfluxDBProfile into DataTableProfile to avoid handling attributes of different profile classes separately.
+    if isinstance(profile, esdl.InfluxDBProfile):
+        profile = Profiles.influxdbprofile_to_datatableprofile(profile)
+
     d = Data(dataset=ds, value=None) # Default value to None
     qau = check_qau(profile.profileQuantityAndUnit)
-    variable_name = f"{profile.field} [{unit_to_string(qau)}]"
+    variable_name = f"{profile.columnName} [{unit_to_string(qau)}]"
 
     labels = {}
-    # Label profile id, so it can be retrieved when the query_influxdb_profile() method is called.
+    # Label profile id, so it can be retrieved when the query_profile() method is called.
     labels['profile_id'] = profile.id
-    labels['Measurement'] = profile.measurement
+    # TBD: Measurement label is from (legacy) InfluxDBProfile (profile.measurement), keep using it to avoid confusing users?
+    labels['Measurement'] = profile.tableName
     labels['Profile Type'] = profile.profileType.name
 
-    # TODO: extract below code to avoid duplication in handle_static_profile()
     if isinstance(container, esdl.Port):
         port: esdl.Port = container
         asset: esdl.EnergyAsset = port.energyasset
@@ -423,7 +422,7 @@ class DataManager:
 
             # TODO: return rounded query values
             if req_body.profile:
-                return self.query_influxdb_profile(db.session, options=req_body)
+                return self.query_profile(db.session, options=req_body)
             else:
                 return self.query(db.session, options=req_body)
 
@@ -454,6 +453,7 @@ class DataManager:
         # In principle we should iterate here over all the instance, but this is not supported elsewhere in the MapEditor
         # adding an extra label for each instance might be consfusing.
         for eobj in es.instance[0].eAllContents():
+            d = None
             variable_name = None
             is_profile_variable = None
 
@@ -466,7 +466,10 @@ class DataManager:
                 d, qau, variable_name = handle_static_profile(eobj, ds, variable_name)
             elif isinstance(eobj, esdl.InfluxDBProfile):
                 is_profile_variable = True
-                d, qau, variable_name = handle_influxdb_profile(eobj, ds)
+                d, qau, variable_name = handle_profile(eobj, ds)
+            elif isinstance(eobj, esdl.DataTableProfile):
+                is_profile_variable = True
+                d, qau, variable_name = handle_profile(eobj, ds)
             elif isinstance(eobj, esdl.DoubleKPI):
                 d = Data(dataset=ds)
                 d.labels = d.labels if d.labels is not None else {}
@@ -570,7 +573,7 @@ class DataManager:
                     d.region = eobj.area.name
 
             # Process asset ownership label
-            if isinstance(eobj, esdl.Asset):
+            if d is not None and isinstance(eobj, esdl.Asset):
                 d.labels = d.labels if d.labels is not None else {}
                 d.labels["Ownership"] = "Unassigned"
                 if eobj.isOwnedBy is not None:
@@ -898,16 +901,16 @@ class DataManager:
             sorted_resp[key] = sorted_value
 
         # Remove profile_id, as it is not used as a filter option in the frontend,
-        # but only as a reference to be used by query_influxdb_profile() in the backend. 
+        # but only as a reference to be used by query_profile() in the backend. 
         if "profile_id" in sorted_resp:
             del sorted_resp["profile_id"]
 
         return sorted_resp
-    
-    def query_influxdb_profile(self, session: Session, options: QueryRequestBody) -> dict:
+
+    def query_profile(self, session: Session, options: QueryRequestBody) -> dict:
         """
-        Query influxdb profile data and perform data aggregation if specified. 
-        Return a dict of data traces, data range, and error messages.
+        Query InfluxDBProfile or DataTableProfile profile data and perform data aggregation if specified. 
+        Return a dict of data traces, data range, warning and error messages.
         """
         dataset_ids = options.dataset_ids
         variable_name = options.variable_name
@@ -927,9 +930,6 @@ class DataManager:
         logger.info(f"Querying influxdb profile traces with {vars(options)}")
         
         resp = { "data_range": [], "traces": [], "warnings": [], "errors": [], "warning_msg": "", "error_msg": "" }
-
-        profiles_settings = Profiles.get_instance().get_profiles_settings()
-        esh = get_handler()
 
         group_by_param = [preprocess_column(group) for group in group_by]
 
@@ -957,7 +957,6 @@ class DataManager:
                 query = query.where(preprocess_column(col).in_(values))
         
         ds_profile_labels = {}
-        profiles_datetimes = []
         profile_data = []
         profile_query = query.all()
         for result in profile_query:
@@ -986,93 +985,42 @@ class DataManager:
                 else:
                     group_by_category = group_by_agg_func
 
+            viz_options = ProfileVizOptions()
+
+            # If the data range is presented in the request, select a subset of data.
+            if len(data_range) > 0:
+                # auto parsed string datetime into datetime object
+                viz_options.start_datetime = data_range[0]
+                viz_options.end_datetime = data_range[1]
+
+            if max_datapoints:
+                viz_options.max_datapoints = max_datapoints
+
+            # The method looks up credentials, connects to profile database,
+            # and retrieves profile trace in a dict {name: str, x: list[str], y: list[float]}
             try:
-                profile: esdl.InfluxDBProfile = esh.get_by_id(es_id, profile_id)
-                if not profile:
-                    raise ValueError(f"Profile with ID {profile_id} (ESDL ID {es_id}) not found.")
-                influxdb_settings = InfluxDBProfileManager.get_profile_influxdb_settings(profile, profiles_settings)
-            except Exception as e:
-                err = f"Error retrieving ESDL profile {profile_id} and associated influxdb settings: {e}"
-                logger.error(err)
-                resp['errors'].append(err)
-                continue
-
-            if not influxdb_settings:
-                err = f"Error connecting to {profile.host}:{profile.port} to query profile ({profile_id})."
-                resp['errors'].append(err)
-            else:
-                query_filters = []
-                if profile.filters:
-                    # Parse filter string with regex
-                    if "AND" in profile.filters:
-                        matches = re.findall(r"(\w+)='([^']*)'", profile.filters)
-                    else:
-                        matches = re.findall(r'"(\w+)"=\'([^\']+)\'', profile.filters)                        
-                    if len(matches):
-                        query_filters = [{"tag": key, "value": value} for key, value in matches]
-
-                # If the data range is presented in the request, select a subset of data.
-                if len(data_range) > 0:
-                    range = data_range
-                    start_date = datetime.strptime(range[0], dt_str_format).replace(tzinfo=timezone.utc)
-                    end_date = datetime.strptime(range[1], dt_str_format).replace(tzinfo=timezone.utc)
+                trace = Profiles.get_esdl_profile_trace_from_id(es_id, profile_id, viz_options)
+                if trace:
+                    profile_data.append({
+                        "dataset": dataset_name,
+                        "groupby": group_by_category,
+                        "profile_label": profile_label,
+                        "datetime": trace["x"],
+                        "value": trace["y"]
+                    })
                 else:
-                    if profile.startDate.tzinfo is None or profile.endDate.tzinfo is None:
-                        logger.warning("Datetime is missing timezone information; assuming UTC.")
-                    start_date = profile.startDate if profile.startDate.tzinfo else profile.startDate.replace(tzinfo=timezone.utc)
-                    end_date = profile.endDate if profile.endDate.tzinfo else profile.endDate.replace(tzinfo=timezone.utc)
-
-                profiles_datetimes.extend([start_date, end_date])
-
-                groupby_interval_sec = None
-                if max_datapoints:
-                    time_delta_sec = (end_date - start_date).total_seconds()
-                    # To round to common (readable) interval: 1s, 30s, 1m, 30m, 1h, 6h, 12h, 1d
-                    common_intervals = [1, 30, 60, 1800, 3600, 21600, 43200, 86400]
-                    interval_sec = math.ceil(time_delta_sec / max_datapoints)
-                    groupby_interval_sec = min(common_intervals, key=lambda x: abs(x - interval_sec))
-
-                try:
-                    prof_manager = InfluxDBProfileManager(influxdb_settings)
-                    prof_manager.load_influxdb(
-                        measurement=profile.measurement,
-                        fields=[profile.field],
-                        from_datetime=start_date,
-                        to_datetime=end_date,
-                        filters=query_filters,
-                        groupby_interval_sec=groupby_interval_sec
-                    )
-                    # profile_data_list: a list of lists, with each list structure to be [datetime, field value, ...]
-                    datetime_profile = prof_manager.profile_data_list
-                except Exception as e:
-                    err = f"Error retrieving {profile.host}:{profile.port} profile ({profile_id}): {e}"
-                    resp['errors'].append(err)
+                    err_msg = "Empty profile trace"
+                    logger.error(err_msg)
+                    resp['errors'].append(err_msg)
                     continue
-
-                if len(datetime_profile) == 0:
-                    warning = f"Profile [{dataset_name}] (id={profile_id}) has no data."
-                    resp['warnings'].append(warning)
-                    continue
-
-                datetimes, values = [], []
-                for d in datetime_profile:
-                    # skip when value is None (this can occur when downsampling is applied)
-                    if d[1] is None:
-                        continue
-
-                    date: datetime = d[0]
-                    value = d[1] * profile.multiplier
-
-                    datetimes.append(date)
-                    values.append(value)
-
-                profile_data.append({
-                    "dataset": dataset_name,
-                    "groupby": group_by_category,
-                    "profile_label": profile_label,
-                    "datetime": datetimes,
-                    "value": values
-                })
+            except EmptyProfileWarning as warning:
+                logger.warn(warning)
+                resp['warnings'].append(str(warning))
+                continue
+            except Exception as err:
+                logger.error(err)
+                resp['errors'].append(str(err))
+                continue
 
         if len(resp['errors']):
             logger.error(resp['errors'])
@@ -1083,15 +1031,12 @@ class DataManager:
             logger.warning(resp['warnings'])
             warning_msg = f"{len(resp['warnings'])} out of {len(profile_query)} requested profiles have no data."
             resp['warning_msg'] = warning_msg
-        
-        if len(profiles_datetimes):
-            min_dt = (min(profiles_datetimes) - timedelta(days=1)).strftime(dt_str_format)
-            max_dt = (max(profiles_datetimes) + timedelta(days=1)).strftime(dt_str_format)
-            resp['data_range'] = [min_dt, max_dt]
 
         if len(profile_data):
             # Cast profile_data into a dataframe and flatten datetime and value list
             df = pd.DataFrame(profile_data).explode(["datetime", "value"])
+            # Ensure datetime column with datetime object type
+            df["datetime"] = pd.to_datetime(df["datetime"])
 
             traces = self.process_profile_data(df, group_by_enabled, group_by_agg_func, viz_type, agg_interval, agg_func)
 
@@ -1099,6 +1044,10 @@ class DataManager:
                 resp['traces'] = self.process_profile_table_trace(traces)
             else:
                 resp['traces'] = traces
+
+            min_dt = df["datetime"].min()
+            max_dt = df["datetime"].max()
+            resp['data_range'] = [min_dt.strftime(dt_str_format), max_dt.strftime(dt_str_format)]
 
         return resp
 
@@ -1147,7 +1096,7 @@ class DataManager:
             traces = self.process_bar_chart_trace(df, group_by)
 
         return { "traces": traces }
-        
+
     @staticmethod
     def process_profile_data(
         df: DataFrame,
