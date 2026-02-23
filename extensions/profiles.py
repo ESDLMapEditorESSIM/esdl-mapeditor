@@ -761,6 +761,8 @@ class Profiles:
     @staticmethod
     def connect_to_animation_profiles_database(es_id: str):
         anim_profiles = Profiles.get_profiles_for_asset_type(es_id, [esdl.ElectricityCable, esdl.Pipe])
+        if not anim_profiles:
+            return None
 
         # make sure all cable/pipe profiles are in the same database
         try:
