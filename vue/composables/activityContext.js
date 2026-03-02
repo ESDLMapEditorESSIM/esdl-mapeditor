@@ -19,7 +19,7 @@ import {useWmsLayers} from "@/composables/wmsLayers";
 import {useEsdlAreas} from "@/composables/esdlAreas";
 import {useEsdlBuildings} from "./esdlBuildings";
 
-const { clearWmsLayers, showWmsLayer } = useWmsLayers();
+const { clearWmsLayers, showLayer } = useWmsLayers();
 const { esdlAreas, removeAreaContextMenuItem } = useEsdlAreas();
 const { addBuildingContextMenuItem, removeBuildingContextMenuItem } = useEsdlBuildings();
 
@@ -59,7 +59,7 @@ export function useActivityContext() {
             clearWmsLayers()
             for (const layer of activityContext.wms_layers) {
                 try {
-                    showWmsLayer(layer)
+                    showLayer(layer)
                 } catch (e) {
                     // Check if TypeError, then the layer does not exist.
                     if (e instanceof TypeError) {

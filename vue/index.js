@@ -179,7 +179,7 @@ window.activate_admin_settings = () => {
     mountApp(ActivityContextManagement, '#admin_dialog_window');
 }
 
-window.add_edit_wms_layer = (object_id) => {
+window.add_edit_web_service_layer = (object_id) => {
     const { newObject } = useObject();
     newObject(object_id);
     mountSidebarComponent(AddEditWmsLayer)

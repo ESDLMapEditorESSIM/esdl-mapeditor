@@ -48,37 +48,39 @@ class WmsLayerFeatureResp:
     """List of WMS layers features properties query response dictionary"""
 
 @dataclass
-class WmsGetCapabilitiesRequestBody:
+class GetCapabilitiesRequestBody:
     """
-    The request body passed from the frontend to the backend for fetching WMS GetCapabilities.
+    The request body passed from the frontend to the backend for fetching web service GetCapabilities.
     """
     url: str
-    """WMS service URL"""
+    """WMS/WFS service URL"""
+    service_type: str
+    """"WMS" or "WFS"""
 
 @dataclass
-class WmsServiceLayerInfo:
+class ServiceLayerInfo:
     """
-    The extracted layer information required by the frontend from the requested WMS service.
+    The extracted layer information required by the frontend from the requested WMS/WFS service.
     """
     name: str
     """Layer name"""
     title: str
     """Layer title"""
-    legend_url: str
-    """Layer legend URL"""
+    legend_url: Optional[str]
+    """Layer legend URL. Only applicable for WMS layer"""
 
 @dataclass
-class WmsGetCapabilitiesResp:
+class ServiceGetCapabilitiesResp:
     """
-    The response of the WMS GetCapabilities request passed from the backend to the frontend.
+    The response of the service GetCapabilities request passed from the backend to the frontend.
     """
     success: bool
-    """WMS GetCapabilities request is successful or not"""
-    result: Union[List[WmsServiceLayerInfo], str]
-    """If successful, a list of WmsServiceLayerInfo is returned; Otherwise, an error message is returned"""
+    """GetCapabilities request is successful or not"""
+    result: Union[List[ServiceLayerInfo], str]
+    """If successful, a list of ServiceLayerInfo is returned; Otherwise, an error message is returned"""
 
 @dataclass
-class WmsSaveOpacitySettingRequestBody:
+class LayerOpacitySettingRequestBody:
     """
     The request body passed from the frontend to the backend for keeping the layer opacity setting in the settings_storage.
     """

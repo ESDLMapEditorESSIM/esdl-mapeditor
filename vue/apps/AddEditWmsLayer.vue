@@ -14,28 +14,42 @@
   -     TNO
   -->
 
+<!-- TODO: rename component. -->
+
 <template>
   <a-space
-    id="add-edit-wms-layer"
+    id="add-edit-web-service-layer"
     direction="vertical"
     style="width: 100%; padding: 8px;"
   >
     <h1>
-      {{ isNewLayer ? "Add WMS Layer" : "Edit WMS Layer" }}
+      {{ isNewLayer ? `Add ${layerType} Layer` : `Edit ${layerType} Layer` }}
     </h1>
-    <!-- Add WMS layer UI -->
+    <!-- Layer type selector -->
+    <a-segmented
+      v-if="isNewLayer"
+      v-model:value="layerType"
+      :options="[
+        { label: 'WMS', value: 'WMS' },
+        { label: 'WFS', value: 'WFS' }
+      ]"
+      style="width: 100%; margin-bottom: 8px;"
+      block
+      @change="onSelectLayerType"
+    />
+    <!-- Add layer UI -->
     <div v-if="isNewLayer">
-      <!-- Step 1: An input field to specify WMS URL -->
+      <!-- Step 1: An input field to specify layer URL -->
       <a-col
-        v-if="addWmsLayerStep === stepOptions[0]"
+        v-if="addLayerStep === stepOptions[0]"
         :span="24"
       >
         <a-row>
           <a-input 
-            id="input-WmsUrl"
-            v-model:value="wmsFormState.url"
+            id="input-layer-url"
+            v-model:value="formState.url"
             type="text"
-            placeholder="WMS URL"
+            placeholder="Layer URL"
             :status="urlInputStatus"
             @change="resetUrlInputState"
           />
@@ -63,25 +77,25 @@
           </a-popover>
         </a-row>
         <a-row 
-          v-if="wmsFormState.customParams"
+          v-if="formState.customParams"
           style="padding-top: 8px; padding-left: 16px;"
         >
           <a-row 
-            v-for="paramId of Object.keys(wmsFormState.customParams)" 
+            v-for="paramId of Object.keys(formState.customParams)" 
             :key="paramId"
             style="padding-bottom: 8px;"
           >
             <a-space>
               <a-col>
                 <a-input
-                  v-model:value="wmsFormState.customParams[paramId].key"
+                  v-model:value="formState.customParams[paramId].key"
                   type="text"
                   placeholder="Parameter"
                 />
               </a-col>
               <a-col>
                 <a-input
-                  v-model:value="wmsFormState.customParams[paramId].value"
+                  v-model:value="formState.customParams[paramId].value"
                   type="text"
                   placeholder="Value"
                 />
@@ -101,8 +115,8 @@
         <a-row type="flex" justify="end" style="padding-top: 8px;">
           <a-button 
             type="primary"
-            :loading="isFetchingWmsGetCapabilities"
-            :disabled="isFetchingWmsGetCapabilities"
+            :loading="isLoading"
+            :disabled="isLoading"
             @click="onNextBtnClick"
           >
             Next
@@ -111,7 +125,7 @@
       </a-col>
       <!-- Step 2: Displaying available layer options -->
       <a-col
-        v-if="addWmsLayerStep === stepOptions[1]"
+        v-if="addLayerStep === stepOptions[1]"
         :span="24"
       >
         <a-row style="border: 1px solid #DBDBDB; border-radius: 8px;">
@@ -134,14 +148,18 @@
             <a-button @click="onBackBtnClick">
               Back
             </a-button>
-            <a-button type="primary" :disabled="selectedLayers.length === 0" @click="onAddToMapBtnClick">
+            <a-button
+              type="primary"
+              :disabled="selectedLayers.length === 0 || isLoading"
+              @click="layerType === 'WMS' ? onWmsAddToMapBtnClick() : onWfsAddToMapBtnClick()"
+            >
               Add to map
             </a-button>
           </a-space>
         </a-row>
       </a-col>
     </div>
-    <!-- Edit WMS layer UI -->
+    <!-- TODO Edit WMS layer UI -->
     <div v-if="!isNewLayer">
       <a-row v-for="(value, key) in wmsLayer" :key="key" style="padding-bottom: 8px;">
         <a-col :span="9">
@@ -173,43 +191,48 @@
 import {ref, onBeforeMount, reactive, toRaw} from "vue";
 import { DeleteOutlined, InfoCircleOutlined } from '@ant-design/icons-vue';
 import {useObject} from "../composables/ObjectID";
-import {useWmsLayers} from "../composables/wmsLayers";
 import {camelCase} from "../utils/utils";
-import {getWmsServiceBaseUrl, updateGlobalWmsLayerList} from "../composables/wmsLayers";
+import {
+  getServiceBaseUrl,
+  getServiceGetCapabilities,
+  addServiceLayer,
+  updateGlobalServiceLayerList,
+  showLayer,
+  useWmsLayers
+} from "@/composables/wmsLayers";
 const {
-  addWmsLayer, 
   updateLayer, 
-  getWmsGetCapabilities, 
-  showWmsLayer
 } = useWmsLayers();
 
 const wmsLayer = ref(null);
 const parentId = ref(null);
 const parentLayerGroup = ref(null);
 const isNewLayer = ref(false);
+const layerType = ref('WMS');
 
 const {currentObjectID} = useObject();
 // Disable these form fields from editing when the user tries to "update" the layer.
 const disabledWmsFields = ["url", "layerName"];
 
 const stepOptions = ["specifyUrl", "selectLayers"];
-const addWmsLayerStep = ref(stepOptions[0]);
+const addLayerStep = ref(stepOptions[0]);
 
 const initInputStatus = "";
 const initInputMsg = "";
 const urlInputStatus = ref(initInputStatus);
 const urlInputMsg = ref(initInputMsg);
-const isFetchingWmsGetCapabilities = ref(false);
+const isLoading = ref(false);
 
-// When the getWmsGetCapabilities() call is successful, 
-// layerOptions will be updated to an array of WmsServiceLayerInfo object, each with `name`, `title`, and `legend_url` properties.
+// When the getServiceGetCapabilities() call is successful, 
+// layerOptions will be updated to an array of ServiceLayerInfo object, each with `name`, `title`, and `legend_url` properties.
 const layerOptions = ref([]);
 // To keep user selected layer names in an array
 const selectedLayers = ref([]);
 
-const wmsBaseUrl = ref("");
-const wmsFormState = reactive({url: "", customParams: {}});
+const layerBaseUrl = ref("");
+const formState = reactive({url: "", customParams: {}});
 
+// TODO
 onBeforeMount(() => {
   if (currentObjectID.value.startsWith("__")) {
     parentId.value = currentObjectID.value.replace("__", "");
@@ -240,18 +263,25 @@ onBeforeMount(() => {
 });
 
 /**
- * Reset WMS url input field to the initial state
+ * Reset layer url input field to the initial state
  */
 const resetUrlInputState = () => {
   urlInputStatus.value = initInputStatus;
   urlInputMsg.value = initInputMsg;
 };
 
+// Reset content inputs to the initial state
+const onSelectLayerType = () => {
+  addLayerStep.value = stepOptions[0];
+  Object.assign(formState, {url: "", customParams: {}});
+  resetUrlInputState();
+}
+
 /**
- * Navigate to step one UI to let users specify the WMS URL.
+ * Navigate to step one UI to let users specify the layer URL.
  */
 const onBackBtnClick = () => {
-  addWmsLayerStep.value = stepOptions[0];
+  addLayerStep.value = stepOptions[0];
 };
 
 const onAddParamsBtnClick = () => {
@@ -260,68 +290,108 @@ const onAddParamsBtnClick = () => {
     key: "",
     value: ""
   };
-  Object.assign(wmsFormState.customParams, { [paramId]: newParamObj });
+  Object.assign(formState.customParams, { [paramId]: newParamObj });
 };
 
 const onRemoveParamBtnClick = (paramId) => {
-  delete wmsFormState.customParams[paramId];
+  delete formState.customParams[paramId];
 };
 
-
 /**
- * Handles the "Next" button click event to process the WMS URL input.
+ * Handles the "Next" button click event to process the layer URL input.
  * 
  * @returns {Promise<void>}
  */
 const onNextBtnClick = async() => {
-  const wmsFormInput = toRaw(wmsFormState);
+  const formInputs = toRaw(formState);
   
   // Show an error message when the URL input field is empty
-  if (!wmsFormInput.url.length) {
+  if (!formInputs.url.length) {
     urlInputStatus.value = "error";
-    urlInputMsg.value = "Please provide a WMS URL before continuing.";
+    urlInputMsg.value = `Please provide a ${layerType.value} URL before continuing.`;
   }
   else {
-    // Get the WMS service base URL from the user input URL (which can contain additional query parameters)
+    // Get the WMS/WFS service base URL from the user input URL (which can contain additional query parameters)
     // and show an error message if an invalid URL is found.
-    const serviceUrl = getWmsServiceBaseUrl(wmsFormInput.url);
+    const serviceUrl = getServiceBaseUrl(formInputs.url);
     if (serviceUrl instanceof Error) {
       urlInputStatus.value = "error";
       urlInputMsg.value = `${serviceUrl.message}. Please check the URL before continuing.`;
-    } 
-    else {
-      const queryParams = [];
-      if (wmsFormInput.customParams) {
-        Object.values(wmsFormInput.customParams).forEach((param) => {
-          if (param.key && param.value) {
-            queryParams.push(`${param.key}=${param.value}`);
-          }
-        });
-      }
-      wmsBaseUrl.value = queryParams.length ? `${serviceUrl}?${queryParams.join("&")}` : serviceUrl;
+      return;
+    }
 
-      isFetchingWmsGetCapabilities.value = true;
-      try {
-        const resp = await getWmsGetCapabilities(wmsBaseUrl.value);
-        if (resp.success) {
-          // Navigate the user to the layer selection UI
-          addWmsLayerStep.value = stepOptions[1];
-          layerOptions.value = resp.result;
-        } else {
-          console.error(resp.result);
-          urlInputStatus.value = "error";
-          urlInputMsg.value = `${resp.result} Please check the provided URL and try again.`;
+    const queryParams = [];
+    if (formInputs.customParams) {
+      Object.values(formInputs.customParams).forEach((param) => {
+        if (param.key && param.value) {
+          queryParams.push(`${param.key}=${param.value}`);
         }
-      } catch (error) {
-        console.error(error);
+      });
+    }
+    layerBaseUrl.value = queryParams.length ? `${serviceUrl}?${queryParams.join("&")}` : serviceUrl;
+
+    isLoading.value = true;
+    try {
+      const resp = await getServiceGetCapabilities(layerBaseUrl.value, layerType.value);
+      if (resp.success) {
+        // Navigate the user to the layer selection UI
+        addLayerStep.value = stepOptions[1];
+        layerOptions.value = resp.result;
+      } else {
+        console.error(resp.result);
         urlInputStatus.value = "error";
-        urlInputMsg.value = `${error.message} Please check the provided URL and try again.`;
-      } finally {
-        isFetchingWmsGetCapabilities.value = false;
+        urlInputMsg.value = `${resp.result} Please check the provided URL and try again.`;
       }
+    } catch (error) {
+      console.error(error);
+      urlInputStatus.value = "error";
+      urlInputMsg.value = `${error.message} Please check the provided URL and try again.`;
+    } finally {
+      isLoading.value = false;
     }
   }
 };
+
+/**
+ * Add the selected WFS layers to MongoDB and then show on the map.
+ */
+const onWfsAddToMapBtnClick = async () => {
+  for (const layerName of selectedLayers.value) {
+    const layerId = window.uuidv4();
+    const serviceUrl = layerBaseUrl.value;
+
+    const featureStyle = {
+      color: _getRandomColor(),
+      weight: 4,
+      opacity: 0.3
+    };
+    featureStyle['fillOpacity'] = featureStyle['opacity'] * 0.3;
+
+    const wfsLayerInfo = {
+      type: 'WFS',
+      layerId: layerId,
+      layerDescr: layerName,
+      layerUrl: serviceUrl,
+      layerName: layerName,
+      style: featureStyle,
+      settingtype: parentLayerGroup.value.setting_type,
+      projectName: parentLayerGroup.value.project_name,
+      legendUrl: null,
+      min_zoom_level: null,
+      groupId: parentId.value
+    };
+
+    try {
+      const allLayers = await addServiceLayer(wfsLayerInfo);
+      await updateGlobalServiceLayerList(allLayers, layerId);
+      await showLayer(layerId);
+    } catch (error) {
+      console.error(error);
+      window.alert(error);
+    }
+  }
+  cancel();
+}
 
 /**
  * Handles the "Add to Map" button click event to add selected WMS layers 
@@ -329,31 +399,33 @@ const onNextBtnClick = async() => {
  * 
  * @returns {Promise<void>}
  */
-const onAddToMapBtnClick = async () => {
+const onWmsAddToMapBtnClick = async () => {
   for (const layerName of selectedLayers.value) {
     const layerId = window.uuidv4();
-    const layerUrl = wmsBaseUrl.value;
+    const serviceUrl = layerBaseUrl.value;
     const layerLegendUrl = layerOptions.value.filter((l) => l.name === layerName)[0].legend_url || "";
     // Users can override the default values when "editing" the layer.
     const layerDescr = layerName; // Default layerDescr to be layerName
-    const layerAttr = "";         // Default layerAttr to be an empty string
     const minZoomLevel = null;    // Default minZoomLevel to be null
 
+    const wmsLayerInfo = {
+      type: 'WMS',
+      layerId: layerId,
+      layerDescr: layerDescr,
+      layerUrl: serviceUrl,
+      layerName: layerName,
+      style: null,
+      settingtype: parentLayerGroup.value.setting_type,
+      projectName: parentLayerGroup.value.project_name,
+      legendUrl: layerLegendUrl,
+      min_zoom_level: minZoomLevel,
+      groupId: parentId.value
+    };
+
     try {
-      const allLayers = await addWmsLayer(
-        layerId,
-        layerDescr,
-        layerUrl,
-        layerName,
-        layerLegendUrl,
-        layerAttr,
-        minZoomLevel,
-        parentLayerGroup.value.project_name,
-        parentLayerGroup.value.setting_type,
-        parentId.value,
-      );
-      updateGlobalWmsLayerList(allLayers, layerId);
-      showWmsLayer(layerId);
+      const allLayers = await addServiceLayer(wmsLayerInfo);
+      await updateGlobalServiceLayerList(allLayers, layerId);
+      await showLayer(layerId);
     } 
     catch (error) {
       console.error(error);
@@ -363,6 +435,7 @@ const onAddToMapBtnClick = async () => {
   cancel();
 };
 
+// TODO
 const onUpdateBtnClick = () => {
   updateLayer(
     currentObjectID.value,
@@ -380,11 +453,25 @@ const cancel = () => {
   window.sidebar.hide();
 };
 
+// An util function to generate random color
+const _getRandomColor = () => {
+  const h = Math.floor(Math.random() * 360);
+  return `hsl(${h}, 70%, 50%)`;
+};
+
 </script>
 
 
-<style>
+<style scoped>
 .fe_box {
   border-width: 1px;
+}
+
+:deep(.ant-segmented-item),
+:deep(.ant-segmented-item::selection) {
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 </style>

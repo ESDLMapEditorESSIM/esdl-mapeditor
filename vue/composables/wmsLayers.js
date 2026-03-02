@@ -14,6 +14,8 @@
  *     TNO
  */
 
+// TODO: rename file to webServicelayers.js
+
 /**
  * A composable for managing items currently visible.
  *
@@ -30,49 +32,67 @@ const treeId = "layer_tree";
 const $ = window.$;
 const getTree = () => $('#' + treeId).jstree(true);
 
-const globalWmsLayerList = ref(null);
-// retrieve wms layers info
+const globalServiceLayerList = ref(null);
+
+// retrieve service layers info
 (async () => { // wait for socket to be defined
     while (window.socket === undefined) await new Promise(resolve => setTimeout(resolve, 10));
     socket = window.socket;
-    socket.on('wms_layer_list', updateGlobalWmsLayerList);
+    // TODO: rename wms_layer_list
+    socket.on('wms_layer_list', updateGlobalServiceLayerList);
 })();
 
-const updateGlobalWmsLayerList = (wmsLayerList, visibleId) => {
-    if (globalWmsLayerList.value !== null) {
-        for (const layerId in globalWmsLayerList.value['layers']) {
-            if (layerId in wmsLayerList['layers']) {
+const updateGlobalServiceLayerList = async (layerList, visibleId) => {
+    if (globalServiceLayerList.value !== null) {
+        for (const layerId in globalServiceLayerList.value['layers']) {
+            if (layerId in layerList['layers']) {
                 // make sure not to lose the map reference
-                wmsLayerList['layers'][layerId].layer_ref = globalWmsLayerList.value['layers'][layerId].layer_ref;
+                layerList['layers'][layerId].layer_ref = globalServiceLayerList.value['layers'][layerId].layer_ref;
             } else {
                 // hide layer present in global (old) list, but not in new list from database: was deleted
                 removeLayerFromMapAndVisibleLayers(layerId);
             }
         }
-        for (const layerGroupId in globalWmsLayerList.value['layer_groups']) {
-            if (layerGroupId in wmsLayerList['layer_groups']) {
+        for (const layerGroupId in globalServiceLayerList.value['layer_groups']) {
+            if (layerGroupId in layerList['layer_groups']) {
                 // make sure opened folders stay open
-                if ('opened' in globalWmsLayerList.value['layer_groups'][layerGroupId]) {
-                    wmsLayerList['layer_groups'][layerGroupId].opened =
-                        globalWmsLayerList.value['layer_groups'][layerGroupId]['opened'];
+                if ('opened' in globalServiceLayerList.value['layer_groups'][layerGroupId]) {
+                    layerList['layer_groups'][layerGroupId].opened =
+                        globalServiceLayerList.value['layer_groups'][layerGroupId]['opened'];
                 } else {
-                    wmsLayerList['layer_groups'][layerGroupId].opened = false;
+                    layerList['layer_groups'][layerGroupId].opened = false;
                 }
             }
         }
     }
 
-    globalWmsLayerList.value = wmsLayerList;
-    for (const key in globalWmsLayerList.value['layers']) {
-        const layer_info = globalWmsLayerList.value['layers'][key];
+    globalServiceLayerList.value = layerList;
+    for (const key in globalServiceLayerList.value['layers']) {
+        const layer_info = globalServiceLayerList.value['layers'][key];
         layer_info.id = key;
         if (!layer_info.layer_ref) {
-            layer_info.layer_ref = L.tileLayer.wms(layer_info.url, {
-                layers: layer_info.layer_name,
-                format: 'image/png',
-                transparent: true,
-                attribution: layer_info.attribution
-            });
+            // Create a leaflet layer reference depending on service type.
+            // If type is undefined, assume WMS type and apply WMS handling for backward compatibility.
+            if (layer_info.type === undefined || layer_info.type === 'WMS') {
+                layer_info.layer_ref = L.tileLayer.wms(layer_info.url, {
+                    layers: layer_info.layer_name,
+                    format: 'image/png',
+                    transparent: true,
+                    attribution: layer_info.attribution || ''
+                });
+            } else if (layer_info.type === 'WFS') {
+                // Without providing a map bbox, the given url will retrieve 0 feature,
+                // and only load WFS layer into layer_ref as a reference.
+                // The features are only loaded when the layer is added to the map.
+                const url = constructWfsLayerUrl(layer_info.url, layer_info.layer_name);
+                layer_info.layer_ref = await loadWfsLayer(
+                    layer_info.layer_name,
+                    url,
+                    layer_info.style
+                );
+            } else {
+                console.error(`Unsupport layer type: ${layer_info.type}`);
+            }
         }
         layer_info.visible = layerIsVisible(layer_info.id);
         if (visibleId !== undefined) {
@@ -80,7 +100,7 @@ const updateGlobalWmsLayerList = (wmsLayerList, visibleId) => {
                 layer_info.visible = true;
             }
         }
-        if (layer_info.visible) {
+        if (layer_info.visible && layer_info.layer_ref) {
             layer_info.layer_ref.addTo(map);
             layer_info.layer_ref.bringToFront();
         }
@@ -88,12 +108,12 @@ const updateGlobalWmsLayerList = (wmsLayerList, visibleId) => {
 };
 
 /**
- * Extracts and returns the base URL of the WMS service.
+ * Extracts and returns the base URL of the WMS/WFS service.
  * 
- * @param {string} inputUrl The input WMS URL (possibly with various query parameters)
- * @returns {string|Error} The base URL of the WMS service if valid, otherwise an Error object.
+ * @param {string} inputUrl The input WMS/WFS URL (possibly with various query parameters)
+ * @returns {string|Error} The base URL of the WMS/WFS service if valid, otherwise an Error object.
  */
-const getWmsServiceBaseUrl = (inputUrl) => {
+const getServiceBaseUrl = (inputUrl) => {
     try {
         const url = new URL(inputUrl);
         return `${url.origin}${url.pathname}`;
@@ -102,69 +122,176 @@ const getWmsServiceBaseUrl = (inputUrl) => {
     }
 };
 
+/**
+ * Fetches and returns the Service GetCapabilities response into a resp object,
+ * with a structure as {success: boolean, result: ServiceLayerInfo[] | string}.
+ * 
+ * @param {string} layerBaseUrl The base URL of the WMS/WFS service.
+ * @param {string} serviceType either "WMS" or "WFS"
+ * @returns {Promise<Object>} A promise that resolves to a resp GetCapabilitiesResp object.
+ */
+const getServiceGetCapabilities = async (layerBaseUrl, serviceType) => {
+    const params = {
+        url: layerBaseUrl,
+        service_type: serviceType
+    };
+    return new Promise((resolve, reject) => {
+        socket.emit('get_service_getcapabilities', params, (resp) => {
+            if (resp) {
+                resolve(resp);
+            } else {
+                reject(new Error(`An unknown error occurred while fetching ${serviceType} GetCapabilities from ${layerBaseUrl}.`));
+            }
+        });
+    });
+};
+
+/**
+ * Add a WMS/WFS layerInfo object to MongoDB
+ * 
+ * @returns {Promise<Object>} A promise of allLayers object ({layers: {}, layer_groups: {}}) that resolves if the layer is added successfully,
+ *                            or rejects with an error if the addition fails.
+ * @throws {Error} If the backend response indicates a failure to add the layer.
+ */
+const addServiceLayer = async ({
+    type,
+    layerId,
+    layerDescr,
+    layerUrl,
+    layerName,
+    style,
+    settingtype,
+    projectName,
+    legendUrl,
+    minZoomLevel,
+    groupId
+}) => {
+    const layerInfo = {
+        type: type,
+        id: layerId,
+        description: layerDescr,
+        url: layerUrl,
+        name: layerName,
+        setting_type: settingtype,
+        project_name: projectName,
+        min_zoom_level: minZoomLevel,
+        parent_group_id: groupId,
+    };
+
+    if (type === 'WFS') {
+        layerInfo['style'] = style;
+    }
+    if (type === 'WMS') {
+        layerInfo['legend_url'] = legendUrl;
+    }
+
+    return new Promise((resolve, reject) => {
+        socket.emit('add_service_layer', layerInfo, (allLayers) => {
+            if (allLayers) {
+                resolve(allLayers);
+            } else {
+                reject(new Error(`An unknown error occurred while adding a ${type} layer ${layerName}.`));
+            }
+        });
+    });
+};
+
+const showLayer = async (layerId) => {
+    const layer = globalServiceLayerList.value['layers'][layerId];
+    const type = layer.type ? layer.type : 'WMS';
+
+    if (!layerIsVisible(layerId)) {
+        // Load WFS based on current map bbox
+        if (type === 'WFS') {
+            const bbox = map.getBounds().toBBoxString();
+            const url = constructWfsLayerUrl(layer.url, layer.layer_name, bbox);
+            layer.layer_ref = await loadWfsLayer(
+                layer.layer_name,
+                url,
+                layer.style
+            );
+        }
+
+        if (type === 'WMS' && globalServiceLayerList.value['layers'][layerId].legend_url !== "") {
+            showWmsLegend(layer.legend_url);
+        }
+
+        if (!layer.min_zoom_level || (layer.min_zoom_level && map.getZoom() >= layer.min_zoom_level)) {
+            layer.layer_ref.addTo(map);
+            layer.layer_ref.bringToFront();
+            layer.visible = true;
+            if (layer.opacity !== undefined) {
+                layer.layer_ref.setOpacity(layer.opacity);
+            }
+        }
+
+        addToVisibleLayerList(layer, 0);
+    }
+}
+
+const hideLayer = (layerId) => {
+    removeLayerFromMapAndVisibleLayers(layerId);
+};
+
+/**
+ * Constructs and returns a WFS layer URL
+ */
+const constructWfsLayerUrl = (serviceUrl, layerName, bbox, version = "1.1.0") => {
+  const url = new URL(serviceUrl);
+
+  const params = {
+    service: 'WFS',
+    version: version,
+    request: 'GetFeature',
+    typeName: layerName,
+    outputFormat: 'application/json',
+    srsname: 'EPSG:4326',
+  };
+
+  if (bbox) {
+    params.bbox = `${bbox}`;
+  } else {
+    params.maxFeatures = 0;
+  }
+              
+  Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
+  return url.toString();
+}
+
+/**
+ * Load WFS layer features on the map.
+ */
+const loadWfsLayer = async (layerName, url, style) => {
+  window.show_loader();
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+
+    return L.geoJSON(data, {
+      style: () => (style),
+      // TODO: show more attributes
+      onEachFeature: (feature, layer) => {
+        layer.bindPopup(`<b>Layer:</b> ${layerName}<br><b>ID:</b> ${feature.id}`);
+      }
+    });
+  } catch (error) {
+    console.error(`Error loading WFS [${layerName}]:`, error);
+  } finally {
+    window.hide_loader();
+  }
+};
+
 
 export function useWmsLayers() {
+    // TODO: add some filtering; or remove this fn.
     /**
      * Get the wms layer list.
      */
-    const getWmsLayerList = () => toValue(globalWmsLayerList);
-
-    /**
-     * Fetches and returns the WMS GetCapabilities response into a wmsGetCapabilitiesResp object, 
-     * which has a structure as {success: boolean, result: WmsServiceLayerInfo[] | string}.
-     * 
-     * @param {string} wmsBaseUrl The base URL of the WMS service.
-     * @returns {Promise<Object>} A promise that resolves to a wmsGetCapabilitiesResp object.
-     * @throws {Error} Throws an error if the get_wms_getcapabilities call fails.
-     */
-    const getWmsGetCapabilities = async (wmsBaseUrl) => {
-        const params = {
-            url: wmsBaseUrl
-        };
-        return new Promise((resolve, reject) => {
-            socket.emit('get_wms_getcapabilities', params, (wmsGetCapabilitiesResp) => {
-                if (wmsGetCapabilitiesResp) {
-                    resolve(wmsGetCapabilitiesResp);
-                } else {
-                    reject(new Error(`An unknown error occurred while fetching WMS GetCapabilities ${wmsBaseUrl}.`));
-                }
-            });
-        });
-    };
-
-    /**
-     * Add a WMS layer
-     * 
-     * @returns {Promise<Object>} A promise of allLayers object ({layers: {}, layer_groups: {}}) that resolves if the layer is added successfully,
-     *                            or rejects with an error if the addition fails.
-     * @throws {Error} If the backend response indicates a failure to add the layer.
-     */
-    const addWmsLayer = async (layerId, layerDescr, layerUrl, layerName, legendUrl, layerAttr, minZoomLevel, projectName, settingtype, groupId) => {
-        const wmsLayer = {
-            id: layerId,
-            description: layerDescr,
-            url: layerUrl,
-            name: layerName,
-            setting_type: settingtype,
-            project_name: projectName,
-            legend_url: legendUrl,
-            min_zoom_level: minZoomLevel,
-            parent_group_id: groupId,
-        };
-        return new Promise((resolve, reject) => {
-            socket.emit('add_wms_layer', wmsLayer, (allLayers) => {
-                if (allLayers) {
-                    resolve(allLayers);
-                } else {
-                    reject(new Error(`An unknown error occurred while adding the WMS layer ${layerName}.`));
-                }
-            });
-        });
-    };
+    const getWmsLayerList = () => toValue(globalServiceLayerList);
 
     const updateLayer = (layerId, layerDescr, layerUrl, layerName, legendUrl, layerattr, minZoomLevel) => {
         removeLayerFromMapAndVisibleLayers(layerId);
-        globalWmsLayerList.value['layers'][layerId].layer_ref = null; // make sure map ref gets updated in updateGlobalWmsLayerList
+        globalServiceLayerList.value['layers'][layerId].layer_ref = null; // make sure map ref gets updated in updateGlobalServiceLayerList
         socket.emit('save_wms_layer', {
             id: layerId,
             lyr_info: {
@@ -177,42 +304,20 @@ export function useWmsLayers() {
             }
         }, (allLayers) => {
             allLayers['layers'][layerId].visible = true;
-            updateGlobalWmsLayerList(allLayers, layerId);
-            showWmsLayer(layerId);
+            updateGlobalServiceLayerList(allLayers, layerId);
+            showLayer(layerId);
         });
     };
 
-    const showWmsLayer = (layerId) => {
-        const wms_layer = globalWmsLayerList.value['layers'][layerId];
-        if (!layerIsVisible(layerId)) {
-            if (!wms_layer.min_zoom_level || (wms_layer.min_zoom_level && map.getZoom() >= wms_layer.min_zoom_level)) {
-                wms_layer.layer_ref.addTo(map);
-                wms_layer.layer_ref.bringToFront();
-                wms_layer.visible = true;
-                if (wms_layer.opacity !== undefined) {
-                    wms_layer.layer_ref.setOpacity(wms_layer.opacity);
-                }
-            }
-            if (globalWmsLayerList.value['layers'][layerId].legend_url !== "") {
-                showWmsLegend(wms_layer.legend_url);
-            }
-            addToVisibleLayerList(wms_layer, 0);
-        }
-    };
-
-    const hideWmsLayer = (layerId) => {
-        removeLayerFromMapAndVisibleLayers(layerId);
-    };
-
     const removeWmsLayer = (layerId, parentId) => {
-        socket.emit('remove_wms_layer', {id: layerId, parent_id: parentId}, updateGlobalWmsLayerList);
-        map.removeLayer(globalWmsLayerList.value['layers'][layerId].layer_ref);
+        socket.emit('remove_wms_layer', {id: layerId, parent_id: parentId}, updateGlobalServiceLayerList);
+        map.removeLayer(globalServiceLayerList.value['layers'][layerId].layer_ref);
         removeFromVisibleLayerList(layerId);
     };
 
     const clearWmsLayers = () => {
-        for (const [key, value] of Object.entries(globalWmsLayerList.value['layers'])) {
-            hideWmsLayer(key)
+        for (const [key, value] of Object.entries(globalServiceLayerList.value['layers'])) {
+            hideLayer(key)
         }
     };
 
@@ -238,16 +343,16 @@ export function useWmsLayers() {
     };
 
     const renameWmsLayerGroup = (groupId, name) => {
-        socket.emit('rename_layer_group', {group_id: groupId, group_name: name}, updateGlobalWmsLayerList);
+        socket.emit('rename_layer_group', {group_id: groupId, group_name: name}, updateGlobalServiceLayerList);
     };
 
     const removeWmsLayerGroup = (groupId, parentId) => {
         removeGroupChildrenFromMap(groupId);
-        socket.emit('remove_wms_layer_group', {id: groupId, parent_id: parentId}, updateGlobalWmsLayerList);
+        socket.emit('remove_wms_layer_group', {id: groupId, parent_id: parentId}, updateGlobalServiceLayerList);
     };
 
     const setWmsLayerGroupOpened = (layerGroupId, isOpen) => {
-        globalWmsLayerList.value['layer_groups'][layerGroupId]['opened'] = isOpen;
+        globalServiceLayerList.value['layer_groups'][layerGroupId]['opened'] = isOpen;
     };
 
     /**
@@ -259,10 +364,10 @@ export function useWmsLayers() {
      * @param {string[]} collection The array for collecting nodeId of the layer type.
      */
     const collectLayerNodes = (nodeId, collection) => {
-        if (nodeId in globalWmsLayerList.value['layers']) {
+        if (nodeId in globalServiceLayerList.value['layers']) {
             collection.push(nodeId);
         } else {
-            for (const childId of globalWmsLayerList.value['layer_groups'][nodeId]['child_ids']) {
+            for (const childId of globalServiceLayerList.value['layer_groups'][nodeId]['child_ids']) {
                 collectLayerNodes(childId, collection);
             }
         }
@@ -286,14 +391,14 @@ export function useWmsLayers() {
     };
 
     const setVisibilityWmsLayerGroup = (itemId, isVisible) => {
-        if (itemId in globalWmsLayerList.value['layers']) { // for recursive call
+        if (itemId in globalServiceLayerList.value['layers']) { // for recursive call
             if (isVisible) {
-                showWmsLayer(itemId);
+                showLayer(itemId);
             } else {
-                hideWmsLayer(itemId);
+                hideLayer(itemId);
             }
         } else {
-            for (const childId of globalWmsLayerList.value['layer_groups'][itemId]['child_ids']) {
+            for (const childId of globalServiceLayerList.value['layer_groups'][itemId]['child_ids']) {
                 setVisibilityWmsLayerGroup(childId, isVisible);
             }
         }
@@ -302,22 +407,19 @@ export function useWmsLayers() {
     const moveWmsItem = (itemId, oldParentId, newParentId, position) => {
         socket.emit('move_wms_item', {
             item_id: itemId, old_parent_id: oldParentId, new_parent_id: newParentId, position: position
-        }, updateGlobalWmsLayerList);
+        }, updateGlobalServiceLayerList);
     };
 
     const copyWmsItem = (itemId, newParentId, position) => {
         socket.emit('copy_wms_item', {
             item_id: itemId, new_parent_id: newParentId, position: position
-        }, updateGlobalWmsLayerList);
+        }, updateGlobalServiceLayerList);
     };
 
     return {
         clearWmsLayers,
         getWmsLayerList,
-        addWmsLayer,
         updateLayer,
-        showWmsLayer,
-        hideWmsLayer,
         removeWmsLayer,
         renameWmsLayerGroup,
         addWmsLayerGroup,
@@ -327,16 +429,15 @@ export function useWmsLayers() {
         setVisibilityWmsLayerGroup: setVisibilityWmsLayerGroup,
         moveWmsItem,
         copyWmsItem,
-        getWmsGetCapabilities,
     };
 }
 
 const removeLayerFromMapAndVisibleLayers = (layerId) => {
-    map.removeLayer(globalWmsLayerList.value['layers'][layerId].layer_ref);
-    if (globalWmsLayerList.value['layers'][layerId].legend_url !== "") {
+    map.removeLayer(globalServiceLayerList.value['layers'][layerId].layer_ref);
+    if (globalServiceLayerList.value['layers'][layerId].legend_url !== "") {
         removeWmsLegend();
     }
-    globalWmsLayerList.value['layers'][layerId].visible = false;
+    globalServiceLayerList.value['layers'][layerId].visible = false;
     removeFromVisibleLayerList(layerId);
 };
 
@@ -370,18 +471,23 @@ const removeWmsLegend = () => {
 };
 
 const removeGroupChildrenFromMap = (layerGroupId) => {
-    const group = globalWmsLayerList.value['layer_groups'][layerGroupId];
+    const group = globalServiceLayerList.value['layer_groups'][layerGroupId];
     for (const childId of group['child_ids']) {
-        if (childId in globalWmsLayerList.value['layer_groups']) {
+        if (childId in globalServiceLayerList.value['layer_groups']) {
             removeGroupChildrenFromMap(childId);
-        } else if (childId in globalWmsLayerList.value['layers']) {
-            map.removeLayer(globalWmsLayerList.value['layers'][childId].layer_ref);
+        } else if (childId in globalServiceLayerList.value['layers']) {
+            map.removeLayer(globalServiceLayerList.value['layers'][childId].layer_ref);
             removeFromVisibleLayerList(childId);
         }
     }
 };
 
 export {
-    getWmsServiceBaseUrl,
-    updateGlobalWmsLayerList
+    getServiceBaseUrl,
+    getServiceGetCapabilities,
+    addServiceLayer,
+    updateGlobalServiceLayerList,
+    constructWfsLayerUrl,
+    showLayer,
+    hideLayer
 };

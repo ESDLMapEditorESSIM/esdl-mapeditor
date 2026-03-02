@@ -19,7 +19,7 @@
  *
  */
 import {ref, toValue} from "vue";
-import {useWmsLayers, updateGlobalWmsLayerList} from "./wmsLayers";
+import {constructWfsLayerUrl, useWmsLayers, updateGlobalServiceLayerList} from "./wmsLayers";
 
 const {getWmsLayerList} = useWmsLayers();
 const globalVisibleLayerList = ref([]);
@@ -153,23 +153,59 @@ const showWmsLayerFeaturePopup = (resp) => {
     }
 };
 
+/**
+ * The callback function can be used to update WFS layer features 
+ * when 'moveend' event is triggered. 
+ */
+const updateWfsLayersOnBboxChange = async () => {
+  const visibleLayers = useVisibleLayers().getVisibleLayerList();
+  const bbox = map.getBounds().toBBoxString();
+
+  // Filter only for WFS layers
+  const wfsLayers = visibleLayers.filter(l => l.type !== undefined && l.type === 'WFS');
+
+  for (const layer of wfsLayers) {
+    const url = constructWfsLayerUrl(layer.url, layer.layer_name, bbox);
+    
+    try {
+      window.show_loader();
+
+      const response = await fetch(url);
+      const data = await response.json();
+
+      // Clear the old data from the existing layer reference
+      if (layer.layer_ref) {
+        layer.layer_ref.clearLayers(); // Removes old features
+        layer.layer_ref.addData(data); // Adds new ones from the new BBOX
+      }
+    } catch (e) {
+      console.error("Failed to update BBOX for", layer.layer_name, e);
+    } finally {
+      window.hide_loader();
+    }
+  }
+};
+
 map.on("click", queryWmsLayersFeaturesOnClick);
 
 map.on('moveend', function () {
-    for (const visibleLayer of globalVisibleLayerList.value) {
-        const wms_layer = getWmsLayerList()['layers'][visibleLayer.id];
-        if (wms_layer.min_zoom_level) {
-            if (map.getZoom() >= wms_layer.min_zoom_level) {
-                if (!map.hasLayer(wms_layer.layer_ref)) {
-                    wms_layer.layer_ref.addTo(map);
+    // Show or hide layer based on layer zoom level (if specified)
+    const visibleLayers = useVisibleLayers().getVisibleLayerList();
+    visibleLayers.forEach((layer) => {
+        if (layer.min_zoom_level) {
+            if (map.getZoom() >= layer.min_zoom_level) {
+                if (!map.hasLayer(layer.layer_ref)) {
+                    layer.layer_ref.addTo(map);
                 }
             } else {
-                if (map.hasLayer(wms_layer.layer_ref)) {
-                    map.removeLayer(wms_layer.layer_ref);
+                if (map.hasLayer(layer.layer_ref)) {
+                    map.removeLayer(layer.layer_ref);
                 }
             }
         }
-    }
+    })
+    // TODO: stop loading at a certain zoom level?
+    updateWfsLayersOnBboxChange();
 })
 
 export function useVisibleLayers() {
@@ -249,8 +285,20 @@ export function useVisibleLayers() {
      */
     const adjustVisibleLayerOpacity = (id, opacity) => {
         const targetLayer = getVisibleLayerById(id);
+        const type = targetLayer.type ? targetLayer.type : "WMS";
         if (targetLayer && 0 <= opacity <= 1) {
-            targetLayer.layer_ref.setOpacity(opacity);
+            if (type === "WMS") {
+                targetLayer.layer_ref.setOpacity(opacity);
+            } else if (type === "WFS") {
+                targetLayer.layer_ref.setStyle({
+                    opacity: opacity,
+                    fillOpacity: opacity * 0.3
+                });
+                // Update the stored style
+                targetLayer.style.opacity = opacity;
+            } else {
+                console.error(`Unsupported type ${type}`);
+            }
         }
     };
 
@@ -261,16 +309,23 @@ export function useVisibleLayers() {
      */
     const saveVisibleLayerOpacitySetting = (id) => {
         const targetLayer = getVisibleLayerById(id);
+        const type = targetLayer.type ? targetLayer.type : "WMS";
         if (targetLayer) {
-            const opacity = targetLayer.layer_ref.options.opacity;
+            let opacity;
+            if (type === "WMS") {
+                opacity = targetLayer.layer_ref.options.opacity;
+            } else if (type === "WFS") {
+                opacity = targetLayer.style?.opacity !== undefined ? targetLayer.style.opacity : 1.0;
+            }
+
             if (id && opacity) {
                 const params = {layer_id: id, opacity: opacity};
-                // After the "save_wms_layer_opacity_setting" event, 
-                // calling updateGlobalWmsLayerList to ensure the latest layers settings are reflected in the app.
-                socket.emit("save_wms_layer_opacity_setting", params, updateGlobalWmsLayerList);
+                // After the "save_layer_opacity_setting" event, 
+                // calling updateGlobalServiceLayerList to ensure the latest layers settings are reflected in the app.
+                socket.emit("save_layer_opacity_setting", params, updateGlobalServiceLayerList);
             }
             else {
-                console.error(`Error whiling saving WMS layer opacity setting to the settings_storage with id: ${id}, opacity: ${opacity}`);
+                console.error(`Error whiling saving layer opacity setting to the settings_storage with id: ${id}, opacity: ${opacity}`);
             }
         }
     };
