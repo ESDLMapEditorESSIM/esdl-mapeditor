@@ -535,14 +535,16 @@ class ESDLServices:
             message = None
             backend_action = {"force_update_es_id": es.id}
 
-            if "show_asset_feedback" in result_config and result_config["show_asset_feedback"]:
+            if "external_model_asset_feedback" in result_config and result_config["external_model_asset_feedback"]:
                 model_run_data = self.models_storage.get_model_run(state_params["run_id"])
                 if ESDL_FEEDBACK in model_run_data:
                     feedback = model_run_data[ESDL_FEEDBACK]
                 else:
                     feedback = {}
-
-                message = {"asset_feedback": feedback}
+                asset_results_dict = dict()
+                for sr in feedback:
+                    asset_results_dict[sr["assetID"]] = sr["messages"]
+                message = {"asset_feedback": asset_results_dict}
                 backend_action["run_after_esdl_loaded"] = True
 
             if "animation" in result_config:
