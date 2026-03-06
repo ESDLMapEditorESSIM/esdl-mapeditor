@@ -15,11 +15,11 @@
  */
 
 import {ref} from "vue";
-import {useWmsLayers} from "@/composables/wmsLayers";
+import {useWmsLayers, showLayer} from "@/composables/wmsLayers";
 import {useEsdlAreas} from "@/composables/esdlAreas";
 import {useEsdlBuildings} from "./esdlBuildings";
 
-const { clearWmsLayers, showLayer } = useWmsLayers();
+const { clearWmsLayers } = useWmsLayers();
 const { esdlAreas, removeAreaContextMenuItem } = useEsdlAreas();
 const { addBuildingContextMenuItem, removeBuildingContextMenuItem } = useEsdlBuildings();
 
@@ -102,8 +102,9 @@ export function useActivityContext() {
                             window.show_service_settings(foundServiceIdx)
                         });
                         enabledBuildingEsdlServices.value.push(foundService);
+                    } else if (contextService.location === "wfs_context_menu") {
+                        console.log("TODO: Implement!!!")
                     }
-
                 }
             }
             // Update the context menus for the services.

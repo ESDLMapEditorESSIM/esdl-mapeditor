@@ -272,6 +272,8 @@ const loadWfsLayer = async (layerName, url, style) => {
       // TODO: show more attributes
       onEachFeature: (feature, layer) => {
         layer.bindPopup(`<b>Layer:</b> ${layerName}<br><b>ID:</b> ${feature.id}`);
+
+        window.set_wfs_handlers(layer);
       }
     });
   } catch (error) {

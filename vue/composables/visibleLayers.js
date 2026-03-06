@@ -80,6 +80,10 @@ const constructWmsLayerGetFeatureInfoUrl = (wmsServiceUrl, layerName, evLatLng) 
  */
 const queryWmsLayersFeaturesOnClick = (event) => {
     const visibleLayers = useVisibleLayers().getVisibleLayerList();
+
+    // TODO: filter WFS layers
+    console.log(visibleLayers);
+
     if (visibleLayers.length) {
         const layersRequestInfo = visibleLayers.map((layer) => {
             const serviceUrl = layer.url;
