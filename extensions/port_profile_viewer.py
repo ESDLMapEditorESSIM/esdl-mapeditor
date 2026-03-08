@@ -427,7 +427,7 @@ def _get_profile_metadata(es_id: str, profile_id: str) -> dict:
         profile_name = profile.field
     else:
         profile_name = "Unknown"
-    qau_unit = qau_description.split(" ")[-1]
+    qau_unit = qau_description.split(" ")[-1] if qau_description else "Unknown"
     displayed_name = f"{profile_name} [{qau_unit}]{meta_suffix}"
 
     return {
