@@ -11,7 +11,7 @@ from pyecore.ecore import EObject, EReference, ECollection
 import esdl.processing.ESDLEcore as ESDLEcore
 import src.log as log
 from esdl import esdl
-from esdl.processing.ESDLQuantityAndUnits import qau_to_string
+from esdl.units.parser import qau_to_string
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from extensions.session_manager import get_session, get_project_manager
 from src.process_es_area_bld import get_area_id_from_mapeditor_id
