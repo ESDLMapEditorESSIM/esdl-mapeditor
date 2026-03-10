@@ -308,28 +308,28 @@ esdl_config = {
         },
         {
             "id": "x12c4a2b-8eee-46f7-a225-87c5f85e666a",
-            "name": "ESSIM",
-            "explanation": "Run, view and manage ESSIM calculations",
+            "name": "Essim",
+            "explanation": "Run, view and manage Essim calculations",
             "type": "vueworkflow",
             "hide_step_history": True,
             "workflow": [
                 {
-                    "id": "base_steps_with_table",
+                    "id": "essim_base_steps_with_table",
                     "type": "composite",
                     "config": {
                         "step_ids": [
-                            "select_name_and_time_step",
-                            "select_simulation_period",
-                            "select_custom_period",
-                            "select_kpis",
-                            "start_run",
-                            "runs_table",
+                            "essim_select_name_and_time_step",
+                            "essim_select_simulation_period",
+                            "essim_select_custom_period",
+                            "essim_select_kpis",
+                            "essim_start_run",
+                            "essim_runs_table",
                         ]
                     },
-                    "next_step": "base_steps_with_table",
+                    "next_step": "essim_base_steps_with_table",
                 },
                 {
-                    "id": "select_name_and_time_step",
+                    "id": "essim_select_name_and_time_step",
                     "name": "New Run",
                     "type": "json-form2",
                     "data": {
@@ -359,13 +359,13 @@ esdl_config = {
                         },
                         "to_state": {},
                     },
-                    "next_step": "base_steps_with_table",
+                    "next_step": "essim_base_steps_with_table",
                     "next_step_trigger": "input_change",
                 },
                 {
-                    "id": "select_simulation_period",
+                    "id": "essim_select_simulation_period",
                     "name": "",
-                    "description": "Please select the simulation period:",
+                    "description": "Select the simulation period:",
                     "type": "select",
                     "config": {
                         "placeholder": "Select simulation period",
@@ -461,11 +461,11 @@ esdl_config = {
                         "to_state": {},
                         "output_wrapper_variable": "selected_simulation_period",
                     },
-                    "next_step": "base_steps_with_table",
+                    "next_step": "essim_base_steps_with_table",
                     "next_step_trigger": "input_change",
                 },
                 {
-                    "id": "select_custom_period",
+                    "id": "essim_select_custom_period",
                     "name": "",
                     "type": "json-form2",
                     "config": {"data_from_variable": "selected_simulation_period"},
@@ -473,13 +473,13 @@ esdl_config = {
                         "from_state": {"selected_simulation_period": "selected_simulation_period"},
                         "to_state": {},
                     },
-                    "next_step": "base_steps_with_table",
+                    "next_step": "essim_base_steps_with_table",
                     "next_step_trigger": "input_change",
                 },
                 {
-                    "id": "select_kpis",
+                    "id": "essim_select_kpis",
                     "name": "",
-                    "description": "Please select the KPIs that you want to be calculated after the simulation:",
+                    "description": "Select the KPIs that you want to be calculated after the simulation:",
                     "type": "select",
                     "config": {
                         "placeholder": "Select KPI modules",
@@ -488,15 +488,15 @@ esdl_config = {
                         "value_field": "id",
                     },
                     "data": {
-                        "from_url": {"url": f"{ESSIM_URL}/essim/simulation/kpiModules/"},
+                        "from_url": {"url": "http://essim-engine:8112/essim/simulation/kpiModules/"},
                         "to_state": {},
                         "output_wrapper_variable": "selected_kpis",
                     },
-                    "next_step": "base_steps_with_table",
+                    "next_step": "essim_base_steps_with_table",
                     "next_step_trigger": "input_change",
                 },
                 {
-                    "id": "start_run",
+                    "id": "essim_start_run",
                     "name": "",
                     "description": "",
                     "type": "esdl-service",
@@ -513,7 +513,6 @@ esdl_config = {
                         "id": "74c9d1a2-c92a-46ed-a7e4-9931971cdd28",
                         "description": "",
                         "name": "",
-                        "button_label": "Run ESSIM Calculation",
                         "headers": {
                             "User-Agent": "ESDL Mapeditor/1.0",
                             "Accept": "application/json",
@@ -554,7 +553,7 @@ esdl_config = {
                                 "value": "http://influxdb:8086",
                                 "location": "body",
                             },
-                            {"name": "user", "description": "ESSIM user", "value": "mapeditor", "location": "body"},
+                            {"name": "user", "description": "Essim user", "value": "mapeditor", "location": "body"},
                         ],
                         "body": "json_text",
                         "body_config": {
@@ -577,15 +576,15 @@ esdl_config = {
                         "state_params": True,
                     },
                     "button_text": "Start model run",
-                    "next_step": "retrieve_run_progress_results",
+                    "next_step": "essim_retrieve_run_progress_status",
                     "workflow_engine": {
                         "run_name": "state_params.run_name",
-                        "workflow_engine_next_step": "retrieve_run_progress_results",
+                        "workflow_engine_next_step": "essim_retrieve_run_progress_status",
                     },
                 },
                 {
-                    "id": "retrieve_run_progress_results",
-                    "monitor_name": "Running ESSIM Calculation...",
+                    "id": "essim_retrieve_run_progress_status",
+                    "monitor_name": "Running Essim Calculation...",
                     "type": "workflow-engine-monitor",
                     "config": {
                         "model_run_result_polling": {
@@ -601,7 +600,6 @@ esdl_config = {
                                         "simRunDate": "simRunDate",
                                         "dashboardURL": "dashboardURL",
                                     },
-                                    "esdl_encoding": "base64_encoded",
                                     "status_mapping": {
                                         "SUBMITTED": ["CREATED"],
                                         "RUNNING": ["RUNNING"],
@@ -612,24 +610,64 @@ esdl_config = {
                                 }
                             ],
                             "retry_interval_seconds": 2,
-                            "maximum_wait_seconds": 3600,
+                            "maximum_wait_seconds": 86400,
                         }
+                    },
+                    "workflow_engine": {"workflow_engine_next_step": "essim_retrieve_run_results"},
+                },
+                {
+                    "id": "essim_retrieve_run_results",
+                    "monitor_name": "Getting Essim Results...",
+                    "type": "workflow-engine-monitor",
+                    "config": {
+                        "model_run_result_polling": {
+                            "query_list": [
+                                {
+                                    "url": f"{ESSIM_URL}/essim/simulation/<MODEL_JOB_ID>/ESDLWithProfiles",
+                                    "response_mapping": {"output_esdl": "esdl"},
+                                    "esdl_encoding": "base64_encoded",
+                                    "stop_query_on": {
+                                        "key": "output_esdl",
+                                        "condition": "not_equal",
+                                        "value": None,
+                                        "new_status": "SUCCEEDED",
+                                    },
+                                }
+                            ],
+                            "retry_interval_seconds": 2,
+                            "maximum_wait_seconds": 600,
+                        }
+                    },
+                    "workflow_engine": {"workflow_engine_next_step": "essim_show_run_results"},
+                },
+                {
+                    "id": "essim_show_run_results",
+                    "monitor_name": "Essim Result",
+                    "type": "workflow-engine-monitor",
+                    "config": {
+                        "model_run_show_results": [
+                            {"description": "run name", "value_database_key": "run_name"},
+                            {"value_database_key": "model_specific_output.dashboardURL", "link_text": "Open dashboard"},
+                        ]
                     },
                 },
                 {
-                    "id": "runs_table",
+                    "id": "essim_runs_table",
                     "name": "Results overview",
                     "description": "",
                     "type": "table-external-model",
                     "config": {
-                        "external_model": "essim",
-                        "model_short_name": "ESSIM",
+                        "model_short_name": "essim",
                         "has_feedback_messages": False,
+                        "result_animation": {
+                            "filter_on_tag": {"tag_name": "simulationRun", "value_database_key": "model_job_id"}
+                        },
                         "result_external_link": {
                             "description": "Open Dashboard",
                             "value_database_key": "model_specific_output.dashboardURL",
                         },
                         "delete_result_url": "",
+                        "load_input_esdl": True,
                         "time_series_xlsx_download": {
                             "filter_on_tag": {"tag_name": "simulationRun", "value_database_key": "model_job_id"},
                             "esdl_object_name_field": "assetName",

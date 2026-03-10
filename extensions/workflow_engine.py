@@ -135,10 +135,11 @@ class WorkflowStep:
             for query_config in config["query_list"]:
                 # update values with query response
                 if query_config["url"] not in queries_finished:
-                    query_error_message, query_finished = self.update_values_from_query(updated_run_values, query_config)
+                    query_error_message, query_finished = self.update_values_from_query(
+                        updated_run_values, query_config
+                    )
                     queries_error_message += query_error_message
                     if query_finished and query_config["url"] not in queries_finished:
-                        logger.warning(f"query finished: {query_config['url']}")
                         queries_finished.append(query_config["url"])
 
             if queries_error_message:  # allow a number of errors (temporarily unavailable api)
@@ -220,8 +221,8 @@ class WorkflowStep:
                         return False
                     else:
                         logger.warning(
-                            f"Workflow engine sequence for user '{self.sequence_data.user_email}' finished"
-                            f" with status '{updated_run_values[STATUS]}': sequence '{self.sequence_data.run_id}' aborted."
+                            f"Workflow engine sequence for user '{self.sequence_data.user_email}' finished with status"
+                            f" '{updated_run_values[STATUS]}': sequence '{self.sequence_data.run_id}' aborted."
                         )
                         return False
                 elif nr_of_retries * retry_interval_seconds > maximum_wait_seconds:
@@ -288,6 +289,7 @@ class WorkflowStep:
                     for key, model_key in query_config["model_specific_response_mapping"].items():
                         resp_value = get_nested_dict_value(resp_json, model_key)
                         if resp_value:
+                            # nested dot notation for mongo db update
                             updated_values[f"{MODEL_SPECIFIC_OUTPUT}.{key}"] = self.parse_response_key(
                                 key, resp_value, query_config
                             )
@@ -333,7 +335,7 @@ class WorkflowStep:
         return error_message, query_finished
 
     @staticmethod
-    def parse_response_key(key, value, query_config) -> any:
+    def parse_response_key(key, value, query_config) -> str | float | None:
         if key == STATUS:
             for status, model_status_values in query_config["status_mapping"].items():
                 if value in model_status_values:
