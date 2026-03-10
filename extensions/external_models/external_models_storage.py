@@ -59,6 +59,8 @@ class RunStatus(Enum):
     SUBMITTED = "SUBMITTED"
     RUNNING = "RUNNING"
     SUCCEEDED = "SUCCEEDED"
+    SUCC_PEND = "SUCC_PEND"
+    SUCC_WARN = "SUCC_WARN"
     CANCELLED = "CANCELLED"
     ERROR = "ERROR"
     NEED_INPUT = "NEED_INPUT"
@@ -124,7 +126,7 @@ class ExternalModelsStorage:
             RUN_NAME: run_name,
             INPUT_ESDL: input_esdl,
             MODEL_SPECIFIC_INPUT: run_input_data,
-            MODEL_SPECIFIC_OUTPUT: None,
+            MODEL_SPECIFIC_OUTPUT: {},
             STATUS: status.value,
         }
         if logs:

@@ -199,10 +199,16 @@ const getTagColor = (text) => {
   let up = text.toUpperCase();
   if (up === "FINISHED" || up === "SUCCESS" || up === "SUCCEEDED" || up === "OK" || up === "READY") {
     return "green";
-  } else if (up === "REGISTERED" || up === "INITIALIZED" || up === "SUBMITTED") {
-    return "blue";
-  } else if (up === "RUNNING" || up === "IN_PROGRESS" || up === "CALCULATING") {
+  } else if (up === "SUCC_PEND") {
+    return "cyan";
+  } else if (up === "SUCC_WARN") {
     return "orange";
+  } else if (up === "NEED_INPUT") {
+    return "purple";
+  } else if (up === "REGISTERED" || up === "INITIALIZED" || up === "SUBMITTED") {
+    return "default";
+  } else if (up === "RUNNING" || up === "IN_PROGRESS" || up === "CALCULATING") {
+    return "blue";
   } else if (up === "ERROR" || up === "FAILED") {
     return "red";
   } else {
