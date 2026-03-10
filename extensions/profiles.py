@@ -36,14 +36,18 @@ from urllib.parse import urlparse
 from dataclasses import dataclass
 
 
+import src.esdl_config as esdl_config
 import src.log as log
 import src.settings as settings
 from esdl import esdl
+from esdl.processing.ESDLQuantityAndUnits import build_qau_from_dict, get_or_create_esi_qau
+from esdl.profiles.data_configurations.credentials import Credentials
 from esdl.profiles.influxdbprofilemanager import ConnectionSettings, InfluxDBProfileManager
 from esdl.profiles.datatableprofilemanager import DataTableProfileManager
+from esdl.units.parser import qau_to_string
 from esdlproject.ProjectManager import load_external_string
 from extensions.panel_service import create_panel, get_panel_service_datasource
-from extensions.profile_server import ProfileServerTypeEnum, InfluxDBConnectionSettings, PostgreSQLConnectionSettings, InfluxDBServer
+from extensions.profile_server import ProfileServerTypeEnum, InfluxDBConnectionSettings, PostgreSQLConnectionSettings, InfluxDBServer, PostgreSQLServer
 from extensions.session_manager import get_session, get_project_manager
 from extensions.settings_storage import SettingType, SettingsStorage
 from src.edr_client import EDRClient
@@ -1755,8 +1759,8 @@ def _convert_qau_obj_into_profile_qau(es_id: str, qau_obj: dict):
             # check if predefined qau is already present in the ESDL
             qau = pm.get_by_id(es_id, predefined_qau_id)
         except KeyError:
-            qau = ESDLQuantityAndUnits.build_qau_from_dict(qau_obj)
-            esi_qau = ESDLQuantityAndUnits.get_or_create_esi_qau(pm, es_id)
+            qau = build_qau_from_dict(qau_obj)
+            esi_qau = get_or_create_esi_qau(pm, es_id)
             esi_qau.quantityAndUnit.append(qau)
             pm.add_object_to_dict(es_id, qau)
 
