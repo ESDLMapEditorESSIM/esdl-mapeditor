@@ -146,7 +146,7 @@ class ESDLServices:
                 uri = StringURI("obj.esdl")
                 rset = ResourceSet()
                 resource = rset.create_resource(uri)
-                resource.append(obj.deepcopy())
+                resource.append(obj.deepcopy(copy_xrefs=False))
                 resource.save()
                 obj_esdl_string = uri.getvalue()
                 return {"esdl": obj_esdl_string}
