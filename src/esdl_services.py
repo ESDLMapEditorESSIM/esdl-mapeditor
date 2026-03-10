@@ -27,7 +27,7 @@ from requests import Response
 
 import src.esdl_config as esdl_config
 import src.log as log
-from esdl import esdl
+from esdl import esdl, Profiles
 from esdl.processing.string_uri import StringURI
 from esdl.undo import UndoRedoCommandStack
 from esdl.undo_wrapper import undo_record_changes
@@ -897,6 +897,8 @@ class ESDLServices:
     ) -> Tuple[bool, str | dict | None, dict | None]:
         """Apply an ESDL result and build backend actions."""
         variant, parse_info = pm.add_energy_system(StringURI(service["name"], esdl_response))
+        pm.set_active_variant(variant)
+        update_visualization_options(pm.get_active_energy_system())
         # TODO deal with parse_info?
         es = pm.get_energy_system(variant)
 
