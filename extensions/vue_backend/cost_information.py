@@ -19,7 +19,7 @@ from pyecore.ecore import EReference
 
 import src.log as log
 from esdl import esdl
-from esdl.processing.ESDLQuantityAndUnits import unit_to_string
+from esdl.units.parser import unit_to_string
 from extensions.session_manager import get_session, get_project_manager
 from utils.utils import str2float, camelCaseToWords
 

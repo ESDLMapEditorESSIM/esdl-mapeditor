@@ -253,6 +253,15 @@ function set_marker_handlers(marker) {
             }
 
             marker.options.contextmenuItems.push({
+                text: 'Set port profile',
+                icon: 'icons/Graph.png',
+                callback: function(e) {
+                    const es_id = e.relatedTarget?.esid;
+                    window.activate_port_profile_editor(es_id, asset_id)
+                }
+            });
+
+            marker.options.contextmenuItems.push({
                 text: 'Set constraint',
                 icon: 'icons/Chain.png',
                 callback: function() {
@@ -486,6 +495,14 @@ function set_line_handlers(line) {
     //         callback: function (e) { connect_asset(line_id, port_id); }
     //     });
     // }
+
+    line.options.contextmenuItems.push({
+        text: 'Set constraint',
+        icon: 'icons/Chain.png',
+        callback: function() {
+            window.activate_asset_constraint(line_id)
+        }
+    });
 
     // line.options.contextmenuItems.push('-');
     line.options.contextmenuItems.push({

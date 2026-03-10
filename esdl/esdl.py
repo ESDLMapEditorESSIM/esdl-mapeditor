@@ -2024,7 +2024,7 @@ class AbstractGroupMember(EObject, metaclass=MetaEClass):
 class AbstractDataConfiguration(EObject, metaclass=MetaEClass):
     """Defines a data configuration (a file or database configuration) with a name and ID. ID can be used to match or override specific settings of a DatabaseConfiguration in the client."""
     name = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
-    id = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    id = EAttribute(eType=EString, unique=True, derived=False, changeable=True, iD=True)
 
     def __init__(self, *, name=None, id=None):
         # if kwargs:
@@ -2041,7 +2041,7 @@ class AbstractDataConfiguration(EObject, metaclass=MetaEClass):
 
 class DataConfigurations(EObject, metaclass=MetaEClass):
     """Defines a list of configurations to connect to data tables stored in databases or files for retrieving profile information. E.g. when profiles are stored in a relational database, a DatabaseConfiguration can be used to point DataTableProfiles to a specific database or file."""
-    id = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    id = EAttribute(eType=EString, unique=True, derived=False, changeable=True, iD=True)
     name = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     description = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     configurations = EReference(ordered=True, unique=True,
@@ -3839,6 +3839,22 @@ class ProfileConstraint(Constraint):
             self.maximum = maximum
 
 
+class PipeDiameterConstraint(Constraint):
+
+    minimum = EAttribute(eType=PipeDiameterEnum, unique=True, derived=False, changeable=True)
+    maximum = EAttribute(eType=PipeDiameterEnum, unique=True, derived=False, changeable=True)
+
+    def __init__(self, *, minimum=None, maximum=None, **kwargs):
+
+        super().__init__(**kwargs)
+
+        if minimum is not None:
+            self.minimum = minimum
+
+        if maximum is not None:
+            self.maximum = maximum
+
+
 @abstract
 class EnergyAsset(ConnectableAsset):
     """An abstract class that describes a connectable Asset using ports. EnergyAssets main subclasses contain the 5 capability type: Producer, Consumer, Storage, Conversion and Transport """
@@ -5115,12 +5131,13 @@ class GeothermalSource(HeatProducer):
                                       unique=True, derived=False, changeable=True)
     COP = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
     aquiferTemperature = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
-    flowRate = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
+    maximumFlowRate = EAttribute(eType=EDouble, unique=True,
+                                 derived=False, changeable=True, default_value=0.0)
     pumpPower = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
     powerFactor = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
     geothermalPotential = EReference(ordered=True, unique=True, containment=False, derived=False)
 
-    def __init__(self, *, wellDepth=None, geothermalSourceType=None, COP=None, aquiferTemperature=None, flowRate=None, pumpPower=None, geothermalPotential=None, powerFactor=None, **kwargs):
+    def __init__(self, *, wellDepth=None, geothermalSourceType=None, COP=None, aquiferTemperature=None, maximumFlowRate=None, pumpPower=None, geothermalPotential=None, powerFactor=None, **kwargs):
 
         super().__init__(**kwargs)
 
@@ -5136,8 +5153,8 @@ class GeothermalSource(HeatProducer):
         if aquiferTemperature is not None:
             self.aquiferTemperature = aquiferTemperature
 
-        if flowRate is not None:
-            self.flowRate = flowRate
+        if maximumFlowRate is not None:
+            self.maximumFlowRate = maximumFlowRate
 
         if pumpPower is not None:
             self.pumpPower = pumpPower
@@ -5622,8 +5639,9 @@ class ATES(HeatStorage):
     salinity = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
     wellCasingSize = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
     wellDistance = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
+    maximumFlowRate = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
 
-    def __init__(self, *, aquiferTopDepth=None, aquiferThickness=None, aquiferMidTemperature=None, aquiferNetToGross=None, aquiferPorosity=None, aquiferPermeability=None, aquiferAnisotropy=None, salinity=None, wellCasingSize=None, wellDistance=None, **kwargs):
+    def __init__(self, *, aquiferTopDepth=None, aquiferThickness=None, aquiferMidTemperature=None, aquiferNetToGross=None, aquiferPorosity=None, aquiferPermeability=None, aquiferAnisotropy=None, salinity=None, wellCasingSize=None, wellDistance=None, maximumFlowRate=None, **kwargs):
 
         super().__init__(**kwargs)
 
@@ -5656,6 +5674,9 @@ class ATES(HeatStorage):
 
         if wellDistance is not None:
             self.wellDistance = wellDistance
+
+        if maximumFlowRate is not None:
+            self.maximumFlowRate = maximumFlowRate
 
 
 class ElectricBoiler(AbstractBasicConversion):

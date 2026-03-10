@@ -12,7 +12,15 @@
 #  Manager:
 #      TNO
 
+from typing import Union, Type
+
+from pyecore.ecore import EObject, EClass, MetaEClass
+
 from esdl import esdl
+from esdl.processing.EcoreDocumentation import EcoreDocumentation
+
+__esdl_ecore_documentation = None
+
 
 """
 Convert between ESDL quantities and units, e.g. MW to kW or EUR/kW to MEUR/GW 
@@ -164,7 +172,7 @@ def equals(base_unit: esdl.QuantityAndUnitType, other: esdl.QuantityAndUnitType)
     """Checks if two units are equal based on physical quantity, multiplier, perMultiplier and perUnit attributes"""
     if base_unit.unit == other.unit and \
             base_unit.multiplier == other.multiplier and \
-            base_unit.perUnit == other.per_unit and \
+            base_unit.perUnit == other.perUnit and \
             base_unit.perMultiplier == other.perMultiplier and \
             base_unit.physicalQuantity == other.physicalQuantity:
         return True
@@ -242,7 +250,9 @@ unit_mapping = {
     esdl.UnitEnum.WATTHOUR: {esdl.UnitEnum.JOULE: {'type': 'MULTIPLY', 'value': 3600.0}},
     esdl.UnitEnum.JOULE: {esdl.UnitEnum.WATTHOUR: {'type': 'MULTIPLY', 'value': 1.0/3600.0}},
     esdl.UnitEnum.DEGREES_CELSIUS: {esdl.UnitEnum.KELVIN: {'type': 'ADDITION', 'value': 273.15}},
-    esdl.UnitEnum.KELVIN: {esdl.UnitEnum.DEGREES_CELSIUS: {'type': 'ADDITION', 'value': -273.15}}
+    esdl.UnitEnum.KELVIN: {esdl.UnitEnum.DEGREES_CELSIUS: {'type': 'ADDITION', 'value': -273.15}},
+    esdl.UnitEnum.TONNE: {esdl.UnitEnum.GRAM: {'type': 'MULTIPLY', 'value': 1E6}},
+    esdl.UnitEnum.GRAM: {esdl.UnitEnum.TONNE: {'type': 'MULTIPLY', 'value': 1E-6}},
 }
 
 
@@ -273,3 +283,28 @@ class UnitException(Exception):
     """Thrown when two esdl.QuantityAndUnitTypes can not be converted"""
     pass
 
+
+
+def get_attribute_unit(esdl_class: Union[EClass, EObject, Type, str], attribute: str) -> str:
+    """
+    Retrieves the unit defined in the ESDL ecore schema for a specific attribute
+
+    example: get_attribute_unit("PowerPlant", "power"), or
+             get_attribute_unit(esdl.PowerPlant, "power"), or
+             get_attribute_unit(myPowerPlant, "power")
+
+    :param esdl_class: the ESDL class (as string, ESDL class or ESDL Object)
+    :param attribute: string describing the attribute of the esdl_class
+    :return: a string with the unit (e.g. W, m, years)
+    """
+    global __esdl_ecore_documentation
+    if __esdl_ecore_documentation is None:
+        __esdl_ecore_documentation = EcoreDocumentation()
+    esdl_class_str = esdl_class
+    if isinstance(esdl_class, EObject):
+        # noinspection PyUnresolvedReferences
+        esdl_class_str = esdl_class.eClass.name
+    elif isinstance(esdl_class, MetaEClass):
+        # noinspection PyUnresolvedReferences
+        esdl_class_str = esdl_class.eClass.name
+    return __esdl_ecore_documentation.get_unit(className=esdl_class_str, attributeName=attribute)

@@ -3,9 +3,9 @@ from typing import TypedDict, Literal, List, Optional
 
 
 class ConstraintType(Enum):
-    PROFILE = "Profile constraint"
-    RANGED = "Ranged constraint"
-
+    PROFILE = "ProfileConstraint"
+    RANGED = "RangedConstraint"
+    PIPEDIAMETER = "PipeDiameterConstraint"
 
 class ProfileClass(Enum):
     INFLUXDB = "InfluxDBProfile"
@@ -44,3 +44,9 @@ class RangeMsg(TypedDict):
 class RangedConstraintMsg(ConstraintBase):
     type: Literal[ConstraintType.RANGED]
     range: RangeMsg
+
+
+class PipeDiameterConstraintMsg(ConstraintBase):
+    type: Literal[ConstraintType.PIPEDIAMETER]
+    maximum: Optional[str]
+    minimum: Optional[str]

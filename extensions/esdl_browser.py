@@ -30,6 +30,7 @@ from src.process_es_area_bld import get_area_id_from_mapeditor_id
 #  Manager:
 #      TNO
 
+
 logger = log.get_logger(__name__)
 
 

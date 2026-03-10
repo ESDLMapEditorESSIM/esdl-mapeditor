@@ -22,7 +22,7 @@ from math import fabs
 import pytz
 
 from esdl import esdl
-from esdl.processing.ESDLQuantityAndUnits import unit_to_string
+from esdl.units.parser import unit_to_string
 from extensions.profiles import Profiles
 from extensions.session_manager import get_project_manager, get_session, set_session
 from extensions.settings_storage import SettingsStorage
