@@ -3,7 +3,7 @@ from extensions.vue_backend.messages.DLA_table_data_message import DLA_table_dat
     DLA_set_table_data_request, ColumnHeader
 from pyecore.ecore import EReference, EClass
 from esdl import esdl
-from esdl.processing.ESDLQuantityAndUnits import qau_to_string
+from esdl.units.parser import qau_to_string
 from typing import List
 from src.log import get_logger
 

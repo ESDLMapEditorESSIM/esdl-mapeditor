@@ -98,6 +98,7 @@
                 "
                 :disabled="currentConstraint !== null"
                 @change="onSelectConstraintType"
+                @mouseleave="removeTooltipPopup"
               />
             </a-form-item>
 
@@ -122,6 +123,7 @@
                 v-model:value="formData.attributeReference"
                 :options="attributeReferenceOptions"
                 allow-clear
+                @mouseleave="removeTooltipPopup"
               />
             </a-form-item>
 
@@ -252,6 +254,30 @@
               </a-row>
             </a-col>
 
+            <!-------- PipeDiameterConstraint specific UI --------->
+            <a-col v-if="formData.type === ConstraintType.PIPEDIAMETER">
+              <a-form-item label="Maximum">
+                <a-select
+                  v-model:value="formData.maximum"
+                  :options="formData.EEnum?.maximum?.map((option) => ({
+                    value: option,
+                    label: option
+                  })) || []"
+                  @mouseleave="removeTooltipPopup"
+                />
+              </a-form-item>
+              <a-form-item label="Minimum">
+                <a-select
+                  v-model:value="formData.minimum"
+                  :options="formData.EEnum?.minimum?.map((option) => ({
+                    value: option,
+                    label: option
+                  })) || []"
+                  @mouseleave="removeTooltipPopup"
+                />
+              </a-form-item>
+            </a-col>
+
             <a-button
               v-if="currentConstraint === null"
               type="primary"
@@ -295,6 +321,11 @@ import { useEsdlLayers } from "../composables/esdlLayers";
 const { currentObjectID } = useObject();
 const { getActiveEsdlLayerId } = useEsdlLayers();
 
+// to prevent stuck popup on UI
+const removeTooltipPopup = () => {
+  window.jquery(".ui-tooltip-content").parents("div").remove();
+};
+
 // ENUM
 const SegmentOptions = Object.freeze({
   CONSTRAINTS: "Constraints",
@@ -302,8 +333,9 @@ const SegmentOptions = Object.freeze({
 });
 
 const ConstraintType = Object.freeze({
-  PROFILE: "Profile constraint",
-  RANGED: "Ranged constraint",
+  PROFILE: "ProfileConstraint",
+  RANGED: "RangedConstraint",
+  PIPEDIAMETER: "PipeDiameterConstraint"
 });
 
 const ProfileTag = Object.freeze({
@@ -312,7 +344,12 @@ const ProfileTag = Object.freeze({
 });
 
 // Default to support power; can be extended or made dynamic in the future.
-const attributeReferenceOptions = [{ value: "power", label: "power" }];
+const attributeReferenceOptions = [
+    { value: "power", label: "power" },
+    { value: "capacity", label: "capacity" },
+    { value: "volume", label: "volume" },
+    { value: "aggregationCount", label: "aggregationCount" }
+];
 
 // State
 const activeEsdlId = ref(getActiveEsdlLayerId().value);
@@ -350,6 +387,16 @@ const initRangedConstraintForm = {
     max_value: null,
   },
 };
+
+const initPipeDiameterConstraintForm = {
+  id: null,
+  name: "New PipeDiameterConstraint",
+  description: "",
+  attributeReference: "",
+  type: ConstraintType.PIPEDIAMETER,
+  maximum: null,
+  minimum: null,
+}
 
 // Form state (default to Profile Constraint)
 const formData = reactive({ ...initProfileConstraintForm });
@@ -395,6 +442,15 @@ const invalidForm = computed(() => {
   );
 });
 
+const getNewEmptyConstraint = async (constraintType) => {
+  try {
+    const response = await fetch(`/asset_constraint/${constraintType}`);
+    return await response.json();
+  } catch (error) {
+    console.error(error);
+  }
+}
+
 const getAssetConstraint = async (esId, assetId) => {
   try {
     const response = await fetch(`/asset_constraint/${esId}/${assetId}`);
@@ -431,17 +487,41 @@ const setAssetConstraint = async (esId, assetId, constraints) => {
   }
 };
 
-const resetForm = () => {
-  // Deep clone since initRangedConstraintForm is a nested object.
-  const newForm = JSON.parse(
-    JSON.stringify(
-      formData.type === ConstraintType.RANGED
-        ? initRangedConstraintForm
-        : initProfileConstraintForm,
-    ),
-  );
+const resetForm = async () => {
+  let newForm = {};
+  if (formData.type === ConstraintType.RANGED) {
+    // Deep clone since initRangedConstraintForm is a nested object.
+    newForm = JSON.parse(JSON.stringify(initRangedConstraintForm));
+  } else if (formData.type === ConstraintType.PROFILE) {
+    newForm = initProfileConstraintForm;
+  } else if (formData.type === ConstraintType.PIPEDIAMETER) {
+    // TODO: make below applicable for other constraints
+    // Retrieve esdl attributes and references from backend
+    const emptyConstraint = await getNewEmptyConstraint(formData.type);
+    // Extract attribute and its value from the defined set of attributes
+    Object.keys(initPipeDiameterConstraintForm).forEach((field) => {
+      const attribute = emptyConstraint["attrs"].find((attr) => attr["name"] === field);
+      if (attribute) {
+        newForm[field] = attribute["value"];
 
-  newForm.id = uuidv4();
+        if (attribute["type"] === "EEnum") {
+          if (!Object.hasOwn(newForm, "EEnum")) {
+            newForm["EEnum"] = {};
+          }
+          newForm["EEnum"] = {
+            ...newForm["EEnum"],
+            [field]: attribute["options"]
+          };
+        }
+      } else {
+        newForm[field] = initPipeDiameterConstraintForm[field];
+      }
+    })
+  } else {
+    console.error("Unsupported constraint type.");
+  }
+
+  newForm.id = newForm.id ? newForm.id : uuidv4();
   if (formData.type === ConstraintType.RANGED) {
     newForm.range.id = uuidv4();
   }
@@ -451,7 +531,7 @@ const resetForm = () => {
     delete formData[key];
   });
 
-  Object.assign(formData, newForm);
+  Object.assign(formData, {...newForm});
 };
 
 const onSelectConstraintType = () => {
@@ -529,17 +609,17 @@ const onAddConstraint = async () => {
   );
 
   currentConstraint.value = null;
-  resetForm();
+  await resetForm();
   activeSegment.value = SegmentOptions.CONSTRAINTS;
 };
 
-const onEditConstraint = (constraint) => {
+const onEditConstraint = async (constraint) => {
   // Switch to add constraint segment
   activeSegment.value = SegmentOptions.ADD_CONSTRAINT;
   currentConstraint.value = constraint;
 
   // Reset to ensure formData structure matches the corresponding ConstraintType
-  resetForm();
+  await resetForm();
 
   Object.assign(formData, { ...constraint });
 };
@@ -561,7 +641,7 @@ const onUpdateConstraint = async () => {
   );
 
   currentConstraint.value = null;
-  resetForm();
+  await resetForm();
   activeSegment.value = SegmentOptions.CONSTRAINTS;
 };
 
@@ -608,7 +688,8 @@ const onDeleteConstraint = async (id) => {
   padding: 16px;
 }
 
-::v-deep(.ant-segmented-item, .ant-segmented-item::selection) {
+:deep(.ant-segmented-item),
+:deep(.ant-segmented-item::selection) {
   height: 100%;
   display: flex;
   justify-content: center;

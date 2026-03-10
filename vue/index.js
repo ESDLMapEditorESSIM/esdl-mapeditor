@@ -24,6 +24,7 @@ import KPIDashboard from '@/apps/KPIDashboard.vue';
 import ESDLAnalytics from '@/apps/ESDLAnalytics.vue';
 import OwnershipDialog from '@/apps/OwnershipDialog.vue';
 import AssetConstraint from '@/apps/AssetConstraint.vue';
+import PortProfileEditor from "@/apps/PortProfileEditor.vue";
 import PortProfileViewer from '@/apps/PortProfileViewer.vue';
 import {
     createVueLControl,
@@ -98,15 +99,27 @@ window.control_strategy_window = (object_id) => {
     mountSidebarComponent(ControlStrategy);
 }
 
+window.activate_port_profile_editor = (es_id, object_id) => {
+    const { newObject } = useObject();
+    newObject({
+        es_id: es_id,
+        object_id: object_id
+    });
+    mountSidebarComponent(PortProfileEditor);
+}
+
 window.activate_asset_constraint = (object_id) => {
     const { newObject } = useObject();
     newObject(object_id);
     mountSidebarComponent(AssetConstraint);
 }
 
-window.activate_port_profile_viewer = (object_id) => {
+window.activate_port_profile_viewer = (es_id, object_id) => {
     const { newObject } = useObject();
-    newObject(object_id);
+    newObject({
+        es_id: es_id,
+        object_id: object_id
+    });
     mountSidebarBottomComponent(PortProfileViewer);
 }
 

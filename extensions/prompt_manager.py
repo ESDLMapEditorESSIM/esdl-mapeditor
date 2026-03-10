@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, asdict
 from enum import Enum
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Callable
 import uuid
 
@@ -68,10 +68,13 @@ class PromptManager:
     _continuation_handlers: dict[str, Callable] = {}
     _instance = None
 
+    _PROMPT_TTL = timedelta(hours=24)
+
     def __init__(self, flask_app: Flask, socket: SocketIO):
         self.flask_app = flask_app
         self.socketio = socket
         self._pending_prompts: dict[str, Prompt] = {}
+        self._prompt_sent_at: dict[str, datetime] = {}
         self.register()
         PromptManager._instance = self
 
@@ -102,6 +105,7 @@ class PromptManager:
 
     def handle_prompt_response(self, prompt_id: str, choice_key: str) -> None:
         """Look up the pending prompt and invoke its continuation handler."""
+        self._prompt_sent_at.pop(prompt_id, None)
         prompt = self._pending_prompts.pop(prompt_id, None)
         if prompt is None:
             logger.warning(f"Prompt response for unknown prompt_id={prompt_id}")
@@ -116,7 +120,9 @@ class PromptManager:
 
     def send(self, prompt: Prompt) -> str:
         """Store the prompt and emit it to all sessions of the target user."""
+        self._purge_expired_prompts()
         self._pending_prompts[prompt.id] = prompt
+        self._prompt_sent_at[prompt.id] = datetime.now(timezone.utc)
         connected_user_client_ids = get_all_session_ids_for_user(prompt.user_email)
         if not connected_user_client_ids:
             logger.info(f"No active sessions for user '{prompt.user_email}', prompt queued")
@@ -125,6 +131,15 @@ class PromptManager:
         for client_id in connected_user_client_ids:
             self.socketio.emit("prompt", payload, namespace="/esdl", room=client_id)
         return prompt.id
+
+    def _purge_expired_prompts(self) -> None:
+        cutoff = datetime.now(timezone.utc) - self._PROMPT_TTL
+        expired = [pid for pid, sent in self._prompt_sent_at.items() if sent < cutoff]
+        for pid in expired:
+            self._pending_prompts.pop(pid, None)
+            self._prompt_sent_at.pop(pid, None)
+        if expired:
+            logger.debug(f"Purged {len(expired)} expired pending prompt(s)")
 
     def send_error(
         self,

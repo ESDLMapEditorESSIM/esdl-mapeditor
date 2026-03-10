@@ -643,6 +643,7 @@ function add_service_to_area_contextmenu(layer, service, idx, icon) {
         let area_id = window.get_area_id_from_mapeditor_id(layer.id);
         let state = {
             area_id: area_id,
+            area_name: layer.name,
             lat: e.latlng.lat.toString(),
             lng: e.latlng.lng.toString(),
             wkt: toWKT(layer),
@@ -687,6 +688,7 @@ function update_esdl_services(event) {
                         const service = esdl_services_information[i];
                         const state = {
                             asset_id: id,
+                            asset_name: layer.name,
                         }
                         if ("options" in service && "send_esdl" in service["options"] && service["options"]["send_esdl"]) {
                             $.ajax({

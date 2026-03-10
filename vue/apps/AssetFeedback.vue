@@ -135,7 +135,7 @@
   <template v-else>
     <a-row style="padding: 8px;">
       <p>
-        The validation service could not detect any errors.
+        The validation service could not detect any feedback.
       </p>
     </a-row>
   </template>

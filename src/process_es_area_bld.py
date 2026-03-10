@@ -24,8 +24,9 @@ from flask_socketio import emit
 from shapely import MultiPoint
 
 import esdl
+from esdl.units.parser import unit_to_string
 from esdl import esdl
-from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEnergySystem, ESDLQuantityAndUnits
+from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEnergySystem
 from esdl.processing.ESDLEnergySystem import get_notes_list
 from esdl.processing.ESDLGeometry import calculate_polygon_center
 from esdlproject.ProjectManager import ProjectManager
@@ -321,7 +322,7 @@ def process_area_KPI_information(area_KPIs, area_geometry):
                 if not kpi_qau:  # Reference field in the ESDL could be "" (but should never be)
                     unit = ''
                 else:
-                    unit = ESDLQuantityAndUnits.unit_to_string(kpi_qau)
+                    unit = unit_to_string(kpi_qau)
             else:
                 unit = ''
 

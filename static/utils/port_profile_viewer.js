@@ -22,13 +22,14 @@ class PortProfileViewer{
     init(event) {
         const layer = event.layer;
         const layer_type = event.layer_type;
-        const layerId = layer.id;
+        const es_id = layer.esid;
+        const object_id = layer.id;
         if (layer_type === 'marker' || layer_type === 'line') {
             layer.options.contextmenuItems.push({
                 text: 'Port profile viewer',
                 icon: 'icons/Graph.png',
                 callback: function() {
-                    window.activate_port_profile_viewer(layerId)
+                    window.activate_port_profile_viewer(es_id, object_id)
                 }
             });
         }

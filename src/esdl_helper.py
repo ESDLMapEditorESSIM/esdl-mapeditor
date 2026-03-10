@@ -17,6 +17,7 @@ import re
 from flask_socketio import emit
 from pyecore.ecore import EEnum
 
+from esdl.units.parser import qau_to_string
 from esdl import esdl
 from esdl.processing import ESDLGeometry, ESDLAsset, ESDLQuantityAndUnits
 from extensions.session_manager import get_session, get_session_for_esid, get_project_manager
@@ -33,6 +34,7 @@ def generate_profile_info(profile_list, only_of_type: str = None):
     :param only_of_type: Only add profile information if the profile is of this type
     """
     profile_info_list = []
+    profiles = Profiles.get_instance().get_profiles()['profiles']
     for profile in profile_list:
         profile_class = type(profile).__name__
         if only_of_type and profile_class != only_of_type:
@@ -42,7 +44,7 @@ def generate_profile_info(profile_list, only_of_type: str = None):
         if isinstance(qau, esdl.QuantityAndUnitReference):
             qau = qau.reference
         if qau:
-            profile_type = ESDLQuantityAndUnits.qau_to_string(qau)
+            profile_type = qau_to_string(qau)
         else:
             profile_type = profile.profileType.name
         profile_name = profile.name
@@ -56,14 +58,17 @@ def generate_profile_info(profile_list, only_of_type: str = None):
             measurement = profile.measurement
             field = profile.field
 
-            profiles = Profiles.get_instance().get_profiles()['profiles']
             for pkey in profiles:
                 p = profiles[pkey]
-                if p['database'] == database and p['measurement'] == measurement and p['field'] == field:
+                if p['database'] == database and (p.get('measurement') and p['measurement'] == measurement) and p['field'] == field:
                     profile_name = p['profile_uiname']
             if profile_name is None:
                 profile_name = field
             profile_info_list.append({'id': profile_id, 'class': 'InfluxDBProfile', 'multiplier': multiplier, 'type': profile_type, 'uiname': profile_name})
+        if profile_class == 'DataTableProfile':
+            multiplier = profile.multiplier
+            profile_name = profile.columnName
+            profile_info_list.append({'id': profile_id, 'class': 'DataTableProfile', 'multiplier': multiplier, 'type': profile_type, 'uiname': profile_name})
         if profile_class == 'DateTimeProfile':
             profile_info_list.append({'id': profile_id, 'class': 'DateTimeProfile', 'type': profile_type, 'uiname': profile_name})
 

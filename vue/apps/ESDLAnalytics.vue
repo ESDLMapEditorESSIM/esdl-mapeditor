@@ -1605,7 +1605,8 @@ const exportChartDataToCSV = () => {
 	background-color: white; 
 }
 
-::v-deep(.ant-segmented-item, .ant-segmented-item::selection) {
+:deep(.ant-segmented-item),
+:deep(.ant-segmented-item::selection) {
   height: 100%;
   display: flex;
   justify-content: center;
