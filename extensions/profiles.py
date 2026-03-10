@@ -1163,9 +1163,9 @@ class Profiles:
         """
         Retrieve and return all profiles attached to the ports of a given asset in an ESDL.
         """
-        esh = get_handler()
+        pm = get_project_manager()
 
-        asset: esdl.Asset = esh.get_by_id(es_id, asset_id)
+        asset: esdl.Asset = pm.get_by_id(es_id, asset_id)
         if not asset:
             raise AssetNotFoundError(f"Asset (id={asset_id}) from ESDL (id={es_id}) not found.")
       
@@ -1235,9 +1235,9 @@ class Profiles:
     @staticmethod
     def get_esdl_profile_trace_from_id(es_id: str, profile_id: str, viz_options: Optional[ProfileVizOptions]) -> dict:
         """Retrieve a single profile trace for a given ESDL profile ID."""
-        esh = get_handler()
+        pm = get_project_manager()
 
-        profile = esh.get_by_id(es_id, profile_id)
+        profile = pm.get_by_id(es_id, profile_id)
         if not profile:
             raise ProfileNotFoundError(f"Profile (id={profile_id}) from ESDL (id={es_id}) not found.")
         
@@ -1444,9 +1444,9 @@ class Profiles:
         profile_obj : dict
             Dictionary containing SingleValue or DataTableProfile-like fields and configuration.
         """
-        esh = get_handler()
+        pm = get_project_manager()
 
-        port = esh.get_by_id(es_id, port_id)
+        port = pm.get_by_id(es_id, port_id)
         if not port or not isinstance(port, esdl.Port):
             raise ProfilePortNotFoundError(f"Unable to attach profile to a given port (id={port_id}) from ESDL (id={es_id}).")
         try:
@@ -1489,7 +1489,7 @@ class Profiles:
                     new_profile.profileQuantityAndUnit = profile_qau
                 # Append new profile to the target port.
                 port.eGet("profile").append(new_profile)
-                esh.add_object_to_dict(es_id, new_profile)
+                pm.add_object_to_dict(es_id, new_profile)
             else:
                 raise ProfileCreateError(f"An error occurs while adding profile")
         except Exception as e:
@@ -1500,9 +1500,9 @@ class Profiles:
         """
         Update attributes of an existing profile in an ESDL.
         """
-        esh = get_handler()
+        pm = get_project_manager()
 
-        profile = esh.get_by_id(es_id, profile_id)
+        profile = pm.get_by_id(es_id, profile_id)
         if not profile:
             raise ProfileNotFoundError(f"Profile (id={profile_id}) from ESDL (id={es_id}) not found.")
         
@@ -1694,27 +1694,27 @@ def get_or_add_esi_databaseconfiguration(es_id: str, db_config: esdl.DatabaseCon
     Return an existing DatabaseConfiguration from EnergySystemInformation if present.
     Otherwise, add the given DatabaseConfiguration (or reuse a duplicate) and return it.
     """
-    esh = get_handler()
+    pm = get_project_manager()
 
     if not db_config.id:
         db_config.id = str(uuid4())
 
     # Check if databaseconfiguration is already present in the ESDL
     try:
-        return esh.get_by_id(es_id, db_config.id)
+        return pm.get_by_id(es_id, db_config.id)
     except KeyError:
         pass
         
     # Ensure EnergySystemInformation and DataConfigurations exist
-    es: esdl.EnergySystem = esh.get_energy_system(es_id)
+    es: esdl.EnergySystem = pm.get_energy_system_by_id(es_id)
     if not es.energySystemInformation:
         esi: esdl.EnergySystemInformation = esdl.EnergySystemInformation(id=str(uuid4()))
         es.energySystemInformation = esi
-        esh.add_object_to_dict(es_id, esi)
+        pm.add_object_to_dict(es_id, esi)
     if not es.energySystemInformation.dataconfigurations:
         dataconfigs = esdl.DataConfigurations(id=str(uuid4()))
         es.energySystemInformation.dataconfigurations = dataconfigs
-        esh.add_object_to_dict(es_id, dataconfigs)
+        pm.add_object_to_dict(es_id, dataconfigs)
 
     configs = es.energySystemInformation.dataconfigurations.configurations 
     
@@ -1736,7 +1736,7 @@ def get_or_add_esi_databaseconfiguration(es_id: str, db_config: esdl.DatabaseCon
 
     # Otherwise, append and register the new config
     configs.append(db_config)
-    esh.add_object_to_dict(es_id, db_config)
+    pm.add_object_to_dict(es_id, db_config)
 
     return db_config
 
@@ -1746,19 +1746,19 @@ def _convert_qau_obj_into_profile_qau(es_id: str, qau_obj: dict):
 
     TODO: handle custom QaU
     """
-    esh = get_handler()
+    pm = get_project_manager()
 
     # If id is present, it a predefined qau.
     predefined_qau_id = qau_obj.get("id")
     if predefined_qau_id:
         try:
             # check if predefined qau is already present in the ESDL
-            qau = esh.get_by_id(es_id, predefined_qau_id)
+            qau = pm.get_by_id(es_id, predefined_qau_id)
         except KeyError:
             qau = ESDLQuantityAndUnits.build_qau_from_dict(qau_obj)
-            esi_qau = ESDLQuantityAndUnits.get_or_create_esi_qau(esh, es_id)
+            esi_qau = ESDLQuantityAndUnits.get_or_create_esi_qau(pm, es_id)
             esi_qau.quantityAndUnit.append(qau)
-            esh.add_object_to_dict(es_id, qau)
+            pm.add_object_to_dict(es_id, qau)
 
         qau_ref = esdl.QuantityAndUnitReference(reference=qau)
         return qau_ref
