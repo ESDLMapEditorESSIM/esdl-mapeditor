@@ -26,7 +26,6 @@ from extensions.panel_service import get_panel_service_datasource, create_panel_
 from extensions.settings_storage import SettingsStorage
 from extensions.session_manager import get_project_manager, get_session
 from src.esdl_helper import get_port_profile_info
-from esdl.processing import ESDLQuantityAndUnits
 from extensions.profiles import Profiles, ProfileTracesRequest, ProfileVizOptions, EmptyProfileWarning
 import src.log as log
 

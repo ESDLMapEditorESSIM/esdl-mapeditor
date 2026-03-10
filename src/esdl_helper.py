@@ -19,7 +19,7 @@ from pyecore.ecore import EEnum
 
 from esdl.units.parser import qau_to_string
 from esdl import esdl
-from esdl.processing import ESDLGeometry, ESDLAsset, ESDLQuantityAndUnits
+from esdl.processing import ESDLGeometry, ESDLAsset
 from extensions.session_manager import get_session, get_session_for_esid, get_project_manager
 from extensions.profiles import Profiles
 from esdlproject.ProjectManager import ProjectManager
