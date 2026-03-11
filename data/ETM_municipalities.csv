@@ -105,7 +105,6 @@ GM0358_aalsmeer
 GM0361_alkmaar
 GM0362_amstelveen
 GM0363_amsterdam
-GM0370_beemster
 GM0373_bergen
 GM0375_beverwijk
 GM0376_blaricum
@@ -118,14 +117,12 @@ GM0392_haarlem
 GM0394_haarlemmermeer
 GM0396_heemskerk
 GM0397_heemstede
-GM0398_heerhugowaard
 GM0399_heiloo
 GM0400_den_helder
 GM0402_hilversum
 GM0405_hoorn
 GM0406_huizen
 GM0415_landsmeer
-GM0416_langedijk
 GM0417_laren
 GM0420_medemblik
 GM0431_oostzaan
@@ -137,14 +134,12 @@ GM0448_texel
 GM0450_uitgeest
 GM0451_uithoorn
 GM0453_velsen
-GM0457_weesp
 GM0473_zandvoort
 GM0479_zaanstad
 GM0482_alblasserdam
 GM0484_alphen_aan_den_rijn
 GM0489_barendrecht
 GM0498_drechterland
-GM0501_brielle
 GM0502_capelle_aan_den_ijssel
 GM0503_delft
 GM0505_dordrecht
@@ -152,7 +147,6 @@ GM0512_gorinchem
 GM0513_gouda
 GM0518_s_gravenhage
 GM0523_hardinxveld_giessendam
-GM0530_hellevoetsluis
 GM0531_hendrik_ido_ambacht
 GM0532_stede_broec
 GM0534_hillegom
@@ -173,7 +167,6 @@ GM0603_rijswijk
 GM0606_schiedam
 GM0610_sliedrecht
 GM0613_albrandswaard
-GM0614_westvoorne
 GM0622_vlaardingen
 GM0626_voorschoten
 GM0627_waddinxveen
@@ -200,7 +193,6 @@ GM0744_baarle_nassau
 GM0748_bergen_op_zoom
 GM0753_best
 GM0755_boekel
-GM0756_boxmeer
 GM0757_boxtel
 GM0758_breda
 GM0762_deurne
@@ -212,13 +204,11 @@ GM0777_etten_leur
 GM0779_geertruidenberg
 GM0784_gilze_en_rijen
 GM0785_goirle
-GM0786_grave
 GM0794_helmond
 GM0796_s_hertogenbosch
 GM0797_heusden
 GM0798_hilvarenbeek
 GM0809_loon_op_zand
-GM0815_mill_en_sint_hubert
 GM0820_nuenen_gerwen_en_nederwetten
 GM0823_oirschot
 GM0824_oisterwijk
@@ -231,7 +221,6 @@ GM0848_son_en_breugel
 GM0851_steenbergen
 GM0852_waterland
 GM0855_tilburg
-GM0856_uden
 GM0858_valkenswaard
 GM0861_veldhoven
 GM0865_vught
@@ -281,15 +270,12 @@ GM1674_roosendaal
 GM1676_schouwen_duiveland
 GM1680_aa_en_hunze
 GM1681_borger_odoorn
-GM1684_cuijk
-GM1685_landerd
 GM1690_de_wolden
 GM1695_noord_beveland
 GM1696_wijdemeren
 GM1699_noordenveld
 GM1700_twenterand
 GM1701_westerveld
-GM1702_sint_anthonis
 GM1705_lingewaard
 GM1706_cranendonck
 GM1708_steenwijkerland
@@ -350,3 +336,7 @@ GM1969_westerkwartier
 GM1970_noardeast_fryslan
 GM1978_molenlanden
 GM1979_eemsdelta
+GM1980_dijk_en_waard
+GM1982_land_van_cuijk
+GM1991_maashorst
+GM1992_voorne_aan_zee

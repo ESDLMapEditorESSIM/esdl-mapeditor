@@ -17,7 +17,8 @@ from esdl.processing import ESDLEcore, ESDLEnergySystem
 from pyecore.ecore import EReference
 
 from esdl.processing.ESDLEcore import instantiate_type
-from esdl.processing.ESDLQuantityAndUnits import unit_to_string, build_qau_from_unit_string, get_or_create_esi_qau
+from esdl.processing.ESDLQuantityAndUnits import get_or_create_esi_qau
+from esdl.units.parser import unit_to_string, build_qau_from_unit_string
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from extensions.esdl_browser import ESDLBrowser # for repr function
 from extensions.session_manager import get_project_manager, get_session
@@ -86,7 +87,7 @@ class ESDLDataLayer:
             # Is this the right way?
             obj_info['attributes'] = cat_attrs
 
-            if isinstance(esdl_object, esdl.EnergyAsset):
+            if isinstance(esdl_object, esdl.ConnectableAsset):
                 obj_info['port_profile_info'] = get_port_profile_info(esdl_object)
                 obj_info['port_connected_to_info'] = get_connected_to_info(esdl_object)
             else:

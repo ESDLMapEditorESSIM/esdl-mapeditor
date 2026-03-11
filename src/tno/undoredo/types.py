@@ -11,7 +11,7 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-
+from datetime import datetime
 from typing import Optional, TypedDict, List
 
 from esdl.undo import UndoRedoCommandStack
@@ -36,6 +36,7 @@ class UndoRedoStackEntryDict(TypedDict):
     """
     label: str
     type: Optional[str]
+    changed_at: str
     commands: List[UndoRedoCommandDict]
 
 
@@ -70,6 +71,7 @@ def serialize_command_stack(command_stack: UndoRedoCommandStack) -> UndoRedoSeri
         dict_entry: UndoRedoStackEntryDict = {
             'label': entry.label,
             'type': entry_type,
+            'changed_at': entry.changedAt.isoformat(),
             'commands': changes,
         }
         stack.append(dict_entry)

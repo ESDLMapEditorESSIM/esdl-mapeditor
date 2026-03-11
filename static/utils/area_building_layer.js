@@ -36,7 +36,9 @@ var get_building_color = get_buildingYear_colors;     // function to get color o
 // HTML element ids for indexing
 const areaLegendDivId = 'area-legend-div';
 const areaMarkerResizeDivId = 'area-marker-resize-div';
-let areaMarkerResizeSliderVal = 2.0; // resize map area marker (pie chart) size based on the slider value
+
+const initAreaMarkerResizeSliderVal = 1.0;
+let areaMarkerResizeSliderVal = initAreaMarkerResizeSliderVal; // resize map area marker (pie chart) size based on the slider value
 
 let initMapZoomLevel; // initial map zoom level used by calcPieChartRadius() to scale pie chart size
 
@@ -61,25 +63,26 @@ function get_area_id_from_mapeditor_id(id) {
 }
 
 /**
- * Flattens a list of areas such that KPIs can be properly processed
- * @param layer_data list of layers. Items in this list can be objects with grouped layers
- * @returns {*[]} flattened list of areas
+ * Recursively flattens a list of areas so that KPIs can be properly processed.
+ * Any element with an `area_list` is treated as a parent with nested layers.
+ *
+ * @param {Array} layer_data - list of layers (possibly nested)
+ * @returns {Array} - flattened list of all leaf areas
  */
 function flatten_area_list(layer_data) {
-    let flat_layer_data = [];
+    let result = [];
 
-    for (const l_index in layer_data) {
-        let layer = layer_data[l_index];
-        if (layer.hasOwnProperty('type') && layer['type']==='group') {
-            // current layer is a group of layers
-            flat_layer_data.push(...layer['area_list']);
+    for (const entry of layer_data) {
+        if (entry && Array.isArray(entry.area_list)) {
+            // Recurse into child areas
+            result.push(...flatten_area_list(entry.area_list));
         } else {
-            // current layer is a single layer
-            flat_layer_data.push(layer);
+            // Leaf node
+            result.push(entry);
         }
     }
 
-    return flat_layer_data;
+    return result;
 }
 
 /**
@@ -662,7 +665,7 @@ function calcPieChartRadius(kpiItemsSum, kpiSumMin, kpiSumMax, resizeFactor=1.0)
     // Define zoom level and resize factor responsive pie chart min and max radius.
     const baseRadius = 1 * resizeFactor;
     const rMin = baseRadius * zoomScalingFactor;
-    const rMax = rMin * 5;
+    const rMax = rMin * 8;
 
     // Special case: when kpiItemsSum == kpiSumMin == kpiSumMax and all > 0
     // This occurs when the layer contains only one area feature.
@@ -799,6 +802,10 @@ function resize_all_area_pie_charts() {
 function resize_area_pie_charts(esdl_layer_id) {
     if (esdl_layer_id === null) { esdl_layer_id = active_layer_id; }
     let area_layers = get_layers(esdl_layer_id, 'area_layer');
+    if (!area_layers) {
+        // in case area_layer is not present (e.g. in Building Editor)
+        return;
+    }
     let layersAreaFeaturesDistKPIsRange = get_area_dist_kpis_ranges(esdl_layer_id);
 
     // get the area legend choice for THIS esdl layer
@@ -893,7 +900,7 @@ function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
     let dist_kpis_ranges = get_area_dist_kpis_ranges(active_layer_id);
     let distKPIsRange = dist_kpis_ranges[group_name];
     // Reset to default slider value when adding a new layer
-    areaMarkerResizeSliderVal = 1.0;
+    areaMarkerResizeSliderVal = initAreaMarkerResizeSliderVal;
 
     let geo_json_layer = L.geoJson(area_data, {
         style: style_area,
@@ -916,6 +923,10 @@ function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
             }
             if (feature.properties.KPIs && Object.keys(feature.properties.KPIs).length != 0) {
                 feature.properties.get_area_color = get_area_range_colors;
+            }
+            if (feature.properties && feature.properties.parent_area_id) {
+                // Set the parent area property, so we know which area this area is part of.
+                layer.parent_area_id = feature.properties.parent_area_id;
             }
             if (feature.properties && feature.properties.id) {
                 window.PubSubManager.broadcast('ADD_AREA_TO_LAYER', { id: feature.properties.id, feature: feature, layer: layer });
@@ -1031,9 +1042,8 @@ function set_building_contextmenu(layer, id) {
         contextmenuItems: [],
         contextmenuInheritItems: false
     });
-
     layer.options.contextmenuItems.push({
-        text: 'Building ESDL contents',
+        text: 'Open ' + layer.type + ' contents',
         icon: resource_uri + 'icons/BuildingContents.png',
         callback: function(e) { edit_building_contents(e, id); }
     });
@@ -1044,7 +1054,7 @@ function set_building_contextmenu(layer, id) {
         callback: function(e) { remove_building(layer); }
     });
     layer.options.contextmenuItems.push({
-        text: 'Edit building properties',
+        text: 'Edit ESDL properties',
         icon: resource_uri + 'icons/Edit.png',
         callback: function(e) { esdl_browser.open_browser_with_event(e, id); }
     });
@@ -1381,7 +1391,7 @@ function createAreaMarkerResizeDiv(sliderValue) {
         const slider = L.DomUtil.create('input', 'area-marker-resize-slider', areaMarkerResizeDiv);
         slider.type = 'range';
         slider.min = 0.05;
-        slider.max = 5.0;
+        slider.max = 15.0;
         slider.step = 0.05;
         slider.value = sliderValue;
         L.DomEvent.disableClickPropagation(slider);
@@ -1515,6 +1525,7 @@ function add_potential_geojson_layer(geojson_pontential_data) {
 function add_geojson_listener(socket, map) {
     initMapZoomLevel = map.getZoom();
     socket.on('geojson', function(message) {
+        console.debug("Received geojson", message);
         let layer = message['layer'];
 
         if (layer == 'area_layer') {

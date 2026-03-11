@@ -1,7 +1,7 @@
 # This Dockerfile is the main one to build a production image with GUnicorn support
 
 # ----- BUILD javascript ------
-FROM node:20 as frontend
+FROM node:20 AS frontend
 
 # This is to avoid the ERR_OSSL_EVP_UNSUPPORTED error from webpack.
 # Can be removed when we upgrade webpack or move to another tool.
@@ -23,7 +23,7 @@ RUN yarn build-prod
 FROM python:3.10-slim
 
 RUN apt-get -y update && \
-    apt-get install -y gcc libpcre3 libpcre3-dev zlib1g zlib1g-dev libssl-dev curl ca-certificates gnupg libgeos-dev
+    apt-get install -y gcc libpcre2-dev zlib1g zlib1g-dev libssl-dev curl ca-certificates gnupg libgeos-dev
 
 # Prepare directory for the app.
 WORKDIR /usr/src/app
@@ -44,4 +44,5 @@ ENV PYTHONPATH=.:/usr/src/app
 
 EXPOSE 8111
 
-CMD gunicorn --log-level debug --name mapeditor -t 180 -w 1 --threads 4 app:app -b :8111
+#CMD gunicorn --log-level debug --name mapeditor -k geventwebsocket.gunicorn.workers.GeventWebSocketWorker -t 180 -w 1 --threads 64 app:app -b :8111
+CMD gunicorn --log-level debug --name mapeditor -t 180 -w 1 --threads 100 app:app -b :8111

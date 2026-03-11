@@ -1,11 +1,11 @@
 <template>
-  <a-row>
-    <a-col span="20">
-      <h1>
-        KPI Dashboard (Experimental) - {{ dashboard_config.name.value }}
-      </h1>
+  <a-row class="dashboard-header">
+    <a-col>
+      <h2 style="font-weight: bold; font-size: 2rem">
+        {{ `KPI Dashboard - ${dashboard_config.name.value}` }}
+      </h2>
     </a-col>
-    <a-col span="4">
+    <a-col>
       <a-space style="float: right">
         <load-dashboard
           :dashboards-info="dashboards_info"
@@ -25,39 +25,42 @@
           :dashboard-id="dashboard_config.id.value"
           @handle-save="handleSaveDashboard"
         />
-
-        <div class="demo-dropdown-wrap">
-          <a-dropdown :trigger="['click']" placement="bottomRight">
-            <a-button type="primary">
-              <i class="fas fa-plus" />
-            </a-button>
-            <template #overlay>
-              <a-menu @click="handleAddPanel">
-                <a-menu-item key="Text">
-                  Add Text panel
-                </a-menu-item>
-                <a-menu-item key="Image">
-                  Add Image panel
-                </a-menu-item>
-                <a-menu-item key="Title">
-                  Add Title panel
-                </a-menu-item>
-                <!-- <a-menu-item key="Sankey">
-                  Add Sankey panel
-                </a-menu-item> -->
-              </a-menu>
-            </template>
-          </a-dropdown>
-        </div>
+        <a-dropdown>
+          <a-button type="primary">
+            <i class="fas fa-plus" />
+          </a-button>
+          <template #overlay>
+            <a-menu
+              @click="handleAddPanel"
+            >
+              <a-menu-item :key="GridItemTypes.TITLE">
+                Add Title panel
+              </a-menu-item>
+              <a-menu-item :key="GridItemTypes.TEXT">
+                Add Text panel
+              </a-menu-item>
+              <a-menu-item :key="GridItemTypes.IMAGE">
+                Add Image panel
+              </a-menu-item>
+              <a-menu-item :key="GridItemTypes.ANALYTICS">
+                Add ESDL Analytics
+              </a-menu-item>
+              <!-- <a-menu-item :key="GridItemTypes.SANKEY">
+                Add Sankey panel
+              </a-menu-item> -->
+            </a-menu>
+          </template>
+        </a-dropdown>
       </a-space>
     </a-col>
   </a-row>
   <div v-if="selectorOptionsKpiScope.length">
     <a-row>
+      <a-typography-title :level="5" style="padding-right: 8px;">KPI Scope</a-typography-title>
       <a-select
         v-model:value="selectedKPIScope"
         placeholder="Please select a KPI scope"
-        style="width: 50%"
+        style="width: 50%; display: flex; align-items: center;"
         @change="onSelectKPIScope"
       >
         <a-select-opt-group
@@ -102,59 +105,95 @@
         :w="item.w"
         :h="item.h"
         :i="item.i"
+        :is-resizable="item.isResizable"
         drag-ignore-from=".no-drag"
       >
-        <span class="remove" @click="removeItem(item.i)"><i class="fas fa-times" /></span>
-        <TextPanel
-          v-if="item.type == 'textpanel'"
+        <TitlePanel
+          v-if="item.type === GridItemTypes.TITLE"
           :options="item.options"
+          @on-remove="onRemovePanel(item.i)"
+        />
+        <TextPanel
+          v-if="item.type === GridItemTypes.TEXT"
+          :options="item.options"
+          @on-remove="onRemovePanel(item.i)"
         />
         <ImagePanel
-          v-if="item.type == 'imagepanel'"
+          v-if="item.type === GridItemTypes.IMAGE"
           :options="item.options"
+          @on-edit-save="(options) => onImageEditSave(item.i, options)"
+          @on-remove="onRemovePanel(item.i)"
         />
-        <TitlePanel
-          v-if="item.type == 'titlepanel'"
-          :options="item.options"
-        />
-        <!-- <SankeyPanel
-          v-if="item.type == 'sankeypanel'"
-          :options="item.options"
-        /> -->
         <PlotPanel
-          v-if="item.type == 'charttable'"
+          v-if="item.type === GridItemTypes.PLOT"
           :options="item.options"
           :panel-dimension="{
             x: item.x, 
             y: item.y, 
             w: item.w, 
             h: item.h}"
+          @on-remove="onRemovePanel(item.i)"
         />
+        <AnalyticsPanel
+          v-if="item.type === GridItemTypes.ANALYTICS"
+          :options="item.options"
+          @on-edit="onEditAnalyticsPanel(item.i)"
+          @on-remove="onRemovePanel(item.i)"
+        />
+        <!-- <SankeyPanel
+          v-if="item.type === GridItemTypes.SANKEY"
+          :options="item.options"
+        /> -->
       </grid-item>
     </grid-layout>
   </div>
   <div v-else>
-    <a-card>
-      No dashboard loaded yet
-    </a-card>
+    <a-empty 
+      :description="false"
+      :image-style="{
+        height: '200px',
+      }"
+    >
+      <h5>No dashboard loaded yet</h5>
+    </a-empty>
   </div>
+  <!-- Opens a modal to add or edit ESDL Analytics -->
+  <a-modal
+    v-model:open="esdlAnalyticsModalOpen"
+    width="75%"
+    :body-style="{height: '60vh'}"
+    :destroy-on-close="true"
+    :ok-text="esdlAnalyticsEditingId !== null ? 'Update' : 'Add'"
+    @ok="esdlAnalyticsEditingId !== null ? addUpdatedAnalyticsPanelToDash() : addNewAnalyticsPanelToDash()"
+    @cancel="closeESDLAnalyticsModal"
+  >
+    <ESDLAnalytics
+      ref="refEsdlAnalytics"
+      :options="esdlAnalyticsOptions"
+    />
+  </a-modal>
 </template>
 
 <script setup>
-import { ref, nextTick } from 'vue'
-// eslint-disable-next-line no-unused-vars
-import TextPanel from '../components/kpidashboard/TextPanel.vue'
-// eslint-disable-next-line no-unused-vars
-import TitlePanel from '../components/kpidashboard/TitlePanel.vue'
-// eslint-disable-next-line no-unused-vars
-import ImagePanel from '../components/kpidashboard/ImagePanel.vue'
-// eslint-disable-next-line no-unused-vars
-import SankeyPanel from '../components/kpidashboard/SankeyPanel.vue'
-// eslint-disable-next-line no-unused-vars
-import LoadDashboard from '../components/kpidashboard/LoadDashboard.vue'
-// eslint-disable-next-line no-unused-vars
-import SaveDashboard from '../components/kpidashboard/SaveDashboard.vue'
+import { ref, nextTick } from 'vue';
+import ESDLAnalytics from './ESDLAnalytics.vue';
+import TextPanel from '../components/kpidashboard/TextPanel.vue';
+import TitlePanel from '../components/kpidashboard/TitlePanel.vue';
+import ImagePanel from '../components/kpidashboard/ImagePanel.vue';
+// import SankeyPanel from '../components/kpidashboard/SankeyPanel.vue';
+import LoadDashboard from '../components/kpidashboard/LoadDashboard.vue';
+import SaveDashboard from '../components/kpidashboard/SaveDashboard.vue';
 import PlotPanel from "../components/kpidashboard/PlotPanel.vue";
+import AnalyticsPanel from '../components/kpidashboard/AnalyticsPanel.vue';
+
+const GridItemTypes = Object.freeze({
+  ANALYTICS: 'analyticspanel',
+  IMAGE: 'imagepanel',
+  TEXT: 'textpanel',
+  TITLE: 'titlepanel',
+  PLOT: 'charttable',
+  SANKEY: 'sankeypanel'
+});
 
 const dashboards_info = ref([]);
 const layout = ref([]);     // this is the information used (and changed!) in the vue components
@@ -186,14 +225,20 @@ const selectorOptionsKpiScope = esIds.map((esId) => (
 const selectedKPIScope = ref({});
 
 /**
- * Initialize dashboard contents based on the first ES and the first KPI scope.
+ * Initialize dashboard contents based on the active ESDL and the first KPI scope.
  */
 const initDashboard = () => {
-  const initESId = selectorOptionsKpiScope[0].label;
-  const initSelectedKPIScope = selectorOptionsKpiScope[0].options[0];
-  selectedKPIScope.value = initSelectedKPIScope;
+  const activeEsdlId = window.active_layer_id;
+  const activeEsdlKPIScope = selectorOptionsKpiScope.find(obj => obj.label === activeEsdlId);
 
-  updateDashboard(initESId, initSelectedKPIScope.label);
+  if (activeEsdlKPIScope) {
+    const initSelectedKPIScope = activeEsdlKPIScope.options[0];
+    selectedKPIScope.value = initSelectedKPIScope;
+
+    updateDashboard(activeEsdlId, initSelectedKPIScope.label);
+  } else {
+    console.error(`Unable to find KPI scope of ESDL: ${activeEsdlId}`);
+  }
 };
 
 if (Object.keys(esKPIs).length) {
@@ -246,8 +291,9 @@ const formatSelectorOptGroupLabel = (esId) => {
  * 
  * @param {string} breakpoint The current breakpoint.
  * @param {number} itemNr Grid item number used for positing the grid item in the dashboard.
+ * @param {number} itemHeight Default grid item height to 8
  */
-function calGridItemLayout(breakpoint, itemNr) {
+function calGridItemLayout(breakpoint, itemNr, itemHeight=8) {
   // Vue Grid Layout library has the default number of columns for each breakpoint defined. 
   // Apply the default cols per breakpoint below.
   // https://jbaysolutions.github.io/vue-grid-layout/guide/properties.html#gridlayout
@@ -277,7 +323,7 @@ function calGridItemLayout(breakpoint, itemNr) {
       break;
   }
   const w = cols / colNum;
-  const h = 8;
+  const h = itemHeight;
   const x = (itemNr % colNum) * w;
   const y = Math.floor(itemNr / colNum) * h;
   return [x, y, w, h];
@@ -291,20 +337,84 @@ function calGridItemLayout(breakpoint, itemNr) {
  const onBreakpointChanged = (breakpoint) => {
   currentBreakpoint.value = breakpoint;
 
-  // Recalculate layout due to breakpoint change.
-  const newLayout = layout.value.map((item, itemNr) => {
+  // Sort and recalculate layout due to breakpoint change.
+  const sortedLayout = sortLayoutItems(layout.value);
+  const newLayout = sortedLayout.map((item, itemNr) => {
     const [x, y, w, h] = calGridItemLayout(currentBreakpoint.value, itemNr);
-    return {
-      ...item,
-      x: x,
-      y: y,
-      w: w,
-      h: h
-    };
+    if (item.isResizable === false) {
+      return {
+        ...item,
+        x: x,
+        y: y,
+      };
+    } else {
+      return {
+        ...item,
+        x: x,
+        y: y,
+        w: w,
+        h: h
+      };
+    }
   });
   layout.value = [...newLayout];
   dashboard_config.layout.value = [...newLayout];
 };
+
+/**
+ * Returns an item layout list which will append the new grid item
+ * at the end of the dashboard.
+ */
+ const findNewGridItemLocation = () => {
+  // This updates the new_panel_id
+  findNewPanelId();
+  const newItemNr = layout.value.length;
+  const [x, y, w, h] = calGridItemLayout(currentBreakpoint.value, newItemNr);
+  return [new_panel_id, x, y, w, h];
+};
+
+/**
+ * Remove the dashboard item with the given gridItemId.
+ * 
+ * @param {number} gridItemId Grid item id to be removed.
+ */
+const onRemovePanel = (gridItemId) => {
+  const newLayout = layout.value.filter(item => gridItemId !== item.i);
+  layout.value = [...newLayout];
+  dashboard_config.layout.value = [...newLayout];
+};
+
+/**
+ * Sort the given dashboard layout array based on the x + y value of the grid item
+ * and return the sorted layout array.
+ * 
+ * @param {Array<Object>} layout An array of grid item objects to be sorted.
+ * @return {Array<Object>} sortedLayout An array of sorted grid item objects.
+ */
+const sortLayoutItems = (layout) => {
+  const sortedLayout = JSON.parse(JSON.stringify(layout));
+  sortedLayout.sort((a, b) => ((a.x + a.y) - (b.x + b.y)));
+  return sortedLayout;
+};
+
+
+/**
+ * Append and synchronize a panel object to the layout and dashboard_config.layout array.
+ * 
+ * @param panelObj A panel object to be appended to the layout array.
+ */
+const appendAndSyncPanelToLayout = (panelObj) => {
+  layout.value.push(panelObj);
+  dashboard_config.layout.value = [...layout.value];
+};
+
+/**
+ * Reset and empty the layout references.
+ */
+ function emptyLayout() {
+  layout.value = [];
+  dashboard_config.layout.value = [];
+}
 
 /**
  * Update dashboard contents according to the given esId and kpiScope.
@@ -314,10 +424,8 @@ function calGridItemLayout(breakpoint, itemNr) {
  */
 function updateDashboard(esId, kpiScope) {
   console.debug(`Updating KPI dashboard for ES: ${esId} and scope: ${kpiScope}`);
-  
-  // Reset layout reference.
-  layout.value = [];
-  dashboard_config.layout.value = [];
+
+  emptyLayout();
 
   // Preprocessing KPIs data
   const scopeKPIs = esKPIs[esId][kpiScope];
@@ -374,13 +482,14 @@ const findNewPanelId = () => {
       new_panel_id = layout.value[i].i + 1;
     }
   }
-}
+};
 
 // eslint-disable-next-line no-unused-vars
 const handleLoadDashboard = (dashboard_id) => {
   window.socket.emit('kpi_dashboard_load', {dashboard_id: dashboard_id}, function(response) {
     if (response) {
-      layout.value = [];
+      emptyLayout();
+
       layout.value = response.layout;
       dashboard_config.id.value = response.id;
       dashboard_config.name.value = response.name;
@@ -392,7 +501,7 @@ const handleLoadDashboard = (dashboard_id) => {
       console.log('Error: empty response');
     }
   });
-}
+};
 
 const applyTemplatePanelToDashbaordPanel = (template_panel, layout) => {
   for (let i in layout.value) {
@@ -433,14 +542,14 @@ const applyTemplatePanelToDashbaordPanel = (template_panel, layout) => {
     }
   }
   return false;
-}
+};
 
 const addTemplatePanelToDashboard = (template_panel, layout) => {
   // console.log("Adding template panel to dashboard");
   // console.log(template_panel);
   // console.log(layout.value);
   layout.value.push(template_panel);
-}
+};
 
 // eslint-disable-next-line no-unused-vars
 const handleLoadDashboardTemplate = (dashboard_id) => {
@@ -462,47 +571,10 @@ const handleLoadDashboardTemplate = (dashboard_id) => {
       console.log('Error: empty response');
     }
   });
-}
-
-// To keep the dashboard information in the vue component and in the database settings in sync
-// Assume order in layout array doesn't change...     Maybe add id to panel data, use i attribute?
-const copyDashboardLayoutToSettings = () => {
-  // console.log("copyDashboardLayoutToSettings");
-  // console.log(dashboard_config);
-  // console.log(layout.value);
-
-  for (let i=0; i<layout.value.length; i++) {
-    // console.log(i);
-    // console.log(dashboard_config.layout.value[i]);
-    // console.log(layout.value[i]);
-    if (dashboard_config.layout.value[i].i != layout.value[i].i) {
-      console.log('ERROR: Dashboard panel IDs are not the same!');
-    } else {
-      // Why is the following true???
-      // dashboard_config.layout.value[i] contains changes in options (for the jschart component)
-      // layout.value[i] contains changes in basic attributes (x, y, w, h, ...)
-      dashboard_config.layout.value[i].x = layout.value[i].x;
-      dashboard_config.layout.value[i].y = layout.value[i].y;
-      dashboard_config.layout.value[i].w = layout.value[i].w;
-      dashboard_config.layout.value[i].h = layout.value[i].h;
-      dashboard_config.layout.value[i].type = layout.value[i].type;
-      if (dashboard_config.layout.value[i].type != 'charttable') {
-        // Don't copy JSChart config as JSChart completely changes the config during visualisation
-        dashboard_config.layout.value[i].options = layout.value[i].options;
-      } else {
-        // Only copy the chart/table type
-        // dashboard_config.layout.value[i].options.type = layout.value[i].options.type;
-        // copy the other way around???
-        layout.value[i].options.type = dashboard_config.layout.value[i].options.type;
-      }
-    }
-  }
-}
+};
 
 // eslint-disable-next-line no-unused-vars
 const handleSaveDashboard = (res) => {
-  copyDashboardLayoutToSettings();
-
   dashboard_config.id.value = res.id;
   dashboard_config.name.value = res.name;
   dashboard_config.group.value = res.group;
@@ -515,113 +587,191 @@ const handleSaveDashboard = (res) => {
   };
 
   window.socket.emit('kpi_dashboard_save', message);
-}
+};
 
-// eslint-disable-next-line no-unused-vars
-const removeItem = (item_index) => {
-  // Note: the item.i doesn't necessarily
-  const index = layout.value.map(item => item.i).indexOf(item_index);
-  layout.value.splice(index, 1);
-
-  const db_index = dashboard_config.layout.value.map(item => item.i).indexOf(item_index);
-  dashboard_config.layout.value.splice(db_index, 1);
-}
-
-const findFreeRow = () => {
-  let free_row_nr = 0;
-  for (let i=0; i<layout.value.length; i++) {
-    if (layout.value[i].y + layout.value[i].h > free_row_nr) {
-      free_row_nr = layout.value[i].y + layout.value[i].h;
-    }
+const handleAddPanel = (e) => {
+  switch (e.key) {
+    case GridItemTypes.TITLE:
+      addTitlePanel();
+      break;
+    case GridItemTypes.TEXT:
+      addTextPanel();
+      break;
+    case GridItemTypes.IMAGE:
+      addImagePanel();
+      break;
+    case GridItemTypes.ANALYTICS:
+      // Opens an empty (default) ESDL Analytics modal
+      openESDLAnalyticsModal(null);
+      break;
+    // TODO: fix SankeyPanel when ready
+    // case GridItemTypes.SANKEY:
+    //   addSankeyPanel();
+    //   break;
+    default:
+      console.debug(`Unknown key: ${e.key}`);
   }
-  return free_row_nr;
-}
+};
+
+const addTitlePanel = () => {
+  const [i, x, y, w, h] = findNewGridItemLocation();
+  const titlePanelConfig = {
+    x: x,
+    y: y,
+    w: 12,
+    h: 2,
+    i: i,
+    isResizable: false,
+    type: GridItemTypes.TITLE,
+    options: {
+      'title': 'New title',
+    }
+  };
+  appendAndSyncPanelToLayout(titlePanelConfig);
+};
 
 const addTextPanel = () => {
-  let panel_config = {
-    x: 0,
-    y: findFreeRow(),
-    w: 3,
-    h: 5,
-    i: new_panel_id,
-    type: 'textpanel',
+  const [i, x, y, w, h] = findNewGridItemLocation();
+  const textPanelConfig = {
+    x: x,
+    y: y,
+    w: w,
+    h: h,
+    i: i,
+    type: GridItemTypes.TEXT,
     options: {
       'title': 'New title',
       'text': 'New text',
     }
   };
-  layout.value.push(panel_config);
-  dashboard_config.layout.value.push(panel_config);
+  appendAndSyncPanelToLayout(textPanelConfig);
+};
 
-  new_panel_id = new_panel_id + 1;
-}
+/**
+ * Update the corresponding image panel options after receiving the emitted editedOptions.
+ * 
+ * @param {number} gridItemId The target grid item id.
+ * @param {Object} editedOptions An object contains the edited image panel title and base64_image_data. 
+ */
+ const onImageEditSave = (gridItemId, editedOptions) => {
+  layout.value.find(item => item.i === gridItemId).options = editedOptions;
+};
 
 const addImagePanel = () => {
-  let panel_config = {
-    x: 0,
-    y: findFreeRow(),
-    w: 3,
-    h: 5,
-    i: new_panel_id,
-    type: 'imagepanel',
+  const [i, x, y, w, h] = findNewGridItemLocation();
+  const imagePanelConfig = {
+    x: x,
+    y: y,
+    w: w,
+    h: h,
+    i: i,
+    type: GridItemTypes.IMAGE,
     options: {
       'title': 'New title',
       'base64_image_data': '',
     }
   };
-  layout.value.push(panel_config);
-  dashboard_config.layout.value.push(panel_config);
+  appendAndSyncPanelToLayout(imagePanelConfig);
+};
 
-  new_panel_id = new_panel_id + 1;
-}
+// TODO: fix SankeyPanel when ready
+// const addSankeyPanel = () => {
+//   const [i, x, y, w, h] = findNewGridItemLocation();
+//   const sankeyPanelConfig = {
+//     x: x,
+//     y: y,
+//     w: w,
+//     h: h,
+//     i: i,
+//     type: GridItemTypes.SANKEY,
+//     options: {
+//       'title': 'New title',
+//     }
+//   };
+//   appendAndSyncPanelToLayout(sankeyPanelConfig);
+// };
 
-const addTitlePanel = () => {
-  let panel_config = {
-    x: 0,
-    y: findFreeRow(),
-    w: 12,
-    h: 2,
-    i: new_panel_id,
-    type: 'titlepanel',
-    options: {
-      'title': 'New title',
-    }
+
+// -------------------------------------------- //
+// ---- ESDL Analytics states & functions ----- //
+// -------------------------------------------- //
+
+const refEsdlAnalytics = ref(null);
+const esdlAnalyticsModalOpen = ref(false);
+const esdlAnalyticsEditingId = ref(null);
+
+// Configures the ESDL Analytics modal states. 
+// If null, ESDL Analytics modal is opened with the default (empty) settings;
+const esdlAnalyticsOptions = ref(null);
+
+/**
+ * Opens ESDL Analytics modal with options setting
+ *  
+ * @param {Object|null} options Configures the ESDL Analytics modal states; 
+ *                              If null, the modal is opened with a default state.
+ */
+const openESDLAnalyticsModal = (options) => {
+  console.debug(`Open ESDL Analytics modal with options as ${options}`);
+  esdlAnalyticsOptions.value = options;
+  esdlAnalyticsModalOpen.value = true;
+};
+
+const closeESDLAnalyticsModal = () => {
+  console.debug("Close ESDL Analytics modal");
+  esdlAnalyticsEditingId.value = null;
+  esdlAnalyticsModalOpen.value = false;
+};
+
+/**
+ * Opens ESDL Analytics modal from the given gridItemId for further editing.
+ * 
+ * @param {number} gridItemId Layout grid item id
+ */
+ const onEditAnalyticsPanel = (gridItemId) => {
+  esdlAnalyticsEditingId.value = gridItemId;
+  const analyticsPanelOptions = layout.value.find(item => item.i === gridItemId).options;
+  openESDLAnalyticsModal(analyticsPanelOptions);
+};
+
+/**
+ * Adds a new ESDL Analytics panel to the dashboard.
+ */
+const addNewAnalyticsPanelToDash = () => {
+  const [i, x, y, w, h] = findNewGridItemLocation();
+  const analyticsPanelOptions = refEsdlAnalytics.value.getOptions();
+  const analyticsPanelConfig = {
+    x: x,
+    y: y,
+    w: w,
+    h: h,
+    i: i,
+    type: GridItemTypes.ANALYTICS,
+    options: analyticsPanelOptions
   };
-  layout.value.push(panel_config);
-  dashboard_config.layout.value.push(panel_config);
+  appendAndSyncPanelToLayout(analyticsPanelConfig);
 
-  new_panel_id = new_panel_id + 1;
-}
+  closeESDLAnalyticsModal();
+};
 
-const addSankeyPanel = () => {
-  let panel_config = {
-    x: 0,
-    y: findFreeRow(),
-    w: 12,
-    h: 8,
-    i: new_panel_id,
-    type: 'sankeypanel',
-    options: {
-      'title': 'New title',
-    }
-  };
-  layout.value.push(panel_config);
-  dashboard_config.layout.value.push(panel_config);
-
-  new_panel_id = new_panel_id + 1;
-}
-
-// eslint-disable-next-line no-unused-vars
-const handleAddPanel = (e) => {
-  if (e.key == "Text") addTextPanel();
-  if (e.key == "Image") addImagePanel();
-  if (e.key == "Title") addTitlePanel();
-  if (e.key == "Sankey") addSankeyPanel();
-}
+/**
+ * Updates the dashboard ESDL Analytics panel with the latest configured options.
+ */
+const addUpdatedAnalyticsPanelToDash = () => {
+  const gridItemId = esdlAnalyticsEditingId.value;
+  layout.value.find(item => item.i === gridItemId).options = refEsdlAnalytics.value.getOptions();
+  dashboard_config.layout.value = [...layout.value];
+  closeESDLAnalyticsModal();
+};
 
 </script>
 
 <style scoped>
+
+.dashboard-header {
+  height: 60px;
+  align-items: center;
+  justify-content: space-between;
+}
 
 .vue-grid-layout {
   background: #fff;
@@ -655,7 +805,6 @@ const handleAddPanel = (e) => {
   height: 100%;
   width: 100%;
 }
-
 
 .vue-grid-item .minMax {
   font-size: 12px;

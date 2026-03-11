@@ -57,7 +57,7 @@ def create_app(name) ->  EDSLMapEditorApp:
         app,
         async_mode=settings.ASYNC_MODE,
         manage_session=False,
-        path='/socketio.io',
+        path='/socket.io',
         logger=settings.FLASK_DEBUG,
         engineio_logger=settings.FLASK_DEBUG,
         cors_allowed_origins=settings.ALLOWED_ORIGINS,

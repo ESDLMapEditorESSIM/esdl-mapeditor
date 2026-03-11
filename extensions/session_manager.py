@@ -1,4 +1,4 @@
-#  This work is based on original code developed and copyrighted by TNO 2020.
+#  This work is based on original code developed and copyrighted by TNO 2025.
 #  Subsequent contributions are licensed to you by the developers of such code and are
 #  made available to the Project under one or several contributor license agreements.
 #
@@ -12,6 +12,8 @@
 #  Manager:
 #      TNO
 import glob
+import sys
+
 import threading
 import time
 from datetime import datetime
@@ -51,29 +53,33 @@ EXCLUDE_PERSISTENCE_SESSION_KEYS = [
 
 # def get_handler() -> EnergySystemHandler:
 #     global managed_sessions
-#     client_id = session['client_id']
+#     client_id = session["client_id"]
 #     if client_id in managed_sessions:
 #         if ESH_KEY in managed_sessions[client_id]:
 #             esh = managed_sessions[client_id][ESH_KEY]
-#             logger.debug('Retrieve ESH client_id={}'.format(client_id))
+#             logger.debug("Retrieve ESH client_id={}".format(client_id))
 #         else:
-#             logger.warning('No EnergySystemHandler in session. Returning empty energy system')
+#             logger.warning("No EnergySystemHandler in session. Returning empty energy system")
 #             esh = EnergySystemHandler()
+#             esh.create_empty_energy_system(
+#                 "Untitled EnergySystem", "", "Untitled Instance", "Untitled Area", esdlVersion=esdl_doc.esdlVersion
+#             )
 #             set_handler(esh)
 #         return esh
 #     else:
-#         logger.warning('Session has timed-out. Returning empty energy system')
+#         logger.warning("Session has timed-out. Returning empty energy system")
 #         esh = EnergySystemHandler()
-#         from app import esdl_doc
-#         esh.create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area', esdlVersion=esdl_doc.esdlVersion)
+#         esh.create_empty_energy_system(
+#             "Untitled EnergySystem", "", "Untitled Instance", "Untitled Area", esdlVersion=esdl_doc.esdlVersion
+#         )
 #         set_handler(esh)
 #         return esh
 #
 #
 # def set_handler(esh):
 #     global managed_sessions
-#     client_id = session['client_id']
-#     logger.debug('Set ESH client_id={}'.format(client_id))
+#     client_id = session["client_id"]
+#     logger.debug("Set ESH client_id={}".format(client_id))
 #     set_session(ESH_KEY, esh)
 
 
@@ -135,11 +141,17 @@ def set_session(key, value, client_id=None):
     global managed_sessions
     if client_id is None:
         client_id = session["client_id"]
+    # logger.debug('Current Thread %s' % threading.currentThread().getName())
+    if "client_id" not in session:
+        logger.warning("No client_id for the session is available, cannot set value for key {}".format(key))
+        return
+    client_id = session["client_id"]
     if client_id not in managed_sessions:
         managed_sessions[client_id] = dict()
     managed_sessions[client_id][LAST_ACCESSED_KEY] = datetime.now()
     managed_sessions[client_id][key] = value
     save_sessions_to_disk()
+    # logger.debug(managed_sessions)
 
 
 def get_session(key=None, client_id=None, default_value=None):
@@ -161,6 +173,18 @@ def get_session(key=None, client_id=None, default_value=None):
         client_id = session["client_id"]
     if client_id not in managed_sessions:
         logger.warning("No client id in the managed_sessions is available, cannot return value for key {}".format(key))
+        print("====================================================")
+        print("No client id in the managed_sessions is available, cannot return value for key {}".format(key))
+        print(f"Session information for client_id: {client_id}:")
+        for key in session:
+            print(f"{key}: {session[key]}")
+        print(f"Managed session keys and their lengths for all registered clients: ({client_id}):")
+        for key in managed_sessions:
+            print(f"{key}: {len(managed_sessions[key])}")
+        print("Stacktrace for get_session():")
+        import traceback
+        traceback.print_stack(file=sys.stdout)
+        print("-----------------------------------------------------")
         return None
     else:
         # update last access
@@ -198,6 +222,7 @@ def has_session_key(key) -> bool:
     global managed_sessions
     client_id = session["client_id"]
     if client_id not in managed_sessions:
+        #logger.warning("No client id for the session is available, cannot test if key '{}' is available".format(key))
         return False
     else:
         return key in managed_sessions[client_id]
@@ -247,9 +272,19 @@ def set_session_for_esid(es_id, key, value):
         new_dict[es_id] = value
         set_session(key, new_dict)
 
+def clear_session_key_for_esid(es_id: str, key: str):
+    """ Clear a session key of a specific ESDL"""
+    res = get_session(key)
+    if res is not None:
+        if es_id in res:
+            del res[es_id]
+            return
+    logger.warning(f"Could not clear session key {key} for es_id {es_id} and client_id {session['client_id']}")
+
+
 
 def delete_sessions_on_disk(path: str):
-    print("Cleaning up old sessions on disk...")
+    logger.info("Cleaning up old sessions on disk...")
     files = glob.glob(path + "/*")
     for f in files:
         os.remove(f)
@@ -320,3 +355,38 @@ def load_sessions_from_disk():
             logger.error(f"Error loading sessions from disk: {str(e)}")
     else:
         logger.info("No saved sessions found, starting with empty session store")
+
+
+def get_all_session_ids_for_all_users() -> dict:
+    """Get a list of all active session IDs per user in a dict."""
+    socketio_sid_list = dict()
+    for client_id in managed_sessions:
+        session_info = managed_sessions[client_id]
+        if "user-email" in session_info and "socketio_sid" in session_info:
+            user_email = session_info["user-email"]
+            socketio_sid = session_info["socketio_sid"]
+
+            if user_email in socketio_sid_list:
+                socketio_sid_list[user_email].append(socketio_sid)
+            else:
+                socketio_sid_list[user_email] = [socketio_sid]
+        else:
+            logger.debug(
+                "user-email or socketio_sid missing in managed session info. Could be the session from the sending application."
+            )
+
+    return socketio_sid_list
+
+
+def get_all_session_ids_for_user(user_email: str) -> list:
+    """Get a list of all active session IDs for a specific user."""
+    sid_list = []
+    for client_id in managed_sessions:
+        session_info = managed_sessions[client_id]
+        if "user-email" in session_info and "socketio_sid" in session_info:
+            if user_email == session_info["user-email"]:
+                sid_list.append(session_info["socketio_sid"])
+    if len(sid_list) == 0:
+        logger.debug(f"No sessions found for user-email '{user_email}'.")
+
+    return sid_list

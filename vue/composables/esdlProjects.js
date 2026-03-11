@@ -59,24 +59,63 @@ export function useESDLProjects() {
         });
     }
 
+    /**
+     * Get the active variant of the current ESDL project. Recursively check all variants and their children.
+     * @returns {Variant}
+     */
     function activeVariant() {
-        return esdlProject.value.variants.find(variant => variant.id === esdlProject.value.active_variant_id);
+        function findActiveVariant(variants) {
+            for (const variant of variants) {
+                if (variant.active) {
+                    return variant;
+                }
+                if (variant.children && variant.children.length > 0) {
+                    const activeChild = findActiveVariant(variant.children);
+                    if (activeChild) {
+                        return activeChild;
+                    }
+                }
+            }
+            return null;
+        }
+
+        if (esdlProject.value && esdlProject.value.variants) {
+            return findActiveVariant(esdlProject.value.variants);
+        }
+        
     }
 
     const active_es_id = computed(() => esdlProject.value.active_es_id);
 
     const toggleProjectView = () => showProjectView.value = !showProjectView.value;
 
-    function setActiveVariant(variantId, esId) {
+    function setActiveVariant(variantId) {
+        console.debug("Setting active variant to ID " + variantId);
         const loaderScope = "set_active_variant"
         window.show_loader(loaderScope);
         socket.value.emit('set_active_variant', {id: variantId}, () => {
             window.hide_loader(loaderScope);
         });
-        if (esId) {
-            // TODO: This doesn't work until the active variant is done generating.
-            // window.select_active_layer(esId);
+    }
+
+    function getAllVariants() {
+        /** @type {Variant[]} */
+        const variants = [];
+
+        function addVariantsRecursively(variantList) {
+            for (const variant of variantList) {
+                variants.push(variant);
+                if (variant.children && variant.children.length > 0) {
+                    addVariantsRecursively(variant.children);
+                }
+            }
         }
+
+        if (esdlProject.value && esdlProject.value.variants) {
+            addVariantsRecursively(esdlProject.value.variants);
+        }
+
+        return variants;
     }
 
     return {
@@ -88,5 +127,6 @@ export function useESDLProjects() {
         getESDLProject,
         esdlProject,
         setEsdlProject,
+        getAllVariants,
     }
 }

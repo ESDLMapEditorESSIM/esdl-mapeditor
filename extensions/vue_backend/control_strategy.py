@@ -98,7 +98,8 @@ def get_control_strategy_info(asset):
                 cs_info['pid_setpoint'] = control_strategy.setPoint.value
             else:
                 cs_info['pid_setpoint'] = None
-
+        if isinstance(control_strategy, esdl.PriorityStrategy):
+            cs_info["priority"] = control_strategy.priority
     return cs_info
 
 
@@ -207,5 +208,7 @@ def set_control_strategy(asset, cs_info):
                 )
                 control_strategy.profile.element.append(profile_element)
             pm.add_object_to_dict(active_es_id, control_strategy.profile)
+    if isinstance(control_strategy, esdl.PriorityStrategy):
+        control_strategy.priority = int(cs_info['priority'])
 
     undo_redo.stop_recording()

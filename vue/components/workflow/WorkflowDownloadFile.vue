@@ -18,7 +18,7 @@ const props = defineProps({
 
 const workflowStep = props.workflowStep;
 
-const { getParamsFromState, goToNextStep } = useWorkflow();
+const { getParamsFromState, goToStep } = useWorkflow();
 
 // eslint-disable-next-line no-unused-vars
 const onSubmit = async () => {
@@ -47,7 +47,7 @@ const onSubmit = async () => {
           'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       );
       window.hide_loader()
-      goToNextStep();
+      goToStep(workflowStep.next_step);
     }
   } catch (e) {
     genericErrorHandler(e);

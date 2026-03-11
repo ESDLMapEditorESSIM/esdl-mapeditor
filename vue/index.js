@@ -10,6 +10,7 @@ import ObjectProperties from '@/apps/ObjectProperties.vue';
 import EDRAssets from '@/apps/EDRAssets.vue';
 import EnvironmentalProfiles from '@/apps/EnvironmentalProfiles.vue';
 import AddEditWmsLayer from '@/apps/AddEditWmsLayer.vue';
+import SpatialVisualization from '@/apps/SpatialVisualization.vue';
 import Carriers from '@/apps/Carriers.vue';
 import Sectors from '@/apps/Sectors.vue';
 import AboutBox from '@/apps/AboutBox.vue';
@@ -22,12 +23,16 @@ import CustomIconsSettings from "@/apps/CustomIconsSettings.vue";
 import KPIDashboard from '@/apps/KPIDashboard.vue';
 import ESDLAnalytics from '@/apps/ESDLAnalytics.vue';
 import OwnershipDialog from '@/apps/OwnershipDialog.vue';
+import AssetConstraint from '@/apps/AssetConstraint.vue';
+import PortProfileEditor from "@/apps/PortProfileEditor.vue";
+import PortProfileViewer from '@/apps/PortProfileViewer.vue';
 import {
     createVueLControl,
     createVueMapEditorDialog,
     mountApp,
     mountSettingsComponent,
     mountSidebarComponent,
+    mountSidebarBottomComponent,
     mountTooltipComponent,
 } from "./mounts";
 import UndoRedoControl from "./apps/UndoRedoControl";
@@ -62,6 +67,10 @@ import ResidentialArea from "@/apps/ResidentialArea.vue";
 import HeatTransition from "@/apps/HeatTransition.vue";
 import './utils/startDrawAsset';
 import ResultVisualizationsToolbar from "@/components/toolbars/ResultVisualizationsToolbar.vue";
+import ETMInterface from "@/apps/ETMInterface.vue";
+import {useReplaceEDRAsset} from "@/composables/replaceEDRAsset";
+import ToastNotifications from "@/apps/ToastNotifications.vue";
+import PromptDialog from "@/apps/PromptDialog.vue";
 
 // Vue.config.productionTip = false
 
@@ -90,6 +99,30 @@ window.control_strategy_window = (object_id) => {
     mountSidebarComponent(ControlStrategy);
 }
 
+window.activate_port_profile_editor = (es_id, object_id) => {
+    const { newObject } = useObject();
+    newObject({
+        es_id: es_id,
+        object_id: object_id
+    });
+    mountSidebarComponent(PortProfileEditor);
+}
+
+window.activate_asset_constraint = (object_id) => {
+    const { newObject } = useObject();
+    newObject(object_id);
+    mountSidebarComponent(AssetConstraint);
+}
+
+window.activate_port_profile_viewer = (es_id, object_id) => {
+    const { newObject } = useObject();
+    newObject({
+        es_id: es_id,
+        object_id: object_id
+    });
+    mountSidebarBottomComponent(PortProfileViewer);
+}
+
 window.marginal_costs_window = (object_id) => {
     const { newObject } = useObject();
     newObject(object_id);
@@ -100,6 +133,7 @@ window.carriers_window = () => {
     mountSidebarComponent(Carriers);
 }
 
+window.object_properties_active_panels = null;
 window.object_properties_window = (object_id) => {
     console.log('object_properties_list', object_id)
     const { newObject } = useObject();
@@ -111,10 +145,15 @@ window.edr_asset_window = () => {
     mountSidebarComponent(EDRAssets);
 }
 
-window.show_tooltip = (object_title, object_id, el_id) => {
-    const { newTooltipObjectID, newTitle } = useTooltipInfo();
+window.etm_interface_window = () => {
+    mountSidebarComponent(ETMInterface);
+}
+
+window.show_tooltip = (object_title, object_id, el_id, es_id) => {
+    const { newTooltipObjectID, newTitle, newESid } = useTooltipInfo();
     newTooltipObjectID(object_id);
     newTitle(object_title);
+    newESid(es_id);
     mountTooltipComponent(AssetTooltip, el_id);
 }
 
@@ -160,6 +199,10 @@ window.add_edit_wms_layer = (object_id) => {
     mountSidebarComponent(AddEditWmsLayer)
 }
 
+window.open_spatial_visualization = () => {
+    mountSidebarComponent(SpatialVisualization);
+};
+
 createVueLControl(ActiveLongProcess, {position: 'bottomright'});
 // mountApp(ToggleActiveLongProcess, '#vue_toggle_long_process_view');
 mountApp(AboutBox, '#vue_show_about_box')
@@ -199,6 +242,13 @@ createApp(ApplicationContextSelector).mount('#vue_application_context_selector')
 mountApp(ToggleProjectView, '#vue_toggle_show_project_view')
 mountApp(LoadProjectFileButton, '#vue_load_project_file')
 
+const [,toastNotificationInstance] = mountApp(ToastNotifications, '#toast_notifications');
+import {useToastNotifications} from "@/composables/toastNotifications";
+const {setToastNotificationsInstance } = useToastNotifications();
+setToastNotificationsInstance(toastNotificationInstance);
+
+mountApp(PromptDialog, '#prompt_dialog');
+
 createVueLControl(AssetsToBeAddedToolbar, {
     position: 'bottomright',
 });
@@ -233,4 +283,10 @@ window.heat_transition_window = (area_id) => {
     const { newObject } = useObject();
     newObject(area_id);
     mountSidebarComponent(HeatTransition);
+}
+
+window.replace_with_edr_asset = (object_id_list, object_class) => {
+    const { newAssetInfo } = useReplaceEDRAsset();
+    newAssetInfo(object_id_list, object_class);
+    mountSidebarComponent(EDRAssets)
 }

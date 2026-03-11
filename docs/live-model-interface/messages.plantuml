@@ -1,41 +1,40 @@
 @startuml
+' Vertical layout for more breathing room
+skinparam componentStyle rectangle
+skinparam linetype ortho
+skinparam shadowing false
+skinparam nodesep 80
+skinparam ranksep 120
+
+top to bottom direction
 
 actor User
 
-rectangle RabbitMQ {
-    [mapeditor.topic] as TopicExchange
+rectangle "MapEditor" as MapEditor {
+    [API] as ME_API
 }
 
-User --> MapEditor
+rectangle "RabbitMQ\n(mapeditor.topic)" as RMQ
 
-rectangle MapEditor {
-    [MapEditor] --> TopicExchange : "events.esdl.high_level_change"
-    [MapEditor] --> TopicExchange : "events.esdl.new"
-    [MapEditor] --> TopicExchange : "events.asset.positioning"
+rectangle "Live Model Interfaces" as LMI {
+    [LMI] as LMI_APP
 }
 
-rectangle "Live Model Interfaces" {
-    [connect-nearest-infra] --> TopicExchange : "lmi.esdl.high_level_change"
-    [connect-nearest-infra] --> TopicExchange : "lmi.esdl.refresh"
+rectangle "MapEditor UI" as UI {
+    [Socket.IO] as ME_UI
 }
 
-TopicExchange --> "Live Model Interfaces" : "events.esdl.high_level_change"
-TopicExchange --> "Live Model Interfaces" : "events.esdl.new"
-TopicExchange --> "Live Model Interfaces" : "events.asset.positioning"
-TopicExchange --> MapEditor : "lmi.esdl.high_level_change"
-TopicExchange --> MapEditor : "lmi.esdl.refresh"
+User --> ME_API
 
-rectangle "Message Types" {
-    [HighLevelChangeMessage]
-    [NewESDLMessage]
-    [AssetPositionMessage]
-    [StateRefreshRequestMessage]
-}
+ME_API --> RMQ : events.pm.new\n events.pm.add\n events.pm.delete\n events.pm\n events.pm.clear\n events.esdl.high_level_change\n {lmi_id}.activation
+ME_API ..> RMQ : events.asset.positioning (disabled)
 
-MapEditor --> [HighLevelChangeMessage] : sends
-MapEditor --> [NewESDLMessage] : sends
-MapEditor --> [AssetPositionMessage] : sends
-[connect-nearest-infra] --> [HighLevelChangeMessage] : sends
-[connect-nearest-infra] --> [StateRefreshRequestMessage] : sends
+LMI_APP --> RMQ : lmi.esdl.high_level_change\n lmi.pm.refresh\n events.variant.new\n results.*
+
+RMQ --> LMI_APP : events.pm.*\n events.esdl.high_level_change\n {lmi_id}.activation\n events.asset.positioning
+
+RMQ --> ME_API : lmi.esdl.high_level_change\n lmi.pm.refresh\n results.*
+
+ME_API --> ME_UI : results.asset.positioning (Socket.IO)
 
 @enduml

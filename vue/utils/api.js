@@ -98,3 +98,30 @@ export function handleErrorResponse(e) {
         genericErrorHandler(message);
     }
 }
+
+
+/**
+ * Fetches data from the specified resource using a WebSocket connection.
+ * 
+ * @param {string} path The path of the resource to fetch data from.
+ * @param {Object} requestBody Optional. The request body to send with the WebSocket emit.
+ * @returns {Promise<Array|Object>} A promise that resolves with the response or rejects with an error.
+ */
+export const fetchData = async (path, requestBody) => {
+    const result = new Promise((resolve, reject) => {
+        const callback = (response) => {
+            if (response) {
+                resolve(response);
+            } else {
+                reject(new Error(`An unknown error occurred while fetching data from ${path}`));
+            }
+        };
+
+        if (requestBody) {
+            window.socket.emit(path, requestBody, callback);
+        } else {
+            window.socket.emit(path, callback);
+        }
+    });
+    return result;
+};

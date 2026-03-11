@@ -44,7 +44,7 @@ to make decisions, or to display information to the user.
 
 Normally, a step has a single next_step field, that indicates the id of the step to go to next. However, it is also
 possible to specify a list of next steps, each with a condition. For the condition we use a DSL, for which the schema
-can be found in `workflowSchemes.js`. See `demo_workflow.json` for an example of this in action.
+can be found in `workflowSchemas.js`. See `demo_workflow.json` for an example of this in action.
 
 All conditions operate only on the state of the workflow.
 

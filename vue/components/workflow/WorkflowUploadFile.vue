@@ -7,8 +7,8 @@
 </template>
 
 <script setup="props">
-import { genericErrorHandler } from "../../utils/errors.js";
-import { useWorkflow } from "../../composables/workflow.js";
+import { genericErrorHandler } from "@/utils/errors";
+import { useWorkflow } from "@/composables/workflow";
 import { workflowPostData } from "./utils/api.js";
 import Swal from "sweetalert2";
 
@@ -24,7 +24,7 @@ const inputId = 'workflow_file_upload';
 
 const workflowStep = props.workflowStep;
 
-const { getParamsFromState, getState, goToNextStep } = useWorkflow();
+const { getParamsFromState, getState, goToStep } = useWorkflow();
 const state = getState();
 
 // eslint-disable-next-line no-unused-vars
@@ -61,7 +61,7 @@ const onSubmit = async () => {
             state[target_field] = response_json[response_field];
           }
         }
-        goToNextStep();
+        goToStep(workflowStep.next_step);
       } else {
         alert('Error while uploading file: ' + response.statusText)
       }

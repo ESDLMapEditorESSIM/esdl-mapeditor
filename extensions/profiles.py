@@ -19,19 +19,35 @@ import locale
 import threading
 from io import StringIO
 from uuid import uuid4
+from typing import Optional, List, Dict, Any, Tuple
 
+import psycopg
 import pytz
+import math
+import re
 from flask import Flask
-from flask_executor import Executor
 from flask_socketio import SocketIO, emit
 from influxdb import InfluxDBClient
+from flask_executor import Executor
+from influxdb.exceptions import InfluxDBClientError
 from pyecore.ecore import EDate
+from requests.exceptions import ConnectionError
+from urllib.parse import urlparse
+from dataclasses import dataclass
 
+
+import src.esdl_config as esdl_config
 import src.log as log
 import src.settings as settings
 from esdl import esdl
+from esdl.processing.ESDLQuantityAndUnits import build_qau_from_dict, get_or_create_esi_qau
+from esdl.profiles.data_configurations.credentials import Credentials
+from esdl.profiles.influxdbprofilemanager import ConnectionSettings, InfluxDBProfileManager
+from esdl.profiles.datatableprofilemanager import DataTableProfileManager
+from esdl.units.parser import qau_to_string
 from esdlproject.ProjectManager import load_external_string
 from extensions.panel_service import create_panel, get_panel_service_datasource
+from extensions.profile_server import ProfileServerTypeEnum, InfluxDBConnectionSettings, PostgreSQLConnectionSettings, InfluxDBServer, PostgreSQLServer
 from extensions.session_manager import get_session, get_project_manager
 from extensions.settings_storage import SettingType, SettingsStorage
 from src.edr_client import EDRClient
@@ -45,9 +61,68 @@ PROFILES_LIST = 'PROFILES'  # To store profiles
 PROFILES_SETTINGS = 'PROFILES_SETTINGS'  # To store information about profiles servers, ...
 profiles = None
 
+dt_str_format = '%Y-%m-%d %H:%M:%S'
+
+@dataclass
+class AssetPortsProfilesRequest:
+    es_id: str
+    asset_id: str
+
+@dataclass
+class ProfileVizOptions:
+    """The dataclass specifies profile trace visualization overrides options."""
+    start_datetime: Optional[datetime.datetime | str] = None
+    """Timezone aware start datetime. If a string is given, it is converted into a timezone aware datetime object."""
+    end_datetime: Optional[datetime.datetime | str] = None
+    """Timezone aware end datetime. If a string is given, it is converted into a timezone aware datetime object."""
+    multiplier: Optional[float] = None
+    """If specified, scale the profile trace based on this value; otherwise, based on ESDL profile instance multiplier attribute."""
+    max_datapoints: Optional[int] = None
+    """If specified, downsample profile datapoints to approximately the given value."""
+
+    def __post_init__(self):
+        if isinstance(self.start_datetime, str):
+            self.start_datetime = _dt_str_to_tz_aware_datetime(self.start_datetime)
+
+        if isinstance(self.end_datetime, str):
+            self.end_datetime = _dt_str_to_tz_aware_datetime(self.end_datetime)
+
+    def __setattr__(self, key, value):
+        if key in ("start_datetime", "end_datetime") and isinstance(value, str): 
+            value = _dt_str_to_tz_aware_datetime(value)
+        super().__setattr__(key, value)
+
+@dataclass
+class ProfileTracesRequest:
+    es_id: str
+    profile_ids: List[str]
+    viz_options: Optional[ProfileVizOptions]
+
+@dataclass
+class ProfileTraceDtpRequest:
+    dtp_obj: dict
+    """A dict (frontend object) that can be converted into an esdl.DataTableProfile"""
+    viz_options: Optional[ProfileVizOptions]
+
+@dataclass
+class AddProfileRequest:
+    es_id: str
+    port_id: str
+    profileClass: str
+    """The class name of the profile to create (e.g., "SingleValue", "DataTableProfile", "InfluxDBProfile")"""
+    profile_obj: dict
+    """A dict (frontend object) that can be converted into an ESDL profile class e.g, esdl.DataTableProfile"""
+
+@dataclass
+class UpdateProfileRequest:
+    es_id: str
+    profile_id: str
+    profileClass: str
+    """The class name of the profile to be updated (e.g., "SingleValue", "DataTableProfile", "InfluxDBProfile")"""
+    updates: dict
 
 def send_alert(message):
-    print(message)
+    logger.warning(message)
     # emit('alert', message, namespace='/esdl')
 
 
@@ -225,6 +300,49 @@ class Profiles:
 
                 return {"profiles_servers": ui_prof_settings_list}
 
+        @self.socketio.on("get_asset_ports_profiles", namespace="/esdl")
+        def _get_asset_ports_profiles(params: dict):
+            """Return asset-associated ports profiles in a dict for a given asset id."""
+            req = AssetPortsProfilesRequest(**params)
+            return Profiles.get_asset_ports_profiles(req.es_id, req.asset_id)
+        
+        @self.socketio.on('get_profile_traces', namespace='/esdl')
+        def _get_profile_traces_from_profile_ids(params: dict):
+            """Return ESDL profile traces (or error messages) for a given ESDL profile ids."""
+            req = ProfileTracesRequest(**params)
+            req.viz_options = ProfileVizOptions(**req.viz_options)
+            return Profiles.get_profile_traces_from_profile_ids(req)
+
+        @self.socketio.on('get_profile_trace_from_dtp_obj', namespace='/esdl')
+        def _get_profile_trace_from_dtp_obj(params: dict):
+            """
+            Return a profile trace for a given DataTableProfile-like object.
+            This can be used to request a profile trace from a publicly registered profile, such as EDR.
+            """
+            req = ProfileTraceDtpRequest(**params)
+            viz_options = ProfileVizOptions(**req.viz_options)
+            return Profiles.get_profile_trace_from_dtp_obj(req.dtp_obj, viz_options)
+
+        @self.socketio.on('add_esdl_profile', namespace='/esdl')
+        def _add_esdl_profile(params: dict) -> dict:
+            """Add a new profile to a given port in an ESDL."""
+            try:
+                req = AddProfileRequest(**params)
+                Profiles.add_esdl_profile(req.es_id, req.port_id, req.profileClass, req.profile_obj)
+                return {"success": True, "message": f"Successfully added profile."}
+            except Exception as e: 
+                return {"success": False, "message": str(e)}
+            
+        @self.socketio.on('update_esdl_profile', namespace='/esdl')
+        def _update_esdl_profile(params: dict) -> dict:
+            """Update an existing ESDL profile for a given profile id and updates dict."""
+            try:
+                req = UpdateProfileRequest(**params)
+                Profiles.update_esdl_profile(req.es_id, req.profile_id, req.profileClass, req.updates)
+                return {"success": True, "message": f"Successfully updated profile."}
+            except Exception as e: 
+                return {"success": False, "message": str(e)}
+
     def update_profiles_list(self):
         emit('update_profiles_list', self.get_profiles())
 
@@ -235,28 +353,41 @@ class Profiles:
         ntime = time + ":00+0000"
         return ndate + "T" + ntime
 
+    def guess_profile_server_type(self, profile_settings) -> ProfileServerTypeEnum:
+        if "type" in profile_settings:
+            return profile_settings["type"]
+        else:
+            if ("port" in profile_settings and profile_settings["port"] == 8086) or \
+                    ("host" in profile_settings and "influxdb" in profile_settings["host"]):
+                return ProfileServerTypeEnum.INFLUXDB
+            elif ("port" in profile_settings and profile_settings["port"] == 5432) or \
+                    ("host" in profile_settings and "postgres" in profile_settings["host"]):
+                return ProfileServerTypeEnum.POSTGRESQL
+
     def process_csv_file(self, name, uuid, content):
         logger.debug("Processing csv file(s) (threaded): ".format(name))
 
-        tz_string = datetime.datetime.now().astimezone().tzname()
+        tz_string = datetime.now().astimezone().tzname()
 
         try:
             logger.info("process CSV")
-            measurement = name.split('.')[0]
+            csv_file_name_without_extension = name.split('.')[0]
 
             try:
                 csv_file = StringIO(content)
                 dialect = csv.Sniffer().sniff(csv_file.read(4096))
+                if dialect.delimiter == ',':
+                    raise ValueError(f"CSV file '{name}' uses comma ',' as delimiter. Please use semicolon ';' to avoid parsing errors.")
                 csv_file = StringIO(content)
                 reader = csv.reader(csv_file, dialect)
-            except:
+            except csv.Error:
                 # If format cannot be determined automatically, try ; as a default
                 csv_file = StringIO(content)
                 reader = csv.reader(csv_file, delimiter=';')
 
             column_names = next(reader)
             num_fields = len(column_names)
-            json_body = []
+            timeseries_data = []
 
             locale.setlocale(locale.LC_ALL, '')
             start_datetime = None
@@ -288,8 +419,7 @@ class Profiles:
                 else:
                     end_datetime = dt_string
 
-                json_body.append({
-                    "measurement": measurement,
+                timeseries_data.append({
                     "time": dt_string,
                     "fields": fields
                 })
@@ -299,42 +429,60 @@ class Profiles:
             with self.flask_app.app_context():
                 profiles_settings = self.get_profiles_settings()
                 profiles_server_index = int(self.csv_files[uuid]['profiles_server_index'])
-
+                host = profiles_settings['profiles_servers'][profiles_server_index]['host']
+                port = int(profiles_settings['profiles_servers'][profiles_server_index]['port'])
                 database = profiles_settings['profiles_servers'][profiles_server_index]['database']
-                client = InfluxDBClient(
-                    host=profiles_settings['profiles_servers'][profiles_server_index]['host'],
-                    port=profiles_settings['profiles_servers'][profiles_server_index]['port'],
-                    username=profiles_settings['profiles_servers'][profiles_server_index]['username'],
-                    password=profiles_settings['profiles_servers'][profiles_server_index]['password'],
-                    database=database,
-                    ssl=profiles_settings['profiles_servers'][profiles_server_index]['ssl_enabled'],
-                )
 
-            available_databases = client.get_list_database()
-            # if database not in client.get_list_database():
-            if not (any(db['name'] == database for db in available_databases)):
-                logger.debug('Database does not exist, creating a new one')
-                client.create_database(database)
-            client.write_points(points=json_body, database=database, batch_size=100)
+                profile_server_type_str = self.guess_profile_server_type(profiles_settings['profiles_servers'][profiles_server_index])
+                profile_server_type = ProfileServerTypeEnum(profile_server_type_str)
+                if profile_server_type == ProfileServerTypeEnum.INFLUXDB:
+                    influxdb_profile_server = InfluxDBServer(
+                        connection_settings=InfluxDBConnectionSettings(
+                            host=host,
+                            port=port,
+                            username=profiles_settings['profiles_servers'][profiles_server_index]['username'],
+                            password=profiles_settings['profiles_servers'][profiles_server_index]['password'],
+                            database=database,
+                            ssl=profiles_settings['profiles_servers'][profiles_server_index]['ssl_enabled'],
+                        )
+                    )
 
-            if profiles_settings['profiles_servers'][profiles_server_index]['ssl_enabled']:
-                protocol = "https://"
-            else:
-                protocol = "http://"
-            profiles_server_host = protocol + \
-                                   profiles_settings['profiles_servers'][profiles_server_index]['host'] + \
-                                   ":" + \
-                                   profiles_settings['profiles_servers'][profiles_server_index]['port']
-            datasource = get_panel_service_datasource(
-                database=database,
-                host=profiles_server_host,
-                username=profiles_settings['profiles_servers'][profiles_server_index]['username'],
-                password=profiles_settings['profiles_servers'][profiles_server_index]['password'],
-            )
+                    influxdb_profile_server.connect()
+                    influxdb_profile_server.convert_data(data=timeseries_data, measurement=csv_file_name_without_extension)
+                    influxdb_profile_server.write_data()
 
-            logger.info("Store profile information in settings")
+                    # Get or create a datasource in Grafana using the panalservice
+                    if profiles_settings['profiles_servers'][profiles_server_index]['ssl_enabled']:
+                        protocol = "https://"
+                    else:
+                        protocol = "http://"
+                    profiles_server_host = f"{protocol}{host}:{port}"
+                    datasource = get_panel_service_datasource(
+                        database=database,
+                        host=profiles_server_host,
+                        username=profiles_settings['profiles_servers'][profiles_server_index]['username'],
+                        password=profiles_settings['profiles_servers'][profiles_server_index]['password'],
+                    )
+
+                elif profile_server_type == ProfileServerTypeEnum.POSTGRESQL:
+                    postgres_profile_server = PostgreSQLServer(
+                        connection_settings=PostgreSQLConnectionSettings(
+                            host=host,
+                            port=port,
+                            username=profiles_settings['profiles_servers'][profiles_server_index]['username'],
+                            password=profiles_settings['profiles_servers'][profiles_server_index]['password'],
+                            database=database,
+                            ssl=profiles_settings['profiles_servers'][profiles_server_index]['ssl_enabled'] if "ssl_enabled" in profiles_settings['profiles_servers'][profiles_server_index] else False,
+                        )
+                    )
+
+                    postgres_profile_server.connect()
+                    postgres_profile_server.convert_data(data=timeseries_data, table_name=csv_file_name_without_extension)
+                    postgres_profile_server.write_data()
 
             # Store profile information in settings
+            logger.info("Store profile information in settings")
+
             group = self.csv_files[uuid]['group']
             prof_aggr_type = self.csv_files[uuid]['prof_aggr_type']
             for i in range(1, num_fields):
@@ -343,37 +491,42 @@ class Profiles:
                 # Stop if empty column was found
                 if field.strip() == '':
                     break
+
                 # Create a dictionary with all relevant information about the new profile
                 profile = self.create_new_profile(
                     group=group,
-                    uiname=measurement + '_' + field,
+                    uiname=csv_file_name_without_extension + '_' + field,
                     multiplier=1,
+                    database_type=profile_server_type.value,
+                    host=host,
+                    port=port,
                     database=database,
-                    measurement=measurement,
-                    field=field,
                     profile_type="",
                     start_datetime=start_datetime,
                     end_datetime=end_datetime
                 )
-                if profiles_server_index != 0:  # Only non standard profiles server
-                    profile['host'] = profiles_settings['profiles_servers'][profiles_server_index]['host']
-                    profile['port'] = profiles_settings['profiles_servers'][profiles_server_index]['port']
 
-                # Create a grafana panel for visualization and add the embedURL to the dictionary
-                profile["embedUrl"] = create_panel(
-                    graph_title=group + " - " + field,
-                    axis_title="",
-                    datasource=datasource,
-                    host=profiles_server_host,
-                    database=database,
-                    measurement=measurement,
-                    field=field,
-                    filters=[],
-                    qau=None,
-                    prof_aggr_type=prof_aggr_type,
-                    start_datetime=start_datetime,
-                    end_datetime=end_datetime
-                )
+                if profile_server_type == ProfileServerTypeEnum.INFLUXDB:
+                    self.add_influxdb_details(profile, csv_file_name_without_extension, field)
+                elif profile_server_type == ProfileServerTypeEnum.POSTGRESQL:
+                    self.add_postgres_details(profile, csv_file_name_without_extension, field)
+
+                if profile_server_type == ProfileServerTypeEnum.INFLUXDB:
+                    # Create a grafana panel for visualization and add the embedURL to the dictionary
+                    profile["embedUrl"] = create_panel(
+                        graph_title=group + " - " + field,
+                        axis_title="",
+                        datasource=datasource,
+                        host=profiles_server_host,
+                        database=database,
+                        measurement=csv_file_name_without_extension,
+                        field=field,
+                        filters=[],
+                        qau=None,
+                        prof_aggr_type=prof_aggr_type,
+                        start_datetime=start_datetime,
+                        end_datetime=end_datetime
+                    )
                 # Store the new profile in the profiles settings
                 self.add_profile(str(uuid4()), profile)
 
@@ -414,9 +567,10 @@ class Profiles:
         if self.settings_storage.has(setting_type, identifier, PROFILES_LIST):
             # update profile dict
             profiles = self.settings_storage.get(setting_type, identifier, PROFILES_LIST)
-            print('Deleting profile {}'.format(profiles[profile_id]))
+            logger.info('Deleting profile', profile=profiles[profile_id])
             del (profiles[profile_id])
             self.settings_storage.set(setting_type, identifier, PROFILES_LIST, profiles)
+            # TODO: also remove record from DB?
 
     def _get_identifier(self, setting_type: SettingType, project_name=None):
         if setting_type is None:
@@ -622,7 +776,7 @@ class Profiles:
 
         return edr_profiles
 
-    def create_new_profile(self, group, uiname, multiplier, database, measurement, field, profile_type, start_datetime,
+    def create_new_profile(self, group, uiname, multiplier, database_type, host, port, database, profile_type, start_datetime,
                            end_datetime):
         setting_type, project_name = self.get_setting_type_project_name(group)
         profile = {
@@ -630,14 +784,25 @@ class Profiles:
             "project_name": project_name,
             "profile_uiname": uiname,
             "multiplier": multiplier,
+            "type": database_type,
+            "host": host,
+            "port": int(port),
             "database": database,
-            "measurement": measurement,
-            "field": field,
             "profileType": profile_type,
             "start_datetime": start_datetime,
             "end_datetime": end_datetime,
             "embedUrl": None
         }
+        return profile
+
+    def add_influxdb_details(self, profile, measurement, field):
+        profile["measurement"] = measurement
+        profile["field"] = field
+        return profile
+
+    def add_postgres_details(self, profile, table, column):
+        profile["table"] = table
+        profile["column"] = column
         return profile
 
     def get_profiles_settings(self):
@@ -755,44 +920,42 @@ class Profiles:
                     return profile
         return None
 
-
     @staticmethod
-    def connect_to_animation_profiles_database(es_id: str, database: str):
-        # get influxdb host and port from first pipe/cable
-        anim_profile_info_from_esdl = Profiles.get_profiles_for_asset_type(
-            es_id, [esdl.ElectricityCable, esdl.Pipe]
-        )
-        if not anim_profile_info_from_esdl:  # essim: profile info not in esdl
-            return InfluxDBClient(
-                host=settings.essim_config['ESSIM_database_server'],
-                port=settings.essim_config['ESSIM_database_port'],
-                database=database
-            )
-        elif Profiles.check_if_profiles_have_same_host_port_database(anim_profile_info_from_esdl):
-            profile = anim_profile_info_from_esdl[0]
-            credentials = Profiles.get_instance().determine_database_credentials(
-                profile.host, profile.port, profile.database
-            )
-            if credentials:
-                influxdb_client = InfluxDBClient(
-                    host=profile.host,
-                    # host=profile.host,
-                    port=profile.port,
-                    database=database,
-                    username=credentials['username'],
-                    password=credentials['password']
-                )
-            else:
-                influxdb_client = InfluxDBClient(
-                    host=profile.host,
-                    port=profile.port,
-                    database=database
-                )
-
-            return influxdb_client
-        else:
-            logger.info("Not all profiles use same host, port, database")
+    def connect_to_animation_profiles_database(es_id: str):
+        anim_profiles = Profiles.get_profiles_for_asset_type(es_id, [esdl.ElectricityCable, esdl.Pipe])
+        if not anim_profiles:
             return None
+
+        # make sure all cable/pipe profiles are in the same database
+        try:
+            Profiles.check_if_profiles_have_same_host_port_database(anim_profiles)
+        except IOError as ioe:
+            error_message = f"Could not load animation data: \n{ioe.message}"
+            logger.error(error_message)
+            raise ConnectionError(error_message)
+
+        # get influxdb host, port, database from first cable/pipe
+        profile = anim_profiles[0]
+        influxdb_host = profile.host
+        influxdb_port = profile.port
+        database = profile.database
+
+        # get credentials (if available)
+        credentials = Profiles.get_instance().determine_database_credentials(influxdb_host, influxdb_port, database)
+        if credentials:
+            influxdb_client = InfluxDBClient(
+                host=influxdb_host,
+                port=influxdb_port,
+                database=database,
+                username=credentials["username"],
+                password=credentials["password"],
+            )
+        else:
+            influxdb_client = InfluxDBClient(host=influxdb_host, port=influxdb_port, database=database)
+        if not influxdb_client:
+            raise ConnectionError(f"Could not connect to influxdb '{influxdb_host}' to database '{database}'")
+
+        return influxdb_client
 
     @staticmethod
     def check_if_profiles_have_same_host_port_database(profile_list):
@@ -800,24 +963,575 @@ class Profiles:
         used_port = None
         used_database = None
 
+        general_error_message = "profiles should be in the same host, port and database."
         for p in profile_list:
-            if used_host and p.host != used_host:
-                return False
+            edited_host = p.host.lower().replace("http://", "").replace("https://", "")
+            if used_host and edited_host != used_host:
+                raise IOError(
+                    f"{general_error_message}"
+                    f"\nDifferent host:port found: '{used_host}:{used_port}' and '{edited_host}:{p.port}'."
+                )
             else:
-                used_host = p.host
+                used_host = edited_host
 
-            if used_port and p.port != used_port:
-                return False
+            if used_port and p.port != used_port and p.port != 0:
+                raise IOError(
+                    f"{general_error_message}"
+                    f"\nDifferent host:port found: '{used_host}:{used_port}' and '{edited_host}:{p.port}'."
+                )
             else:
                 used_port = p.port
 
             if used_database and p.database != used_database:
-                return False
+                raise IOError(
+                    f"{general_error_message}\nDifferent databases found: '{used_database}' and '{p.database}'."
+                )
             else:
                 used_database = p.database
 
         return True
 
+    @staticmethod
+    def get_animation_fields(esdl_id: str) -> Optional[list[str]]:
+        # Get all fields available for all 'Pipe' and/or 'ElectricityCable' assets.
+        try:
+            influxdb_client = Profiles.connect_to_animation_profiles_database(esdl_id)
+
+            if not influxdb_client:
+                return None
+
+            query_collections_with_asset_id = 'SHOW TAG VALUES WITH KEY="assetId"'
+            collections_with_asset_id = influxdb_client.query(query_collections_with_asset_id)
+            carrier_ids = collections_with_asset_id.keys()[0]
+
+            if not carrier_ids:
+                return None
+
+            fields = []
+            for carrier_id in carrier_ids:
+                tag_fields_query = f'SHOW TAG KEYS FROM "{carrier_id}"'
+                result = influxdb_client.query(tag_fields_query)
+                tag_fields = ["time"] + [point["tagKey"] for point in result.get_points()]
+
+                all_fields_query = (
+                    f'SELECT * FROM "{carrier_id}" '
+                    f"WHERE \"assetClass\" = 'Pipe' OR \"assetClass\" = 'ElectricityCable' LIMIT 1"
+                )
+                result = influxdb_client.query(all_fields_query)
+                for point in result.get_points():
+                    fields += [key for key in point.keys() if key not in tag_fields and key not in fields]
+        except ConnectionError as nre:
+            emit(
+                "alert",
+                f"Could not connect to influxdb '{influxdb_client._host}:{influxdb_client._port}'"
+                f" for time series animation data retrieval.",
+                namespace="/esdl",
+            )
+            return None
+        except InfluxDBClientError as ie:
+            emit(
+                "alert",
+                f"Could get data from influxdb '{influxdb_client._host}:{influxdb_client._port}'"
+                f" for time series animation data retrieval: '{str(ie)}'.",
+                namespace="/esdl",
+            )
+            return None
+        except Exception as e:
+            # No animation data
+            logger.info(f"No animation data found due to error: {e}")
+            return None
+
+        return fields
+    
+    @staticmethod
+    def get_profile_influxdb_settings(host: str, port: int, database: str, profiles_settings: dict) -> ConnectionSettings | None:
+        """
+        Retrieve InfluxDB connection settings for a given profile host, port, and database.
+
+        If the profile is hosted on a publicly accessible server, 
+        it additionally checks the InfluxDB connectivity and constructs the connection settings.
+        """
+        settings = None
+
+        # Find profile server information for the InfluxDBProfile
+        for prof_server in profiles_settings.get("profiles_servers", []):
+            if prof_server["host"] in host and prof_server["port"] == str(port):
+                settings = ConnectionSettings(
+                    host=prof_server["host"],
+                    port=port,
+                    database=database,
+                    username=prof_server["username"],
+                    password=prof_server["password"],
+                    ssl=prof_server.get("ssl_enabled", False),
+                    verify_ssl=prof_server.get("ssl_enabled", False),
+                )
+                break
+
+        # Check additionally if the profile is hosted on a public accessible server
+        if settings is None:
+            # Ensure host part only (without http:// or https://) 
+            host_loc = urlparse(host).netloc if host.startswith(('http://', 'https://')) else host
+            settings = ConnectionSettings(
+                    host=host_loc,
+                    port=port,
+                    database=database,
+                    username="",
+                    password="",
+                    ssl=True,
+                    verify_ssl=True,
+                )
+        # TODO: performance issue with _test_influxdb_connection?
+        if _test_influxdb_connection(settings):
+            return settings
+        
+        return None
+
+    @staticmethod
+    def get_profile_postgres_settings(host: str, port: int, database: str, profiles_settings: dict) -> PostgreSQLConnectionSettings | None:
+        """
+        Retrieve PostgreSQL connection settings for a given profile host, port, and database.
+        """
+        settings = None
+
+        # Find profile server information for the PostgreSQL
+        for prof_server in profiles_settings.get("profiles_servers", []):
+            if (prof_server.get("type") and ProfileServerTypeEnum(prof_server["type"]) == ProfileServerTypeEnum.POSTGRESQL and
+                prof_server["host"] in host and prof_server["port"] == str(port)):
+                settings = PostgreSQLConnectionSettings(
+                    host=prof_server["host"],
+                    port=port,
+                    database=database,
+                    username=prof_server["username"],
+                    password=prof_server["password"],
+                )
+                break
+        # TODO: performance issue with _test_postgresql_connection?
+        if settings is not None and _test_postgresql_connection(settings):
+            return settings
+        
+        return None
+
+    @staticmethod
+    def influxdbprofile_to_datatableprofile(profile: esdl.InfluxDBProfile) -> esdl.DataTableProfile:
+        """The method translates InfluxDBProfile into DataTableProfile."""
+
+        dtp = esdl.DataTableProfile(
+            id=profile.id,
+            name=profile.name,
+            tableName=profile.measurement,
+            columnName=profile.field,
+            filter=profile.filters,
+            multiplier=profile.multiplier,
+            startDate=profile.startDate,
+            endDate=profile.endDate,
+            profileType=profile.profileType,
+            profileQuantityAndUnit=_clone_qau(profile.profileQuantityAndUnit)
+        )
+
+        dtp.configuration = esdl.DatabaseConfiguration(
+            database=profile.database,
+            type=esdl.DatabaseTypeEnum.INFLUXDB,
+            host=profile.host,
+            port=profile.port,
+            tls=False
+        )
+
+        return dtp
+    
+    @staticmethod
+    def datatableprofile_to_dict(dtp: esdl.DataTableProfile) -> dict:
+        """Return a dict representation of `DataTableProfile` for client consumption."""
+
+        qau_dict = _serialize_qau(getattr(dtp, "profileQuantityAndUnit", None))
+    
+        return {
+            "id": dtp.id,
+            "name": dtp.name,
+            "tableName": dtp.tableName,
+            "columnName": dtp.columnName,
+            "filter": dtp.filter,
+            "multiplier": dtp.multiplier,
+            "profileType": _get_enum_name(dtp.profileType),
+            "profileQuantityAndUnit": qau_dict,
+            "configuration": {
+                "database": dtp.configuration.database,
+                "type": _get_enum_name(dtp.configuration.type),
+                "host": dtp.configuration.host,
+                "port": dtp.configuration.port,
+                "tls": dtp.configuration.tls
+            }
+        }
+    
+    @staticmethod
+    def get_asset_ports_profiles(es_id: str, asset_id: str) -> dict:
+        """
+        Retrieve and return all profiles attached to the ports of a given asset in an ESDL.
+        """
+        pm = get_project_manager()
+
+        asset: esdl.Asset = pm.get_by_id(es_id, asset_id)
+        if not asset:
+            raise AssetNotFoundError(f"Asset (id={asset_id}) from ESDL (id={es_id}) not found.")
+      
+        ports_profiles = []
+        for port in asset.port:
+            profiles = []
+            for profile in port.profile:
+                profile_class = type(profile).__name__
+                if isinstance(profile, esdl.DataTableProfile):
+                    dtp = profile
+                elif isinstance(profile, esdl.InfluxDBProfile):
+                    dtp = Profiles.influxdbprofile_to_datatableprofile(profile)
+                elif isinstance(profile, esdl.SingleValue):
+                    profiles.append({
+                        "profileClass": profile_class,
+                        "id": profile.id,
+                        "name": profile.name,
+                        "profileType": _get_enum_name(profile.profileType),
+                        "profileQuantityAndUnit": _serialize_qau(profile.profileQuantityAndUnit),
+                        "value": profile.value
+                    })
+                    continue
+                else:
+                    raise ProfileClassError(f"Unsupported profile class: {profile_class}")
+                    
+                dtp_dict = Profiles.datatableprofile_to_dict(dtp)
+                # Label profile class for frontend use.
+                dtp_dict["profileClass"] = profile_class
+                profiles.append(dtp_dict)
+
+            ports_profiles.append(
+                {
+                    "port_id": port.id,
+                    "port_name": port.name,
+                    "port_type": type(port).__name__,
+                    "port_profiles": profiles
+                }
+            )
+
+        return {
+            "asset_id": asset_id,
+            "asset_name": asset.name,
+            "ports_profiles": ports_profiles
+        }
+    
+    @staticmethod
+    def get_profile_traces_from_profile_ids(req: ProfileTracesRequest) -> Dict[str, List[Dict[str, Any]]]:
+        """Return a dictionary with profile traces or error messages."""
+
+        results = {"traces": [], "errors": []}
+
+        for profile_id in req.profile_ids:
+            try:
+                trace = Profiles.get_esdl_profile_trace_from_id(req.es_id, profile_id, req.viz_options)
+                results["traces"].append({
+                    "profile_id": profile_id,
+                    "trace": trace
+                })
+            except Exception as e:
+                results["errors"].append({
+                    "profile_id": profile_id,
+                    "error": str(e)
+                })
+
+        return results
+    
+    @staticmethod
+    def get_esdl_profile_trace_from_id(es_id: str, profile_id: str, viz_options: Optional[ProfileVizOptions]) -> dict:
+        """Retrieve a single profile trace for a given ESDL profile ID."""
+        pm = get_project_manager()
+
+        profile = pm.get_by_id(es_id, profile_id)
+        if not profile:
+            raise ProfileNotFoundError(f"Profile (id={profile_id}) from ESDL (id={es_id}) not found.")
+        
+        if isinstance(profile, esdl.DataTableProfile):
+            dtp = profile
+        elif isinstance(profile, esdl.InfluxDBProfile):
+            dtp = Profiles.influxdbprofile_to_datatableprofile(profile)
+        else:
+            raise ProfileClassError(f"Unsupported profile (id={profile_id}) class: {type(profile).__name__}")
+
+        return Profiles.get_datatableprofile_trace(dtp, viz_options)
+
+    def get_profile_trace_from_dtp_obj(dtp_obj: dict, viz_options: Optional[ProfileVizOptions]) -> dict:
+        """
+        Convert a frontend DataTableProfile-like object (dict) into an ESDL DataTableProfile,
+        then retrieve its profile trace.
+
+        Parameters
+        ----------
+        dtp_obj : dict
+            Dictionary containing DataTableProfile-like fields, including a nested
+            'configuration' dict with database connection info.
+        viz_options : Optional[ProfileVizOptions]
+            Visualization options that may override profile attributes.
+        """        
+        results = {"traces": [], "errors": []}
+
+        try:
+            dtp = _convert_dtp_obj_into_dtp(dtp_obj)
+            dtp.configuration = _convert_config_obj_into_databaseconfiguration(dtp_obj.get("configuration"))
+            trace = Profiles.get_datatableprofile_trace(dtp, viz_options)
+            results["traces"].append({
+                "profile_id": None,
+                "trace": trace
+            })
+        except Exception as e:
+            results["errors"].append({
+                "profile_id": None,
+                "error": str(e)
+            })
+        
+        return results
+
+    @staticmethod
+    def get_datatableprofile_trace(dtp: esdl.DataTableProfile, viz_options: Optional[ProfileVizOptions]) -> dict:
+        """
+        Load and return a profile trace in a dict.
+
+        If viz_options is provided, they override the inherent attributes of the DataTableProfile instance.
+        """
+
+        # Apply visualization overrides
+        if viz_options and viz_options.start_datetime is not None:
+            start_dt = viz_options.start_datetime
+        else:
+            start_dt = dtp.startDate
+
+        if viz_options and viz_options.end_datetime is not None:
+            end_dt = viz_options.end_datetime
+        else:
+            end_dt = dtp.endDate
+
+        multiplier = viz_options.multiplier if viz_options and viz_options.multiplier is not None else dtp.multiplier
+        max_datapoints = viz_options.max_datapoints if viz_options and viz_options.max_datapoints is not None else None
+
+        # groupby_interval to be used for profile downsampling
+        groupby_interval_sec = _calculate_profile_groupby_interval(start_dt, end_dt, max_datapoints)
+        
+        # Profile connection settings retrieved from MongoDB
+        profiles_settings = Profiles.get_instance().get_profiles_settings()
+
+        dtp_config: esdl.DatabaseConfiguration = dtp.configuration
+
+        # --- INFLUXDB HANDLING ---
+        # NOTE: InfluxDB profile will be phased out eventually.
+        if dtp_config.type == esdl.DatabaseTypeEnum.INFLUXDB:
+            influxdb_settings = Profiles.get_profile_influxdb_settings(
+                host=dtp_config.host,
+                port=dtp_config.port,
+                database=dtp_config.database,
+                profiles_settings=profiles_settings
+            )
+            if influxdb_settings is None:
+                raise InfluxDBConnectionError(f"Unable to retrieve credentials to connect to InfluxDB database at \
+                                                {dtp_config.host}:{dtp_config.port}/{dtp_config.database}")
+            try:
+                influxdb_pm = InfluxDBProfileManager(influxdb_settings)
+
+                query_filters = _parse_profile_filter(dtp.filter)
+
+                influxdb_pm.load_influxdb(
+                    measurement=dtp.tableName,
+                    fields=[dtp.columnName],
+                    from_datetime=start_dt,
+                    to_datetime=end_dt,
+                    filters=query_filters,
+                    groupby_interval_sec=groupby_interval_sec
+                )
+                # profile_data_list: a list of lists, with each list structure to be [datetime, field value, ...]
+                datetime_profile = influxdb_pm.profile_data_list
+
+                if len(datetime_profile) == 0:
+                    raise EmptyProfileWarning(f"Profile [{dtp.columnName}] has no data.")
+
+                datetimes, values = [], []
+                for datetime, value, *_ in datetime_profile:
+                    # skip when value is None (this can occur when downsampling is applied)
+                    if value is None:
+                        continue
+
+                    datetimes.append(datetime.strftime(dt_str_format)) 
+                    values.append(value * multiplier)
+
+                return {
+                    "name": dtp.columnName,
+                    "x": datetimes,
+                    "y": values,
+                }
+            except Exception as e:
+                raise ProfileTraceLoadError(f"Failed to load influxdb profile trace: {e}") from e
+        
+        # --- POSTGRES HANDLING ---
+        elif dtp_config.type == esdl.DatabaseTypeEnum.POSTGRESQL:
+            postgres_settings = Profiles.get_profile_postgres_settings(
+                host=dtp_config.host,
+                port=dtp_config.port,
+                database=dtp_config.database,
+                profiles_settings=profiles_settings
+            )
+            if postgres_settings is None:
+                raise PostgreSQLConnectionError(f"Unable to retrieve credentials to connect to Postgres database at \
+                                                {dtp_config.host}:{dtp_config.port}/{dtp_config.database}")
+            try:
+                db_config_id = f"{dtp_config.host}:{dtp_config.port}/{dtp_config.database}"
+                if dtp.configuration.id is None:
+                    dtp.configuration.id = db_config_id
+                
+                credentials_dict = Credentials.create_dict(
+                    id=dtp.configuration.id,
+                    username=postgres_settings.username,
+                    password=postgres_settings.password
+                )
+
+                # Clone a dtp and apply visualization override values when retrieving profile
+                dtp_viz = copy.deepcopy(dtp)
+                dtp_viz.configuration = copy.deepcopy(dtp.configuration)
+                dtp_viz.startDate = start_dt
+                dtp_viz.endDate = end_dt
+
+                # NOTE: Apply a trick here to pass groupby_interval_sec as a filter string,
+                # which subsequently triggers a downsampled query when loading profile data.
+                if groupby_interval_sec is not None:
+                    if dtp_viz.filter:
+                        dtp_viz.filter = f"{dtp_viz.filter} AND groupby_interval_sec={groupby_interval_sec}"
+                    else:
+                        dtp_viz.filter = f"groupby_interval_sec={groupby_interval_sec}"
+
+                # TODO: implement load_influxdb() like method to avoid dtp mutation?
+                dtpmanager = DataTableProfileManager.load(dtp_viz, credentials_dict)
+                datetime_profile = dtpmanager.get_esdl_datetime_profile(dtp_viz.columnName).element
+
+                if len(datetime_profile) == 0:
+                    raise EmptyProfileWarning(f"Profile [{dtp.columnName}] has no data.")
+
+                datetimes, values = [], []
+                for element in datetime_profile:
+                    dt = element.from_
+                    value = element.value
+
+                    # skip when value is None (this can occur when downsampling is applied)
+                    if value is None:
+                        continue
+
+                    datetimes.append(dt.strftime(dt_str_format)) 
+                    values.append(value * multiplier)
+
+                return {
+                    "name": dtp.columnName,
+                    "x": datetimes,
+                    "y": values,
+                }
+            except Exception as e:
+                raise ProfileTraceLoadError(f"Failed to load postgres profile trace: {e}") from e
+            
+        
+        # --- UNSUPPORTED TYPE ---
+        logger.error(f"Unsupported datatableprofile configuration type: {dtp.configuration.type}")
+
+        return {}
+
+    @staticmethod
+    def add_esdl_profile(es_id: str, port_id: str, profile_class: str, profile_obj: dict) -> None:
+        """
+        Add a new profile to a given port in an ESDL.
+
+        Parameters
+        ----------
+        es_id : str
+            The identifier of the ESDL file (energy system).
+        port_id : str
+            The identifier of the port within the ESDL file.
+        profile_class : str
+            The class name of the profile to create (e.g., "SingleValue", "DataTableProfile", "InfluxDBProfile").
+        profile_obj : dict
+            Dictionary containing SingleValue or DataTableProfile-like fields and configuration.
+        """
+        pm = get_project_manager()
+
+        port = pm.get_by_id(es_id, port_id)
+        if not port or not isinstance(port, esdl.Port):
+            raise ProfilePortNotFoundError(f"Unable to attach profile to a given port (id={port_id}) from ESDL (id={es_id}).")
+        try:
+            # First extract and parse profile qau.
+            qau_obj = profile_obj.get("profileQuantityAndUnit")
+            if qau_obj:
+                profile_qau = _convert_qau_obj_into_profile_qau(es_id, qau_obj)
+                profile_obj["profileQuantityAndUnit"] = None
+
+            if profile_class == esdl.SingleValue.__name__:
+                new_profile = esdl.SingleValue(
+                    name=profile_obj.get("name"),
+                    value=float(profile_obj.get("value")),
+                    profileType=esdl.ProfileTypeEnum.from_string(profile_obj.get("profileType"))
+                )
+            elif profile_class == esdl.DataTableProfile.__name__:
+                new_profile = _convert_dtp_obj_into_dtp(profile_obj)
+                db_config = _convert_config_obj_into_databaseconfiguration(profile_obj.get("configuration"))
+                esi_db_config = get_or_add_esi_databaseconfiguration(es_id, db_config)
+                new_profile.configuration = esi_db_config
+            elif profile_class == esdl.InfluxDBProfile.__name__:
+                new_profile = esdl.InfluxDBProfile(
+                    host=profile_obj.get("configuration").get("host"),
+                    port=profile_obj.get("configuration").get("port"),
+                    database=profile_obj.get("configuration").get("database"),
+                    measurement=profile_obj.get("tableName"),
+                    field=profile_obj.get("columnName"),
+                    filters=profile_obj.get("filter"),
+                    multiplier=float(profile_obj.get("multiplier")),
+                    startDate=_dt_str_to_tz_aware_datetime(profile_obj.get("startDate")),
+                    endDate=_dt_str_to_tz_aware_datetime(profile_obj.get("endDate")),
+                    profileType=esdl.ProfileTypeEnum.from_string(profile_obj.get("profileType"))
+                )
+            else:
+                raise ProfileClassError(f"Unsupported profile class: {profile_class}")
+            
+            if new_profile:
+                new_profile.id = str(uuid4())
+                if profile_qau:
+                    new_profile.profileQuantityAndUnit = profile_qau
+                # Append new profile to the target port.
+                port.eGet("profile").append(new_profile)
+                pm.add_object_to_dict(es_id, new_profile)
+            else:
+                raise ProfileCreateError(f"An error occurs while adding profile")
+        except Exception as e:
+            raise ProfileCreateError(f"An error occurs while adding profile: {e}") from e
+
+    @staticmethod
+    def update_esdl_profile(es_id: str, profile_id: str, profile_class: str, updates: dict) -> None:
+        """
+        Update attributes of an existing profile in an ESDL.
+        """
+        pm = get_project_manager()
+
+        profile = pm.get_by_id(es_id, profile_id)
+        if not profile:
+            raise ProfileNotFoundError(f"Profile (id={profile_id}) from ESDL (id={es_id}) not found.")
+        
+        try:
+            # Profile class specific attributes
+            if profile_class == esdl.SingleValue.__name__:
+                if "name" in updates:
+                    profile.name = updates["name"]
+                if "value" in updates:
+                    profile.value = float(updates["value"])
+            else:
+                if "multiplier" in updates:
+                    profile.multiplier = float(updates["multiplier"])
+
+            # Attributes or references inherited from GenericProfile
+            if "profileType" in updates:
+                profile.profileType = esdl.ProfileTypeEnum.from_string(updates["profileType"])
+            if "profileQuantityAndUnit" in updates:
+                qau_obj = updates["profileQuantityAndUnit"]
+                profile_qau = _convert_qau_obj_into_profile_qau(es_id, qau_obj)
+                if profile_qau:
+                    profile.profileQuantityAndUnit = profile_qau
+
+        except Exception as e:
+            raise ProfileUpdateError(f"An error occurs while updating profile (id={profile_id}): {e}") from e
 
 default_profile_groups = {
     "groups": [
@@ -843,3 +1557,279 @@ default_profiles = {
     #     "embedUrl": ""
     # }
 }
+
+# ------------------------------------------------ #
+# ---------------- Util functions ---------------- #
+# ------------------------------------------------ #
+
+def _clone_qau(qau):
+    """A util function which returns a deep clone of qau."""
+    if not qau:
+        return None
+
+    if isinstance(qau, esdl.QuantityAndUnitReference):
+        qau = qau.reference
+    return qau.deepcopy()
+
+def _get_enum_name(enum_obj):
+    """A util function to get the ENUM name string."""
+    enum_name = getattr(enum_obj, "name", None)
+    if enum_name == "None":
+        return None
+    return enum_name
+
+def _serialize_qau(qau: esdl.QuantityAndUnitType | esdl.QuantityAndUnitReference) -> dict | None:
+    """
+    Return a dict representation for QuantityAndUnit.
+
+    TODO: handle custom QaU
+    """
+    if not qau:
+        return None
+
+    is_reference = isinstance(qau, esdl.QuantityAndUnitReference)
+    if is_reference:
+        qau = qau.reference
+
+    qau_description = qau.description if qau.description else qau_to_string(qau)
+    is_predefined_qau = False
+    for pqau in esdl_config.esdl_config["predefined_quantity_and_units"]:
+        if pqau["description"].lower() == qau_description.lower():
+            is_predefined_qau = True
+
+    return {
+        "id": qau.id,
+        "description": qau_description,
+        "physicalQuantity": _get_enum_name(qau.physicalQuantity),
+        "unit": _get_enum_name(qau.unit),
+        "multiplier": _get_enum_name(qau.multiplier),
+        "perUnit": _get_enum_name(qau.perUnit),
+        "perMultiplier": _get_enum_name(qau.perMultiplier),
+        "perTimeUnit": _get_enum_name(qau.perTimeUnit),
+        # Additional labels for frontend use.
+        "_isPredefinedQaU": is_predefined_qau,
+        "_isReference": bool(is_reference),
+    }
+
+def _test_influxdb_connection(settings: ConnectionSettings) -> bool:
+    """Return True if the InfluxDB instance is reachable."""
+    client = None
+    try:
+        client = InfluxDBClient(
+            host=settings.host,
+            port=settings.port,
+            database=settings.database,
+            ssl=settings.ssl,
+            verify_ssl=settings.verify_ssl,
+            retries=1,
+            timeout=2,
+        )
+        # Simple connectivity test
+        client.get_list_database()
+        return True
+    except (ConnectionError, TimeoutError) as e:
+        raise InfluxDBConnectionError(f"Unable to reach InfluxDB database at {settings.host}:{settings.port}/{settings.database} - {e}")
+    finally:
+        if client:
+            client.close()
+
+def _test_postgresql_connection(settings: PostgreSQLConnectionSettings) -> bool:
+    """Return True if the PostgreSQL instance is reachable."""
+    try:
+        conn = psycopg.connect(
+            host=settings.host,
+            port=settings.port,
+            dbname=settings.database,
+            user=settings.username,
+            password=settings.password,
+            connect_timeout=3
+        )
+        conn.close()
+        return True
+    except psycopg.OperationalError as e:
+        raise PostgreSQLConnectionError(f"Unable to reach PostgreSQL database at {settings.host}:{settings.port}/{settings.database} - {e}")
+
+def _convert_dtp_obj_into_dtp(dtp_obj: dict) -> esdl.DataTableProfile:
+    """
+    Convert a frontend DataTableProfile-like object (dict) into an ESDL DataTableProfile.
+
+    Parameters
+    ----------
+    dtp_obj : dict
+        Dictionary containing DataTableProfile-like fields.
+    """
+
+    dtp = esdl.DataTableProfile(
+        tableName=dtp_obj.get("tableName"),
+        columnName=dtp_obj.get("columnName"),
+        filter=dtp_obj.get("filter"),
+        multiplier=float(dtp_obj.get("multiplier")),
+        startDate=_dt_str_to_tz_aware_datetime(dtp_obj.get("startDate")),
+        endDate=_dt_str_to_tz_aware_datetime(dtp_obj.get("endDate")),
+        profileType=esdl.ProfileTypeEnum.from_string(dtp_obj.get("profileType"))
+    )
+
+    return dtp
+
+def _convert_config_obj_into_databaseconfiguration(config_obj: dict) -> esdl.DatabaseConfiguration:
+    """
+    Convert a frontend DatabaseConfiguration-like object (dict) into an ESDL DatabaseConfiguration.
+
+    Parameters
+    ----------
+    config_obj : dict
+        Dictionary containing DatabaseConfiguration-like fields.
+    """
+
+    db_config = esdl.DatabaseConfiguration(
+        id=config_obj.get("id"),
+        name=config_obj.get("name"),
+        database=config_obj.get("database"),
+        type=esdl.DatabaseTypeEnum.from_string(config_obj.get("type")),
+        host=config_obj.get("host"),
+        port=int(config_obj.get("port")),
+        tls=bool(config_obj.get("tls")) if config_obj.get("tls") else None
+    )
+
+    return db_config
+
+def get_or_add_esi_databaseconfiguration(es_id: str, db_config: esdl.DatabaseConfiguration):
+    """
+    Return an existing DatabaseConfiguration from EnergySystemInformation if present.
+    Otherwise, add the given DatabaseConfiguration (or reuse a duplicate) and return it.
+    """
+    pm = get_project_manager()
+
+    if not db_config.id:
+        db_config.id = str(uuid4())
+
+    # Check if databaseconfiguration is already present in the ESDL
+    try:
+        return pm.get_by_id(es_id, db_config.id)
+    except KeyError:
+        pass
+        
+    # Ensure EnergySystemInformation and DataConfigurations exist
+    es: esdl.EnergySystem = pm.get_energy_system_by_id(es_id)
+    if not es.energySystemInformation:
+        esi: esdl.EnergySystemInformation = esdl.EnergySystemInformation(id=str(uuid4()))
+        es.energySystemInformation = esi
+        pm.add_object_to_dict(es_id, esi)
+    if not es.energySystemInformation.dataconfigurations:
+        dataconfigs = esdl.DataConfigurations(id=str(uuid4()))
+        es.energySystemInformation.dataconfigurations = dataconfigs
+        pm.add_object_to_dict(es_id, dataconfigs)
+
+    configs = es.energySystemInformation.dataconfigurations.configurations 
+    
+    # Look for an existing duplicate by attributes 
+    duplicate = next(
+        (
+            cfg for cfg in configs 
+            if isinstance(cfg, esdl.DatabaseConfiguration)
+            and cfg.database == db_config.database
+            and cfg.type == db_config.type
+            and cfg.host == db_config.host
+            and cfg.port == db_config.port
+        ),
+        None
+    )
+
+    if duplicate:
+        return duplicate
+
+    # Otherwise, append and register the new config
+    configs.append(db_config)
+    pm.add_object_to_dict(es_id, db_config)
+
+    return db_config
+
+def _convert_qau_obj_into_profile_qau(es_id: str, qau_obj: dict):
+    """
+    Convert a given predefined qau_obj (dict) into an ESDL QuantityAndUnitReference.
+
+    TODO: handle custom QaU
+    """
+    pm = get_project_manager()
+
+    # If id is present, it a predefined qau.
+    predefined_qau_id = qau_obj.get("id")
+    if predefined_qau_id:
+        try:
+            # check if predefined qau is already present in the ESDL
+            qau = pm.get_by_id(es_id, predefined_qau_id)
+        except KeyError:
+            qau = build_qau_from_dict(qau_obj)
+            esi_qau = get_or_create_esi_qau(pm, es_id)
+            esi_qau.quantityAndUnit.append(qau)
+            pm.add_object_to_dict(es_id, qau)
+
+        qau_ref = esdl.QuantityAndUnitReference(reference=qau)
+        return qau_ref
+    else:
+        return None
+
+def _dt_str_to_tz_aware_datetime(dt_str: str, default_tz=datetime.timezone.utc) -> datetime.datetime:
+    """
+    Parse a datetime string using parse_date() utility,
+    and ensure the result is timezone-aware by applying `default_tz`
+    when no timezone is present.
+    """
+    dt = parse_date(dt_str)
+
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=default_tz)
+
+    return dt
+            
+def _parse_profile_filter(filter: Optional[str]) -> List[Dict[str, str]]:
+    """A util function to parse profile filter string into a list of dict."""
+
+    if not filter:
+        return []
+    if "AND" in filter:
+        matches = re.findall(r"(\w+)='([^']*)'", filter)
+    else:
+        matches = re.findall(r'"(\w+)"=\'([^\']+)\'', filter)
+    return [{"tag": k, "value": v} for k, v in matches]
+    
+def _calculate_profile_groupby_interval(start: datetime.datetime, end: datetime.datetime, max_points: Optional[int]) -> Optional[int]:
+    """A util function to determine profile downsampling groupby interval."""
+
+    if not max_points:
+        return None
+    time_delta_sec = (end - start).total_seconds()
+    # To round to common (readable) interval: 1s, 30s, 1m, 30m, 1h, 6h, 12h, 1d
+    common_intervals = [1, 30, 60, 1800, 3600, 21600, 43200, 86400]
+    interval_sec = math.ceil(time_delta_sec / max_points)
+    return min(common_intervals, key=lambda x: abs(x - interval_sec))
+
+class AssetNotFoundError(Exception):
+    pass
+
+class ProfileNotFoundError(Exception):
+    pass
+
+class ProfileClassError(Exception):
+    pass
+
+class InfluxDBConnectionError(Exception):
+    pass
+
+class ProfileTraceLoadError(Exception):
+    pass
+
+class ProfileCreateError(Exception):
+    pass
+
+class ProfilePortNotFoundError(Exception):
+    pass
+
+class ProfileUpdateError(Exception):
+    pass
+
+class EmptyProfileWarning(Exception):
+    pass
+
+class PostgreSQLConnectionError(Exception):
+    pass

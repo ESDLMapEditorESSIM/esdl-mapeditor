@@ -23,7 +23,7 @@ function isBuildingEditorOpen() {
 }
 
 function open_building_editor(dialog, building_info) {
-    //console.log(building_info);
+    console.log(building_info);
     bld_edit_id = building_info['id'];
 
     var contents = [
@@ -32,7 +32,7 @@ function open_building_editor(dialog, building_info) {
                 "<div class=\"flexbox-item\">",
 
                     "<div id=\"bld_ctrl\" style=\"clear: left; position: relative; padding:3px;\">",
-                    "    <button id=\"bld_edr-asset-btn\" onclick=\"select_edr_asset_window();\" title=\"EDR assets\" class=\"ui-button ui-widget ui-corner-all\">EDR assets</button>",
+                    "    <button id=\"bld_edr-asset-btn\" onclick=\"edr_asset_window();\" title=\"EDR assets\" class=\"ui-button ui-widget ui-corner-all\">EDR assets</button>",
                     "    <select id=\"bld_asset_menu\" style='position:relative;z-index:100'>",
                     "    </select>",
 
@@ -52,6 +52,8 @@ function open_building_editor(dialog, building_info) {
     ].join('');
 
     dialog.setContent(contents);
+    let assetType = building_info['building_list'][0][3] || "Building"
+    dialog.setTitle(assetType + " Editor - " + building_info['building_list'][0][1]);
     // document.getElementById('building-info').innerHTML = 'Test';
 
     if (bld_map && bld_map.remove) {

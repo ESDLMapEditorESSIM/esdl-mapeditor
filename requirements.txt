@@ -6,8 +6,10 @@
 #
 amqp==5.2.0
     # via kombu
-authlib==1.4.1
-    # via flask-oidc
+authlib==1.5.1
+    # via
+    #   -r requirements.in
+    #   flask-oidc
 bidict==0.23.1
     # via python-socketio
 blinker==1.9.0
@@ -32,8 +34,11 @@ click==8.1.7
     #   geomet
     #   pip-tools
 colorama==0.4.6
-    # via -r requirements.in
-cryptography==44.0.1
+    # via
+    #   -r requirements.in
+    #   build
+    #   click
+cryptography==42.0.8
     # via authlib
 et-xmlfile==1.1.0
     # via openpyxl
@@ -47,7 +52,7 @@ flask==3.0.3
     #   flask-sqlalchemy
 flask-executor==1.0.0
     # via -r requirements.in
-flask-oidc==2.2.0
+flask-oidc==2.3.1
     # via -r requirements.in
 flask-session==0.8.0
     # via -r requirements.in
@@ -62,7 +67,9 @@ geojson==3.1.0
 geomet==0.2.1.post1
     # via -r requirements.in
 greenlet==3.1.1
-    # via sqlalchemy
+    # via
+    #   -r requirements.in
+    #   sqlalchemy
 h11==0.14.0
     # via wsproto
 idna==3.7
@@ -97,16 +104,22 @@ openpyxl==3.1.2
     # via -r requirements.in
 ordered-set==4.1.0
     # via pyecore
-packaging==24.0
-    # via build
+packaging==24.1
+    # via
+    #   -r requirements.in
+    #   build
 pandas==2.2.2
     # via -r requirements.in
 pika==1.3.2
     # via -r requirements.in
 pip-tools==7.4.1
     # via -r requirements.in
-psycopg2-binary==2.9.10
+psycopg[binary]==3.2.9
     # via -r requirements.in
+psycopg-binary==3.2.9
+    # via
+    #   -r requirements.in
+    #   psycopg
 pycparser==2.22
     # via cffi
 pyecore==0.15.1
@@ -168,10 +181,14 @@ sqlalchemy-utils==0.41.2
 structlog==24.1.0
     # via -r requirements.in
 typing-extensions==4.12.2
-    # via sqlalchemy
+    # via
+    #   psycopg
+    #   sqlalchemy
 tzdata==2024.1
-    # via pandas
-urllib3==2.2.1
+    # via
+    #   pandas
+    #   psycopg
+urllib3==2.2.2
     # via requests
 vine==5.1.0
     # via

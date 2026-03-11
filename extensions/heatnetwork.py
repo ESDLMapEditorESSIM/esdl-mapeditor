@@ -29,7 +29,8 @@ from esdl.processing import ESDLAsset
 from esdl.processing import ESDLGeometry
 from esdlproject.ProjectManager import ProjectManager
 from extensions.session_manager import get_project_manager, get_session, get_session_for_esid
-from src.esdl_helper import asset_state_to_ui, get_tooltip_asset_attrs, add_spatial_attributes
+from src.esdl_helper import asset_state_to_ui, get_tooltip_asset_attrs, add_spatial_attributes, add_extra_attributes
+from src.incremental_ui.incremental_ui_messages import create_asset_port_message
 
 logger = log.get_logger(__name__)
 
@@ -74,7 +75,7 @@ class HeatNetwork:
     def add_asset_and_emit(self, pm: ProjectManager, es_id: str, asset: EnergyAsset, area_bld_id: str):
         with self.flask_app.app_context():
             asset_to_be_added_list = list()
-            port_list = self.calculate_port_list(asset)
+            port_list = create_asset_port_message(asset)
             message = self.create_asset_description_message(asset, port_list)
             asset_to_be_added_list.append(message)
 
@@ -142,36 +143,12 @@ class HeatNetwork:
             connections = self.update_conn_list(conductor, active_es_id)
             # send update_esdl_object message (to be invented) to refresh gui
             emit('delete_esdl_object', {'asset_id': conductor.id})
-            port_list = self.calculate_port_list(conductor)
+            port_list = create_asset_port_message(conductor)
             asset_description = self.create_asset_description_message(conductor, port_list)
             add_esdl_object_message = {'es_id': active_es_id, 'asset_pot_list': [asset_description], 'zoom': False}
-            print(add_esdl_object_message)
             emit('add_esdl_objects', add_esdl_object_message, namespace='/esdl')
             emit("add_connections", {"es_id": active_es_id, "conn_list": connections})
 
-
-    @staticmethod
-    def calculate_port_list(asset: EnergyAsset):
-        port_list = list()
-        for i in range(len(asset.port)):
-            port = asset.port[i]
-            coord = ()
-            if i == 0:
-                if isinstance(asset.geometry, Point):
-                    coord = (asset.geometry.lat, asset.geometry.lon)
-                elif isinstance(asset.geometry, Line):
-                    coord = (asset.geometry.point[0].lat, asset.geometry.point[0].lon)
-            elif i == len(asset.port) - 1:
-                if isinstance(asset.geometry, Point):
-                    coord = (asset.geometry.lat, asset.geometry.lon)
-                elif isinstance(asset.geometry, Line):
-                    coord = (asset.geometry.point[-1].lat, asset.geometry.point[-1].lon)
-            connTo_ids = list(o.id for o in port.connectedTo)
-            carrier_id = port.carrier.id if port.carrier else None
-            port_list.append(
-                {'name': port.name, 'id': port.id, 'type': type(port).__name__, 'conn_to': connTo_ids, 'carrier': carrier_id})
-
-        return port_list
 
     @staticmethod
     def create_asset_description_message(asset: EnergyAsset, port_list):
@@ -186,8 +163,7 @@ class HeatNetwork:
         else:
             capability_type = ESDLAsset.get_asset_capability_type(asset)
             tooltip_asset_attrs = get_tooltip_asset_attrs(asset, 'marker')
-            extra_attributes = dict()
-            extra_attributes['assetType'] = asset.assetType
+            extra_attributes = add_extra_attributes(asset)
             add_spatial_attributes(asset, tooltip_asset_attrs)
             return ['point', 'asset', asset.name, asset.id, type(asset).__name__,
                     [asset.geometry.lat,asset.geometry.lon], tooltip_asset_attrs, state, port_list, capability_type,

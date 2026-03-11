@@ -3,6 +3,8 @@ from pyecore.ecore import EAttribute
 from pyecore.resources import ResourceSet
 from pyecore.valuecontainer import EOrderedSet
 
+from esdl import EnergySystem, EnergySystemInformation, InfluxDBProfile, TimeSeriesProfile, Asset, InPort, OutPort, \
+    Port, GenericProfile, ProfileReference
 from esdl.processing.string_uri import StringURI
 from esdl.profiles.influxdbprofilemanager import InfluxDBProfileManager, ConnectionSettings
 import esdl
@@ -38,11 +40,10 @@ class ESDL2InlineProfile:
             # es_copy.id = str(uuid4())
 
             with self.flask_app.app_context():
-                profiles_settings = Profiles.get_instance().get_profiles_settings()
                 try:
-                    es_converted = self.convert_esdl_profiles(es_copy, profiles_settings)
+                    es_converted = copy_and_convert_esdl_profiles(active_es_id)
                 except Exception as e:
-                    logger.error(f"Error converting ESDL to in-line profiles: {e}")
+                    logger.exception(f"Error converting ESDL to in-line profiles: {e}")
                     return make_response("Error converting ESDL to in-line profiles", 500)
 
             uri = StringURI('es_converted.esdl')
@@ -53,10 +54,9 @@ class ESDL2InlineProfile:
             content = uri.getvalue()
             response = Response(content, direct_passthrough=True)
             response.headers.set('Content-Type', 'application/esdl+xml')
-            response.headers.set('Content-Disposition', 'attachment', filename='%s.esdl' % es_converted.name)
+            response.headers.set('Content-Disposition', 'attachment', filename='%s' % es_converted.name)
 
             return response
-
 
     @staticmethod
     def convert_esdl_profiles(
@@ -163,3 +163,120 @@ class ESDL2InlineProfile:
         timeseries_profile = prof_manager.get_esdl_timeseries_profile(profile_name=profile.name)
         return timeseries_profile
 
+
+def copy_and_convert_esdl_profiles(
+        es_id: str,
+) -> EnergySystem:
+    """
+    Copy the active EnergySystem and convert its profiles to in-line profiles.
+    """
+    pm = get_project_manager()
+    es = pm.get_energy_system_by_id(es_id=es_id)
+    es_string = pm.energy_system_to_string(es_id=es_id)
+    es_copy, parse_info = load_external_string(es_string, name=f"{es.name} - In-line Profiles")
+    es_copy.name = get_session('es_filename') or (es.name or "Untitled EnergySystem") + " - In-line Profiles"
+    profiles_settings = Profiles.get_instance().get_profiles_settings()
+    es_converted = convert_esdl_profiles(es_copy, profiles_settings)
+    return es_converted
+
+
+def convert_esdl_profiles(
+        es: EnergySystem,
+        profiles_settings: dict[str, object],
+) -> EnergySystem:
+    esi: EnergySystemInformation = es.energySystemInformation
+
+    # Remove all InfluxDBProfiles from the global profiles list
+    logger.info("Removing InfluxDBProfiles from global profiles")
+    global_profiles = esi.profiles.profile
+    influxdb_profiles = [profile for profile in global_profiles if isinstance(profile, InfluxDBProfile)]
+    for profile in influxdb_profiles:
+        logger.debug(f"Removing InfluxDBProfile '{profile.name}' from global profiles")
+        esi.profiles.profile.remove(profile)
+
+    handled_profiles: dict[str, TimeSeriesProfile] = {}
+
+    # Convert profiles for each port in each asset in each building
+    for asset in es.instance[0].area.asset:
+        convert_asset_profiles(asset, esi, handled_profiles, profiles_settings)
+    logger.info("Finished converting ESDL to in-line profiles")
+    return es
+
+
+def convert_asset_profiles(asset: Asset, esi: EnergySystemInformation, handled_profiles: dict[str, TimeSeriesProfile], profiles_settings: dict[str, object]):
+    """
+    Convert profiles for all ports in the asset. Recursively convert profiles for all sub-assets.
+    """
+    ilog = logger.bind(asset_id=asset.id, asset_name=asset.name)
+    ilog.debug("Converting profiles for asset")
+
+    if hasattr(asset, 'port'):
+        ilog.debug("Converting profiles for ports")
+        in_ports = [port for port in asset.port if isinstance(port, InPort)]
+        for in_port in in_ports:
+            convert_profile_for_port(esi, in_port, handled_profiles, profiles_settings)
+
+        out_ports = [port for port in asset.port if isinstance(port, OutPort)]
+        for out_port in out_ports:
+            convert_profile_for_port(esi, out_port, handled_profiles, profiles_settings)
+
+    if hasattr(asset, 'asset'):
+        ilog.debug("Recursively converting profiles for sub-assets", asset_id=asset.id, asset_name=asset.name)
+        for sub_asset in asset.asset:
+            convert_asset_profiles(sub_asset, esi, handled_profiles, profiles_settings)
+
+def convert_profile_for_port(
+        esi: EnergySystemInformation,
+        port: Port,
+        handled_profiles: dict[str, GenericProfile],
+        profiles_settings: dict[str, object],
+):
+    def convert_influx_profile(prof: InfluxDBProfile):
+        # Create TimeSeriesProfile for the profile of the port in global profiles if it does not exist yet
+        if prof.name not in handled_profiles:
+            influxdb_settings = None
+            for prof_server in profiles_settings["profiles_servers"]:
+                if ((prof_server["host"] == "localhost" and prof.host == "http://influxdb") or prof_server["host"] in prof.host) and prof_server["port"] == str(prof.port):
+                    influxdb_settings = ConnectionSettings(
+                        host=prof_server["host"],
+                        port=prof.port,
+                        database=prof.database,
+                        username=prof_server["username"],
+                        password=prof_server["password"],
+                        ssl=prof_server.get("ssl_enabled", False),
+                        verify_ssl=prof_server.get("ssl_enabled", False),
+                    )
+            if influxdb_settings is None:
+                logger.error(f"Could not find InfluxDB settings for profile '{prof.name}'")
+                raise Exception(f"Could not find InfluxDB settings for profile '{prof.name}'")
+
+            prof_manager = InfluxDBProfileManager(influxdb_settings)
+            prof_manager.load_influxdb(
+                measurement=prof.measurement,
+                fields=[prof.field],
+                from_datetime=prof.startDate,
+                to_datetime=prof.endDate
+            )
+            timeseries_profile = prof_manager.get_esdl_timeseries_profile()
+            timeseries_profile.name = prof.name
+            timeseries_profile.profileType = prof.profileType
+            esi.profiles.profile.append(timeseries_profile)
+            handled_profiles[prof.name] = timeseries_profile
+            logger.info(f"Converted InfluxDBProfile '{prof.name}' to TimeSeriesProfile")
+
+        # Replace InfluxDBProfile with ProfileReference
+        reference_profile: ProfileReference = ProfileReference(
+            multiplier=prof.multiplier,
+            reference=handled_profiles[prof.name],
+        )
+        port.profile.append(reference_profile)
+        port.profile.remove(prof)
+
+    for profile in port.profile:  # Eagerly convert only the first profile found
+        if isinstance(profile, InfluxDBProfile):
+            convert_influx_profile(profile)
+            logger.debug(f"Converted InfluxDBProfile '{profile.name}' to ProfileReference for port '{port.name}'")
+            return
+        else:
+            # TODO: Warning? Error? Or just Info?
+            logger.warning(f"Found a profile which is not an InfluxDBProfile for port '{port.name}'")

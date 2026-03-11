@@ -16,8 +16,17 @@ export function getattrd(obj, name) {
         if (splitted_name[0] === 'session') {
             return name;
         }
-        for (const n of splitted_name) {
-            value = value[n];
+        if (Array.isArray(obj[splitted_name[0]]) && splitted_name.length > 0) {  // handle array of objects
+            value = obj[splitted_name[0]].map(item => {
+                for (const n of splitted_name.slice(1)) {
+                    item = item[n];
+                }
+                return item;
+            });
+        } else {
+            for (const n of splitted_name) {
+                value = value[n];
+            }
         }
         return value
     } catch {

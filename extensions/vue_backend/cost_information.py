@@ -19,7 +19,7 @@ from pyecore.ecore import EReference
 
 import src.log as log
 from esdl import esdl
-from esdl.processing.ESDLQuantityAndUnits import unit_to_string
+from esdl.units.parser import unit_to_string
 from extensions.session_manager import get_session, get_project_manager
 from utils.utils import str2float, camelCaseToWords
 
@@ -197,8 +197,9 @@ def set_cost_information(obj, cost_information_data):
                             if current_unit != ci_component['unit']:
                                 _change_cost_unit(qau, ci_component['unit'])
                         else:
-                            if ci_component['unit'] is not None and ci_component['unit'] != '':
-                                qau = _create_cost_qau(ci_component['unit'])
+                            if 'unit' in ci_component and ci_component['unit'] is not None and ci_component['unit'] != '':
+                                current_cost_component_profile.profileQuantityAndUnit = _create_cost_qau(ci_component['unit'])
+                                pm.add_object_to_dict(active_es_id, qau)
                 else:
                     if ci_component['value'] is not None and ci_component['value'] != '':
                         new_cost_component_profile = esdl.SingleValue(id=str(uuid4()))

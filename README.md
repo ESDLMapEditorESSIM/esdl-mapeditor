@@ -155,6 +155,50 @@ We use the Vue framework for the frontend. We use the Vue CLI to build the front
 
 There is no Vue router. The applicaiton was initially built with plain JavaScript, and Vue was added later. The Vue
 files are now built like a library, and we mount Vue applications through plain JavaScript code.
+## Environment variables
+
+| Name                          | Description                                                                         | Used by                     | Default value if not specified | 
+|-------------------------------|-------------------------------------------------------------------------------------|-----------------------------|--------------------------------|
+| FLASK_DEBUG                   |                                                                                     |                             | ""                             |
+| ALLOWED_ORIGINS               |                                                                                     |                             | *                              |
+| OIDC_CLIENT_SECRETS           |                                                                                     |                             | None                           |
+| MAPEDITOR_USE_GEVENT          |                                                                                     |                             | ""                             |
+| POSTGRES_HOST                 | Postgres host                                                                       | DataManager                 | localhost                      |
+| POSTGRES_PORT                 | Postgres port                                                                       | DataManager                 | 5432                           |
+| POSTGRES_USER                 | Postgres user                                                                       | DataManager                 | mapeditor                      |
+| POSTGRES_PASSWORD             | Postgres password                                                                   | DataManager                 | password                       |
+| POSTGRES_DB                   | Postgres database name                                                              | DataManager                 | mapeditor                      |
+| SETTINGS_STORAGE_HOST         |                                                                                     |                             | None                           | 
+| SETTINGS_STORAGE_PORT         |                                                                                     |                             | 27017                          |
+| USER_LOGGING_HOST             |                                                                                     |                             | None                           |
+| USER_LOGGING_PORT             |                                                                                     |                             | 8086                           |
+| BOUNDARY_SERVICE_HOST         |                                                                                     |                             | None                           |
+| BOUNDARY_SERVICE_PORT         |                                                                                     |                             | None                           |
+| PROFILE_DATABASE_HOST         |                                                                                     |                             | None                           |
+| PROFILE_DATABASE_PORT         |                                                                                     |                             | 8086                           |
+| PANEL_SERVICE_EXTERNAL_URL    |                                                                                     |                             | None                           |
+| PANEL_SERVICE_INTERNAL_URL    |                                                                                     |                             | None                           |
+| PANEL_SERVICE_PROFILE_DB_HOST |                                                                                     |                             | None                           |
+| PANEL_SERVICE_PROFILE_DB_PORT |                                                                                     |                             | 8086                           |
+| ESSIM_URL                     | endpoint of the ESSIM instance                                                      | ESSIM interface             | None                           | 
+| ESSIM_LOADFLOW_URL            | alternative endpoint of the ESSIM instance with loadflow software connected         | ESSIM interface             | None                           |
+| ESSIM_INFLUX_URL              | directly communicated to ESSIM, used to create the datasource in Grafana            | ESSIM interface             | None                           |
+| ESSIM_MAPEDITOR_INFLUX_URL    |                                                                                     | PD Toolsuite workflow       | ESSIM_INFLUX_URL               |
+| ESSIM_GRAFANA_URL             | not used at the moment, used to be part of http body to ESSIM                       |                             | None                           |
+| ESSIM_DATABASE_HOST           | used for downloading ESSIM results from the MapEditor, used for load duration curve | ESSIM interface, ESSIM_KPIs | None                           |
+| ESSIM_DATABASE_PORT           | used for downloading ESSIM results from the MapEditor, used for load duration curve | ESSIM interface, ESSIM_KPIs | 8086                           | 
+| EDR_URL                       |                                                                                     |                             | None                           |
+| ESDL_DRIVE_URL                |                                                                                     |                             | None                           |
+| IBIS_SERVICE_HOST             |                                                                                     |                             | None                           |
+| BAG_SERVICE_HOST              |                                                                                     |                             | None                           |
+| STATISTICS_SERVICE_HOST       |                                                                                     |                             | None                           |
+| DISPATCHER_HOST               |                                                                                     |                             | http://localhost               |
+| DISPATCHER_PORT               |                                                                                     |                             | 9200                           |
+| USER_FEEDBACK_URL             |                                                                                     |                             | None                           |
+|                               |                                                                                     |                             |                                |
+
+
+
 
 ## License
 

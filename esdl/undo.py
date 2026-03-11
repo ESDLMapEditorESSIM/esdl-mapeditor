@@ -219,33 +219,37 @@ class UndoRedoCommandStack:
         """
         logger.debug("=== stop recording =====================================")
         self._combine_multiple_changes = False  # this triggers that the HighLevelChange is added to the stack
-        if self._hlc is not None and len(self._hlc.change) > 0:
-            # filter out eOpposite relations that are double (e.g. connectedTo)
-            #filtered, _ = filterDoubleConnectedTo(self._hlc.change)
-            #if len(filtered) != len(self._hlc.change):
-            #    logger.debug(f"=== Filtered {len(self._hlc.change) - len(filtered)} connectedTo relations")
-            #self._hlc.change = filtered
-            post_process_high_level_change(self._hlc)
-            # self.push() requires that _recording is True and _combine_multiple_changes is False
-            # in order to push this HighLevelChange to the stack
-            self.push(self._hlc)
-            self._hlc = None
+        try:
+            if self._hlc is not None and len(self._hlc.change) > 0:
+                # filter out eOpposite relations that are double (e.g. connectedTo)
+                #filtered, _ = filterDoubleConnectedTo(self._hlc.change)
+                #if len(filtered) != len(self._hlc.change):
+                #    logger.debug(f"=== Filtered {len(self._hlc.change) - len(filtered)} connectedTo relations")
+                #self._hlc.change = filtered
+                post_process_high_level_change(self._hlc)
+                # self.push() requires that _recording is True and _combine_multiple_changes is False
+                # in order to push this HighLevelChange to the stack
+                self.push(self._hlc)
+                self._hlc = None
 
-            # Don't record changes during change handler calls, this is not allowed (and could lock up the app)
-            # To signal this, set the boolean
-            self._detect_changes_during_change_handler = True
-            # Notify listeners in ProjectManger of this change
-            if self.change_handler and call_change_handler:
-                logger.debug("Propagating changes to change handler(s)")
-                self.change_handler(self.top, self.change_context)
-            self._detect_changes_during_change_handler = False
+                # Don't record changes during change handler calls, this is not allowed (and could lock up the app)
+                # To signal this, set the boolean
+                self._detect_changes_during_change_handler = True
+                # Notify listeners in ProjectManger of this change
+                try:
+                    if self.change_handler and call_change_handler:
+                        logger.debug("Propagating changes to change handler(s)")
+                        self.change_handler(self.top, self.change_context)
+                finally:
+                    self._detect_changes_during_change_handler = False
 
-        self._recording = False
-        self.change_context.source = ChangeSource.INTERNAL  # reset to default
-        if self.recording_lock.locked():
-            self.recording_lock.release()
-        else:
-            logger.warning("Recording lock was already released when stopping recording")
+        finally:
+            self._recording = False
+            self.change_context.source = ChangeSource.INTERNAL  # reset to default
+            if self.recording_lock.locked():
+                self.recording_lock.release()
+            else:
+                logger.warning("Recording lock was already released when stopping recording")
 
     def add_undo_step(self, label=None):
         """
@@ -395,7 +399,8 @@ def post_process_high_level_change(high_level_change: HighLevelChange):
     for change in doubles:
         if not change.eContainer():
             logger.error(f"Cant delete {change}")
-        change.delete()  # this works because of ecore! :-)
+        else:
+            change.delete()  # this works because of ecore! :-)
 
 
 def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notification):

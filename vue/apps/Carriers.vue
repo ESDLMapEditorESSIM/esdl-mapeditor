@@ -46,11 +46,11 @@
       </template>
       <template #color_select="{ record }">
         <span>
-          <input
+          <a-input
             type="color"
-            :value="record.color"
-            @change="e => changeColor(record.id, e.target.value)"
-          >
+            v-model:value="record.color"
+            @change="e => changeColor(record, e.target.value)"
+          />
         </span>
       </template>
     </a-table>
@@ -464,20 +464,25 @@ export default {
   },
   methods: {
     getData: function() {
-      this.carrier_list = window.get_carrier_list(window.active_layer_id);
-      this.carrier_info_mapping = window.get_carrier_info_mapping(window.active_layer_id);
+      let active_esdl_id = this.get_active_esdl_layer_id();
+      this.carrier_list = window.get_carrier_list(active_esdl_id);
+      if (this.carrier_list === null) {
+        console.warn("Cannot find carriers!")
+        return
+      }
+      this.carrier_info_mapping = window.get_carrier_info_mapping(active_esdl_id);
       for (let i=0; i<this.carrier_list.length; i++) {
         this.carrier_list[i]['color'] = this.carrier_info_mapping[this.carrier_list[i]['id']]['color'];
       }
       let profiles_list = window.profiles_plugin.profiles_list;
-      console.log(profiles_list);
+
       let profiles = Object.entries(window.profiles_plugin.profiles_list['profiles']);
       for (let gr=0; gr<profiles_list['groups'].length; gr++) {
         let options = [];
         for (let pr=0; pr<profiles.length; pr++) {
-          if (profiles_list['groups'][gr].setting_type == profiles[pr][1].setting_type) {
-            if (profiles[pr][1].setting_type == 'project' &&
-              profiles[pr][1].project_name != profiles_list['groups'][gr].project_name) continue;
+          if (profiles_list['groups'][gr].setting_type === profiles[pr][1].setting_type) {
+            if (profiles[pr][1].setting_type === 'project' &&
+              profiles[pr][1].project_name !== profiles_list['groups'][gr].project_name) continue;
 
             options.push({
               'value': profiles[pr][1].profile_uiname,
@@ -485,7 +490,6 @@ export default {
             });
           }
         }
-        console.log(options);
         this.profiles_options.push({
           'label': profiles_list['groups'][gr].name,
           'options': options
@@ -500,7 +504,7 @@ export default {
     },
     deleteCarrier: function(id) {
       let i=0;
-      while (this.carrier_list[i]['id'] != id) i++;
+      while (this.carrier_list[i]['id'] !== id) i++;
       this.carrier_list.splice(i, 1);
       delete this.carrier_info_mapping[i];
       window.socket.emit('command', {cmd: 'remove_carrier', carrier_id: id});
@@ -510,14 +514,16 @@ export default {
         this.edit_carrier = res;
       });
     },
-    changeColor(id, color) {
-      window.set_carrier_color(window.active_layer_id, id, color);
+    changeColor(record, color) {
+      let id = record.id;
+      record.color = color; // make sure the color is stored in the record
+      window.set_carrier_color(this.get_active_esdl_layer_id(), id, color);
       window.socket.emit('mapeditor_system_settings_set_dict_value', {
         'category': 'ui_settings',
         'name': 'carrier_colors',
-        'key': window.active_layer_id+id,
+        'key': this.get_active_esdl_layer_id()+id,
         'value': {
-            'es_id': window.active_layer_id,
+            'es_id': this.get_active_esdl_layer_id(),
             'carrier_id': id,
             'color': color
         }
@@ -556,7 +562,7 @@ export default {
     saveCarrier() {
       window.socket.emit('DLA_update_carrier_info', {'id': this.edit_carrier.id, 'carr_info': this.edit_carrier},
         (res) => {
-          window.set_carrier_list(window.active_layer_id, res);
+          window.set_carrier_list(this.get_active_esdl_layer_id(), res);
           this.getData();
         });
       this.clearInput();
@@ -574,16 +580,24 @@ export default {
         });
     },
     addEDRCarriers() {
-      console.log('add EDR Carriers', this.edr_carriers);
       window.socket.emit('DLA_add_EDR_carriers', {'id': this.edr_carriers},
         (res) => {
-          window.set_carrier_list(window.active_layer_id, res);
+          window.set_carrier_list(this.get_active_esdl_layer_id(), res);
           this.getData();
         });
     },
     hide_jquery_ui_popup() {
       window.jquery(".ui-tooltip-content").parents('div').remove();
     },
+    get_active_esdl_layer_id() {
+      // handle active_layer_id when in building editor.
+      // Returns the ID of the ESDL, instead of the building/compound asset
+      let active_esdl_id = window.active_layer_id;
+      if (window.bld_edit_id && window.active_layer_id_backup) {
+        active_esdl_id = window.active_layer_id_backup;
+      }
+      return active_esdl_id;
+    }
   }
 };
 </script>

@@ -22,7 +22,7 @@ from math import fabs
 import pytz
 
 from esdl import esdl
-from esdl.processing.ESDLQuantityAndUnits import unit_to_string
+from esdl.units.parser import unit_to_string
 from extensions.profiles import Profiles
 from extensions.session_manager import get_project_manager, get_session, set_session
 from extensions.settings_storage import SettingsStorage
@@ -93,21 +93,23 @@ class TimeDimension:
             This function is called when the user selects to use the TimeDimension functionality
             """
             with self.flask_app.app_context():
-                database = info["database"]
+                animation_es_id = info["es_id"]
                 animation_column_name = info["animation_column_name"]
-                simulation_id = info["simulation_id"]
+
+                filter_tag_name = info["filter_tag_name"]
+                filter_tag_value = info["filter_tag_value"]
                 networks = info["networks"]
 
-                set_session("timedimension-simulation-id", simulation_id)
+                if filter_tag_name:
+                    set_session("timedimension_filter_tag", {"name": filter_tag_name, "value": filter_tag_value})
+                else:
+                    set_session("timedimension_filter_tag", None)
                 set_session("timedimension-parameter", animation_column_name)
 
                 set_session("td_monitor_ids", [])
 
-                active_es_id = get_session("active_es_id")
-                set_session("active_es_id_animation", active_es_id)
-                set_session(
-                    "influxdb_connection", Profiles.connect_to_animation_profiles_database(active_es_id, database)
-                )
+                set_session("animation_es_id", animation_es_id)
+                set_session("influxdb_connection", Profiles.connect_to_animation_profiles_database(animation_es_id))
 
                 self.preprocess_data(networks)
                 time_list = self.get_all_times_from_simulation()
@@ -149,10 +151,10 @@ class TimeDimension:
         @self.socketio.on("request_load_duration_curve", namespace="/esdl")
         def request_load_duration_curve(info):
             asset_id = info["id"]
-            active_es_id = get_session("active_es_id_animation")
+            animation_es_id = get_session("animation_es_id")
             timedimension_parameter = get_session("timedimension-parameter")
             pm = get_project_manager()
-            asset = pm.get_by_id(active_es_id, asset_id)
+            asset = pm.get_by_id(animation_es_id, asset_id)
             asset_name = asset.name
             power = None
             # TODO leave out for mesido for now
@@ -271,22 +273,22 @@ class TimeDimension:
         set_session("timedimension-allocation-boundaries", allocation_boundaries)
 
     def get_colors(self):
-        active_es_id = get_session("active_es_id_animation")
+        animation_es_id = get_session("animation_es_id")
         pm = get_project_manager()
         colors = dict()
         color_index = 0
 
-        es = pm.get_active_energy_system()
+        es = pm.get_energy_system_by_id(animation_es_id)
         esi = es.energySystemInformation
         if esi:
             carriers = esi.carriers
             if carriers:
                 for c in carriers.carrier:
-                    if active_es_id + c.id in self.mapeditor_colors:
-                        colors[active_es_id + c.id] = self.mapeditor_colors[active_es_id + c.id]
+                    if animation_es_id + c.id in self.mapeditor_colors:
+                        colors[animation_es_id + c.id] = self.mapeditor_colors[animation_es_id + c.id]
                     else:
-                        colors[active_es_id + c.id] = {
-                            "es_id": active_es_id,
+                        colors[animation_es_id + c.id] = {
+                            "es_id": animation_es_id,
                             "carrier_id": c.id,
                             "color": default_colors[color_index],
                         }
@@ -317,12 +319,12 @@ class TimeDimension:
     # This function retrieves all timestamps for a measurement.
     def get_all_times_from_simulation(self):
         networks_list = get_session("timedimension-networks-list")
-        simulation_id = get_session("timedimension-simulation-id")
+        filter_tag = get_session("timedimension_filter_tag")
         try:
             influxdb_client = get_session("influxdb_connection")
             query = "SELECT * FROM " + ",".join(networks_list)
-            if simulation_id:
-                query += ' WHERE "simulationRun" = \'' + simulation_id + "'"
+            if filter_tag:
+                query += ' WHERE "' + filter_tag["name"] + "\" = '" + filter_tag["value"] + "'"
             sim_results = influxdb_client.query(query)
 
             time_list = list()
@@ -343,7 +345,7 @@ class TimeDimension:
             logger.error("error with query: ", str(e))
 
     def get_windowed_simulation_data(self, start, end):
-        simulation_id = get_session("timedimension-simulation-id")
+        filter_tag = get_session("timedimension_filter_tag")
 
         # Functie get_windowed_simulation_data doet niets met self.time_list, dus denk niet dat aanroep hier nodig is?
         # self.get_all_times_from_simulation()
@@ -351,7 +353,7 @@ class TimeDimension:
         logger.debug("--- Retrieving Simulation Data ---")
         influxdb_client = get_session("influxdb_connection")
         # active_simulation = get_session('active_simulation')
-        active_es_id = get_session("active_es_id_animation")
+        animation_es_id = get_session("animation_es_id")
 
         sdt = datetime.strptime(start, "%Y-%m-%dT%H:%M:%S.%f%z")
         edt = datetime.strptime(end, "%Y-%m-%dT%H:%M:%S.%f%z")
@@ -370,7 +372,7 @@ class TimeDimension:
             monitor_asset_data = dict()
             for aid in monitor_asset_ids:
                 try:
-                    asset = pm.get_by_id(active_es_id, aid)
+                    asset = pm.get_by_id(animation_es_id, aid)
                 except:
                     logger.warning("(Monitor) Asset id not found.")
                     continue
@@ -397,8 +399,8 @@ class TimeDimension:
                 + influxdb_enddate
                 + "'"
             )
-            if simulation_id:
-                query += ' AND "simulationRun" = \'' + simulation_id + "'"
+            if filter_tag:
+                query += ' AND "' + filter_tag["name"] + "\" = '" + filter_tag["value"] + "'"
             query += ")"
 
             sim_results = influxdb_client.query(query)
@@ -419,7 +421,7 @@ class TimeDimension:
                     try:
                         if not item["assetId"]:
                             continue
-                        current_asset = pm.get_by_id(active_es_id, item["assetId"])
+                        current_asset = pm.get_by_id(animation_es_id, item["assetId"])
                     except:
                         logger.warning("Asset id not found.")
                         continue
@@ -443,9 +445,9 @@ class TimeDimension:
                         )
 
                     if "carrierId" in item:  # for essim
-                        color = colors[active_es_id + item["carrierId"]]["color"]
+                        color = colors[animation_es_id + item["carrierId"]]["color"]
                     else:
-                        color = colors[active_es_id + key[0]]["color"]
+                        color = colors[animation_es_id + key[0]]["color"]
 
                     profile = Profiles.get_profile_of_asset_with_field(current_asset, simulation_parameter)
                     if profile and profile.profileQuantityAndUnit:
@@ -456,7 +458,7 @@ class TimeDimension:
                     else:
                         unit = ""
 
-                    if abs(item[simulation_parameter]) > 1e-2:
+                    if item[simulation_parameter] and abs(item[simulation_parameter]) > 1e-6:
                         for coordinates in coordinates_segments:
                             feature_list.append(
                                 self.generate_timed_geojson_for_line(

@@ -47,10 +47,11 @@ function debounce(func, wait) {
  * @property {string} id
  * @property {boolean} visible
  * @property {string} description
- * @property {string|undefined} parent_esdl_layer
+ * @property {string|undefined} es_layer_name
  * @property {string|undefined} es_id
  * @property {Object|undefined} es
- * @property {Object|undefined} layer_ref
+ * @property {Object[]} layer_refs
+ * @property {Object[]|undefined} child_layers
  */
 
 /**
@@ -153,7 +154,7 @@ const queryWmsLayersFeaturesOnClick = (event) => {
             ev_lat_lng: event.latlng,
             layers: layersRequestInfo
         };
-        socket.emit("query_wms_layer_feature", requestBody);
+        socket.value.emit("query_wms_layer_feature", requestBody);
     }
 };
 
@@ -233,13 +234,17 @@ map.on('moveend', function () {
         const wms_layer = getWmsLayerList().layers[visibleLayer.id];
         if (wms_layer && wms_layer.min_zoom_level) {
             if (map.getZoom() >= wms_layer.min_zoom_level) {
-                if (!map.hasLayer(wms_layer.layer_ref)) {
-                    wms_layer.layer_ref.addTo(map);
-                }
+                wms_layer.layer_refs.forEach(layerRef => {
+                    if (!map.hasLayer(layerRef)) {
+                        layerRef.addTo(map);
+                    }
+                });
             } else {
-                if (map.hasLayer(wms_layer.layer_ref)) {
-                    map.removeLayer(wms_layer.layer_ref);
-                }
+                wms_layer.layer_refs.forEach(layerRef => {
+                    if (map.hasLayer(layerRef)) {
+                        map.removeLayer(layerRef);
+                    }
+                });
             }
         }
     }
@@ -330,6 +335,7 @@ export function useVisibleLayers(map, socket) {
      * Create a new group of visible layers.
      * @param {string} groupId - The ID of the group.
      * @param {string} description - The description of the group.
+     * @param {VisibleLayer[]} sublayers - The sublayers to add to the group.
      */
     const createVisibleLayerGroup = (groupId, description = "Untitled Group", sublayers) => {
         if (!visibleLayerGroups.value.find(group => group.id === groupId)) {
@@ -429,9 +435,13 @@ export function useVisibleLayers(map, socket) {
         getVisibleLayerList().slice().reverse().forEach(layer => {
             const layerType = getLayerType(layer);
             if (layerType === VisibleLayerType.WMS) {
-                getWmsLayerList().layers[layer.id].layer_ref.bringToFront();
+                getWmsLayerList().layers[layer.id].layer_refs.forEach(layerRef => {
+                    layerRef.bringToFront();
+                });
             } else if (layerType === VisibleLayerType.ESDL) {
-                layer.layer_ref.bringToFront();
+                layer.layer_refs.forEach(layerRef => {
+                    layerRef.bringToFront();
+                });
             } else {
                 console.error(`Unknown layer type: ${layerType}`);
             }
@@ -468,18 +478,25 @@ export function useVisibleLayers(map, socket) {
         if (layerType === VisibleLayerType.WMS) {
             hideWmsLayer(layerId);
         } else if (layerType === VisibleLayerType.ESDL) {
-            hideEsdlLayerFromMap(layerToHide.es_id, layerToHide.description, layerToHide.parent_esdl_layer);
-            // Find all other layers in the same group that has this description as parent_esdl_layer and hide them.
+            hideEsdlLayerFromMap(layerToHide.es_id, layerToHide.description, layerToHide.es_layer_name);
             const group = visibleLayerGroups.value.find(group => group.id === layerToHide.es_id);
+            // Find all other layers in the same group that has this description as es_layer_name and hide them.
+            // In that way, all layers under the same es_layer (area, kpi, etc) are hidden when one of them is hidden.
             if (group) {
                 group.layers.forEach(layer => {
-                    if (layer.parent_esdl_layer === layerToHide.description) {
+                    if (layer.es_layer_name === layerToHide.description) {
                         hideVisibleLayer(layer.id);
                     }
                 });
             }
         } else {
             console.error(`Unknown layer type: ${layerType}`);
+        }
+
+        if (layerToHide.child_layers) {
+            layerToHide.child_layers.forEach(childLayer => {
+                hideVisibleLayer(childLayer.id);
+            });
         }
 
         layerToHide.visible = false;
@@ -511,12 +528,13 @@ export function useVisibleLayers(map, socket) {
         if (layerType === VisibleLayerType.WMS) {
             showWmsLayer(layerId);
         } else if (layerType === VisibleLayerType.ESDL) {
-            showEsdlLayerOnMap(layerToShow.es_id, layerToShow.description, layerToShow.parent_esdl_layer);
-            // Find all other layers in the same group that has this description as parent_esdl_layer and show them.
+            showEsdlLayerOnMap(layerToShow.es_id, layerToShow.description, layerToShow.es_layer_name);
+            // Find all other layers in the same group that has this description as es_layer_name and hide them.
+            // In that way, all layers under the same es_layer (area, kpi, etc) are hidden when one of them is hidden.
             const group = visibleLayerGroups.value.find(group => group.id === layerToShow.es_id);
             if (group) {
                 group.layers.forEach(layer => {
-                    if (layer.parent_esdl_layer === layerToShow.description) {
+                    if (layer.es_layer_name === layerToShow.description) {
                         if (layer.visible) {
                             showVisibleLayer(layer.id, updateMap);
                         } else {
@@ -531,7 +549,6 @@ export function useVisibleLayers(map, socket) {
         layerToShow.visible = true;
         layerVisibilityCache.value[layerId] = true;
         if (updateMap) {
-            console.debug("Updating map")
             updateVisibleLayersOrderOnMap();
         }
     }
@@ -555,7 +572,9 @@ export function useVisibleLayers(map, socket) {
     const adjustVisibleLayerOpacity = (id, opacity) => {
         const targetLayer = getVisibleLayerById(id);
         if (targetLayer && 0 <= opacity <= 1) {
-            targetLayer.layer_ref.setOpacity(opacity);
+            targetLayer.layer_refs.forEach(layerRef => {
+                layerRef.setOpacity(opacity);
+            });
         }
     };
 
@@ -567,16 +586,18 @@ export function useVisibleLayers(map, socket) {
     const saveVisibleLayerOpacitySetting = (id) => {
         const targetLayer = getVisibleLayerById(id);
         if (targetLayer) {
-            const opacity = targetLayer.layer_ref.options.opacity;
-            if (id && opacity) {
-                const params = {layer_id: id, opacity: opacity};
-                // After the "save_wms_layer_opacity_setting" event,
-                // calling updateGlobalWmsLayerList to ensure the latest layers settings are reflected in the app.
-                socket.emit("save_wms_layer_opacity_setting", params, updateGlobalWmsLayerList);
-            }
-            else {
-                console.error(`Error whiling saving WMS layer opacity setting to the settings_storage with id: ${id}, opacity: ${opacity}`);
-            }
+            targetLayer.layer_refs.forEach(layerRef => {
+                const opacity = layerRef.options.opacity;
+                if (id && opacity) {
+                    const params = {layer_id: id, opacity: opacity};
+                    // After the "save_wms_layer_opacity_setting" event,
+                    // calling updateGlobalWmsLayerList to ensure the latest layers settings are reflected in the app.
+                    socket.emit("save_wms_layer_opacity_setting", params, updateGlobalWmsLayerList);
+                }
+                else {
+                    console.error(`Error whiling saving WMS layer opacity setting to the settings_storage with id: ${id}, opacity: ${opacity}`);
+                }
+            });
         }
     };
 

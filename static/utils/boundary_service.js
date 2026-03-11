@@ -159,6 +159,24 @@ function view_select_subareas(el) {
         document.getElementById('tr_select_subareas').style.display = 'none';
 }
 
+function cap_kaart_checkbox_changed() {
+    let cb = document.getElementById('service_area_ck').checked;
+
+    if (cb) {
+        document.getElementById('service_area_dso').checked = false;
+        document.getElementById('station_dso').checked = false;
+        document.getElementById('service_area_dso').disabled = true;
+        document.getElementById('station_dso').disabled = true;
+        document.getElementById('use_capacity_data_for').disabled = true;
+        document.getElementById('service_area_tennet').disabled = false;
+    } else {
+        document.getElementById('service_area_dso').disabled = false;
+        document.getElementById('station_dso').disabled = false;
+        document.getElementById('use_capacity_data_for').disabled = false;
+        document.getElementById('service_area_tennet').disabled = true;
+    }
+}
+
 function boundary_info_window() {
     sidebar_ctr = sidebar.getContainer();
 
@@ -204,17 +222,27 @@ function boundary_info_window() {
 
         if (check_role('service_area_service')) {
             table = table + '<table>';
-            table = table + '<tr><td width=180>Add service areas from DSOs</td>';
+            table = table + '<tr><td width=180>Add service areas from DSOs (VIVET)</td>';
             table = table + '<td><input type="checkbox" id="service_area_dso" checked></td></tr>';
-            table = table + '<tr><td width=180>Add DSO stations</td>';
+            table = table + '<tr><td width=180>Add DSO stations (VIVET)</td>';
             table = table + '<td><input type="checkbox" id="station_dso" checked></td></tr>';
             table = table + '<tr><td width=180>Use capacity data for</td>';
-            table = table + '<td><select id="use_capacity_data_for"">';
+            table = table + '<td><select id="use_capacity_data_for">';
             table = table + '<option value="0">current situation (Feb 2023)</option>';
             table = table + '<option value="3">+3 years</option>';
             table = table + '<option value="5">+5 years</option>';
             table = table + '<option value="10">+10 years</option>';
-            table = table + '</select></td></tr></table>';
+            table = table + '</select></td></tr>'
+            table = table + '<tr><td>Add service areas from Capaciteitskaart data</td>';
+            table = table + '<td><input type="checkbox" id="service_area_ck" onchange="cap_kaart_checkbox_changed();"></td></tr>';
+            table = table + '<tr><td width=180>Use TenneT pocket data for year</td>';
+            table = table + '<td><select id="service_area_tennet" disabled>';
+            table = table + '<option value="0">Don\'t use data</option>';
+            table = table + '<option value="2025">2025</option>';
+            table = table + '<option value="2035">2035</option>';
+            table = table + '<option value="2045">2045</option>';
+            table = table + '</select></td></tr>'
+            table = table + '</table>';
         }
 
         sidebar_ctr.innerHTML += table;
@@ -254,12 +282,16 @@ function get_boundary_info(obj) {
     let add_boundary_to_ESDL = document.getElementById('add_boundary_to_ESDL').checked;
 
     let add_service_area_info = false;
+    let add_service_area_ck_info = false;
     let add_station_info = false;
     let use_capacity_data_for = 0;
+    let add_service_area_tennet_info = false;
     if (check_role('service_area_service')) {
         add_service_area_info = document.getElementById('service_area_dso').checked;
         add_station_info = document.getElementById('station_dso').checked;
         use_capacity_data_for = document.getElementById('use_capacity_data_for').value;
+        add_service_area_ck_info = document.getElementById('service_area_ck').checked;
+        add_service_area_tennet_info = document.getElementById('service_area_tennet').value;
     }
 
     show_loader();
@@ -267,7 +299,8 @@ function get_boundary_info(obj) {
         subscope_enabled: subscope_enabled, add_toparea: add_toparea, subscope: subscope,
         select_subareas: select_subareas, selected_subareas: selected_subareas, initialize_ES: initialize_ES,
         add_boundary_to_ESDL: add_boundary_to_ESDL, add_service_area_info: add_service_area_info,
-        add_station_info: add_station_info, use_capacity_data_for: use_capacity_data_for
+        add_station_info: add_station_info, use_capacity_data_for: use_capacity_data_for,
+        add_service_area_ck_info: add_service_area_ck_info, add_service_area_tennet_info: add_service_area_tennet_info
     }, function(res) {
         if (res) {
             window.refresh_esdl();

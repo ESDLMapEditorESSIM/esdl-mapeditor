@@ -31,7 +31,7 @@
     <div id="undo-redo-content">
       <spinner v-if="isLoading" />
       <a-timeline v-else>
-        <a-timeline-item v-for="(entry, idx) in stack" :key="entry.label" :color="typeToColor(entry.type)" :class="{active: isActiveIndex(idx), undone: isUndone(idx)}">
+        <a-timeline-item v-for="(entry, idx) in stack" :key="entry.uid" :color="typeToColor(entry.type)" :class="{active: isActiveIndex(idx), undone: isUndone(idx)}">
           <strong>{{ entry.label }}</strong>
           <a-button v-show="!isActiveIndex(idx)" type="link" shape="circle" title="Undo/Redo to this point" size="small" @click="undoRedoUntil(idx)">
             <template #icon><i class="fas fa-arrow-left" /></template>
@@ -78,6 +78,10 @@ function loadUndoRedoStack() {
       return;
     }
     stack.value = res.stack;
+    // Assign a unique ID to every entry in the stack for Vue rendering
+    for (let i = 0; i < stack.value.length; i++) {
+      stack.value[i].uid = 'undo-redo-entry-' + i + '-' + stack.value[i].changed_at
+    }
     stack_index.value = res.stack_index;
     isLoading.value = false;
   });

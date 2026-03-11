@@ -14,13 +14,14 @@
 
 import base64
 import re
-from datetime import datetime
 from typing import TypedDict
 
 from flask import Blueprint, jsonify, request, session
+from flask_socketio import emit
 
 import esdl
 import src.log as log
+from esdl.processing.ESDLEnergySystem import get_es_visualization_options
 from esdl.processing.string_uri import StringURI
 from esdlproject import ESDLProject
 from esdlproject.variant_api import create_new_variant
@@ -36,7 +37,6 @@ from src.tno.undoredo.emits import emit_update_undo_redo_stack
 logger = log.get_logger(__name__)
 
 projects = Blueprint('projects', __name__, url_prefix='/projects')
-
 
 
 @socketio.on('get_active_esdl_project', namespace='/esdl')
@@ -118,7 +118,6 @@ def rename_project(message: RenameEsdlProjectRequest):
     pm.project.name = message["name"]
 
 
-
 class SetActiveVariantRequest(TypedDict):
     id: str
 
@@ -137,12 +136,23 @@ def set_active_variant(message: SetActiveVariantRequest):
         es = pm.get_active_energy_system()
         set_session('active_es_id', es.id)
         if needs_update:
-            executor.submit(process_energy_system, force_update_es_id=es.id)
+            executor.submit(process_energy_system, force_update_es_id=es.id, only_process_es_id=es.id)
         else:
-            executor.submit(process_energy_system)
+            executor.submit(process_energy_system, only_process_es_id=es.id)
         emit_update_undo_redo_stack(pm.active_tracker.stack)
+        emit_active_esdl_project()
+        update_visualization_options(es)
     else:
         logger.warning("No variant with given ID found!", variant_id=message["id"])
+
+
+def update_visualization_options(es: esdl.EnergySystem):
+    es_visualization_options = get_es_visualization_options(es)
+    if not es_visualization_options:
+        emit("clear_visualization_options")
+    else:
+        for option_key, option_values in es_visualization_options.items():
+            emit(option_key, option_values)
 
 
 @socketio.on('create_variant_collection', namespace='/esdl')
@@ -213,7 +223,7 @@ class RenameVariantRequest(TypedDict):
 @socketio.on("rename_variant", namespace="/esdl")
 def rename_variant(message: RenameVariantRequest):
     """
-    Rename energy project.
+    Rename variant.
     """
     pm = get_project_manager()
     variant = pm.get_variant_by_id(message["id"])
@@ -227,7 +237,7 @@ def rename_variant(message: RenameVariantRequest):
             year = match.group(1)
             if variant.snapshotRef:
                 instance = variant.snapshotRef.instance[0]
-                instance.date = esdl.InstanceDate(date=datetime(year=int(year), month=1, day=1))
+                instance.date = esdl.InstanceYear(year=year)
 
     if variant.snapshotRef:
         # don't track this change as when changing a parent variant name, this variant name will also change...

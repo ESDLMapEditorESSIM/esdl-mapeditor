@@ -47,7 +47,7 @@ function set_marker_tooltip_handlers(marker) {
 
                 let tooltip_marker = L.marker([coords.lat, coords.lng], {icon: divicon, title: '', zIndexOffset: 1000});
                 tooltip_marker.addTo(get_layers(active_layer_id, 'esdl_layer'));
-                show_tooltip(marker.title, marker.id, el_id);
+                show_tooltip(marker.title, marker.id, el_id, marker.esid);
 
                 tooltip_marker.parent = marker;
                 tooltip_marker.parent_type = 'marker';

@@ -14,7 +14,7 @@ class ESDLAnalytics extends MapEditorDialog {
   }
 
   // Extends _handleClose() method and emits the esdlAnalyticsIsClosed event,
-  // which is listened by the AnalyticsPlot.vue component, to ensure the Ploty plot is properly cleaned up
+  // which is listened by the AnalyticsPlot.vue component, to ensure the Plotly plot is properly cleaned up
   // after closing the esdl_analytics_window div.
   _handleClose() {
     console.debug("Closing ESDL Analytics");

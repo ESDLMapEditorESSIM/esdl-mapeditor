@@ -1,7 +1,7 @@
 <template>
   <a-row>
-    <a-col :span="24" class="width:100%">
-      <b>{{ tooltipTitle }}</b>
+    <a-col :span="24" style="width:100%">
+      <b class="tooltip-title">{{ tooltipTitle }}</b>
     </a-col>
   </a-row>
   <template
@@ -77,19 +77,19 @@ import axios from 'axios';
 import spinner from "@/components/Spinner.vue";
 
 // eslint-disable-next-line no-unused-vars
-const { tooltipObjectID, tooltipTitle  } = useTooltipInfo();
+const { tooltipObjectID, tooltipTitle, tooltipESid } = useTooltipInfo();
 
 const has_info = ref(false);
 const tooltip_info = ref({});
 const profile_info_visible = ref(false);
 const current_port_id = ref(false);
 
-axios.get("/tooltip_info/"+ tooltipObjectID.value)
+axios.get("/tooltip_info/"+ tooltipESid.value + "/" + tooltipObjectID.value)
   .then((res) => {
     tooltip_info.value = res.data;
     has_info.value = true;
 
-    console.log(tooltip_info.value);
+    //console.log(tooltip_info.value);
   });
 
 // eslint-disable-next-line no-unused-vars
@@ -136,3 +136,9 @@ function editProfile(port_id) {
 }
 
 </script>
+<style scoped>
+.tooltip-title {
+    min-width: 150px;
+    display: inline-block;
+}
+</style>
