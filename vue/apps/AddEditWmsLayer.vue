@@ -29,10 +29,7 @@
     <a-segmented
       v-if="isNewLayer"
       v-model:value="layerType"
-      :options="[
-        { label: 'WMS', value: 'WMS' },
-        { label: 'WFS', value: 'WFS' }
-      ]"
+      :options="Object.values(serviceType).map(opt => ({label: opt, value: opt}))"
       style="width: 100%; margin-bottom: 8px;"
       block
       @change="onSelectLayerType"
@@ -151,7 +148,7 @@
             <a-button
               type="primary"
               :disabled="selectedLayers.length === 0 || isLoading"
-              @click="layerType === 'WMS' ? onWmsAddToMapBtnClick() : onWfsAddToMapBtnClick()"
+              @click="layerType === serviceType.WMS ? onWmsAddToMapBtnClick() : onWfsAddToMapBtnClick()"
             >
               Add to map
             </a-button>
@@ -159,15 +156,14 @@
         </a-row>
       </a-col>
     </div>
-    <!-- TODO Edit WMS layer UI -->
     <div v-if="!isNewLayer">
-      <a-row v-for="(value, key) in wmsLayer" :key="key" style="padding-bottom: 8px;">
+      <a-row v-for="(value, key) in layerForm" :key="key" style="padding-bottom: 8px;">
         <a-col :span="9">
           <span>{{ camelCase(key) }}</span>
         </a-col>
         <a-col :span="15">
           <a-input
-            v-model:value="wmsLayer[key]"
+            v-model:value="layerForm[key]"
             class="fe_box"
             size="small"
             type="text"
@@ -178,7 +174,9 @@
       <a-row style="padding-top: 8px;">
         <a-col :span="24">
           <a-space>
-            <a-button type="primary" @click="onUpdateBtnClick">Update WMS Layer</a-button>
+            <a-button type="primary" @click="layerType === serviceType.WMS ? onWmsUpdateBtnClick() : onWfsUpdateBtnClick()">
+              {{ `Update ${layerType} Layer` }}
+            </a-button>
             <a-button @click="cancel">Cancel</a-button>
           </a-space>
         </a-col>
@@ -196,19 +194,21 @@ import {
   getServiceBaseUrl,
   getServiceGetCapabilities,
   addServiceLayer,
+  updateServiceLayer,
   updateGlobalServiceLayerList,
-  showLayer,
-  useWmsLayers
-} from "@/composables/wmsLayers";
-const {
-  updateLayer, 
-} = useWmsLayers();
+  showLayer
+} from "../composables/wmsLayers";
 
-const wmsLayer = ref(null);
+const serviceType = Object.freeze({
+  WMS: "WMS",
+  WFS: "WFS"
+});
+
+const layerForm = ref(null);
 const parentId = ref(null);
 const parentLayerGroup = ref(null);
 const isNewLayer = ref(false);
-const layerType = ref('WMS');
+const layerType = ref(serviceType.WMS);
 
 const {currentObjectID} = useObject();
 // Disable these form fields from editing when the user tries to "update" the layer.
@@ -232,32 +232,40 @@ const selectedLayers = ref([]);
 const layerBaseUrl = ref("");
 const formState = reactive({url: "", customParams: {}});
 
-// TODO
 onBeforeMount(() => {
+  // Update states for adding a new layer.
   if (currentObjectID.value.startsWith("__")) {
     parentId.value = currentObjectID.value.replace("__", "");
-    window.socket.emit('get_wms_layer_group', {id: parentId.value}, function (group_info) {
+    window.socket.emit('get_service_layer_group', {id: parentId.value}, function (group_info) {
       parentLayerGroup.value = group_info;
     });
     isNewLayer.value = true;
-    wmsLayer.value = {
-      description: '',
-      url: '',
-      layerName: '',
-      legendUrl: '',
-      attribution: '',
-      minZoomLevel: '',
-    };
-  } else {
-    window.socket.emit('get_wms_layer', {id: currentObjectID.value}, function (lyr_info) {
-      wmsLayer.value = {
+  } 
+  // Update states for editing an existing layer.
+  else {
+    window.socket.emit('get_service_layer', {id: currentObjectID.value}, function (lyr_info) {
+      layerType.value = lyr_info.type ? lyr_info.type : serviceType.WMS;
+      // layer service type agnostic properties
+      const basicInfo = {
         description: lyr_info.description,
         url: lyr_info.url,
         layerName: lyr_info.layer_name,
-        legendUrl: lyr_info.legend_url,
-        minZoomLevel: lyr_info.min_zoom_level,
-        attribution: lyr_info.attribution,
-      };
+      }
+      if (layerType.value === serviceType.WMS) {
+        layerForm.value = {
+          ...basicInfo,
+          legendUrl: lyr_info.legend_url,
+          minZoomLevel: lyr_info.min_zoom_level,
+          attribution: lyr_info.attribution,
+        };
+      } else if (layerType.value === serviceType.WFS) {
+        layerForm.value = {
+          ...basicInfo,
+          minZoomLevel: lyr_info.min_zoom_level,
+        };
+      } else {
+        console.error(`Unsupported layer servie type: ${layerType.value}`);
+      }
     });
   }
 });
@@ -368,7 +376,7 @@ const onWfsAddToMapBtnClick = async () => {
     featureStyle['fillOpacity'] = featureStyle['opacity'] * 0.3;
 
     const wfsLayerInfo = {
-      type: 'WFS',
+      type: serviceType.WFS,
       layerId: layerId,
       layerDescr: layerName,
       layerUrl: serviceUrl,
@@ -409,7 +417,7 @@ const onWmsAddToMapBtnClick = async () => {
     const minZoomLevel = null;    // Default minZoomLevel to be null
 
     const wmsLayerInfo = {
-      type: 'WMS',
+      type: serviceType.WMS,
       layerId: layerId,
       layerDescr: layerDescr,
       layerUrl: serviceUrl,
@@ -435,16 +443,32 @@ const onWmsAddToMapBtnClick = async () => {
   cancel();
 };
 
-// TODO
-const onUpdateBtnClick = () => {
-  updateLayer(
+const onWmsUpdateBtnClick = () => {
+  updateServiceLayer(
     currentObjectID.value,
-    wmsLayer.value.description,
-    wmsLayer.value.url,
-    wmsLayer.value.layerName,
-    wmsLayer.value.legendUrl || "",
-    wmsLayer.value.attribution || "",
-    wmsLayer.value.minZoomLevel || null,
+    serviceType.WMS,
+    {
+      description: layerForm.value.description,
+      url: layerForm.value.url,
+      layer_name: layerForm.value.layerName,
+      legend_url: layerForm.value.legendUrl || "",
+      attribution: layerForm.value.attribution || "",
+      min_zoom_level: parseInt(layerForm.value.minZoomLevel) || null,
+    }
+  );
+  cancel();
+};
+
+const onWfsUpdateBtnClick = () => {
+  updateServiceLayer(
+    currentObjectID.value,
+    serviceType.WFS,
+    {
+      description: layerForm.value.description,
+      url: layerForm.value.url,
+      layer_name: layerForm.value.layerName,
+      min_zoom_level: parseInt(layerForm.value.minZoomLevel) || null,
+    }
   );
   cancel();
 };

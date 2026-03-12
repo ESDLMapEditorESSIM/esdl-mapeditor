@@ -234,6 +234,45 @@ const hideLayer = (layerId) => {
 };
 
 /**
+ * @typedef {Object} WmsLayerInfo
+ * @property {string} description
+ * @property {string} url
+ * @property {string} layer_name
+ * @property {string} legend_url
+ * @property {string} attribution
+ * @property {number | null} min_zoom_level
+ */
+
+/**
+ * @typedef {Object} WfsLayerInfo
+ * @property {string} description
+ * @property {string} url
+ * @property {string} layer_name
+ * @property {number | null} min_zoom_level
+ */
+
+/**
+ * Update a service layer settings in MongoDB.
+ *
+ * @param {string} layerId
+ * @param {"WMS" | "WFS"} type
+ * @param {WmsLayerInfo | WfsLayerInfo} layerInfo
+ */
+const updateServiceLayer = (layerId, type, layerInfo) => {
+    removeLayerFromMapAndVisibleLayers(layerId);
+    globalServiceLayerList.value['layers'][layerId].layer_ref = null; // make sure map ref gets updated in updateGlobalServiceLayerList
+    socket.emit('save_service_layer', {
+        id: layerId,
+        type: type,
+        lyr_info: layerInfo
+    }, (allLayers) => {
+        allLayers['layers'][layerId].visible = true;
+        updateGlobalServiceLayerList(allLayers, layerId);
+        showLayer(layerId);
+    });
+};
+
+/**
  * Constructs and returns a WFS layer URL
  */
 const constructWfsLayerUrl = (serviceUrl, layerName, bbox, version = "1.1.0") => {
@@ -291,25 +330,6 @@ export function useWmsLayers() {
      */
     const getWmsLayerList = () => toValue(globalServiceLayerList);
 
-    const updateLayer = (layerId, layerDescr, layerUrl, layerName, legendUrl, layerattr, minZoomLevel) => {
-        removeLayerFromMapAndVisibleLayers(layerId);
-        globalServiceLayerList.value['layers'][layerId].layer_ref = null; // make sure map ref gets updated in updateGlobalServiceLayerList
-        socket.emit('save_wms_layer', {
-            id: layerId,
-            lyr_info: {
-                description: layerDescr,
-                url: layerUrl,
-                layer_name: layerName,
-                legend_url: legendUrl,
-                attribution: layerattr,
-                min_zoom_level: minZoomLevel,
-            }
-        }, (allLayers) => {
-            allLayers['layers'][layerId].visible = true;
-            updateGlobalServiceLayerList(allLayers, layerId);
-            showLayer(layerId);
-        });
-    };
 
     const removeWmsLayer = (layerId, parentId) => {
         socket.emit('remove_wms_layer', {id: layerId, parent_id: parentId}, updateGlobalServiceLayerList);
@@ -421,7 +441,6 @@ export function useWmsLayers() {
     return {
         clearWmsLayers,
         getWmsLayerList,
-        updateLayer,
         removeWmsLayer,
         renameWmsLayerGroup,
         addWmsLayerGroup,
@@ -488,6 +507,7 @@ export {
     getServiceBaseUrl,
     getServiceGetCapabilities,
     addServiceLayer,
+    updateServiceLayer,
     updateGlobalServiceLayerList,
     constructWfsLayerUrl,
     showLayer,

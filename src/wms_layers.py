@@ -56,19 +56,25 @@ class WMSLayers:
             logger.info('Found WMS layers in System Settings')
 
     def register(self):
-        logger.info('Registering WMS layer extension')
+        logger.info('Registering web service layer extension')
 
-        @self.socketio.on('get_wms_layer', namespace='/esdl')
-        def _get_wms_layer(params):
-            return self.get_wms_layer(params['id'])
+        @self.socketio.on('get_service_layer', namespace='/esdl')
+        def _get_service_layer(params):
+            return self.get_service_layer(params['id'])
 
-        @self.socketio.on('get_wms_layer_group', namespace='/esdl')
-        def _get_wms_layer_group(params):
-            return self.get_wms_layer_group(params['id'])
+        @self.socketio.on('get_service_layer_group', namespace='/esdl')
+        def _get_service_layer_group(params):
+            return self.get_service_layer_group(params['id'])
 
-        @self.socketio.on('save_wms_layer', namespace='/esdl')
-        def _save_wms_layer(params):
-            self.save_wms_layer(params['id'], params['lyr_info'])
+        @self.socketio.on('save_service_layer', namespace='/esdl')
+        def _save_service_layer(params):
+            type = params['type']
+            if type == "WMS":
+                self.save_wms_layer(params['id'], params['lyr_info'])
+            elif type == "WFS":
+                self.save_wfs_layer(params['id'], params['lyr_info'])
+            else:
+                logger.error(f"Unsupported type: {type}")
             return self.get_layers()
 
         @self.socketio.on('add_wms_layer_group', namespace='/esdl')
@@ -309,7 +315,7 @@ class WMSLayers:
         self.settings_storage.set(setting_type, identifier, LAYERS_GROUP_SETTING, layer_groups)
         self.add_child_to_layer_group(parent_group_id, layer_group_id, position)
 
-    def get_wms_layer_group(self, group_id: str):
+    def get_service_layer_group(self, group_id: str):
         # as we only have an ID, we don't know if it is a user, project or system layer
         # get the whole list, so we can find out the setting_type
         group = self.get_layers()[LAYERS_GROUP_SETTING][group_id]
@@ -317,7 +323,7 @@ class WMSLayers:
 
     def add_child_to_layer_group(self, group_id: str, child_id: str, position: int = None):
         if group_id:
-            group = self.get_wms_layer_group(group_id)
+            group = self.get_service_layer_group(group_id)
             if isinstance(position, int):
                 group["child_ids"].insert(position, child_id)
             else:
@@ -325,7 +331,7 @@ class WMSLayers:
             self.add_wms_layer_group(group_id, group)
 
     def remove_child_from_layer_group(self, group_id: str, child_id: str):
-        group = self.get_wms_layer_group(group_id)
+        group = self.get_service_layer_group(group_id)
         if child_id in group['child_ids']:
             group['child_ids'].remove(child_id)
         self.add_wms_layer_group(group_id, group)
@@ -398,7 +404,7 @@ class WMSLayers:
                 self.copy_wms_item_and_children(child_id, new_item_id, None)
 
     def rename_layer_group(self, group_id: str, group_name: str):
-        group = self.get_wms_layer_group(group_id)
+        group = self.get_service_layer_group(group_id)
         group["description"] = group_name
         self.add_wms_layer_group(group_id, group)
 
@@ -432,7 +438,7 @@ class WMSLayers:
         self.add_child_to_layer_group(parent_group_id, layer_id, position)
 
     def save_layer_opacity_setting(self, layer_id: str, opacity: float) -> None:
-        layer = self.get_layers()[LAYERS_SETTING][layer_id]
+        layer = self.get_service_layer(layer_id)
         layer_type = layer.get("type", "WMS")
         setting_type = SettingType(layer['setting_type'])
         project_name = layer.get('project_name')
@@ -447,14 +453,14 @@ class WMSLayers:
         else:
             logger.error("Error whiling saving layer opacity setting to the settings_storage.")
 
-    def get_wms_layer(self, layer_id: str):
+    def get_service_layer(self, layer_id: str):
         # as we only have an ID, we don't know if it is a user, project or system layer
         # get the whole list, so we can find out the setting_type
         layer = self.get_layers()[LAYERS_SETTING][layer_id]
         return layer
 
     def save_wms_layer(self, layer_id: str, lyr_info: dict):
-        layer = self.get_wms_layer(layer_id)
+        layer = self.get_service_layer(layer_id)
 
         layer["description"] = lyr_info["description"]
         layer["url"] = lyr_info["url"]
@@ -465,12 +471,22 @@ class WMSLayers:
 
         self.add_wms_layer(layer_id, layer)
 
+    def save_wfs_layer(self, layer_id: str, lyr_info: dict):
+        layer = self.get_service_layer(layer_id)
+
+        layer["description"] = lyr_info["description"]
+        layer["url"] = lyr_info["url"]
+        layer["layer_name"] = lyr_info["layer_name"]
+        layer["min_zoom_level"] = lyr_info["min_zoom_level"]
+
+        self.add_wfs_layer(layer_id, layer)
+
     def remove_wms_layer(self, layer_id: str, parent_id: str):
         # as we only have an ID, we don't know if it is a user, project or system layer
         # get the whole list, so we can find out the setting_type
         if layer_id not in self.get_layers()[LAYERS_SETTING]:
             return False
-        layer = self.get_layers()[LAYERS_SETTING][layer_id]
+        layer = self.get_service_layer(layer_id)
         setting_type = SettingType(layer['setting_type'])
         identifier = self._get_identifier(setting_type, layer['project_name'])
         if identifier is None:

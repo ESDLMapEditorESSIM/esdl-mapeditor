@@ -73,24 +73,29 @@ const constructWmsLayerGetFeatureInfoUrl = (wmsServiceUrl, layerName, evLatLng) 
  * 
  * To avoid possible CORS errors, the layer feature fetching is executed by the backend.
  * 
- * NOTE: This only works for the WMS layer at the moment. 
- * TODO: Extend this to other layer types when applicable.
+ * NOTE: This only works for the WMS layer at the moment.
  * 
  * @param {object} event Mouse click event
  */
 const queryWmsLayersFeaturesOnClick = (event) => {
     const visibleLayers = useVisibleLayers().getVisibleLayerList();
+    // Filter only for WMS layers
+    const visibleWmsLayers = visibleLayers.filter(l => l.type === undefined || l.type === 'WMS');
+    const currnetZoomLevel = map.getZoom();
 
-    // TODO: filter WFS layers
-    console.log(visibleLayers);
-
-    if (visibleLayers.length) {
-        const layersRequestInfo = visibleLayers.map((layer) => {
-            const serviceUrl = layer.url;
-            const layerName = layer.layer_name;
-            const getFeatureUrl = constructWmsLayerGetFeatureInfoUrl(serviceUrl, layerName, event.latlng);
-            return {name: layerName, url: getFeatureUrl};
-        });
+    if (visibleWmsLayers.length) {
+        const layersRequestInfo = visibleWmsLayers
+            // Only request layer feature if the layer is within the visible zoom level.
+            .filter((layer) =>
+                layer.min_zoom_level === undefined ||
+                currnetZoomLevel >= layer.min_zoom_level
+            )
+            .map((layer) => {
+                const serviceUrl = layer.url;
+                const layerName = layer.layer_name;
+                const getFeatureUrl = constructWmsLayerGetFeatureInfoUrl(serviceUrl, layerName, event.latlng);
+                return {name: layerName, url: getFeatureUrl};
+            });
         const requestBody = {
             ev_lat_lng: event.latlng,
             layers: layersRequestInfo
@@ -158,57 +163,71 @@ const showWmsLayerFeaturePopup = (resp) => {
 };
 
 /**
- * The callback function can be used to update WFS layer features 
+ * The function can be used as an callback fn to update WFS layer features 
  * when 'moveend' event is triggered. 
  */
 const updateWfsLayersOnBboxChange = async () => {
   const visibleLayers = useVisibleLayers().getVisibleLayerList();
   const bbox = map.getBounds().toBBoxString();
+  const currnetZoomLevel = map.getZoom();
 
   // Filter only for WFS layers
   const wfsLayers = visibleLayers.filter(l => l.type !== undefined && l.type === 'WFS');
 
   for (const layer of wfsLayers) {
-    const url = constructWfsLayerUrl(layer.url, layer.layer_name, bbox);
-    
-    try {
-      window.show_loader();
-
-      const response = await fetch(url);
-      const data = await response.json();
-
-      // Clear the old data from the existing layer reference
-      if (layer.layer_ref) {
-        layer.layer_ref.clearLayers(); // Removes old features
-        layer.layer_ref.addData(data); // Adds new ones from the new BBOX
-      }
-    } catch (e) {
-      console.error("Failed to update BBOX for", layer.layer_name, e);
-    } finally {
-      window.hide_loader();
+    // Only run layer feature update if the layer is within the visible zoom level.
+    if (layer.min_zoom_level === undefined || currnetZoomLevel >= layer.min_zoom_level) {
+        updateSingleWfsLayer(layer, bbox);
+    } else {
+        console.debug(`Pause WFS layer ${layer.layer_name} feature update.`);
     }
   }
+};
+
+// Update the WFS layer features based on the bounding box extent.
+const updateSingleWfsLayer = async (layer, bbox) => {
+  const url = constructWfsLayerUrl(layer.url, layer.layer_name, bbox);
+  try {
+    window.show_loader();
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    // Clear the old data from the existing layer reference
+    if (layer.layer_ref) {
+      layer.layer_ref.clearLayers();
+      layer.layer_ref.addData(data);
+    }
+  } catch (e) {
+    console.error(`Failed to update BBOX for ${layer.layer_name}`, e);
+  } finally {
+    window.hide_loader();
+  }
+};
+
+// Show or hide layer based on layer zoom level (if specified)
+const updateZoomDependentLayers = () => {
+  const visibleLayers = useVisibleLayers().getVisibleLayerList();
+  const currnetZoomLevel = map.getZoom();
+
+  visibleLayers.forEach(layer => {
+    if (!layer.min_zoom_level) return;
+
+    const shouldBeVisible = currnetZoomLevel >= layer.min_zoom_level;
+    const isVisible = map.hasLayer(layer.layer_ref);
+
+    if (shouldBeVisible && !isVisible) {
+      layer.layer_ref.addTo(map);
+    } else if (!shouldBeVisible && isVisible) {
+      map.removeLayer(layer.layer_ref);
+    }
+  });
 };
 
 map.on("click", queryWmsLayersFeaturesOnClick);
 
 map.on('moveend', function () {
-    // Show or hide layer based on layer zoom level (if specified)
-    const visibleLayers = useVisibleLayers().getVisibleLayerList();
-    visibleLayers.forEach((layer) => {
-        if (layer.min_zoom_level) {
-            if (map.getZoom() >= layer.min_zoom_level) {
-                if (!map.hasLayer(layer.layer_ref)) {
-                    layer.layer_ref.addTo(map);
-                }
-            } else {
-                if (map.hasLayer(layer.layer_ref)) {
-                    map.removeLayer(layer.layer_ref);
-                }
-            }
-        }
-    })
-    // TODO: stop loading at a certain zoom level?
+    updateZoomDependentLayers();
     updateWfsLayersOnBboxChange();
 })
 
