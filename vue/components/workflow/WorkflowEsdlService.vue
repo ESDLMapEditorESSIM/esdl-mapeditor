@@ -132,10 +132,6 @@ const loadEsdl = () => {
       if (stepParams.value.nextStep) {
         goToStep(stepParams.value.nextStep);
       }
-      // NOTE & TODO: quick and dirty fix; implement a proper loading state handling
-      if (props.workflowStep.id !== "validator_validate_esdl") {
-        window.hide_loader();
-      }
     });
   }
 };
