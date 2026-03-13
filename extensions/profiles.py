@@ -1779,11 +1779,14 @@ def _parse_profile_filter(filter: Optional[str]) -> List[Dict[str, str]]:
 
     if not filter:
         return []
-    if "AND" in filter:
-        matches = re.findall(r"(\w+)='([^']*)'", filter)
-    else:
-        matches = re.findall(r'"(\w+)"=\'([^\']+)\'', filter)
-    return [{"tag": k, "value": v} for k, v in matches]
+
+    pattern = r'"?(\w+)"?\s*=\s*["\']([^"\']*)["\']'
+    matches = re.findall(pattern, filter)
+
+    if not matches:
+        logger.error(f"Failed to parse filter string: {filter}")
+
+    return [{"tag": k, "value": v} for k, v in matches]    
     
 def _calculate_profile_groupby_interval(start: datetime, end: datetime, max_points: Optional[int]) -> Optional[int]:
     """A util function to determine profile downsampling groupby interval."""

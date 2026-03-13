@@ -242,7 +242,7 @@ const doAction = (record, action) => {
       }
     } else if (action.title === VIEW_FEEDBACK) {
       params.service_config.external_model = "output_or_input_esdl";
-      params.service_config.result[0].show_asset_feedback = true;
+      params.service_config.result[0].external_model_asset_feedback = true;
     } else if (action.title === LOAD_INPUT_ESDL) {
       params.service_config.external_model = "input_esdl";
     }
