@@ -14,8 +14,6 @@
   -     TNO
   -->
 
-<!-- TODO: rename component. -->
-
 <template>
   <a-space
     id="add-edit-web-service-layer"
@@ -198,6 +196,7 @@ import {
   updateGlobalServiceLayerList,
   showLayer
 } from "../composables/wmsLayers";
+import { displayNotification } from '@/utils/notification';
 
 const serviceType = Object.freeze({
   WMS: "WMS",
@@ -387,7 +386,7 @@ const onWfsAddToMapBtnClick = async () => {
       settingtype: parentLayerGroup.value.setting_type,
       projectName: parentLayerGroup.value.project_name,
       legendUrl: null,
-      min_zoom_level: null,
+      minZoomLevel: 10, // Default to 10 to avoid too many features being loaded
       groupId: parentId.value
     };
 
@@ -395,6 +394,7 @@ const onWfsAddToMapBtnClick = async () => {
       const allLayers = await addServiceLayer(wfsLayerInfo);
       await updateGlobalServiceLayerList(allLayers, layerId);
       await showLayer(layerId);
+      displayNotification("warning", `${layerName} has been added to the map, but it may not be visible until you zoom in further.`);
     } catch (error) {
       console.error(error);
       window.alert(error);
@@ -428,7 +428,7 @@ const onWmsAddToMapBtnClick = async () => {
       settingtype: parentLayerGroup.value.setting_type,
       projectName: parentLayerGroup.value.project_name,
       legendUrl: layerLegendUrl,
-      min_zoom_level: minZoomLevel,
+      minZoomLevel: minZoomLevel,
       groupId: parentId.value
     };
 

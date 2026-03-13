@@ -228,6 +228,7 @@ const updateZoomDependentLayers = () => {
       layer.layer_ref.addTo(map);
     } else if (!shouldBeVisible && isVisible) {
       map.removeLayer(layer.layer_ref);
+      console.debug(`The current zoom level is smaller than the defined min_zoom_level, hide layer ${layer.layer_name}.`);
     }
   });
 };
@@ -239,6 +240,7 @@ map.on("click", async (event) => {
 
 map.on('moveend', function () {
     updateZoomDependentLayers();
+    // NICE TO HAVE: abort WFS update (if still running) on the cursor move again.
     updateWfsLayersOnBboxChange();
 })
 

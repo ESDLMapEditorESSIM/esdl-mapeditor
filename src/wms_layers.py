@@ -15,7 +15,7 @@
 from uuid import uuid4
 
 from flask import Flask
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO
 import requests
 from typing import Any, Dict, Optional, List, Union
 from dataclasses import asdict
@@ -114,17 +114,18 @@ class WMSLayers:
                 "setting_type": params['setting_type'],
                 "project_name": params['project_name'],
                 "layer_ref": None,
-                "visible": False
+                "visible": False,
+                "min_zoom_level": params.get('min_zoom_level')
             }
 
             if type == "WMS":
-                layer["legend_url"] = params['legend_url']
-                self.add_wms_layer(layer_id, layer, parent_group_id)
+                layer["legend_url"] = params.get('legend_url')
             elif type == "WFS":
-                layer["style"] = params['style']
-                self.add_wfs_layer(layer_id, layer, parent_group_id)
+                layer["style"] = params.get('style')
             else:
                 logger.error(f"Unsupported type: {type}")
+
+            self.add_layer_to_storage(layer_id, layer, parent_group_id)
             
             return self.get_layers()
 
@@ -390,7 +391,7 @@ class WMSLayers:
                 "layer_ref": None,
                 "visible": False
             }
-            self.add_wms_layer(new_item_id, new_layer, new_parent_id, position)
+            self.add_layer_to_storage(new_item_id, new_layer, new_parent_id, position)
         elif item_id in all_layers[LAYERS_GROUP_SETTING]:
             layer_group = all_layers[LAYERS_GROUP_SETTING][item_id]
             new_layer_group = {
@@ -408,22 +409,7 @@ class WMSLayers:
         group["description"] = group_name
         self.add_wms_layer_group(group_id, group)
 
-    def add_wms_layer(self, layer_id: str, layer: dict, parent_group_id: str = None, position: str = None):
-        setting_type = SettingType(layer['setting_type'])
-        project_name = layer.get('project_name')
-        identifier = self._get_identifier(setting_type, project_name)
-        layer['visible'] = False  # make sure we don't save the visibility
-        if identifier is not None and self.settings_storage.has(setting_type, identifier, LAYERS_SETTING):
-            layers = self.settings_storage.get(setting_type, identifier, LAYERS_SETTING)
-        else:
-            layers = dict()
-        layers[layer_id] = layer
-        self.settings_storage.set(setting_type, identifier, LAYERS_SETTING, layers)
-
-        self.add_child_to_layer_group(parent_group_id, layer_id, position)
-
-    # TODO: combine with above
-    def add_wfs_layer(self, layer_id: str, layer: dict, parent_group_id: str = None, position: str = None):
+    def add_layer_to_storage(self, layer_id: str, layer: dict, parent_group_id: str = None, position: str = None):
         setting_type = SettingType(layer['setting_type'])
         project_name = layer.get('project_name')
         identifier = self._get_identifier(setting_type, project_name)
@@ -469,7 +455,7 @@ class WMSLayers:
         layer["attribution"] = lyr_info["attribution"]
         layer["min_zoom_level"] = lyr_info["min_zoom_level"]
 
-        self.add_wms_layer(layer_id, layer)
+        self.add_layer_to_storage(layer_id, layer)
 
     def save_wfs_layer(self, layer_id: str, lyr_info: dict):
         layer = self.get_service_layer(layer_id)
@@ -479,7 +465,7 @@ class WMSLayers:
         layer["layer_name"] = lyr_info["layer_name"]
         layer["min_zoom_level"] = lyr_info["min_zoom_level"]
 
-        self.add_wfs_layer(layer_id, layer)
+        self.add_layer_to_storage(layer_id, layer)
 
     def remove_wms_layer(self, layer_id: str, parent_id: str):
         # as we only have an ID, we don't know if it is a user, project or system layer
@@ -550,7 +536,7 @@ class WMSLayers:
         return identifier
 
     def get_layers(self):
-        # gets the wms layer and group layer lists
+        # gets the web service layers and group layer lists
         all_layers = dict()
         all_layer_groups = dict()
 

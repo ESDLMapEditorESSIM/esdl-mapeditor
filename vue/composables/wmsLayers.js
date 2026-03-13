@@ -330,16 +330,16 @@ const loadWfsLayer = async (layerName, url, style) => {
         return L.circleMarker(latlng, setLeafletFeatureStyle(feature.geometry.type, style));
       },
       onEachFeature: (feature, layer) => {
-				// Attach a click listener directly to the feature's layer
-				layer.on('click', (event) => {
-						// Prevent the map.on('click') in visibleLayers.js from firing.
-						L.DomEvent.stopPropagation(event); 
-						
-						showServiceLayerFeaturePopup(
-								event.latlng, 
-								[{ name: layerName, feature_props: feature.properties }]
-						);
-				});
+        // Attach a click listener directly to the feature's layer
+        layer.on('click', (event) => {
+            // Prevent the map.on('click') in visibleLayers.js from firing.
+            L.DomEvent.stopPropagation(event); 
+            
+            showServiceLayerFeaturePopup(
+                event.latlng, 
+                [{ name: layerName, feature_props: feature.properties }]
+            );
+        });
 
         window.set_wfs_handlers(layer);
       }
