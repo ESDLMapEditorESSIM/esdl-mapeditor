@@ -20,6 +20,7 @@
  */
 import {ref, toValue} from "vue";
 import {constructWfsLayerUrl, useWmsLayers, updateGlobalServiceLayerList} from "./wmsLayers";
+import { setLeafletFeatureStyle } from "../utils/spatialVisualization";
 
 const {getWmsLayerList} = useWmsLayers();
 const globalVisibleLayerList = ref([]);
@@ -37,13 +38,15 @@ const layersPopup = L.popup({
     maxHeight: 400
 });
 
+const serviceType = Object.freeze({
+  WMS: "WMS",
+  WFS: "WFS"
+});
+
 let socket = null;
 (async () => { // wait for socket to be defined
     while (window.socket === undefined) await new Promise(resolve => setTimeout(resolve, 10));
     socket = window.socket;
-    socket.on("on_wms_layer_feature_resp", (resp) => {
-        showWmsLayerFeaturePopup(resp);
-    });
 })();
 
 /**
@@ -76,14 +79,15 @@ const constructWmsLayerGetFeatureInfoUrl = (wmsServiceUrl, layerName, evLatLng) 
  * NOTE: This only works for the WMS layer at the moment.
  * 
  * @param {object} event Mouse click event
+ * @returns {Promise} Query response object with structure as Array[{name: str, feature_props: Object | null }]
  */
-const queryWmsLayersFeaturesOnClick = (event) => {
-    const visibleLayers = useVisibleLayers().getVisibleLayerList();
-    // Filter only for WMS layers
-    const visibleWmsLayers = visibleLayers.filter(l => l.type === undefined || l.type === 'WMS');
-    const currnetZoomLevel = map.getZoom();
+const queryWmsLayersFeaturesOnClick = async (event) => {
+    return new Promise((resolve) => {
+        const visibleLayers = useVisibleLayers().getVisibleLayerList();
+        // Filter only for WMS layers
+        const visibleWmsLayers = visibleLayers.filter(l => l.type === undefined || l.type === serviceType.WMS);
+        const currnetZoomLevel = map.getZoom();
 
-    if (visibleWmsLayers.length) {
         const layersRequestInfo = visibleWmsLayers
             // Only request layer feature if the layer is within the visible zoom level.
             .filter((layer) =>
@@ -100,65 +104,69 @@ const queryWmsLayersFeaturesOnClick = (event) => {
             ev_lat_lng: event.latlng,
             layers: layersRequestInfo
         };
-        socket.emit("query_wms_layer_feature", requestBody);
-    }
+        socket.emit("query_wms_layer_feature", requestBody, (resp) => {
+            resolve(resp.layers_features_props);
+        });
+    });
 };
 
 /**
- * Show the map popup of WMS layers features properties, 
- * when receiving the 'on_wms_layer_feature_resp' response object emitted from the backend.
+ * Show the map popup of WMS or WFS layers features properties
  * 
- * @param {object} resp Response object with structure as {ev_lat_lng: event.latlng, layers_features_props: array[{name: str, feature_props: object|null }]}
+ * @param {Object} latlng a latlng object {lat: number, lng: number} for adding the popup.
+ * @param {Array} layersFeatures an array of layer feature objects with structure { name: str, feature_props: Object | null }
  */
-const showWmsLayerFeaturePopup = (resp) => {
-    if (resp.layers_features_props.length) {
-        const popupDivId = "layer-feature-popup-node";
-        // Check if the popup already exists and removes it
-        const existingPopupDiv = document.getElementById(popupDivId);
-        if (existingPopupDiv) {
-            existingPopupDiv.remove();
-        }
-        const popupDiv = document.createElement("div");
-        popupDiv.setAttribute("id", popupDivId);
-        popupDiv.classList.add("layer-feature-props-popup");
+const showServiceLayerFeaturePopup = (latlng, layersFeatures) => {
+    if (layersFeatures.length === 0) {
+        return;
+    }
 
-        // Updating the popup content
-        resp.layers_features_props.forEach((l) => {
-            const layerName = l.name;
-            const layerFeatureProps = l.feature_props;
+    const popupDivId = "layer-feature-popup-node";
+    // Check if the popup already exists and removes it
+    const existingPopupDiv = document.getElementById(popupDivId);
+    if (existingPopupDiv) {
+        existingPopupDiv.remove();
+    }
+    const popupDiv = document.createElement("div");
+    popupDiv.setAttribute("id", popupDivId);
+    popupDiv.classList.add("layer-feature-props-popup");
+    
+    // Updating the popup content
+    layersFeatures.forEach((l) => {
+        const layerName = l.name;
+        const layerFeatureProps = l.feature_props;
 
-            // Layer name node
-            const layerNameNode = document.createElement("h4");
-            layerNameNode.innerHTML = `${layerName}`;
-            popupDiv.appendChild(layerNameNode);
+        // Layer name node
+        const layerNameNode = document.createElement("h4");
+        layerNameNode.innerHTML = `${layerName}`;
+        popupDiv.appendChild(layerNameNode);
 
-            if (layerFeatureProps !== null) {
-                if (Object.keys(layerFeatureProps).length) {
-                    // Layer feature properties node
-                    Object.keys(layerFeatureProps).forEach((pName) => {
-                        const propNameNode = document.createElement("p");
-                        const propValueNode = document.createElement("span");
-                        propNameNode.innerHTML = `${pName}: `;
-                        propValueNode.innerHTML = `${layerFeatureProps[pName]}`;
-                        popupDiv.appendChild(propNameNode).appendChild(propValueNode);
-                    });
-                } else {
-                    // If the event location has no feature, remove the layerNameNode from the popup
-                    popupDiv.removeChild(layerNameNode);
-                }
+        if (layerFeatureProps !== null) {
+            if (Object.keys(layerFeatureProps).length) {
+                // Layer feature properties node
+                Object.keys(layerFeatureProps).forEach((pName) => {
+                    const propNameNode = document.createElement("p");
+                    const propValueNode = document.createElement("span");
+                    propNameNode.innerHTML = `${pName}: `;
+                    propValueNode.innerHTML = `${layerFeatureProps[pName]}`;
+                    popupDiv.appendChild(propNameNode).appendChild(propValueNode);
+                });
             } else {
-                console.warn(`${layerName} has null props. An error occurred while fetching ${layerName} layer feature properties.`);
-                const propErrorNode = document.createElement("p");
-                propErrorNode.innerHTML = `An error occurred while fetching ${layerName} layer feature properties`;
-                popupDiv.appendChild(propErrorNode);
+                // If the event location has no feature, remove the layerNameNode from the popup
+                popupDiv.removeChild(layerNameNode);
             }
-        });
-        
-        if (popupDiv.hasChildNodes()) {
-            // Set the popup content and open it
-            layersPopup.setLatLng(resp.ev_lat_lng).setContent(popupDiv);
-            map.openPopup(layersPopup);
+        } else {
+            console.warn(`${layerName} has null props. An error occurred while fetching ${layerName} layer feature properties.`);
+            const propErrorNode = document.createElement("p");
+            propErrorNode.innerHTML = `An error occurred while fetching ${layerName} layer feature properties`;
+            popupDiv.appendChild(propErrorNode);
         }
+    });
+    
+    if (popupDiv.hasChildNodes()) {
+        // Set the popup content and open it
+        layersPopup.setLatLng(latlng).setContent(popupDiv);
+        map.openPopup(layersPopup);
     }
 };
 
@@ -172,7 +180,7 @@ const updateWfsLayersOnBboxChange = async () => {
   const currnetZoomLevel = map.getZoom();
 
   // Filter only for WFS layers
-  const wfsLayers = visibleLayers.filter(l => l.type !== undefined && l.type === 'WFS');
+  const wfsLayers = visibleLayers.filter(l => l.type !== undefined && l.type === serviceType.WFS);
 
   for (const layer of wfsLayers) {
     // Only run layer feature update if the layer is within the visible zoom level.
@@ -224,7 +232,10 @@ const updateZoomDependentLayers = () => {
   });
 };
 
-map.on("click", queryWmsLayersFeaturesOnClick);
+map.on("click", async (event) => {
+    const wmsLayersFeatures = await queryWmsLayersFeaturesOnClick(event);
+    showServiceLayerFeaturePopup(event.latlng, wmsLayersFeatures, []);
+});
 
 map.on('moveend', function () {
     updateZoomDependentLayers();
@@ -308,17 +319,16 @@ export function useVisibleLayers() {
      */
     const adjustVisibleLayerOpacity = (id, opacity) => {
         const targetLayer = getVisibleLayerById(id);
-        const type = targetLayer.type ? targetLayer.type : "WMS";
+        const type = targetLayer.type ? targetLayer.type : serviceType.WMS;
         if (targetLayer && 0 <= opacity <= 1) {
-            if (type === "WMS") {
+            if (type === serviceType.WMS) {
                 targetLayer.layer_ref.setOpacity(opacity);
-            } else if (type === "WFS") {
-                targetLayer.layer_ref.setStyle({
-                    opacity: opacity,
-                    fillOpacity: opacity * 0.3
-                });
+            } else if (type === serviceType.WFS) {
                 // Update the stored style
                 targetLayer.style.opacity = opacity;
+                targetLayer.layer_ref.setStyle((featue) => {
+                    return setLeafletFeatureStyle(featue.geometry.type, targetLayer.style);
+                });
             } else {
                 console.error(`Unsupported type ${type}`);
             }
@@ -332,12 +342,12 @@ export function useVisibleLayers() {
      */
     const saveVisibleLayerOpacitySetting = (id) => {
         const targetLayer = getVisibleLayerById(id);
-        const type = targetLayer.type ? targetLayer.type : "WMS";
+        const type = targetLayer.type ? targetLayer.type : serviceType.WMS;
         if (targetLayer) {
             let opacity;
-            if (type === "WMS") {
+            if (type === serviceType.WMS) {
                 opacity = targetLayer.layer_ref.options.opacity;
-            } else if (type === "WFS") {
+            } else if (type === serviceType.WFS) {
                 opacity = targetLayer.style?.opacity !== undefined ? targetLayer.style.opacity : 1.0;
             }
 
@@ -363,6 +373,7 @@ export function useVisibleLayers() {
         hideAllVisibleLayers,
         getVisibleLayerById,
         adjustVisibleLayerOpacity,
-        saveVisibleLayerOpacitySetting
+        saveVisibleLayerOpacitySetting,
+        showServiceLayerFeaturePopup
     };
 }

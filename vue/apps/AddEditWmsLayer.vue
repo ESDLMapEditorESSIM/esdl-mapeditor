@@ -368,12 +368,14 @@ const onWfsAddToMapBtnClick = async () => {
     const layerId = window.uuidv4();
     const serviceUrl = layerBaseUrl.value;
 
+    // Very basic styling, can be improved.
     const featureStyle = {
       color: _getRandomColor(),
-      weight: 4,
-      opacity: 0.3
+      opacity: 0.6,
+      radius: 8,
+      weight: 5,
+      stroke: true
     };
-    featureStyle['fillOpacity'] = featureStyle['opacity'] * 0.3;
 
     const wfsLayerInfo = {
       type: serviceType.WFS,

@@ -160,7 +160,7 @@ class WMSLayers:
             return self.get_layers()
         
         @self.socketio.on('query_wms_layer_feature', namespace='/esdl')
-        def _query_wms_layer_feature(params: Dict[str, Union[Dict, List]]) -> None:
+        def _query_wms_layer_feature(params: Dict[str, Union[Dict, List]]) -> Dict[str, Any]:
             """
             Args:
                 params (Dict): A dict with structure as {ev_lat_lng: MouseEventLatLng, layers: List[WmsLayerRequestInfo]}
@@ -172,7 +172,7 @@ class WMSLayers:
                 props = self.query_wms_layer_feature_properties(layer.url)
                 layers_features_props.append(LayerFeaturePropsResp(layer.name, props))
             resp = WmsLayerFeatureResp(req.ev_lat_lng, layers_features_props)
-            emit('on_wms_layer_feature_resp', asdict(resp))
+            return asdict(resp)
 
         @self.socketio.on('get_service_getcapabilities', namespace='/esdl')
         def _get_service_getcapabilities(params: Dict[str, str]) -> Dict[str, Any]:

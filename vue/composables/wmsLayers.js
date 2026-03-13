@@ -22,8 +22,9 @@
  */
 import {ref, toValue} from "vue";
 import {useVisibleLayers} from "./visibleLayers";
+import { setLeafletFeatureStyle } from "../utils/spatialVisualization";
 
-const {addToVisibleLayerList, removeFromVisibleLayerList, layerIsVisible} = useVisibleLayers();
+const {addToVisibleLayerList, removeFromVisibleLayerList, layerIsVisible, showServiceLayerFeaturePopup} = useVisibleLayers();
 
 const L = window.L;
 const map = window.map;
@@ -298,7 +299,21 @@ const constructWfsLayerUrl = (serviceUrl, layerName, bbox, version = "1.1.0") =>
 }
 
 /**
+ * @typedef {Object} FeatureStyle
+ * @property {string} color
+ * @property {number} opacity
+ * @property {number} radius 
+ * @property {number} weight
+ * @property {boolean} stroke
+ */
+
+/**
  * Load WFS layer features on the map.
+ *
+ * @param {string} layerName 
+ * @param {string} url 
+ * @param {FeatureStyle} style 
+ * @returns 
  */
 const loadWfsLayer = async (layerName, url, style) => {
   window.show_loader();
@@ -307,10 +322,24 @@ const loadWfsLayer = async (layerName, url, style) => {
     const data = await response.json();
 
     return L.geoJSON(data, {
-      style: () => (style),
-      // TODO: show more attributes
+      style: function (feature) {
+        return setLeafletFeatureStyle(feature.geometry.type, style);
+      },
+      // This styles Point/MultiPoint geometry features  
+      pointToLayer: function (feature, latlng) {
+        return L.circleMarker(latlng, setLeafletFeatureStyle(feature.geometry.type, style));
+      },
       onEachFeature: (feature, layer) => {
-        layer.bindPopup(`<b>Layer:</b> ${layerName}<br><b>ID:</b> ${feature.id}`);
+				// Attach a click listener directly to the feature's layer
+				layer.on('click', (event) => {
+						// Prevent the map.on('click') in visibleLayers.js from firing.
+						L.DomEvent.stopPropagation(event); 
+						
+						showServiceLayerFeaturePopup(
+								event.latlng, 
+								[{ name: layerName, feature_props: feature.properties }]
+						);
+				});
 
         window.set_wfs_handlers(layer);
       }
