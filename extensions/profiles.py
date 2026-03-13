@@ -1611,6 +1611,8 @@ def _test_influxdb_connection(settings: ConnectionSettings) -> bool:
             host=settings.host,
             port=settings.port,
             database=settings.database,
+            username=settings.username,
+            password=settings.password,
             ssl=settings.ssl,
             verify_ssl=settings.verify_ssl,
             retries=1,
