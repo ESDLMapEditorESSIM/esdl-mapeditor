@@ -98,9 +98,12 @@ window.activate_port_profile_editor = (es_id, object_id) => {
     mountSidebarComponent(PortProfileEditor);
 }
 
-window.activate_asset_constraint = (object_id) => {
+window.activate_asset_constraint = (es_id, object_id) => {
     const { newObject } = useObject();
-    newObject(object_id);
+    newObject({
+        es_id: es_id,
+        object_id: object_id
+    });
     mountSidebarComponent(AssetConstraint);
 }
 
