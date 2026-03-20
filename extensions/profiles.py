@@ -16,25 +16,24 @@ import copy
 import csv
 import datetime
 import locale
+import math
+import re
 import threading
+from dataclasses import dataclass
 from io import StringIO
+from typing import Optional, List, Dict, Any
+from urllib.parse import urlparse
 from uuid import uuid4
-from typing import Optional, List, Dict, Any, Tuple
 
 import psycopg
 import pytz
-import math
-import re
 from flask import Flask
+from flask_executor import Executor
 from flask_socketio import SocketIO, emit
 from influxdb import InfluxDBClient
-from flask_executor import Executor
 from influxdb.exceptions import InfluxDBClientError
 from pyecore.ecore import EDate
 from requests.exceptions import ConnectionError
-from urllib.parse import urlparse
-from dataclasses import dataclass
-
 
 import src.esdl_config as esdl_config
 import src.log as log
@@ -42,12 +41,13 @@ import src.settings as settings
 from esdl import esdl
 from esdl.processing.ESDLQuantityAndUnits import build_qau_from_dict, get_or_create_esi_qau
 from esdl.profiles.data_configurations.credentials import Credentials
-from esdl.profiles.influxdbprofilemanager import ConnectionSettings, InfluxDBProfileManager
 from esdl.profiles.datatableprofilemanager import DataTableProfileManager
+from esdl.profiles.influxdbprofilemanager import ConnectionSettings, InfluxDBProfileManager
 from esdl.units.parser import qau_to_string
 from esdlproject.ProjectManager import load_external_string
 from extensions.panel_service import create_panel, get_panel_service_datasource
-from extensions.profile_server import ProfileServerTypeEnum, InfluxDBConnectionSettings, PostgreSQLConnectionSettings, InfluxDBServer, PostgreSQLServer
+from extensions.profile_server import ProfileServerTypeEnum, InfluxDBConnectionSettings, PostgreSQLConnectionSettings, \
+    InfluxDBServer, PostgreSQLServer
 from extensions.session_manager import get_session, get_project_manager
 from extensions.settings_storage import SettingType, SettingsStorage
 from src.edr_client import EDRClient
@@ -1172,6 +1172,8 @@ class Profiles:
         asset: esdl.Asset = pm.get_by_id(es_id, asset_id)
         if not asset:
             raise AssetNotFoundError(f"Asset (id={asset_id}) from ESDL (id={es_id}) not found.")
+        if not isinstance(asset, esdl.ConnectableAsset):
+            raise AssetNotFoundError(f"Asset (id={asset_id}) from ESDL (id={es_id}) is of unsupported type {asset.eClass.name}.")
       
         ports_profiles = []
         for port in asset.port:
@@ -1182,6 +1184,16 @@ class Profiles:
                     dtp = profile
                 elif isinstance(profile, esdl.InfluxDBProfile):
                     dtp = Profiles.influxdbprofile_to_datatableprofile(profile)
+                elif isinstance(profile, esdl.TimeSeriesProfile):
+                    profiles.append({
+                        "profileClass": profile_class,
+                        "id": profile.id,
+                        "name": profile.name,
+                        "profileType": _get_enum_name(profile.profileType),
+                        "profileQuantityAndUnit": _serialize_qau(profile.profileQuantityAndUnit),
+                        "value": profile.values
+                    })
+                    continue
                 elif isinstance(profile, esdl.SingleValue):
                     profiles.append({
                         "profileClass": profile_class,
@@ -1249,6 +1261,15 @@ class Profiles:
             dtp = profile
         elif isinstance(profile, esdl.InfluxDBProfile):
             dtp = Profiles.influxdbprofile_to_datatableprofile(profile)
+        elif isinstance(profile, esdl.TimeSeriesProfile):
+            start_time = profile.startDateTime
+            dt = datetime.timedelta(seconds=profile.timestep)
+            datetimes = [(start_time + (dt * i)).strftime(dt_str_format) for i in range(len(profile.values))]
+            return {
+                "name": profile.name,
+                "x": datetimes,
+                "y": profile.values,
+            }
         else:
             raise ProfileClassError(f"Unsupported profile (id={profile_id}) class: {type(profile).__name__}")
 

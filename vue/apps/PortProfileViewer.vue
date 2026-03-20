@@ -64,15 +64,15 @@
 </template>
 
 <script setup>
-import { ref, h, onMounted, onUnmounted } from "vue";
-import { LoadingOutlined, InfoCircleOutlined } from "@ant-design/icons-vue";
+import {h, onMounted, onUnmounted, ref} from "vue";
+import {InfoCircleOutlined, LoadingOutlined} from "@ant-design/icons-vue";
 import dayjs from "dayjs";
 
-import { fetchData } from "@/utils/api";
-import { config, normalizePlotlyDateTimeStr } from "@/utils/profileVisualization";
-import { displayNotification } from "@/utils/notification";
-import { useObject } from "@/composables/ObjectID";
-import { useEsdlLayers } from "@/composables/esdlLayers";
+import {fetchData} from "@/utils/api";
+import {config, normalizePlotlyDateTimeStr} from "@/utils/profileVisualization";
+import {displayNotification} from "@/utils/notification";
+import {useObject} from "@/composables/ObjectID";
+import {useEsdlLayers} from "@/composables/esdlLayers";
 import AnalyticsPlot from "@/components/plot/AnalyticsPlot.vue";
 
 const { currentObjectID } = useObject();
@@ -194,7 +194,7 @@ const listProfileOptions = async (esId, selectedAssetIds) => {
           value: `${asset.asset_id}-${port.port_name}`,
           checkable: false,
           children: port.port_profiles.map((p) => {
-            if (p["profileClass"] == "InfluxDBProfile" || p["profileClass"] == "DataTableProfile") {
+            if (p["profileClass"] == "InfluxDBProfile" || p["profileClass"] == "DataTableProfile" || p["profileClass"] == "TimeSeriesProfile") {
               const profileDisplayedName = `${p.columnName} [${p.profileQuantityAndUnit?.description?.split(" ").at(-1) ?? "Unknown"}]`;
               return {
                 title: profileDisplayedName,
