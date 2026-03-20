@@ -129,12 +129,12 @@
       </a-form-item>
 
       <a-form-item
-        label="Predefined quantity and unit"
+        label="Quantity and unit"
         :rules="[{ required: true, type: 'object' }]"
       >
         <a-select
           v-model:value="profileForm.qau"
-          :options="profileQaUOptions"
+          :options="predefinedQaUOptions"
           allow-clear
           :disabled="isLoadingData"
           @mouseleave="removeTooltipPopup"
@@ -197,7 +197,8 @@ const props = defineProps({
     type: String,
     default: ""
   },
-  activePortId: {
+  // The container id for which the profile is attached to. e.g. Port or ProfileConstraint
+  activeProfileContainerId: {
     type: String,
     default: ""
   },
@@ -210,6 +211,15 @@ const props = defineProps({
     type: Object,
     default: null,
   },
+  // Controls how the form behaves when the user clicks "Save".
+  // - If true: the component emits the constructed profile payload to the parent,
+  //            and the parent decides what to do with it (e.g., store, preview, validate).
+  // - If false: the component itself performs the save action by creating or updating
+  //             the profile in ESDL, and still emits the payload for parent awareness.
+  returnProfilePayloadOnSave: {
+    type: Boolean,
+    default: false,
+  }
 });
 
 const emit = defineEmits(["onSave", "onCancel"]);
@@ -218,7 +228,6 @@ const emit = defineEmits(["onSave", "onCancel"]);
 // ---------- Component constant ----------- //
 // ----------------------------------------- //
 
-const profilePlugin = window.profiles_plugin;
 const profileQaU = window.quantity_and_units_info;
 
 const formModeEnum = Object.freeze({
@@ -329,15 +338,20 @@ const formMode = ref(formModeEnum.CREATE);
 const profileFormRef = ref(null);
 const profileForm = reactive({});
 
+const profileSettings = ref([]);
 const profileOptions = ref([]);
 const influxDBProfileOptions = ref([]);
-const profileQaUOptions = ref([]);
+const predefinedQaUOptions = ref([]);
 
 const isLoadingData = ref(false);
 
-onMounted(() => {
-  const fullProfileOptions = listProfileOptions();
+onMounted(async () => {
+  const profiles = await getProfileSettings();
+  const fullProfileOptions = await listProfileOptions(profiles);
+  
+  profileSettings.value = profiles;
   profileOptions.value = fullProfileOptions;
+
   // Disable PostgreSQL profiles for InfluxDBProfile profile options.
   influxDBProfileOptions.value = fullProfileOptions.map((gr) => {
     return {
@@ -353,7 +367,8 @@ onMounted(() => {
       })
     };
   });
-  profileQaUOptions.value = listPredefQaU();
+
+  predefinedQaUOptions.value = listPredefQaU();
 });
 
 watch(
@@ -363,65 +378,78 @@ watch(
     initForm(profileClassEnum.INFLUXDBPROFILE)
 
     if (props.visible && props.profileInfo) {
-      formMode.value = formModeEnum.UPDATE;
+      // profile id is assigned when the profile is instantiated in the backend.
+      // If the profile id exists, set the form to UPDATE mode.
+      if (props.profileInfo.profileObj.id) {
+        formMode.value = formModeEnum.UPDATE;
+      }
       initializeProfileEditing(props.profileInfo);
     }
   },
 );
 
 /**
- * Initializes the profile form for editing.
+ * Initialize the profile form for editing.
  * 
- * @param {Object} profileInfo - The existing profile object to be loaded into the form.
+ * @param {Object} profileInfo - The profileInfo object passed from the parent component to be loaded into the form.
  */
 const initializeProfileEditing = (profileInfo) => {
   console.debug(profileInfo);
+  
+  profileForm.profileClass = profileInfo.profileClass;
   if (profileInfo.profileClass === profileClassEnum.SINGLEVALUE) {
-    castSingleValueObjToFormData(profileInfo);
+    castSingleValueObjToFormData(profileInfo.profileObj);
   } else {
-    castExternalProfileObjToFormData(profileInfo);
-
-    // Check if profile can be found from profile plugin and update profileSourceTag accordingly.
-    const profilePluginObj = getProfileInfoFromProfilePlugin(profileInfo.columnName);
-    profileForm.profileSourceTag = profilePluginObj ? profilePluginObj["profileGroupName"] : "Custom profile";
-
+    castProfileObjToFormData(profileInfo.profileObj);
     updateTrace();
   }
 }
 
 /**
- * Cast the given SingleValue object into profileForm accepted data.
+ * Cast the given profile object with SingleValue-like structure into profileForm accepted data.
  *
- * @param {Object} svInfo existing SingleValue profile object passed from the parent component.
+ * @param {Object} profileObj profile object with SingleValue-like structure.
  */
-const castSingleValueObjToFormData = (svInfo) => {
-  profileForm.id = svInfo.id;
-  profileForm.name = svInfo.name;
-  profileForm.value = svInfo.value;
-  profileForm.profileClass = svInfo.profileClass;
-  profileForm.profileType = svInfo.profileType;
-  profileForm.qau = svInfo.profileQuantityAndUnit.description;
+const castSingleValueObjToFormData = (profileObj) => {
+  profileForm.id = profileObj.id;
+  profileForm.name = profileObj.name;
+  profileForm.value = profileObj.value;
+  profileForm.profileType = profileObj.profileType;
+  profileForm.qau = profileObj.profileQuantityAndUnit.description;
 
-  if (!svInfo.profileQuantityAndUnit["_isPredefinedQaU"]) {
+  const foundPredefQaU = predefinedQaUOptions.value.find(opt => opt.label === profileObj.profileQuantityAndUnit.description);
+  if (!foundPredefQaU) {
     profileForm.qauType = qauTypeOptions[1];
   }
 }
 
 /**
- * Cast the given ExteranlProfile e.g., InfluxDBProfile or DataTableProfile object into profileForm accepted data.
+ * Cast the given profile object with DataTableProfile-like structure into profileForm accepted data.
  *
- * @param {Object} profileInfo existing profile object passed from the parent component.
+ * @param {Object} profileObj profile object with DataTableProfile-like structure.
  */
-const castExternalProfileObjToFormData = (profileInfo) => {
-  profileForm.id = profileInfo.id;
-  profileForm.profile = profileInfo.columnName;
-  profileForm.profileClass = profileInfo.profileClass;
-  profileForm.databaseType = profileInfo.configuration.type;
-  profileForm.profileType = profileInfo.profileType;
-  profileForm.multiplier = profileInfo.multiplier;
-  profileForm.qau = profileInfo.profileQuantityAndUnit.description;
+const castProfileObjToFormData = (profileObj) => {
+  // The displayed name follows the same pattern as defined in get_profile_settings_as_dtp_objects() in profiles.py
+  let profileDisplayedName = `${profileObj.configuration.type}: ${profileObj.tableName}.${profileObj.columnName}`;
 
-  if (!profileInfo.profileQuantityAndUnit["_isPredefinedQaU"]) {
+  const profileSettingsObj = getProfileSettingsObj(profileForm.profile || profileDisplayedName);
+  // profile setting can't be found in setting storage, the profile is stored somewhere else.
+  if (!profileSettingsObj) {
+    profileForm.profileSourceTag = "External profile";
+  } else {
+    profileForm.profileSourceTag = profileSettingsObj.metadata.profileGroupName;
+    profileDisplayedName = profileSettingsObj.metadata.profileDisplayedName;
+  }
+
+  profileForm.id = profileObj.id;
+  profileForm.profile = profileDisplayedName;
+  profileForm.databaseType = profileObj.configuration.type;
+  profileForm.profileType = profileObj.profileType;
+  profileForm.multiplier = profileObj.multiplier;
+  profileForm.qau = profileObj.profileQuantityAndUnit.description;
+
+  const foundPredefQaU = predefinedQaUOptions.value.find(opt => opt.label === profileObj.profileQuantityAndUnit.description);
+  if (!foundPredefQaU) {
     profileForm.qauType = qauTypeOptions[1];
   }
 };
@@ -430,9 +458,9 @@ const castExternalProfileObjToFormData = (profileInfo) => {
 /**
  * Fetches and updates the current profile trace data for visualization.
  *
- * This function handles two modes:
+ * This function fetches traces in two modes
  *  - UPDATE mode: retrieves traces for an existing profile referenced in the ESDL file.
- *  - CREATE mode: constructs a DataTableProfileObject from a profile plugin and retrieves its trace
+ *  - CREATE mode: constructs a DataTableProfile-like object as a request payload and retrieves its trace.
  */
 const updateTrace = async () => {
   isLoadingData.value = true;
@@ -450,23 +478,13 @@ const updateTrace = async () => {
       };
       results = await fetchData("get_profile_traces", profileTracesRequest);
     }
-    // CREATE mode (profile to be retrieved from, e.g. EDR) 
+    // CREATE mode (profile setting for querying trace is derived from profile settings storage) 
     else {
-      const profilePluginObj = getProfileInfoFromProfilePlugin(profileForm.profile);
-      if (profilePluginObj) {
+      const profileSettingsObj = getProfileSettingsObj(profileForm.profile);
+      if (profileSettingsObj) {
         const profileTraceDtpRequest = {
           dtp_obj: {
-            tableName: profilePluginObj.measurement,
-            columnName: profilePluginObj.field,
-            startDate: profilePluginObj.startDatetime,
-            endDate: profilePluginObj.endDatetime,
-            multiplier: profilePluginObj.multiplier * 1.0,
-            configuration: {
-              type: profilePluginObj.databaseType,
-              database: profilePluginObj.database,
-              host: profilePluginObj.host,
-              port: profilePluginObj.port,
-            }
+            ...profileSettingsObj.profileObj,
           },
           viz_options: {
             multiplier: profileForm.multiplier,
@@ -484,8 +502,8 @@ const updateTrace = async () => {
         if (err.profile_id) {
           errMsg += ` (id=${err.profile_id})`
         }
-        if (err.error.includes("unreachable")) {
-          errMsg = `Unable to display profile preview due to database connection error.`;
+        if (err.error.includes("unreachable") || err.error.includes("401")) {
+          errMsg = `Unable to display profile preview due to connection error.`;
         }
         displayNotification("error", errMsg);
         console.error(err);
@@ -511,52 +529,10 @@ const updateTrace = async () => {
 /**
  * Add new profile to ESDL with addProfileRequest payload.
  */
-const addProfile = async () => {
+const addProfile = async (addProfileRequest) => {
   isLoadingData.value = true;
   try {
-    let result = null;
-    const addProfileRequest = {
-      es_id: props.activeEsdlId,
-      // Port to attach the profile to.
-      port_id: props.activePortId,
-      profileClass: profileForm.profileClass,
-      profile_obj: {}
-    }
-
-    // Extend addProfileRequest object with profileClass specific properties
-    // SingleValue profileClass
-    if (profileForm.profileClass === profileClassEnum.SINGLEVALUE) {
-      addProfileRequest["profile_obj"] = {
-        name: profileForm.name,
-        value: profileForm.value,
-        profileType: profileForm.profileType,
-        // TODO: support custom QaU
-        profileQuantityAndUnit: profileQaU["predefined_qau"].find(qau => qau["description"] === profileForm.qau),
-      }
-    } 
-    // InfluxDBProfile or DataTableProfile profileClass
-    else {
-      const profilePluginObj = getProfileInfoFromProfilePlugin(profileForm.profile);
-      addProfileRequest["profile_obj"] = {
-        tableName: profilePluginObj.measurement,
-        columnName: profilePluginObj.field,
-        startDate: profilePluginObj.startDatetime,
-        endDate: profilePluginObj.endDatetime,
-        // Overrides default multiple with form multiplier if present
-        multiplier: profileForm.multiplier ? profileForm.multiplier * 1.0 : profilePluginObj.multiplier * 1.0,
-        profileType: profileForm.profileType,
-        // TODO: support custom QaU
-        profileQuantityAndUnit: profileQaU["predefined_qau"].find(qau => qau["description"] === profileForm.qau),
-        configuration: {
-          type: profilePluginObj.databaseType,
-          database: profilePluginObj.database,
-          host: profilePluginObj.host,
-          port: profilePluginObj.port,
-        }
-      }
-    }
-
-    result = await fetchData("add_esdl_profile", addProfileRequest);
+    const result = await fetchData("add_esdl_profile", addProfileRequest);
 
     if (result.success) {
       displayNotification("success", result.message);
@@ -606,7 +582,8 @@ const updateProfile = async () => {
 
     // Only include profileQuantityAndUnit in request payload if it is modified.
     // TODO: support custom QaU
-    if (profileForm.qau !== props.profileInfo.profileQuantityAndUnit.description) {
+    const profileObj = props.profileInfo.profileObj;
+    if (profileForm.qau !== profileObj.profileQuantityAndUnit.description) {
       updateProfileRequest.updates["profileQuantityAndUnit"] = profileQaU["predefined_qau"].find(qau => qau["description"] === profileForm.qau);
     }
     const result = await fetchData("update_esdl_profile", updateProfileRequest);
@@ -628,52 +605,52 @@ const updateProfile = async () => {
 }
 
 /**
- * TODO: clean up
- * @param profileName 
+ * Construct a standardized profile payload object based on the current form inputs.
+ *
+ * This function converts the user‑edited form state into the backend‑compatible payload structure.
+ * - For SingleValue: the payload is built directly from form fields.
+ * - For DataTableProfile / InfluxDBProfile: the payload is built either from profile setting object
+ *                                           or setting passed from the parent component and with form state overrides.
+ *
+ * @returns {Object} A fully constructed profile payload ready to be emitted or saved.
  */
-const getProfileInfoFromProfilePlugin = (profileName) => {
-  let result = null;
+const constructProfilePayloadFromFormData = () => {
+  const profilePayload = {
+    es_id: props.activeEsdlId,
+    profile_container_id: props.activeProfileContainerId,
+    profileClass: profileForm.profileClass,
+    profileObj: {}
+  }
 
-  const profiles = profilePlugin["profiles_list"]["profiles"];
-  const groups = profilePlugin["profiles_list"]["groups"];
-
-  // TODO: this could miss some profile
-  const profile = Object.values(profiles).find(p => p["profile_uiname"] === profileName);
-
-  if (profile) {
-    const settingType = profile["setting_type"];
-    const profileGroupName = groups.find(g => g["setting_type"] === settingType)["name"];
-    const databaseType = deriveProfileDatabaseType(profile);
-
-    let tableName;
-    let columnName;
-    if (databaseType === DatabaseTypeEnum.INFLUXDB) {
-      tableName = profile["measurement"];
-      columnName = profile["field"];
-    } else if (databaseType === DatabaseTypeEnum.POSTGRESQL) {
-      tableName = profile["table"];
-      columnName = profile["column"];
+  // Extend profilePayload object with profileClass specific properties
+  // SingleValue profileClass
+  if (profileForm.profileClass === profileClassEnum.SINGLEVALUE) {
+    profilePayload.profileObj = {
+      name: profileForm.name,
+      value: profileForm.value,
+      profileType: profileForm.profileType,
+      // TODO: support custom QaU
+      profileQuantityAndUnit: profileQaU["predefined_qau"].find(qau => qau["description"] === profileForm.qau),
     }
+  } 
+  // InfluxDBProfile or DataTableProfile profileClass
+  else {
+    // In CREATE mode, get profile setting from setting storage;
+    // otherwise, get it from the object passed from the parent component.
+    const profileSettingsObj = getProfileSettingsObj(profileForm.profile);
+    const profileObj = profileSettingsObj ? profileSettingsObj.profileObj : props.profileInfo.profileObj;
 
-    // TODO: proper handling of host, port, and database when not given as profile properties.
-    // TODO: maybe the object should follow DTP structure?
-    // TODO: properly handle personl, system, project profile connection info.
-    // TODO: profileQaU?
-    result = {
-      host: profile["host"] || "localhost",
-      port: profile["port"] || 8086,
-      database: profile["database"] || null,
-      measurement: tableName,
-      field: columnName,
-      multiplier: profile["multiplier"],
-      startDatetime: profile["start_datetime"],
-      endDatetime: profile["end_datetime"],
-      databaseType: databaseType,
-      profileGroupName: profileGroupName
+    profilePayload.profileObj = {
+      ...profileObj,
+      profileType: profileForm.profileType,
+      // Overrides default multiple with form multiplier if present
+      multiplier: profileForm.multiplier || profileObj.multiplier,
+      // TODO: support custom QaU
+      profileQuantityAndUnit: profileQaU["predefined_qau"].find(qau => qau["description"] === profileForm.qau),
     }
   }
-  
-  return result;
+
+  return profilePayload;
 }
 
 /**
@@ -703,16 +680,16 @@ const onSelectProfileClass = (type) => {
   initForm(type);
 };
 
-const onSelectProfile = (profile) => {
-  // Reset the form when profile is undefined (e.g. when the selection is cleared.)
-  if (profile === undefined) {
+const onSelectProfile = (profileOptionValue) => {
+  // Reset the form when profileOptionValue is undefined (e.g. when the selection is cleared.)
+  if (profileOptionValue === undefined) {
     initForm(profileForm.profileClass);
   } else {
-    const profilePluginObj = getProfileInfoFromProfilePlugin(profile);
-    if (profilePluginObj) {
-      profileForm.profileSourceTag = profilePluginObj["profileGroupName"] || "";
-      profileForm.databaseType = profilePluginObj["databaseType"];
-      profileForm.multiplier = profilePluginObj["multiplier"];
+    const profileSettingsObj = getProfileSettingsObj(profileOptionValue);
+    if (profileSettingsObj) {
+      profileForm.profileSourceTag = profileSettingsObj.metadata.profileGroupName;
+      profileForm.databaseType = profileSettingsObj.profileObj.configuration.type;
+      profileForm.multiplier = profileSettingsObj.profileObj.multiplier;
     }
     updateTrace();
   }  
@@ -730,18 +707,19 @@ const onUpdateMultiplier = (value) => {
 // Disable form save button when no changes are made in the UPDATE mode.
 const noChangeDetected = computed(() => {
   if (formMode.value === formModeEnum.UPDATE) {
+    const profileObj = props.profileInfo.profileObj;
     if (profileForm.profileClass === profileClassEnum.SINGLEVALUE) {
       return (
-        profileForm.name === props.profileInfo.name &&
-        profileForm.value === props.profileInfo.value &&
-        profileForm.profileType === props.profileInfo.profileType &&
-        profileForm.qau === props.profileInfo.profileQuantityAndUnit.description
+        profileForm.name === profileObj.name &&
+        profileForm.value === profileObj.value &&
+        profileForm.profileType === profileObj.profileType &&
+        profileForm.qau === profileObj.profileQuantityAndUnit.description
       )
     } else {
       return (
-        profileForm.profileType === props.profileInfo.profileType &&
-        profileForm.multiplier === props.profileInfo.multiplier &&
-        profileForm.qau === props.profileInfo.profileQuantityAndUnit.description);
+        profileForm.profileType === profileObj.profileType &&
+        profileForm.multiplier === profileObj.multiplier &&
+        profileForm.qau === profileObj.profileQuantityAndUnit.description);
       }
   } else {
     return false;
@@ -765,76 +743,112 @@ const invalidForm = computed(() => {
 });
 
 const onSave = () => {
-  if (formMode.value === formModeEnum.UPDATE) {
-    updateProfile();
-  } else if (formMode.value === formModeEnum.CREATE) {
-    addProfile();
+  const profilePayload = constructProfilePayloadFromFormData();
+
+  // If the parent does NOT want to handle saving, perform the save internally
+  if (!props.returnProfilePayloadOnSave) {
+    if (formMode.value === formModeEnum.UPDATE) {
+      updateProfile();
+    } else if (formMode.value === formModeEnum.CREATE) {
+      addProfile(profilePayload);
+    }
   }
-  emit("onSave");
+
+  emit("onSave", {
+    tag: props.profileTag,
+    profileInfo: {...profilePayload},
+  });
 };
 
 const onCancel = () => {
   emit("onCancel");
 };
 
-// ------------------------------------------- //
-// -------------- Util functions ------------- //
-// ------------------------------------------- //
+/**
+ * Fetch all stored profile settings from the backend in a standardized DataTableProfile-like format.
+ */
+const getProfileSettings = async () => {
+  isLoadingData.value = true;
+  try {
+    const result = await fetchData("get_profile_settings_as_dtp_objects");
 
-// TODO: pay attention to profiles with the same name
-const listProfileOptions = () => {
-  const options = [];
-
-  const profileGroups = profilePlugin["profiles_list"]["groups"];
-  const profileInfo = Object.entries(
-    profilePlugin["profiles_list"]["profiles"],
-  );
-
-  profileGroups.forEach((gr) => {
-    const groupLabel = gr["name"];
-    const groupProfiles = [];
-
-    for (let pr = 0; pr < profileInfo.length; pr++) {
-      if (gr.setting_type == profileInfo[pr][1].setting_type) {
-        if (
-          profileInfo[pr][1].setting_type == "project" &&
-          profileInfo[pr][1].project_name != gr.project_name
-        ) {
-          continue;
-        }
-
-        groupProfiles.push({
-          value: profileInfo[pr][1]["profile_uiname"],
-          label: profileInfo[pr][1]["profile_uiname"], // TODO: replace this with profile id?
-          databaseType: deriveProfileDatabaseType(profileInfo[pr][1])
-        });
-      }
+    if (result.length === 0) {
+      displayNotification("warning", "No profiles found in the profile database for listing.");
     }
 
-    options.push({
-      label: groupLabel,
-      options: groupProfiles,
+    return result;
+  } catch (e) {
+    displayNotification(
+      "error",
+      `An unknown error occurs while listing stored profiles: ${e.message || e}`
+    );
+  } finally {
+    isLoadingData.value = false;
+  }
+}
+
+/**
+ * Transform the list of normalized profile objects into a UI-friendly structure
+ * suitable for grouped dropdowns or selection components.
+ */
+const listProfileOptions = async (profiles) => {
+  if (!profiles) return [];
+
+  // Group profiles by group name
+  const groupsMap = new Map();
+
+  profiles.forEach(({ profileObj, metadata }) => {
+    const groupName = metadata.profileGroupName || "Other";
+
+    if (!groupsMap.has(groupName)) {
+      groupsMap.set(groupName, []);
+    }
+
+    groupsMap.get(groupName).push({
+      label: metadata.profileDisplayedName,
+      value: metadata.profileSettingId,
+      databaseType: profileObj.configuration.type
     });
   });
 
-  return options;
+  return Array.from(groupsMap.entries()).map(([label, options]) => ({
+    label,
+    options
+  }));
 };
 
 /**
- * An until function to derive profile database type from a profilePlugin profile record.
- * 
- * @param profileInfo {Object} A profile object stored in the profilePlugin profiles list.
+ * Retrieve a stored profile settings object by either:
+ * - profileSettingId (when available), or
+ * - profileDisplayedName (used in edit mode when only the label is available)
+ *
+ * @param {string|null} profileIdentifier
+ *        The identifier coming from profileForm.profile — may be either
+ *        the profileSettingId or the profileDisplayedName.
  */
-const deriveProfileDatabaseType = (profileInfo) => {
-  let databaseType = "Unknown";
-  if (profileInfo["type"]) {
-    databaseType = DatabaseTypeEnum[profileInfo["type"]];
-  } // To handle a record without 'type' attribute (introduced in esdl.DatabaseConfiguration)  
-  else if (profileInfo["item_type"] && profileInfo["item_type"] === "InfluxDBProfile") {
-    databaseType = DatabaseTypeEnum.INFLUXDB;
+const getProfileSettingsObj = (profileIdentifier) => {
+  if (!profileIdentifier) {
+    console.warn("getProfileSettingsObj called with empty identifier.");
+    return null;
   }
-  return databaseType;
-} 
+
+  const matches = profileSettings.value.filter(p => {
+    const idMatch = p.metadata.profileSettingId === profileIdentifier;
+    const nameMatch = p.metadata.profileDisplayedName === profileIdentifier;
+    return idMatch || nameMatch;
+  });
+
+  if (matches.length === 0) {
+    console.warn(`No profile settings object found with identifier as "${profileIdentifier}".`);
+    return null;
+  }
+
+  if (matches.length > 1) {
+    console.warn(`Found ${matches.length} profile settings objects with identifier as "${profileIdentifier}". Returning the first match.`);
+  }
+
+  return matches[0];
+}
 
 const listPredefQaU = () => {
   const options = [];
