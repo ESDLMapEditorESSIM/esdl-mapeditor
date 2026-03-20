@@ -719,6 +719,9 @@ class Profiles:
         edr_profiles = dict()
         edr_client = EDRClient.get_instance()
 
+        if not edr_client.EDR_config.get('host'):
+            return edr_profiles
+
         field_map = {
             "id": "id",
             "label": "title",
