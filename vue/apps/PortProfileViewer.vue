@@ -194,8 +194,15 @@ const listProfileOptions = async (esId, selectedAssetIds) => {
           value: `${asset.asset_id}-${port.port_name}`,
           checkable: false,
           children: port.port_profiles.map((p) => {
-            if (p["profileClass"] == "InfluxDBProfile" || p["profileClass"] == "DataTableProfile" || p["profileClass"] == "TimeSeriesProfile") {
+            if (p["profileClass"] == "InfluxDBProfile" || p["profileClass"] == "DataTableProfile" ) {
               const profileDisplayedName = `${p.columnName} [${p.profileQuantityAndUnit?.description?.split(" ").at(-1) ?? "Unknown"}]`;
+              return {
+                title: profileDisplayedName,
+                value: p.id,
+                checkable: true,
+              }
+            } else if (p["profileClass"] == "TimeSeriesProfile") {
+              const profileDisplayedName = `${p.name} [${p.profileQuantityAndUnit?.description?.split(" ").at(-1) ?? "Unknown"}]`;
               return {
                 title: profileDisplayedName,
                 value: p.id,
