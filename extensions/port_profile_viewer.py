@@ -328,9 +328,11 @@ class PortProfileViewer:
                         "port_name": "In",
                         "port_profiles": [
                             {
-                                "id": "profile123",
-                                "profileClass": "InfluxDBProfile"
-                                ...
+                                "profileClass": "InfluxDBProfile",
+                                "profileObj": {
+                                    "id": "profile123",
+                                    ...
+                                }
                             },
                             ...
                         ]

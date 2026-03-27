@@ -14,6 +14,7 @@
 import base64
 from datetime import datetime, timezone
 from typing import Optional, Dict, List, Optional, Any
+from enum import Enum
 
 import psycopg
 import pytz
@@ -34,7 +35,6 @@ from esdl.units.parser import qau_to_string
 from esdl.processing import ESDLQuantityAndUnits
 from esdl.profiles.influxdbprofilemanager import ConnectionSettings, InfluxDBProfileManager
 from esdl.profiles.datatableprofilemanager import DataTableProfileManager, Credentials
-import src.esdl_config as esdl_config
 from extensions.profile_server import InfluxDBServer, InfluxDBConnectionSettings, PostgreSQLServer, \
     PostgreSQLConnectionSettings, ProfileServerTypeEnum
 from extensions.settings_storage import SettingType, SettingsStorage
@@ -102,22 +102,35 @@ class ProfileTraceDtpRequest:
     """A dict (frontend object) that can be converted into an esdl.DataTableProfile"""
     viz_options: Optional[ProfileVizOptions]
 
+class ProfileClassEnum(Enum):
+    """Supported profile classes for profile creation and update"""
+    SINGLEVALUE = "SingleValue"
+    INFLUXDBPROFILE = "InfluxDBProfile"
+    DATATABLEPROFILE = "DataTableProfile"
+
 @dataclass
 class AddProfileRequest:
     es_id: str
-    port_id: str
-    profileClass: str
-    """The class name of the profile to create (e.g., "SingleValue", "DataTableProfile", "InfluxDBProfile")"""
-    profile_obj: dict
-    """A dict (frontend object) that can be converted into an ESDL profile class e.g, esdl.DataTableProfile"""
+    profile_container_id: str
+    """The container id for which the profile will be attached to. e.g. Port id"""
+    profileClass: ProfileClassEnum
+    profileObj: dict
+    """A dict (frontend object) that can be converted into an ESDL profile class e.g, esdl.DataTableProfile, esdl.SingleValue"""
+
+    def __post_init__(self):
+        if isinstance(self.profileClass, str):
+            self.profileClass = ProfileClassEnum(self.profileClass)
 
 @dataclass
 class UpdateProfileRequest:
     es_id: str
     profile_id: str
-    profileClass: str
-    """The class name of the profile to be updated (e.g., "SingleValue", "DataTableProfile", "InfluxDBProfile")"""
+    profileClass: ProfileClassEnum
     updates: dict
+
+    def __post_init__(self):
+        if isinstance(self.profileClass, str):
+            self.profileClass = ProfileClassEnum(self.profileClass)
 
 def send_alert(message):
     logger.warning(message)
@@ -285,6 +298,14 @@ class Profiles:
 
                 return {"profiles_servers": ui_prof_settings_list}
 
+        @self.socketio.on('get_profile_settings_as_dtp_objects', namespace='/esdl')
+        def _get_profile_settings_as_dtp_objects():
+            """
+            Retrieve and return stored profile settings 
+            via converting them into DataTableProfile-like response objects.
+            """
+            return self.get_profile_settings_as_dtp_objects()
+
         @self.socketio.on("get_asset_ports_profiles", namespace="/esdl")
         def _get_asset_ports_profiles(params: dict):
             """Return asset-associated ports profiles in a dict for a given asset id."""
@@ -313,7 +334,7 @@ class Profiles:
             """Add a new profile to a given port in an ESDL."""
             try:
                 req = AddProfileRequest(**params)
-                Profiles.add_esdl_profile(req.es_id, req.port_id, req.profileClass, req.profile_obj)
+                Profiles.add_esdl_profile(req.es_id, req.profile_container_id, req.profileClass, req.profileObj)
                 return {"success": True, "message": f"Successfully added profile."}
             except Exception as e: 
                 return {"success": False, "message": str(e)}
@@ -698,6 +719,9 @@ class Profiles:
         edr_profiles = dict()
         edr_client = EDRClient.get_instance()
 
+        if not edr_client.EDR_config.get('host'):
+            return edr_profiles
+
         field_map = {
             "id": "id",
             "label": "title",
@@ -1035,6 +1059,93 @@ class Profiles:
 
         return fields
     
+    def get_profile_settings_as_dtp_objects(self) -> List[dict]:
+        """
+        Retrieve all stored profile settings from MongoDB and convert them into
+        DataTableProfile-like response objects. This normalizes both
+        InfluxDB-based and PostgreSQL-based stored profiles into a unified structure
+        so the frontend can reliably consume a consistent API format.
+
+        The returned list contains objects of the form:
+            {
+                "profileObj": <serialized DataTableProfile>,
+                "metadata": {
+                    "profileSettingId": <profile setting id string>
+                    "profileDisplayedName": <profile displayed name>
+                    "profileGroupName": <group name>
+                }
+            }
+
+        :return: List of standardized DataTableProfile-like and metadata objects.
+        """
+        
+        profile_settings = []
+
+        # Retrieve stored profile groups and profile records
+        profile_groups = self.get_profiles()['groups']
+        stored_profiles = self.get_profiles()['profiles']
+
+        # Track duplicates: {display_name: count}
+        name_counter = {}
+
+        for id, p in stored_profiles.items():
+            dtp = esdl.DataTableProfile(
+                id=p.get("id"),
+                name=p.get("name"),
+                tableName=p.get("table") or p.get("measurement"),
+                columnName=p.get("column") or p.get("field"),
+                filter=None,
+                multiplier=float(p.get("multiplier")),
+                startDate=_dt_str_to_tz_aware_datetime(p.get("start_datetime")),
+                endDate=_dt_str_to_tz_aware_datetime(p.get("end_datetime")),
+                profileType=esdl.ProfileTypeEnum.from_string(p.get("profileType")),
+                profileQuantityAndUnit=None
+            )
+
+            dtp.configuration = esdl.DatabaseConfiguration(
+                database=p.get("database"),
+                type=esdl.DatabaseTypeEnum.from_string(p.get("type", "INFLUXDB")),
+                host=p.get("host"),
+                port=int(p.get("port")) if str(p.get("port")).isdigit() else None
+            )
+
+            # Serialize for frontend
+            serialized_profile = Profiles.serialize_datatableprofile(dtp)
+
+            # Profile metadata
+            db_type = serialized_profile["configuration"]["type"]
+            table_name = serialized_profile["tableName"]
+            col_name = serialized_profile["columnName"]
+
+            # Base display name
+            base_name = f"{db_type}: {table_name}.{col_name}"
+
+            # TODO: better uniqueness handling?
+            # Ensure uniqueness
+            if base_name not in name_counter:
+                name_counter[base_name] = 1
+                profile_displayed_name = base_name
+            else:
+                name_counter[base_name] += 1
+                profile_displayed_name = f"{base_name} ({name_counter[base_name]})"
+
+            setting_type = p.get("setting_type")
+            group_display_name = next(
+                (g["name"] for g in profile_groups if g["setting_type"] == setting_type),
+                None
+            )
+
+            profile_settings.append({
+                "profileObj": serialized_profile,
+                "metadata": {
+                    "profileSettingId": id,
+                    "profileDisplayedName": profile_displayed_name,
+                    "profileGroupName": group_display_name
+                }
+            })
+    
+        return profile_settings
+
     @staticmethod
     def get_profile_influxdb_settings(host: str, port: int, database: str, profiles_settings: dict) -> ConnectionSettings | None:
         """
@@ -1131,30 +1242,6 @@ class Profiles:
         return dtp
     
     @staticmethod
-    def datatableprofile_to_dict(dtp: esdl.DataTableProfile) -> dict:
-        """Return a dict representation of `DataTableProfile` for client consumption."""
-
-        qau_dict = _serialize_qau(getattr(dtp, "profileQuantityAndUnit", None))
-    
-        return {
-            "id": dtp.id,
-            "name": dtp.name,
-            "tableName": dtp.tableName,
-            "columnName": dtp.columnName,
-            "filter": dtp.filter,
-            "multiplier": dtp.multiplier,
-            "profileType": _get_enum_name(dtp.profileType),
-            "profileQuantityAndUnit": qau_dict,
-            "configuration": {
-                "database": dtp.configuration.database,
-                "type": _get_enum_name(dtp.configuration.type),
-                "host": dtp.configuration.host,
-                "port": dtp.configuration.port,
-                "tls": dtp.configuration.tls
-            }
-        }
-    
-    @staticmethod
     def get_asset_ports_profiles(es_id: str, asset_id: str) -> dict:
         """
         Retrieve and return all profiles attached to the ports of a given asset in an ESDL.
@@ -1169,28 +1256,8 @@ class Profiles:
         for port in asset.port:
             profiles = []
             for profile in port.profile:
-                profile_class = type(profile).__name__
-                if isinstance(profile, esdl.DataTableProfile):
-                    dtp = profile
-                elif isinstance(profile, esdl.InfluxDBProfile):
-                    dtp = Profiles.influxdbprofile_to_datatableprofile(profile)
-                elif isinstance(profile, esdl.SingleValue):
-                    profiles.append({
-                        "profileClass": profile_class,
-                        "id": profile.id,
-                        "name": profile.name,
-                        "profileType": _get_enum_name(profile.profileType),
-                        "profileQuantityAndUnit": _serialize_qau(profile.profileQuantityAndUnit),
-                        "value": profile.value
-                    })
-                    continue
-                else:
-                    raise ProfileClassError(f"Unsupported profile class: {profile_class}")
-                    
-                dtp_dict = Profiles.datatableprofile_to_dict(dtp)
-                # Label profile class for frontend use.
-                dtp_dict["profileClass"] = profile_class
-                profiles.append(dtp_dict)
+                serialized_profile = Profiles.serialize_esdl_profile(profile)
+                profiles.append(serialized_profile)
 
             ports_profiles.append(
                 {
@@ -1206,7 +1273,7 @@ class Profiles:
             "asset_name": asset.name,
             "ports_profiles": ports_profiles
         }
-    
+
     @staticmethod
     def get_profile_traces_from_profile_ids(req: ProfileTracesRequest) -> Dict[str, List[Dict[str, Any]]]:
         """Return a dictionary with profile traces or error messages."""
@@ -1262,8 +1329,8 @@ class Profiles:
         results = {"traces": [], "errors": []}
 
         try:
-            dtp = _convert_dtp_obj_into_dtp(dtp_obj)
-            dtp.configuration = _convert_config_obj_into_databaseconfiguration(dtp_obj.get("configuration"))
+            dtp = _create_dtp_from_dtp_obj(dtp_obj)
+            dtp.configuration = _create_databaseconfiguration_from_config_obj(dtp_obj.get("configuration"))
             trace = Profiles.get_datatableprofile_trace(dtp, viz_options)
             results["traces"].append({
                 "profile_id": None,
@@ -1425,74 +1492,37 @@ class Profiles:
         return {}
 
     @staticmethod
-    def add_esdl_profile(es_id: str, port_id: str, profile_class: str, profile_obj: dict) -> None:
+    def add_esdl_profile(es_id: str, profile_container_id: str, profile_class: ProfileClassEnum, profile_obj: dict) -> None:
         """
-        Add a new profile to a given port in an ESDL.
+        Add a new profile to a given profile container (e.g. Port, ProfileConstraint, etc.) in the ESDL.
 
         Parameters
         ----------
         es_id : str
             The identifier of the ESDL file (energy system).
-        port_id : str
-            The identifier of the port within the ESDL file.
-        profile_class : str
-            The class name of the profile to create (e.g., "SingleValue", "DataTableProfile", "InfluxDBProfile").
+        profile_container_id : str
+            The container id for which the profile will be attached to.
+        profile_class : ProfileClassEnum
+            The class of the profile to be created (e.g., "SingleValue", "DataTableProfile", "InfluxDBProfile").
         profile_obj : dict
             Dictionary containing SingleValue or DataTableProfile-like fields and configuration.
         """
         esh = get_handler()
 
-        port = esh.get_by_id(es_id, port_id)
-        if not port or not isinstance(port, esdl.Port):
-            raise ProfilePortNotFoundError(f"Unable to attach profile to a given port (id={port_id}) from ESDL (id={es_id}).")
-        try:
-            # First extract and parse profile qau.
-            qau_obj = profile_obj.get("profileQuantityAndUnit")
-            if qau_obj:
-                profile_qau = _convert_qau_obj_into_profile_qau(es_id, qau_obj)
-                profile_obj["profileQuantityAndUnit"] = None
+        profile_container = esh.get_by_id(es_id, profile_container_id)
+        if not profile_container:
+            raise ProfileContainerNotFoundError(f"Unable to attach profile to a given container (id={profile_container_id}) from ESDL (id={es_id}).")
 
-            if profile_class == esdl.SingleValue.__name__:
-                new_profile = esdl.SingleValue(
-                    name=profile_obj.get("name"),
-                    value=float(profile_obj.get("value")),
-                    profileType=esdl.ProfileTypeEnum.from_string(profile_obj.get("profileType"))
-                )
-            elif profile_class == esdl.DataTableProfile.__name__:
-                new_profile = _convert_dtp_obj_into_dtp(profile_obj)
-                db_config = _convert_config_obj_into_databaseconfiguration(profile_obj.get("configuration"))
-                esi_db_config = get_or_add_esi_databaseconfiguration(es_id, db_config)
-                new_profile.configuration = esi_db_config
-            elif profile_class == esdl.InfluxDBProfile.__name__:
-                new_profile = esdl.InfluxDBProfile(
-                    host=profile_obj.get("configuration").get("host"),
-                    port=profile_obj.get("configuration").get("port"),
-                    database=profile_obj.get("configuration").get("database"),
-                    measurement=profile_obj.get("tableName"),
-                    field=profile_obj.get("columnName"),
-                    filters=profile_obj.get("filter"),
-                    multiplier=float(profile_obj.get("multiplier")),
-                    startDate=_dt_str_to_tz_aware_datetime(profile_obj.get("startDate")),
-                    endDate=_dt_str_to_tz_aware_datetime(profile_obj.get("endDate")),
-                    profileType=esdl.ProfileTypeEnum.from_string(profile_obj.get("profileType"))
-                )
-            else:
-                raise ProfileClassError(f"Unsupported profile class: {profile_class}")
-            
-            if new_profile:
-                new_profile.id = str(uuid4())
-                if profile_qau:
-                    new_profile.profileQuantityAndUnit = profile_qau
-                # Append new profile to the target port.
-                port.eGet("profile").append(new_profile)
-                esh.add_object_to_dict(es_id, new_profile)
-            else:
-                raise ProfileCreateError(f"An error occurs while adding profile")
+        try:
+            new_profile = Profiles.construct_esdl_profile_instance(es_id, profile_class, profile_obj)
+            # Append a new profile to the target container.
+            profile_container.eGet("profile").append(new_profile)
+            esh.add_object_to_dict(es_id, new_profile)
         except Exception as e:
             raise ProfileCreateError(f"An error occurs while adding profile: {e}") from e
 
     @staticmethod
-    def update_esdl_profile(es_id: str, profile_id: str, profile_class: str, updates: dict) -> None:
+    def update_esdl_profile(es_id: str, profile_id: str, profile_class: ProfileClassEnum, updates: dict) -> None:
         """
         Update attributes of an existing profile in an ESDL.
         """
@@ -1504,7 +1534,7 @@ class Profiles:
         
         try:
             # Profile class specific attributes
-            if profile_class == esdl.SingleValue.__name__:
+            if profile_class == ProfileClassEnum.SINGLEVALUE:
                 if "name" in updates:
                     profile.name = updates["name"]
                 if "value" in updates:
@@ -1524,6 +1554,164 @@ class Profiles:
 
         except Exception as e:
             raise ProfileUpdateError(f"An error occurs while updating profile (id={profile_id}): {e}") from e
+        
+    @staticmethod
+    def serialize_esdl_profile(profile: esdl.DataTableProfile | esdl.InfluxDBProfile | esdl.SingleValue) -> Dict[str, Any]:
+        """
+        An utiltiy function to convert an ESDL profile instance (DataTableProfile, InfluxDBProfile, or SingleValue)
+        into a dictionary structure suitable for API responses.
+
+        :param profile: An ESDL profile instance.
+        :return: A dict with structure as:
+            {
+                "profileClass": <string>,
+                "profileObj": <serialized profile object>
+            }
+        """
+        profile_class = type(profile).__name__
+
+        if isinstance(profile, esdl.DataTableProfile):
+            dtp = profile
+        elif isinstance(profile, esdl.InfluxDBProfile):
+            dtp = Profiles.influxdbprofile_to_datatableprofile(profile)
+        elif isinstance(profile, esdl.SingleValue):
+            return {
+                "profileClass": profile_class,
+                "profileObj": Profiles.serialize_singlevalue(profile)
+            }
+        else:
+            raise ProfileClassError(f"Unsupported profile class: {profile_class}")
+
+        return {
+            "profileClass": profile_class,
+            "profileObj": Profiles.serialize_datatableprofile(dtp)
+        }
+    
+    @staticmethod
+    def serialize_datatableprofile(dtp: esdl.DataTableProfile) -> dict:
+        """Return a dict representation of `DataTableProfile` for client consumption."""
+
+        qau_dict = Profiles.serialize_qau(getattr(dtp, "profileQuantityAndUnit", None))
+
+        dt_fmt = "%Y-%m-%dT%H:%M:%S%z"
+
+        return {
+            "id": dtp.id,
+            "name": dtp.name,
+            "schema": dtp.schema,
+            "tableName": dtp.tableName,
+            "columnName": dtp.columnName,
+            "startDate": dtp.startDate.strftime(dt_fmt),
+            "endDate": dtp.endDate.strftime(dt_fmt),
+            "filter": dtp.filter,
+            "multiplier": dtp.multiplier,
+            "profileType": _get_enum_name(dtp.profileType),
+            "profileQuantityAndUnit": qau_dict,
+            "configuration": {
+                "database": dtp.configuration.database,
+                "type": _get_enum_name(dtp.configuration.type),
+                "host": dtp.configuration.host,
+                "port": dtp.configuration.port,
+                "tls": dtp.configuration.tls
+            }
+        }
+    
+    @staticmethod
+    def serialize_singlevalue(sv: esdl.SingleValue) -> dict:
+        """Return a dict representation of `SingleValue` for client consumption."""
+
+        qau_dict = Profiles.serialize_qau(getattr(sv, "profileQuantityAndUnit", None))
+
+        return {
+            "id": sv.id,
+            "name": sv.name,
+            "profileType": _get_enum_name(sv.profileType),
+            "profileQuantityAndUnit": qau_dict,
+            "value": sv.value
+        }
+
+    @staticmethod
+    def serialize_qau(qau: esdl.QuantityAndUnitType | esdl.QuantityAndUnitReference) -> dict | None:
+        """
+        Return a dict representation for QuantityAndUnit.
+
+        TODO: handle custom QaU; try parsing with get_asset_attributes?
+        """
+        if not qau:
+            return None
+
+        if isinstance(qau, esdl.QuantityAndUnitReference):
+            qau = qau.reference
+
+        return {
+            "id": qau.id,
+            "description": qau.description if qau.description else qau_to_string(qau),
+            "physicalQuantity": _get_enum_name(qau.physicalQuantity),
+            "unit": _get_enum_name(qau.unit),
+            "multiplier": _get_enum_name(qau.multiplier),
+            "perUnit": _get_enum_name(qau.perUnit),
+            "perMultiplier": _get_enum_name(qau.perMultiplier),
+            "perTimeUnit": _get_enum_name(qau.perTimeUnit)
+        }
+    
+    @staticmethod
+    def construct_esdl_profile_instance(es_id: str,
+                                        profile_class: ProfileClassEnum | str,
+                                        profile_obj: dict
+                                        ) -> esdl.SingleValue | esdl.DataTableProfile | esdl.InfluxDBProfile:
+        """
+        An utiltiy function which constructs an ESDL profile instance (SingleValue, DataTableProfile, or
+        InfluxDBProfile) from a profile_obj dictionary. This method also parses and attaches
+        the profile's QuantityAndUnit (QAU) if present.
+        """
+        if isinstance(profile_class, str):
+            profile_class = ProfileClassEnum(profile_class)
+
+        # Extract QAU if present
+        profile_qau = None
+        qau_obj = profile_obj.get("profileQuantityAndUnit")
+        if qau_obj:
+            profile_qau = _convert_qau_obj_into_profile_qau(es_id, qau_obj)
+            profile_obj["profileQuantityAndUnit"] = None
+
+        if profile_class == ProfileClassEnum.SINGLEVALUE:
+            profile = esdl.SingleValue(
+                name=profile_obj.get("name"),
+                value=float(profile_obj.get("value")),
+                profileType=esdl.ProfileTypeEnum.from_string(profile_obj.get("profileType"))
+            )
+        elif profile_class == ProfileClassEnum.DATATABLEPROFILE:
+            db_config = _create_databaseconfiguration_from_config_obj(profile_obj.get("configuration"))
+            dtp = _create_dtp_from_dtp_obj(profile_obj)
+            dtp.configuration = _get_or_add_esi_databaseconfiguration(es_id, db_config)
+            profile = dtp
+        elif profile_class == ProfileClassEnum.INFLUXDBPROFILE:
+            cfg = profile_obj.get("configuration")
+            profile = esdl.InfluxDBProfile(
+                host=cfg.get("host"),
+                port=cfg.get("port"),
+                database=cfg.get("database"),
+                measurement=profile_obj.get("tableName"),
+                field=profile_obj.get("columnName"),
+                filters=profile_obj.get("filter"),
+                multiplier=float(profile_obj.get("multiplier")),
+                startDate=_dt_str_to_tz_aware_datetime(profile_obj.get("startDate")),
+                endDate=_dt_str_to_tz_aware_datetime(profile_obj.get("endDate")),
+                profileType=esdl.ProfileTypeEnum.from_string(profile_obj.get("profileType"))
+            )
+        else:
+            raise ProfileClassError(f"Unsupported profile class: {profile_class}")
+
+        if not profile:
+            raise ProfileCreateError("An error occurred while creating an ESDL profile")
+    
+        profile.id = str(uuid4())
+
+        if profile_qau:
+            profile.profileQuantityAndUnit = profile_qau
+
+        return profile
+
 
 default_profile_groups = {
     "groups": [
@@ -1570,39 +1758,6 @@ def _get_enum_name(enum_obj):
         return None
     return enum_name
 
-def _serialize_qau(qau: esdl.QuantityAndUnitType | esdl.QuantityAndUnitReference) -> dict | None:
-    """
-    Return a dict representation for QuantityAndUnit.
-
-    TODO: handle custom QaU
-    """
-    if not qau:
-        return None
-
-    is_reference = isinstance(qau, esdl.QuantityAndUnitReference)
-    if is_reference:
-        qau = qau.reference
-
-    qau_description = qau.description if qau.description else qau_to_string(qau)
-    is_predefined_qau = False
-    for pqau in esdl_config.esdl_config["predefined_quantity_and_units"]:
-        if pqau["description"].lower() == qau_description.lower():
-            is_predefined_qau = True
-
-    return {
-        "id": qau.id,
-        "description": qau_description,
-        "physicalQuantity": _get_enum_name(qau.physicalQuantity),
-        "unit": _get_enum_name(qau.unit),
-        "multiplier": _get_enum_name(qau.multiplier),
-        "perUnit": _get_enum_name(qau.perUnit),
-        "perMultiplier": _get_enum_name(qau.perMultiplier),
-        "perTimeUnit": _get_enum_name(qau.perTimeUnit),
-        # Additional labels for frontend use.
-        "_isPredefinedQaU": is_predefined_qau,
-        "_isReference": bool(is_reference),
-    }
-
 def _test_influxdb_connection(settings: ConnectionSettings) -> bool:
     """Return True if the InfluxDB instance is reachable."""
     client = None
@@ -1643,7 +1798,7 @@ def _test_postgresql_connection(settings: PostgreSQLConnectionSettings) -> bool:
     except psycopg.OperationalError as e:
         raise PostgreSQLConnectionError(f"Unable to reach PostgreSQL database at {settings.host}:{settings.port}/{settings.database} - {e}")
 
-def _convert_dtp_obj_into_dtp(dtp_obj: dict) -> esdl.DataTableProfile:
+def _create_dtp_from_dtp_obj(dtp_obj: dict) -> esdl.DataTableProfile:
     """
     Convert a frontend DataTableProfile-like object (dict) into an ESDL DataTableProfile.
 
@@ -1665,7 +1820,7 @@ def _convert_dtp_obj_into_dtp(dtp_obj: dict) -> esdl.DataTableProfile:
 
     return dtp
 
-def _convert_config_obj_into_databaseconfiguration(config_obj: dict) -> esdl.DatabaseConfiguration:
+def _create_databaseconfiguration_from_config_obj(config_obj: dict) -> esdl.DatabaseConfiguration:
     """
     Convert a frontend DatabaseConfiguration-like object (dict) into an ESDL DatabaseConfiguration.
 
@@ -1687,7 +1842,7 @@ def _convert_config_obj_into_databaseconfiguration(config_obj: dict) -> esdl.Dat
 
     return db_config
 
-def get_or_add_esi_databaseconfiguration(es_id: str, db_config: esdl.DatabaseConfiguration):
+def _get_or_add_esi_databaseconfiguration(es_id: str, db_config: esdl.DatabaseConfiguration):
     """
     Return an existing DatabaseConfiguration from EnergySystemInformation if present.
     Otherwise, add the given DatabaseConfiguration (or reuse a duplicate) and return it.
@@ -1819,7 +1974,7 @@ class ProfileTraceLoadError(Exception):
 class ProfileCreateError(Exception):
     pass
 
-class ProfilePortNotFoundError(Exception):
+class ProfileContainerNotFoundError(Exception):
     pass
 
 class ProfileUpdateError(Exception):
