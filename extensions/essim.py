@@ -155,6 +155,12 @@ class ESSIM:
                                     edt = datetime.strptime(active_simulation['endDate'], '%Y-%m-%dT%H:%M:%S%z')
                                     influxdb_startdate = sdt.strftime('%Y-%m-%dT%H:%M:%SZ')
                                     influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+                                    # if "kpiModule" in result:
+                                    #     if "modules" in result["kpiModule"]:
+                                    #         modules = result["kpiModule"]["modules"]
+                                    #         self.get_essim_kpi_results()
+                                    #
                                     self.essim_kpis.init_simulation(current_es, es_simid, influxdb_startdate,
                                                                     influxdb_enddate)
 
@@ -632,8 +638,8 @@ class ESSIM:
         kpi_list = get_session('kpi_list')  # contains id, name and description
 
         for kpi_result_item in kpi_result_array:
-            kpi_id = list(kpi_result_item.keys())[0]
-            kpi_result = kpi_result_item[kpi_id]
+            kpi_id = kpi_result_item['id']
+            kpi_result = kpi_result_item['result']
 
             kpi_info = dict()
             kpi_info['id'] = kpi_id
@@ -729,8 +735,10 @@ class ESSIM:
 
         if kpi_list:
             kpi_info = {
-                'kpis_description': kpis_description,
-                'kpi_list': kpi_list
+                "ESSIM KPIs": {
+                    'kpis_description': kpis_description,
+                    'kpi_list': kpi_list
+                }
             }
 
             print("Emit kpi_list for visualization:")
