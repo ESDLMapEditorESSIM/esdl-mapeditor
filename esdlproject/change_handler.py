@@ -13,7 +13,7 @@
 #      TNO
 
 from pyecore.ecore import EStructuralFeature, EAttribute, EObject, EClass, EReference
-from pyecore.valuecontainer import ECollection
+from pyecore.valuecontainer import ECollection, EList
 
 from esdl.resources.xmlresource import XMLResource
 from esdlproject import Set, Add, Remove, Delete, Variant, DetailedChange
@@ -41,12 +41,17 @@ def applyChange(change: DetailedChange, resource: XMLResource, target_variant: V
     # logger.debug(
     #     f"Processing {change.eClass.name}, owner={change.ownerFragment}, feature={change.feature}, objectFragment={change.objectFragment} applying it to {resource.uri}"
     # )
-
+    original_change = change
+    original_change_container = change.eContainer()
     # check if there are conflict resolutions for this change, if so, apply them first
     if merge_conflict_handler:
+        #f = pformat(merge_conflict_handler.resolutions)
+        #logger.debug(f"Resolutions: {merge_conflict_handler.resolutions}")
         conflict_resolution = merge_conflict_handler.get_resolution_for_change(target_variant, change)
         if conflict_resolution:
             logger.debug(f" \\- Found conflict resolution for {change} in {target_variant.name}: {conflict_resolution}")
+            # following statement removes eContainer() reference (as it is a copy of the original)
+            # therefore use original_change_container
             change = merge_conflict_handler.apply(target_variant, change, conflict_resolution)
 
     if isinstance(change, Set):
@@ -84,27 +89,34 @@ def applyChange(change: DetailedChange, resource: XMLResource, target_variant: V
             owner = resource.resolve(change.ownerFragment)
             abstractList = owner.eGet(change.feature)
             if change.objectFragment:
+                conflict = True
                 try:
                     # check if there is already an object at that index in the list. If so, there is a potential merge conflict
                     target = resource.resolve(change.objectFragment)
+                except (IndexError, ValueError) as e:
+                    conflict = False
+
+                if conflict:
                     # or this object had to be inserted at this index, or it is a conflict by merging two variants
                     # check if the target is from the same variant, if so, it should be inserted (and rewrite change list)
                     # if not, it is a merge conflict and we have to rewrite the objectFragment in the rest of the changes
                     # in the change list from the variant that this change belongs to
                     logger.info(f"Merge conflict when applying {change} to {change.objectFragment}, target exists: {target}")
-                    source_variant = get_variant(change)
+                    source_variant = get_variant(original_change_container)
                     if source_variant.id != target_variant.id:
                         # this change is from a different variant, so we have to rewrite the fragment of the object
                         # in the change list of the source variant to match the index at which this object is added
                         # to the list
                         index = len(abstractList)
+                        logger.debug(abstractList)
+                        logger.debug(f"    \\-- ADDING {change.objectValue} (conflicted) at end of list {index}" )
                         abstractList.append(change.objectValue.deepcopy())
                         new_fragment = update_fragment_list_index(change.objectFragment, index)
                         logger.info(f"  \\- Rewriting objectFragment {change.objectFragment} to {new_fragment}, new index={index}")
                         resolution = ConflictResolution(change.objectFragment, new_fragment, change.changedAt)
                         #merge_conflict_handler.add_resolution(target_variant, change, resolution)
                         # look for changes in the changelog that have the same uri fragment as this change
-                        merge_conflict_handler.update_future_changes(target_variant, change, resolution)
+                        merge_conflict_handler.update_future_changes(target_variant, change, original_change_container, resolution)
                         #-- make sure to also handle the xrefs of this change. WARING: this rewrites the change to a new one
                         change = merge_conflict_handler.apply(target_variant, change, resolution)
                         # update_change_uri_fragment(change, change.objectFragment, new_fragment)
@@ -112,10 +124,11 @@ def applyChange(change: DetailedChange, resource: XMLResource, target_variant: V
                         index = int(change.objectFragment.rfind('.'))
                         logger.debug(
                             f"  \\- Adding objectValue {change.objectValue} to {change.ownerFragment}/{change.feature} at index {index}")
+                        logger.debug(f"    \\-- ADDING {change.objectValue} at index {index}")
                         abstractList.insert(index, change.objectValue.deepcopy())
-
-                except (IndexError, ValueError) as e:
+                else:
                     # can't resolve the objectFragment, so we can just append it
+                    logger.debug(f"    \\-- ADDING {change.objectValue} normally at index={len(abstractList)}")
                     abstractList.append(change.objectValue.deepcopy())
                     #raise e
             else:
@@ -167,12 +180,13 @@ def applyChange(change: DetailedChange, resource: XMLResource, target_variant: V
     elif isinstance(change, Delete):
         try:
             obj: EObject = resource.resolve(change.objectFragment)
+            logger.debug(f"    \-- DELETING {obj} normally")
             obj.delete()
         except Exception as e:
             logger.error(f"\\- ###: Cannot execute change, resolving of {change.objectFragment} failed: {e}")
 
     if len(change.objectValue_xrefs) > 0:
-        for ref_change in change.objectValue_xrefs:
+        for ref_change in original_change.objectValue_xrefs:
             #print("\\- Undo: Applying x-ref ", ref_change)
             applyChange(ref_change, resource, target_variant, merge_conflict_handler)  # recreate cross-references
 
@@ -316,3 +330,17 @@ def undoChange(change, resource: XMLResource, target_variant: Variant, merge_con
             applyChange(ref_change, resource, target_variant)  # recreate cross-references
 
 
+def array_index(eobj: EObject):
+    """
+    calculates the index of an EObject in a list
+    :return index in the list
+    """
+    container: EObject = eobj.eContainer()
+    if eobj.eContainer():
+        f:EStructuralFeature = eobj.eContainmentFeature()
+        logger.debug(f"Etype of {f} is {f.eType}")
+        if f.many:
+            coll: EList = container.eGet(f)
+            return coll.index(eobj)
+        else: return 0
+    else: return 0

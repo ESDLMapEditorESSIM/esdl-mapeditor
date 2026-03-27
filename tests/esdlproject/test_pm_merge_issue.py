@@ -14,16 +14,21 @@
 
 import unittest
 import uuid
-import warnings
+
+from pyecore.ecore import EObject
 
 from esdl import esdl
 from esdl.processing import ESDLGeometry
 from esdlproject.ProjectManager import ProjectManager
 from esdlproject.variant_api import create_new_variant
+from src.log import get_logger
+
+logger = get_logger(__name__)
 
 
 class ProjectManagerMergeTests(unittest.TestCase):
     def test_merge_issue(self):
+        EObject.__repr__ = lambda x: f"<{x.eClass.name} name='{x.name if hasattr(x, 'name') else ''}'>"
         pm = ProjectManager()
         v = pm.get_active_variant()
         v.name = "Nu"
@@ -58,6 +63,16 @@ class ProjectManagerMergeTests(unittest.TestCase):
         split_conductor(pipe, location, "add_joint", pipe.eContainer())
         ct1.stack.stop_recording()
 
+        # this triggers merge issues:
+        # because split_conductor() remove the initial Pipe and then splits it into two Pipes, the order in the
+        # area.asset[] list, will change and URI fragments in Changes are not correct anymore.
+        # Initial Nu        [Pipe1]
+        # Inititial V2030   [Pipe1, PVPark]
+        # Then split_conductor
+        # Nu:               [Pipe1a, Pipe1b, Joint] with connection from Pipe1a to Joint and and Pipe1b to Joint
+        # V2030:            [PVPark, Pipe1a, Pipe1b, Joint]
+        # Note: changes are applied by date order, therefore PVPark comes first in V2023, and not the
+        # split_conductor result.
         pm.set_active_variant(v2030)
 
 
@@ -119,7 +134,7 @@ def split_conductor(conductor, location, mode, conductor_container):
         # find old ports and connections
         ports = conductor.port
         if len(ports) != 2:
-            warnings.warn('UNSUPPORTED: Conductor doesn\'t have two ports!')
+            logger.warning('UNSUPPORTED: Conductor doesn\'t have two ports!')
             return
         port1 = ports[0].clone()        # reuse old conductor's ports; TODO: check what happens after deleting conductor
         port2 = ports[1].clone()
@@ -187,7 +202,7 @@ def split_conductor(conductor, location, mode, conductor_container):
             start = line2.point[i]
         new_cond2.length = round(length, 2)
 
-        warnings.warn('split-conductor: line1 length={}, line2 length={}'.format(new_cond1.length, new_cond2.length))
+        logger.warning('split-conductor: line1 length={}, line2 length={}'.format(new_cond1.length, new_cond2.length))
         # assign line geometry to the correct conductor
         new_cond1.geometry = line1
         new_cond2.geometry = line2

@@ -60,6 +60,7 @@ def get_by_id_t(container: EObject, id_: str, esdl_type: T) -> T:
 
 class test_merge_conflict(unittest.TestCase):
     def test_merge(self):
+
         # setup esdl
         pm = ProjectManager()
         es = pm.get_active_energy_system()

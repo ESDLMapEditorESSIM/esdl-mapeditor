@@ -65,22 +65,37 @@ class MergeConflictHandler:
         Variant -> DetailedChange -> MergeConflict
         """
         #self.resolutions: WeakKeyDictionary[Variant, WeakKeyDictionary[DetailedChange, ConflictResolution]] = WeakKeyDictionary()
-        self.resolutions: dict[Variant, WeakKeyDictionary[DetailedChange, ConflictResolution]] = dict()
+        self.resolutions: dict[Variant, WeakKeyDictionary[DetailedChange, list[ConflictResolution]]] = dict()
 
 
     def add_resolution(self, variant:Variant, change: DetailedChange, resolution: ConflictResolution):
         if variant not in self.resolutions:
             #self.resolutions[variant]: WeakKeyDictionary[DetailedChange, ConflictResolution] = WeakKeyDictionary()
-            self.resolutions[variant]: dict[DetailedChange, ConflictResolution] = dict()
+            self.resolutions[variant]: dict[DetailedChange, list[ConflictResolution]] = dict()
         logger.debug("Adding resolution for change", variant=variant, change=change, resolution=resolution)
-        self.resolutions[variant][change] = resolution
+        if change in self.resolutions[variant]:
+            logger.warning("Resolution already exists for change", change=change)
+        if change not in self.resolutions[variant]:
+            self.resolutions[variant][change] = list()
+        self.resolutions[variant][change].append(resolution)
 
     def get_resolution(self, variant) -> WeakKeyDictionary[DetailedChange, ConflictResolution] | None:
         return self.resolutions.get(variant, None)
 
     def get_resolution_for_change(self, variant:Variant, change:DetailedChange) -> ConflictResolution | None:
         if self.resolutions.get(variant, None):
-            return self.resolutions[variant].get(change, None)
+            res_list = self.resolutions[variant].get(change, None)
+            if not res_list or len(res_list) == 0:
+                return None
+            elif len(res_list) == 1:
+                return res_list[0]
+            else:
+                logger.info(f"Merging resolutions: {res_list}")
+                uri = res_list[0].merged_uri
+                for r in res_list:
+                    if uri == r.original_uri:
+                        uri = r.merged_uri
+                return ConflictResolution(original_uri=res_list[0].original_uri, merged_uri=uri, apply_from=res_list[0].apply_from)  # for now
         return None
 
     def clear_resolutions(self, variant: Variant):
@@ -151,15 +166,15 @@ class MergeConflictHandler:
 
 
 
-    def update_future_changes(self, target_variant: Variant, change: DetailedChange, resolution: ConflictResolution):
+    def update_future_changes(self, target_variant: Variant, change: DetailedChange, change_container: HighLevelChange, resolution: ConflictResolution):
         """
         Updates all future changes in the variant that reference the original URI to use the merged URI.
         """
-
-        variant = get_variant(change)
+        # update future changes in variant of the current change
+        variant = get_variant(change_container)
         start_change = None
         for c in variant.change:
-            if get_high_level_change(c).changedAt >= get_high_level_change(change).changedAt:
+            if get_high_level_change(c).changedAt >= get_high_level_change(change, change_container).changedAt:
                 start_change = c
                 break
         if start_change:
@@ -171,14 +186,31 @@ class MergeConflictHandler:
                     if self.is_affected(next_change, resolution):
                         # indicate that this change is affected by the resolution
                         self.add_resolution(target_variant, next_change, resolution)
+                        if next_change.objectValue_xrefs:
+                            for obj_xref in next_change.objectValue_xrefs:
+                                if self.is_affected(obj_xref, resolution):
+                                    self.add_resolution(target_variant, obj_xref, resolution)
+                        if next_change.previousValue_xrefs:
+                            for obj_xref in next_change.previousValue_xrefs:
+                                if self.is_affected(obj_xref, resolution):
+                                    self.add_resolution(target_variant, obj_xref, resolution)
                 elif isinstance(next_change, HighLevelChange):
                     for detailed_change in next_change.change:
                         # indicate that this change is affected by the resolution
                         self.add_resolution(target_variant, detailed_change, resolution)
+                        if detailed_change.objectValue_xrefs:
+                            for obj_xref in detailed_change.objectValue_xrefs:
+                                if self.is_affected(obj_xref, resolution):
+                                    self.add_resolution(target_variant, obj_xref, resolution)
+                        if detailed_change.previousValue_xrefs:
+                            for obj_xref in detailed_change.previousValue_xrefs:
+                                if self.is_affected(obj_xref, resolution):
+                                    self.add_resolution(target_variant, obj_xref, resolution)
 
+        # update changes in the target variant to which the change is applied
         start_change = None
         for c in target_variant.change:
-            if get_high_level_change(c).changedAt >= get_high_level_change(change).changedAt:
+            if get_high_level_change(c).changedAt >= get_high_level_change(change, change_container).changedAt:
                 start_change = c
                 break
         if start_change:
@@ -190,11 +222,26 @@ class MergeConflictHandler:
                     if self.is_affected(next_change, resolution):
                         # indicate that this change is affected by the resolution
                         self.add_resolution(target_variant, next_change, resolution)
+                        if next_change.objectValue_xrefs:
+                            for obj_xref in next_change.objectValue_xrefs:
+                                if self.is_affected(obj_xref, resolution):
+                                    self.add_resolution(target_variant, obj_xref, resolution)
+                        if next_change.previousValue_xrefs:
+                            for obj_xref in next_change.previousValue_xrefs:
+                                if self.is_affected(obj_xref, resolution):
+                                    self.add_resolution(target_variant, obj_xref, resolution)
                 elif isinstance(next_change, HighLevelChange):
                     for detailed_change in next_change.change:
                         # indicate that this change is affected by the resolution
                         self.add_resolution(target_variant, detailed_change, resolution)
-
+                        if detailed_change.objectValue_xrefs:
+                            for obj_xref in detailed_change.objectValue_xrefs:
+                                if self.is_affected(obj_xref, resolution):
+                                    self.add_resolution(target_variant, obj_xref, resolution)
+                        if detailed_change.previousValue_xrefs:
+                            for obj_xref in detailed_change.previousValue_xrefs:
+                                if self.is_affected(obj_xref, resolution):
+                                    self.add_resolution(target_variant, obj_xref, resolution)
 
 ########################################################################
 # public functions
@@ -213,15 +260,18 @@ def get_variant(change: AbstractChange) -> Variant:
     else:
         return get_variant(change.eContainer())
 
-def get_high_level_change(change: DetailedChange) -> HighLevelChange:
+def get_high_level_change(change: DetailedChange, change_container: HighLevelChange=None) -> HighLevelChange:
     """
     Get the HighLevelChange of a DetailedChange object.
 
     :param change: The DetailedChange object to get the HighLevelChange from.
+    :param: change_container: In case change is deepcopy'd for a mitigation, the change.eContainer() does not work.
     :return: The HighLevelChange object
     """
     if isinstance(change, HighLevelChange):
         return change
+    elif change_container is not None and isinstance(change_container, HighLevelChange):
+        return change_container
     elif change.eContainer() is not None and isinstance(change.eContainer(), HighLevelChange):
         return change.eContainer()
     else:
