@@ -1612,7 +1612,8 @@ def _serialize_qau(qau: esdl.QuantityAndUnitType | esdl.QuantityAndUnitReference
     if is_reference:
         qau = qau.reference
 
-    qau_description = qau.description if qau.description else qau_to_string(qau)
+    #qau_description = qau.description if qau.description else qau_to_string(qau)
+    qau_description = qau_to_string(qau)
     is_predefined_qau = False
     for pqau in esdl_config.esdl_config["predefined_quantity_and_units"]:
         if pqau["description"].lower() == qau_description.lower():
