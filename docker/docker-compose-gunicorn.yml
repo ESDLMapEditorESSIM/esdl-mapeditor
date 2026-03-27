@@ -6,7 +6,6 @@ services:
     image: esdl-mapeditor:gunicorn
     networks:
       - mapeditor-net
-      - nwn
     volumes:
       - "../credentials/client_secrets_local-docker.json:/usr/src/app/credentials/client_secrets_local-docker.json"
     ports:
@@ -22,4 +21,3 @@ networks:
   mapeditor-net:
     external:
       name: mapeditor-net
-
