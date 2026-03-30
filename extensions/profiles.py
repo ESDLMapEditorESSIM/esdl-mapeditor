@@ -1438,44 +1438,40 @@ class Profiles:
                 if dtp.configuration.id is None:
                     dtp.configuration.id = db_config_id
                 
-                credentials_dict = Credentials.create_dict(
+                cred_dict = Credentials.create_dict(
                     id=dtp.configuration.id,
                     username=postgres_settings.username,
                     password=postgres_settings.password
                 )
 
-                # Clone a dtp and apply visualization override values when retrieving profile
+                # Deep clone a dtp to avoid mutating attributes on the original dtp instance when calling query method
+                # TODO: avoid this mutation in DataTableProfileManager?
                 dtp_viz = copy.deepcopy(dtp)
                 dtp_viz.configuration = copy.deepcopy(dtp.configuration)
-                dtp_viz.startDate = start_dt
-                dtp_viz.endDate = end_dt
 
-                # NOTE: Apply a trick here to pass groupby_interval_sec as a filter string,
-                # which subsequently triggers a downsampled query when loading profile data.
-                if groupby_interval_sec is not None:
-                    if dtp_viz.filter:
-                        dtp_viz.filter = f"{dtp_viz.filter} AND groupby_interval_sec={groupby_interval_sec}"
-                    else:
-                        dtp_viz.filter = f"groupby_interval_sec={groupby_interval_sec}"
+                query_filters = None
+                if dtp_viz.filter:
+                    query_filters = _parse_profile_filter(dtp.filter, as_dict=True)
 
-                # TODO: implement load_influxdb() like method to avoid dtp mutation?
-                dtpmanager = DataTableProfileManager.load(dtp_viz, credentials_dict)
-                datetime_profile = dtpmanager.get_esdl_datetime_profile(dtp_viz.columnName).element
+                profile_values, header, metadata = DataTableProfileManager.query(
+                    data_table_profile=dtp_viz,
+                    credentials_dict=cred_dict,
+                    table_name=dtp_viz.tableName,
+                    column_name=dtp_viz.columnName,
+                    start_date=start_dt,
+                    end_date=end_dt,
+                    additional_filters=query_filters,
+                    multiplier=multiplier,
+                    # Apply profile downsampling if groupby_interval_sec is not None
+                    downsample_bucket_sec=groupby_interval_sec or None,
+                    column_based=True
+                )
 
-                if len(datetime_profile) == 0:
+                if len(profile_values[0]) == 0:
                     raise EmptyProfileWarning(f"Profile [{dtp.columnName}] has no data.")
 
-                datetimes, values = [], []
-                for element in datetime_profile:
-                    dt = element.from_
-                    value = element.value
-
-                    # skip when value is None (this can occur when downsampling is applied)
-                    if value is None:
-                        continue
-
-                    datetimes.append(dt.strftime(dt_str_format)) 
-                    values.append(value * multiplier)
+                datetimes = [dt.strftime(dt_str_format) for dt in profile_values[0]]
+                values = profile_values[1]
 
                 return {
                     "name": dtp.columnName,
@@ -1931,8 +1927,13 @@ def _dt_str_to_tz_aware_datetime(dt_str: str, default_tz=timezone.utc) -> dateti
 
     return dt
             
-def _parse_profile_filter(filter: Optional[str]) -> List[Dict[str, str]]:
-    """A util function to parse profile filter string into a list of dict."""
+def _parse_profile_filter(filter: Optional[str], as_dict: bool = False) -> List[Dict[str, str]] | Dict[str, str]:
+    """
+    A util function to parse profile filter string into a list of dict.
+    
+    If as_dict=False (default): return list of {"tag": key, "value": value}
+    If as_dict=True: return dict {key: value}
+    """
 
     if not filter:
         return []
@@ -1942,6 +1943,10 @@ def _parse_profile_filter(filter: Optional[str]) -> List[Dict[str, str]]:
 
     if not matches:
         logger.error(f"Failed to parse filter string: {filter}")
+        return {} if as_dict else []
+
+    if as_dict:
+        return {k: v for k, v in matches}
 
     return [{"tag": k, "value": v} for k, v in matches]    
     
