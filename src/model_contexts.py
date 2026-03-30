@@ -165,6 +165,7 @@ model_contexts_config = {
         "Basic": {
             "EnergyAsset": [
                 "name",
+                "description",
                 "state",
                 "technicalLifetime"
             ],
