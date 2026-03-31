@@ -1797,15 +1797,15 @@ def process_command(message):
                     #  Add assets with an InPort and two OutPorts (either point or polygon)
                     # -------------------------------------------------------------------------------------------------------------
                     elif object_type in ['CHP', 'FuelCell']:
-                        # Assume CHPs and FuelCells never have ports (coming out of the EDR)
-                        inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
-                        asset.port.append(inp)
+                        # Only add ports if EDR asset has none
+                        if no_in_port and no_out_port:
+                            inp = esdl.InPort(id=str(uuid.uuid4()), name='In')
+                            asset.port.append(inp)
 
-                        e_outp = esdl.OutPort(id=str(uuid.uuid4()), name='E Out')
-                        asset.port.append(e_outp)
-                        h_outp = esdl.OutPort(id=str(uuid.uuid4()), name='H Out')
-                        asset.port.append(h_outp)
-
+                            e_outp = esdl.OutPort(id=str(uuid.uuid4()), name='E Out')
+                            asset.port.append(e_outp)
+                            h_outp = esdl.OutPort(id=str(uuid.uuid4()), name='H Out')
+                            asset.port.append(h_outp)
                     else:
                         capability = ESDLAsset.get_asset_capability_type(asset)
 
@@ -1829,26 +1829,28 @@ def process_command(message):
                                 if no_out_port:
                                     asset.port.append(esdl.OutPort(id=str(uuid.uuid4()), name='Out'))
                         elif capability == 'Conversion':
-                            if object_type == "HeatPump" and double_line_mode:
-                                asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='PrimIn'))
-                                asset.port.append(esdl.OutPort(id=str(uuid.uuid4()), name='PrimOut'))
-                                asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='SecIn'))
-                                asset.port.append(esdl.OutPort(id=str(uuid.uuid4()), name='SecOut'))
-                            else:
-                                asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='In'))
-                                asset.port.append(esdl.OutPort(id=str(uuid.uuid4()), name='Out'))
-                        elif capability == 'Transport':
-                            if object_type == 'HeatExchange' or object_type == 'Transformer':
-                                asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='PrimIn'))
-                                if double_line_mode:
+                            if no_in_port and no_out_port:
+                                if object_type == "HeatPump" and double_line_mode:
+                                    asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='PrimIn'))
                                     asset.port.append(esdl.OutPort(id=str(uuid.uuid4()), name='PrimOut'))
-
-                                asset.port.append(esdl.OutPort(id=str(uuid.uuid4()), name='SecOut'))
-                                if double_line_mode:
                                     asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='SecIn'))
-                            else:
-                                asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='In'))
-                                asset.port.append(esdl.OutPort(id=str(uuid.uuid4()), name='Out'))
+                                    asset.port.append(esdl.OutPort(id=str(uuid.uuid4()), name='SecOut'))
+                                else:
+                                    asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='In'))
+                                    asset.port.append(esdl.OutPort(id=str(uuid.uuid4()), name='Out'))
+                        elif capability == 'Transport':
+                            if no_in_port and no_out_port:
+                                if object_type == 'HeatExchange' or object_type == 'Transformer':
+                                    asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='PrimIn'))
+                                    if double_line_mode:
+                                        asset.port.append(esdl.OutPort(id=str(uuid.uuid4()), name='PrimOut'))
+
+                                    asset.port.append(esdl.OutPort(id=str(uuid.uuid4()), name='SecOut'))
+                                    if double_line_mode:
+                                        asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='SecIn'))
+                                else:
+                                    asset.port.append(esdl.InPort(id=str(uuid.uuid4()), name='In'))
+                                    asset.port.append(esdl.OutPort(id=str(uuid.uuid4()), name='Out'))
                         else:
                             logger.error('Unknown asset capability {}'.format(capability))
                 else: # abstract building or CompoundAsset
