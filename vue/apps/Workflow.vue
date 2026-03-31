@@ -117,6 +117,10 @@
       v-else-if="currentWorkflow.workflowStep.type === WorkflowStepTypes.CALL_JS_FUNCTION"
       :workflow-step="currentWorkflow.workflowStep"
     />
+    <WorkflowCodeEditor
+      v-else-if="currentWorkflow.workflowStep.type === WorkflowStepTypes.CODE_EDITOR"
+      :workflow-step="currentWorkflow.workflowStep"
+    />
     <WorkflowJsonForm
       v-else-if="currentWorkflow.workflowStep.type === WorkflowStepTypes.JSON_FORM"
       :workflow-step="currentWorkflow.workflowStep"
@@ -155,6 +159,7 @@ import {default as WorkflowProgress} from "@/components/workflow/WorkflowProgres
 import {default as WorkflowText} from "@/components/workflow/WorkflowText";
 import {default as WorkflowEngineMonitor} from "@/components/workflow/WorkflowEngineMonitor.vue";
 import {default as WorkflowCustomComponent} from "@/components/workflow/WorkflowCustomComponent";
+import {default as WorkflowCodeEditor} from "@/components/workflow/WorkflowCodeEditor";
 import {default as WorkflowJsonForm} from "@/components/workflow/WorkflowJsonForm";
 import {default as WorkflowJsonForm2} from "@/components/workflow/WorkflowJsonForm2";
 import {default as WorkflowCallJsFunction} from "@/components/workflow/WorkflowCallJsFunction";
