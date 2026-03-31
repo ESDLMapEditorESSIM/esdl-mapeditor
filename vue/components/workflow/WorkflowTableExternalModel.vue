@@ -196,7 +196,7 @@ const formatDate = (row) => {
 };
 
 const getTagColor = (text) => {
-  let up = text.toUpperCase();
+  let up = text === null ? "" : text.toUpperCase();
   if (up === "FINISHED" || up === "SUCCESS" || up === "SUCCEEDED" || up === "OK" || up === "READY") {
     return "green";
   } else if (up === "REGISTERED" || up === "INITIALIZED" || up === "SUBMITTED") {
