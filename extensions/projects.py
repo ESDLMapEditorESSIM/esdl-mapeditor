@@ -237,7 +237,7 @@ def rename_variant(message: RenameVariantRequest):
             year = match.group(1)
             if variant.snapshotRef:
                 instance = variant.snapshotRef.instance[0]
-                instance.date = esdl.InstanceYear(year=year)
+                instance.date = esdl.InstanceYear(year=int(year))
 
     if variant.snapshotRef:
         # don't track this change as when changing a parent variant name, this variant name will also change...
