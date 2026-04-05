@@ -42,7 +42,7 @@ function query_esdl_service(service, state_params) {
     }
 
     params['state_params'] = {}
-    let q_params = service['query_parameters'];
+    let q_params = service['query_parameters'] || [];
     for (let i = 0; i < q_params.length; i++) {
         let parameter_name = q_params[i]['parameter_name'];
         let ptype = '';
