@@ -21,7 +21,7 @@ var esdl_services_information;
  * http://stackoverflow.com/questions/16245767/creating-a-blob-from-a-base64-string-in-javascript
  * @param {*} base64_str
  */
-export function base64_str_to_byte_array(base64_str) {
+function base64_str_to_byte_array(base64_str) {
     const byteCharacters = atob(base64_str);
     const byteNumbers = new Array(byteCharacters.length);
     for (let i = 0; i < byteCharacters.length; i++) {
