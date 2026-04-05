@@ -16,6 +16,17 @@
 
 var esdl_services_information;
 
+function download_binary_file_from_base64_str_with_type(base64_str, file_name, content_type) {
+    const byte_array = base64_str_to_byte_array(base64_str)
+    const blob = new Blob([byte_array], { 'type': content_type });
+    const a = document.createElement('a');
+    const url = window.URL.createObjectURL(blob);
+    a.href = url;
+    a.download = file_name;
+    a.click();
+    window.URL.revokeObjectURL(url);
+}
+
 function set_esdl_services_information(info) {
     esdl_services_information = info;
 
@@ -271,7 +282,7 @@ function process_service_results(results) {
     }
 
     if ('file' in results) {
-        window.download_binary_file_from_base64_str_with_type(results.file, results.filename, results.content_type);
+        download_binary_file_from_base64_str_with_type(results.file, results.filename, results.content_type);
     }
 
     if (!('show_asset_results' in results) && !('asset_feedback' in results) &&
