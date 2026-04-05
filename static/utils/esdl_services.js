@@ -16,6 +16,31 @@
 
 var esdl_services_information;
 
+/**
+ * Turn a base64 encoded string back into a binary array. For details see:
+ * http://stackoverflow.com/questions/16245767/creating-a-blob-from-a-base64-string-in-javascript
+ * @param {*} base64_str
+ */
+export function base64_str_to_byte_array(base64_str) {
+    const byteCharacters = atob(base64_str);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    return new Uint8Array(byteNumbers);
+}
+
+function download_binary_file_from_base64_str_with_type(base64_str, file_name, content_type) {
+    const byte_array = base64_str_to_byte_array(base64_str)
+    const blob = new Blob([byte_array], { 'type': content_type });
+    const a = document.createElement('a');
+    const url = window.URL.createObjectURL(blob);
+    a.href = url;
+    a.download = file_name;
+    a.click();
+    window.URL.revokeObjectURL(url);
+}
+
 function set_esdl_services_information(info) {
     esdl_services_information = info;
 
@@ -271,7 +296,7 @@ function process_service_results(results) {
     }
 
     if ('file' in results) {
-        window.download_binary_file_from_base64_str_with_type(results.file, results.filename, results.content_type);
+        download_binary_file_from_base64_str_with_type(results.file, results.filename, results.content_type);
     }
 
     if (!('show_asset_results' in results) && !('asset_feedback' in results) &&
