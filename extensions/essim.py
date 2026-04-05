@@ -666,15 +666,18 @@ class ESSIM:
 
         simid = get_session('es_simid')
         active_es_id = get_session('active_es_id')
-        kpi_result_list = get_session('kpi_result_list')
+        # Disable storinge data for multiple simulation runs for now
+        # kpi_result_list = get_session('kpi_result_list')
+        #
+        # if kpi_result_list:
+        #     kpis_per_simid = kpi_result_list["kpis_per_simid"]
+        #     if active_es_id != kpi_result_list["es_id"]:  # if this is a simulation of a new energy system
+        #         kpis_per_simid = dict()  # start with an empty dict
+        #         kpi_result_list["es_id"] = active_es_id  # set the current es_id
+        #     kpis_per_simid[simid] = kpis_this_sim_run  # add the kpis of the last simulation run
+        # else:
 
-        if kpi_result_list:
-            kpis_per_simid = kpi_result_list["kpis_per_simid"]
-            if active_es_id != kpi_result_list["es_id"]:  # if this is a simulation of a new energy system
-                kpis_per_simid = dict()  # start with an empty dict
-                kpi_result_list["es_id"] = active_es_id  # set the current es_id
-            kpis_per_simid[simid] = kpis_this_sim_run  # add the kpis of the last simulation run
-        else:
+        if True:
             kpi_result_list = dict()  # first KPIs for the energy system
             kpi_result_list["es_id"] = active_es_id
             kpi_result_list["kpis_per_simid"] = dict()
