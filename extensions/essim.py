@@ -274,6 +274,7 @@ class ESSIM:
                             })
                             already_added_kpi_modules.append(kpi["calculator_id"])
 
+                    kpi_list.sort(key=lambda x: x["name"])
                     # store kpi_list in session, in order to look up name/descr in a later stage
                     set_session('kpi_list', kpi_list)
                     return json.dumps(kpi_list), 200
