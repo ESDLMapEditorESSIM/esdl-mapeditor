@@ -202,12 +202,6 @@ function add_simulation_row(tbody, data, is_favorite) {
             .click( function(e) { download_results(simulation_id); });
         $actions.append($view_download_button);
     }
-    if (data['kpi_result_list']) {
-        let $view_kpis_button = $('<button>').addClass('btn').append($('<i>')
-            .addClass('fas fa-tachometer-alt').css('color', 'blue')).attr('title', 'Show KPIs')
-            .click( function(e) { show_kpis(simulation_id, 'favorite'); });
-        $actions.append($view_kpis_button);
-    }
 
     let sim_fav;
     if (is_favorite) {
@@ -215,6 +209,14 @@ function add_simulation_row(tbody, data, is_favorite) {
     } else {
         sim_fav = 'simulation';
     }
+
+    if (data['kpi_result_list']) {
+        let $view_kpis_button = $('<button>').addClass('btn').append($('<i>')
+            .addClass('fas fa-tachometer-alt').css('color', 'blue')).attr('title', 'Show KPIs')
+            .click( function(e) { show_kpis(simulation_id, sim_fav); });
+        $actions.append($view_kpis_button);
+    }
+
     let $remove_scenario_button = $('<button>').addClass('btn')
         .append($('<i>').addClass('fas fa-trash-alt').css('color', 'black'))
         .attr('title', 'Remove from list')
