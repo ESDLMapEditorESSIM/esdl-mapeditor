@@ -44,7 +44,7 @@
       <div v-if="profileForm.profileClass === profileClassEnum.SINGLEVALUE">
         <a-form-item 
           label="Name"
-          :rules="[{ required: true, type: 'string' }]"
+          :rules="[{ type: 'string' }]"
         >
           <a-input v-model:value="profileForm.name" />
         </a-form-item>
@@ -107,6 +107,13 @@
             style="width: 100%"
             @change="onUpdateMultiplier"
           />
+        </a-form-item>
+
+        <a-form-item label="Start date">
+          <a-input v-model:value="profileForm.startDate" disabled />
+        </a-form-item>
+        <a-form-item label="End date">
+          <a-input v-model:value="profileForm.endDate" disabled />
         </a-form-item>
       </div>
 
@@ -297,6 +304,8 @@ const profileDefaults = {
     profile: null,
     profileSourceTag: "",
     multiplier: null,
+    startDate: null,
+    endDate: null,
     currentTrace: [],
     currentLayout: {},
   },
@@ -307,6 +316,8 @@ const profileDefaults = {
     profileSourceTag: "",
     databaseType: null,
     multiplier: null,
+    startDate: null,
+    endDate: null,
     currentTrace: [],
     currentLayout: {},
   },
@@ -432,6 +443,8 @@ const castProfileObjToFormData = (profileObj) => {
   profileForm.databaseType = profileObj.configuration.type;
   profileForm.profileType = profileObj.profileType;
   profileForm.multiplier = profileObj.multiplier;
+  profileForm.startDate = profileObj.startDate;
+  profileForm.endDate = profileObj.endDate;
   profileForm.qau = profileObj.profileQuantityAndUnit.description;
 
   const foundPredefQaU = predefinedQaUOptions.value.find(opt => opt.label === profileObj.profileQuantityAndUnit.description);
@@ -676,6 +689,8 @@ const onSelectProfile = (profileOptionValue) => {
       profileForm.profileSourceTag = profileSettingsObj.metadata.profileGroupName;
       profileForm.databaseType = profileSettingsObj.profileObj.configuration.type;
       profileForm.multiplier = profileSettingsObj.profileObj.multiplier;
+      profileForm.startDate = profileSettingsObj.profileObj.startDate;
+      profileForm.endDate = profileSettingsObj.profileObj.endDate;
     }
     updateTrace();
   }  
@@ -896,6 +911,10 @@ const listPredefQaU = () => {
   display: flex;
   justify-content: center;
   align-items: center;
+}
+
+:deep(.ant-form-item) {
+  margin-bottom: 12px;
 }
 
 .plot {
