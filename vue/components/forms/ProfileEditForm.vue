@@ -78,12 +78,13 @@
               {{ profileForm.profileSourceTag }}
             </a-tag>
           </template>
-          <a-select
+          <a-tree-select
             v-model:value="profileForm.profile"
-            :options="profileForm.profileClass === profileClassEnum.INFLUXDBPROFILE ? influxDBProfileOptions : profileOptions"
+            :tree-data="profileForm.profileClass === profileClassEnum.INFLUXDBPROFILE ? influxDBProfileOptions : profileOptions"
             show-search
             allow-clear
             :disabled="formMode === formModeEnum.UPDATE"
+            :filter-tree-node="filterTreeNode"
             @change="onSelectProfile"
             @mouseleave="removeTooltipPopup"
           />
@@ -346,27 +347,12 @@ const predefinedQaUOptions = ref([]);
 const isLoadingData = ref(false);
 
 onMounted(async () => {
-  const profiles = await getProfileSettings();
-  const fullProfileOptions = await listProfileOptions(profiles);
-  
+  const profiles = await getProfileSettings();  
   profileSettings.value = profiles;
-  profileOptions.value = fullProfileOptions;
 
-  // Disable PostgreSQL profiles for InfluxDBProfile profile options.
-  influxDBProfileOptions.value = fullProfileOptions.map((gr) => {
-    return {
-      ...gr,
-      options: gr.options.map((p) => {
-        if (p.databaseType === DatabaseTypeEnum.POSTGRESQL) {
-          return {
-            ...p,
-            disabled: true
-          };
-        }
-        return p;
-      })
-    };
-  });
+  const { full, influxOnly } = await listProfileOptions(profiles);
+  profileOptions.value = full;
+  influxDBProfileOptions.value = influxOnly;
 
   predefinedQaUOptions.value = listPredefQaU();
 });
@@ -788,11 +774,16 @@ const getProfileSettings = async () => {
 }
 
 /**
- * Transform the list of normalized profile objects into a UI-friendly structure
- * suitable for grouped dropdowns or selection components.
+ * Transform a list of normalized profile objects into a UI-friendly structure
+ * suitable for tree select dropdown components.
  */
 const listProfileOptions = async (profiles) => {
-  if (!profiles) return [];
+  if (!profiles) {
+    return {
+      full: [],
+      influxOnly: []
+    };
+  }
 
   // Group profiles by group name
   const groupsMap = new Map();
@@ -807,15 +798,48 @@ const listProfileOptions = async (profiles) => {
     groupsMap.get(groupName).push({
       label: metadata.profileDisplayedName,
       value: metadata.profileSettingId,
-      databaseType: profileObj.configuration.type
+      databaseType: profileObj.configuration.type,
     });
   });
 
-  return Array.from(groupsMap.entries()).map(([label, options]) => ({
-    label,
-    options
+  const full = Array.from(groupsMap.entries()).map(([groupName, children]) => ({
+    title: groupName,
+    value: groupName,
+    selectable: false,
+    children
   }));
+
+  // Disable PostgreSQL profiles for InfluxDBProfile
+  const influxOnly = full.map((group) => ({
+    ...group,
+    children: group.children.map((child) => ({
+      ...child,
+      disabled: child.databaseType === DatabaseTypeEnum.POSTGRESQL
+    }))
+  }));
+
+  return { full, influxOnly };
 };
+
+/**
+ * A utility function to filter tree select options.
+ */
+const filterTreeNode = (input, node) => {
+  if (!input) return true;
+
+  const text = node.label?.toString().toLowerCase() || "";
+  const query = input.toString().toLowerCase();
+
+  // Basic fuzzy match: allow characters in order but not necessarily adjacent
+  let i = 0;
+  for (const char of text) {
+    if (char === query[i]) i++;
+    if (i === query.length) return true;
+  }
+
+  return false;
+};
+
 
 /**
  * Retrieve a stored profile settings object by either:
