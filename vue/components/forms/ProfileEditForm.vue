@@ -29,7 +29,7 @@
         <a-segmented
           v-model:value="profileForm.profileClass"
           :options="profileClassOptions"
-          :disabled="formMode === formModeEnum.UPDATE"
+          :disabled="formMode !== formModeEnum.CREATE"
           style="width: 100%"
           block
           @change="onSelectProfileClass"
@@ -44,7 +44,7 @@
       <div v-if="profileForm.profileClass === profileClassEnum.SINGLEVALUE">
         <a-form-item 
           label="Name"
-          :rules="[{ type: 'string' }]"
+          :rules="[{ required: true, type: 'string' }]"
         >
           <a-input v-model:value="profileForm.name" />
         </a-form-item>
@@ -83,7 +83,7 @@
             :tree-data="profileForm.profileClass === profileClassEnum.INFLUXDBPROFILE ? influxDBProfileOptions : profileOptions"
             show-search
             allow-clear
-            :disabled="formMode === formModeEnum.UPDATE"
+            :disabled="formMode === formModeEnum.UPDATE && profileForm.profileType === profileTypeEnum.OUTPUT"
             :filter-tree-node="filterTreeNode"
             @change="onSelectProfile"
             @mouseleave="removeTooltipPopup"
@@ -240,7 +240,10 @@ const profileQaU = window.quantity_and_units_info;
 
 const formModeEnum = Object.freeze({
   CREATE: "Create",
+  // Updating the existing esdl profile attributes (e.g. multiplier)
   UPDATE: "Update",
+  // Replacing the existing esdl profile with another selected profile
+  REPLACE: "Replace"
 })
 
 // See reference at: https://energytransition.github.io/#router/doc-content/687474703a2f2f7777772e746e6f2e6e6c2f6573646c/ExternalProfile.html
@@ -466,7 +469,7 @@ const updateTrace = async () => {
   try {
     let results = null;
     // UPDATE mode (profile is referenced in the ESDL file)
-    if (formMode.value === formModeEnum.UPDATE) {
+    if (formMode.value === formModeEnum.UPDATE && profileForm.id) {
       const profileTracesRequest = {
         es_id: props.activeEsdlId,
         profile_ids: [profileForm.id],
@@ -477,7 +480,7 @@ const updateTrace = async () => {
       };
       results = await fetchData("get_profile_traces", profileTracesRequest);
     }
-    // CREATE mode (profile setting for querying trace is derived from profile settings storage) 
+    // CREATE or REPLACE mode (profile setting for querying trace is derived from profile settings storage) 
     else {
       const profileSettingsObj = getProfileSettingsObj(profileForm.profile);
       if (profileSettingsObj) {
@@ -543,6 +546,34 @@ const addProfile = async (addProfileRequest) => {
     displayNotification(
       "error",
       `An unknown error occurs while adding profile: ${e.message || e}.`
+    );
+  } finally {
+    isLoadingData.value = false;
+  }
+}
+
+/**
+ * Replace an existing ESDL profile with a new one
+ */
+const replaceProfile = async (profileId, profilePayload) => {
+  isLoadingData.value = true;
+  try {
+    const replaceProfileRequest = {
+      existing_profile_id: profileId,
+      ...profilePayload
+    }
+    const result = await fetchData("replace_esdl_profile", replaceProfileRequest);
+
+    if (result.success) {
+      displayNotification("success", result.message);
+    } else {
+      displayNotification("error", result.message);
+      console.error(result.message);
+    }
+  } catch (e) {
+    displayNotification(
+      "error",
+      `An unknown error occurs while replacing profile: ${e.message || e}.`
     );
   } finally {
     isLoadingData.value = false;
@@ -634,7 +665,7 @@ const constructProfilePayloadFromFormData = () => {
   } 
   // InfluxDBProfile or DataTableProfile profileClass
   else {
-    // In CREATE mode, get profile setting from setting storage;
+    // Get profile setting from setting storage (in CREATE or REPLACE mode);
     // otherwise, get it from the object passed from the parent component.
     const profileSettingsObj = getProfileSettingsObj(profileForm.profile);
     const profileObj = profileSettingsObj ? profileSettingsObj.profileObj : props.profileInfo.profileObj;
@@ -683,17 +714,24 @@ const onSelectProfile = (profileOptionValue) => {
   // Reset the form when profileOptionValue is undefined (e.g. when the selection is cleared.)
   if (profileOptionValue === undefined) {
     initForm(profileForm.profileClass);
-  } else {
-    const profileSettingsObj = getProfileSettingsObj(profileOptionValue);
-    if (profileSettingsObj) {
-      profileForm.profileSourceTag = profileSettingsObj.metadata.profileGroupName;
-      profileForm.databaseType = profileSettingsObj.profileObj.configuration.type;
-      profileForm.multiplier = profileSettingsObj.profileObj.multiplier;
-      profileForm.startDate = profileSettingsObj.profileObj.startDate;
-      profileForm.endDate = profileSettingsObj.profileObj.endDate;
-    }
-    updateTrace();
-  }  
+  } 
+
+  // If a user selects another profile in the UPDATE mode, switch formMode into the REPLACE mode.
+  if (formMode.value === formModeEnum.UPDATE) {
+    formMode.value = formModeEnum.REPLACE;
+  }
+
+  const profileSettingsObj = getProfileSettingsObj(profileOptionValue);
+  if (profileSettingsObj) {
+    profileForm.profileSourceTag = profileSettingsObj.metadata.profileGroupName;
+    profileForm.databaseType = profileSettingsObj.profileObj.configuration.type;
+    profileForm.startDate = profileSettingsObj.profileObj.startDate;
+    profileForm.endDate = profileSettingsObj.profileObj.endDate;
+    // Do not override below if values are already specified by a user.
+    profileForm.multiplier = profileForm.multiplier || profileSettingsObj.profileObj.multiplier;
+    profileForm.profileType = profileForm.profileType || profileSettingsObj.profileObj.profileType;
+  }
+  updateTrace(); 
 }
 
 const onUpdateMultiplier = (value) => {
@@ -746,12 +784,16 @@ const invalidForm = computed(() => {
 const onSave = () => {
   const profilePayload = constructProfilePayloadFromFormData();
 
-  // If the parent does NOT want to handle saving, perform the save internally
+  // If the parent component does NOT handle onSave, perform the actions inside this component.
   if (!props.returnProfilePayloadOnSave) {
-    if (formMode.value === formModeEnum.UPDATE) {
-      updateProfile();
-    } else if (formMode.value === formModeEnum.CREATE) {
+    if (formMode.value === formModeEnum.CREATE) {
       addProfile(profilePayload);
+    }
+    else if (formMode.value === formModeEnum.REPLACE) {
+      replaceProfile(profileForm.id, profilePayload);
+    }
+    else {
+      updateProfile();
     }
   }
 
