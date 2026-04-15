@@ -122,6 +122,12 @@ class AddProfileRequest:
             self.profileClass = ProfileClassEnum(self.profileClass)
 
 @dataclass
+class ReplaceProfileRequest(AddProfileRequest):
+    """Used when replacing an existing profile with a new one."""
+    existing_profile_id: str
+    """ID of the existing profile to be replaced"""
+
+@dataclass
 class UpdateProfileRequest:
     es_id: str
     profile_id: str
@@ -331,11 +337,21 @@ class Profiles:
 
         @self.socketio.on('add_esdl_profile', namespace='/esdl')
         def _add_esdl_profile(params: dict) -> dict:
-            """Add a new profile to a given port in an ESDL."""
+            """Add a new profile to a given profile container in an ESDL."""
             try:
                 req = AddProfileRequest(**params)
                 Profiles.add_esdl_profile(req.es_id, req.profile_container_id, req.profileClass, req.profileObj)
                 return {"success": True, "message": f"Successfully added profile."}
+            except Exception as e: 
+                return {"success": False, "message": str(e)}
+            
+        @self.socketio.on('replace_esdl_profile', namespace='/esdl')
+        def _replace_esdl_profile(params: dict) -> dict:
+            """Replace a profile in a given profile container in an ESDL."""
+            try:
+                req = ReplaceProfileRequest(**params)
+                Profiles.replace_esdl_profile(req.es_id, req.profile_container_id, req.existing_profile_id, req.profileClass, req.profileObj)
+                return {"success": True, "message": f"Successfully replaced profile."}
             except Exception as e: 
                 return {"success": False, "message": str(e)}
             
@@ -1516,6 +1532,42 @@ class Profiles:
             esh.add_object_to_dict(es_id, new_profile)
         except Exception as e:
             raise ProfileCreateError(f"An error occurs while adding profile: {e}") from e
+
+    @staticmethod
+    def replace_esdl_profile(
+        es_id: str,
+        profile_container_id: str,
+        existing_profile_id: str,
+        profile_class: ProfileClassEnum,
+        profile_obj: dict
+    ) -> None:
+        """
+        Replace an existing profile in a given profile container with a new one.
+        """
+        esh = get_handler()
+        
+        existing_profile = esh.get_by_id(es_id, existing_profile_id)
+        if not existing_profile:
+            raise ProfileNotFoundError(f"Profile (id={existing_profile_id}) from ESDL (id={es_id}) not found.")
+
+        profile_container = esh.get_by_id(es_id, profile_container_id)
+        if not profile_container:
+            raise ProfileContainerNotFoundError(
+                f"Unable to replace profile in container (id={profile_container_id}) from ESDL (id={es_id})."
+            )
+
+        try:
+            new_profile = Profiles.construct_esdl_profile_instance(es_id, profile_class, profile_obj)
+
+            profiles = profile_container.eGet("profile")
+
+            index = profiles.index(existing_profile)
+            profiles[index] = new_profile
+
+            esh.remove_object_from_dict(es_id, existing_profile)
+            esh.add_object_to_dict(es_id, new_profile)
+        except Exception as e:
+            raise ProfileCreateError(f"An error occurred while replacing profile: {e}") from e
 
     @staticmethod
     def update_esdl_profile(es_id: str, profile_id: str, profile_class: ProfileClassEnum, updates: dict) -> None:
