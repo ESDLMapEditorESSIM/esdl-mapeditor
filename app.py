@@ -2964,7 +2964,13 @@ def process_command(message):
             asset_container.asset.insert(index_in_asset_list, edr_asset)
 
             edr_asset.id = asset_to_be_replaced.id
-            edr_asset.port = asset_to_be_replaced.port
+
+            # edr_asset.port = asset_to_be_replaced.port            # does not work, pyEcore bug!
+            edr_asset.port.clear()
+            # edr_asset.port.extend(asset_to_be_replaced.port)      # also does not work, pyEcore bug!
+            for p in list(asset_to_be_replaced.port):
+                edr_asset.port.append(p)
+
             edr_asset.geometry = asset_to_be_replaced.geometry
 
             esh.add_object_to_dict(active_es_id, edr_asset, recursive=True)
