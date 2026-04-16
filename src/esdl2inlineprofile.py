@@ -34,7 +34,7 @@ class ESDL2InlineProfile:
 
             with self.flask_app.app_context():
                 try:
-                    es_converted = copy_and_convert_esdl_profiles(active_es_id)
+                    es_converted = self.copy_and_convert_esdl_profiles(active_es_id)
                 except Exception as e:
                     logger.exception(f"Error converting ESDL to in-line profiles: {e}")
                     return make_response("Error converting ESDL to in-line profiles", 500)
@@ -51,10 +51,26 @@ class ESDL2InlineProfile:
 
             return response
 
-    @staticmethod
+    def copy_and_convert_esdl_profiles(
+            self,
+            es_id: str,
+    ) -> EnergySystem:
+        """
+        Copy the active EnergySystem and convert its profiles to in-line profiles.
+        """
+        esh = get_handler()
+        es = esh.get_energy_system(es_id=es_id)
+        es_string = esh.to_string(es_id=es_id)
+        es_copy, parse_info = esh.load_external_string(es_string, name=f"{es.name} - In-line Profiles")
+        es_copy.name = get_session('es_filename') or (es.name or "Untitled EnergySystem") + " - In-line Profiles"
+        profiles_settings = Profiles.get_instance().get_profiles_settings()
+        es_converted = self.convert_esdl_profiles(es_copy, profiles_settings)
+        return es_converted
+
     def convert_esdl_profiles(
-        es: esdl.EnergySystem,
-        profiles_settings: dict[str, object],
+            self,
+            es: esdl.EnergySystem,
+            profiles_settings: dict[str, object],
     ) -> esdl.EnergySystem:
         logger.info("Convert InfluxDBProfiles for the whole energy system to TimeSeriesProfiles")
 
@@ -129,18 +145,29 @@ class ESDL2InlineProfile:
     def convert_influxdb_to_timeseries_profile(profile: esdl.InfluxDBProfile, profiles_settings: dict[str, object]) -> esdl.TimeSeriesProfile:
         influxdb_settings = None
 
-        # Find profile server information for the InfluxDBProfile
-        for prof_server in profiles_settings["profiles_servers"]:
-            if prof_server["host"] in profile.host and prof_server["port"] == str(profile.port):
-                influxdb_settings = ConnectionSettings(
-                    host=prof_server["host"],
-                    port=profile.port,
-                    database=profile.database,
-                    username=prof_server["username"],
-                    password=prof_server["password"],
-                    ssl=prof_server.get("ssl_enabled", False),
-                    verify_ssl=prof_server.get("ssl_enabled", False),
-                )
+        if profile.host == "https://edr-profiles.hesi.energy":
+            influxdb_settings = ConnectionSettings(
+                host="edr-profiles.hesi.energy",
+                port=443,
+                database=profile.database,
+                username=None,
+                password=None,
+                ssl=True,
+                verify_ssl=False,
+            )
+        else:
+            # Find profile server information for the InfluxDBProfile
+            for prof_server in profiles_settings["profiles_servers"]:
+                if prof_server["host"] in profile.host and prof_server["port"] == str(profile.port):
+                    influxdb_settings = ConnectionSettings(
+                        host=prof_server["host"],
+                        port=profile.port,
+                        database=profile.database,
+                        username=prof_server["username"],
+                        password=prof_server["password"],
+                        ssl=prof_server.get("ssl_enabled", False),
+                        verify_ssl=prof_server.get("ssl_enabled", False),
+                    )
 
         if not influxdb_settings:
             logger.error(f"No InfluxDBProfile settings found for {profile.name}")
