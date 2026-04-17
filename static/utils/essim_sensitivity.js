@@ -616,5 +616,6 @@ class ESSIM_sensitivity{
 var essim_sensitivity_plugin;   // global variable for the ESSIM_sensitivity plugin
 
 $(document).ready(function() {
-    extensions.push(function(event) { ESSIM_sensitivity.create(event) });
+    // disable essim sensitivity functionality for now
+    // extensions.push(function(event) { ESSIM_sensitivity.create(event) });
 });

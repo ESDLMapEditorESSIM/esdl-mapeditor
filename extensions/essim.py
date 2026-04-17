@@ -252,6 +252,39 @@ class ESSIM:
 
                 return json.dumps({'simulations': last_list, 'favorites': fav_list})
 
+        @self.socketio.on('essim_get_esdl_with_results', namespace='/esdl')
+        def essim_get_esdl_with_results(sim_id):
+            with self.flask_app.app_context():
+                esh = get_handler()
+
+                print('Querying ESSIM KPI for ESDL with results for sim_id: ' + sim_id)
+                if sim_id:
+                    ESSIM_config = settings.essim_config
+                    url = ESSIM_config['ESSIM_host'] + ESSIM_config['ESSIM_path'] + '/' + sim_id + '/ESDLWithProfiles'
+
+                    try:
+                        r = requests.get(url)
+                        if r.status_code == 200:
+                            result = json.loads(r.text)
+                            b64_esdlstr = result["esdl"]
+                            b64_esdlstr_bytes = b64_esdlstr.encode("utf-8")
+                            esdlstr_bytes = base64.b64decode(b64_esdlstr_bytes)
+                            esdlstr = esdlstr_bytes.decode("utf-8")
+
+                            filename = "ESSIM OUTPUT.esdl"
+                            es, parse_info = esh.add_from_string(filename, esdlstr,
+                                                                 overwrite_existing=False)
+
+                            self.executor.submit(process_energy_system, esh, 'ESSIM_result')  # run in separate thread
+                            set_session('active_es_id', es.id)
+                        else:
+                            send_alert('Error in getting the ESSIM KPI list')
+                            abort(r.status_code, 'Error in getting the ESSIM KPI list')
+                    except Exception as e:
+                        send_alert('Error accessing ESSIM API: ' + str(e))
+                        abort(500, 'Error accessing ESSIM API: ' + str(e))
+
+
         @self.flask_app.route('/essim_kpis')
         def essim_kpi_list():
             ESSIM_config = settings.essim_config
