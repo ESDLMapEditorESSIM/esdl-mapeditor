@@ -1262,14 +1262,39 @@ class Profiles:
         elif isinstance(profile, esdl.InfluxDBProfile):
             dtp = Profiles.influxdbprofile_to_datatableprofile(profile)
         elif isinstance(profile, esdl.TimeSeriesProfile):
-            start_time = profile.startDateTime
-            dt = datetime.timedelta(seconds=profile.timestep)
-            datetimes = [(start_time + (dt * i)).strftime(dt_str_format) for i in range(len(profile.values))]
-            return {
-                "name": profile.name,
-                "x": datetimes,
-                "y": profile.values,
-            }
+            try:
+                start_time = profile.startDateTime.replace(tzinfo=datetime.timezone.utc)
+                dt = datetime.timedelta(seconds=profile.timestep)
+                datetimes = [(start_time + (dt * i)) for i in range(len(profile.values))]
+                # filter based on viz_options
+                if viz_options and viz_options.start_datetime is not None:
+                    start_dt = viz_options.start_datetime
+                else:
+                    start_dt = start_time
+
+                if viz_options and viz_options.end_datetime is not None:
+                    end_dt = viz_options.end_datetime
+                else:
+                    end_dt = datetimes[-1]
+
+                result_dt = []
+                result_values = []
+                for i,d in enumerate(datetimes):
+                    if start_dt <= d <= end_dt:
+                        result_dt.append(d.strftime(dt_str_format))
+                        result_values.append(profile.values[i])
+                return {
+                    "name": profile.name,
+                    "x": result_dt,
+                    "y": result_values,
+                }
+            except Exception as e:
+                logger.error("Error in TimeSeries")
+                import traceback
+                traceback.print_exc()
+                raise e
+
+
         else:
             raise ProfileClassError(f"Unsupported profile (id={profile_id}) class: {type(profile).__name__}")
 

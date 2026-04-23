@@ -15,7 +15,7 @@ import json
 import logging
 import re
 import statistics
-from datetime import datetime, timezone, timedelta
+from datetime import datetime
 from enum import Enum
 from typing import Any, TypedDict, List, Dict, Optional, Sequence, Iterable, Tuple
 
@@ -25,19 +25,15 @@ from flask_socketio import SocketIO
 from pandas import DataFrame
 from sqlalchemy import select, delete, column, create_engine
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
-from sqlalchemy.sql import text, func
-from sqlalchemy.schema import DropTable
 from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.orm import Session
+from sqlalchemy.schema import DropTable
+from sqlalchemy.sql import text, func
 
 import esdl
 from esdl.processing.ESDLAsset import get_asset_capability_type
-from esdl.units.parser import unit_to_string, qau_to_string, build_qau_from_unit_string
 from esdl.units.conversion import convert_to_unit, UnitException
-from esdl.profiles.influxdbprofilemanager import InfluxDBProfileManager
-from extensions.data_manager.db_interaction import create_db_tables, get_db_driver_type, DriverType, create_db, drop_db, \
-    drop_db_tables
-from extensions.profiles import Profiles, ProfileVizOptions, EmptyProfileWarning
+from esdl.units.parser import unit_to_string, qau_to_string, build_qau_from_unit_string
 from extensions.data_manager import db
 from extensions.data_manager.data_manager_message import (ChartType,
                                                           MetadataUpdateRequestBody,
@@ -48,13 +44,12 @@ from extensions.data_manager.data_manager_message import (ChartType,
                                                           QueryRequestBody,
                                                           ProfileVizType,
                                                           ProfileAggInterval)
-from extensions.data_manager.db_interaction import create_db_tables, get_db_driver_type, DriverType, create_db, drop_db, \
-    drop_db_tables
+from extensions.data_manager.db_interaction import create_db_tables, get_db_driver_type, DriverType, create_db, drop_db
 from extensions.data_manager.db_model import DataSet, Variable, DataType, Data, BaseModel
+from extensions.profiles import Profiles, ProfileVizOptions, EmptyProfileWarning
 from extensions.session_manager import get_session, get_project_manager
 from src import settings
 from src.log import get_logger
-
 from utils.utils import camelCaseToWords
 
 logger = get_logger(__name__)
@@ -331,7 +326,7 @@ def handle_static_profile(profile: esdl.StaticProfile, ds: DataSet,
 
 def convert_to_target_energy_unit(value: float,
                                   source_qau: esdl.QuantityAndUnitType,
-                                  target_energy_qau: esdl.QuantityAndUnitType) -> Tuple[float, esdl.QuantityAndUnitType]:
+                                  target_energy_qau: esdl.QuantityAndUnitType | None) -> Tuple[float, esdl.QuantityAndUnitType]:
     """
     Converts a value in e.g. TJ to J if target_energy_qau is in J and source_qau is in TJ only if
     PhysicalQuantity is Energy.
@@ -542,11 +537,18 @@ class DataManager:
             d = None
             qau = None
 
-            if isinstance(eobj, esdl.SingleValue) or isinstance(eobj, esdl.TimeSeriesProfile):
+            if isinstance(eobj, esdl.SingleValue) :
                 # logger.debug(f"Handling {eobj.eClass.name}/{eobj.name}")
                 # single value profile
                 # profile: esdl.SingleValue = eobj
                 d, qau, variable_name = handle_static_profile(eobj, ds, variable_name, target_energy_qau)
+            elif isinstance(eobj, esdl.TimeSeriesProfile):
+                d, qau, variable_name = handle_static_profile(eobj, ds, variable_name, target_energy_qau)
+                # Label profile id, so it can be retrieved when the query_profile() method is called.
+                d.labels['profile_id'] = eobj.id
+                d.labels['Profile Type'] = eobj.profileType.name
+
+                is_profile_variable = True
             elif isinstance(eobj, esdl.ProfileReference):
                 # handle reference too, as we need a reference to the asset
                 # TODO: Why is this handled as static profile instead of InfluxDBProfile? Can this be made more generic?
@@ -686,15 +688,14 @@ class DataManager:
                 elif isinstance(container_asset, esdl.Area):
                     d.region = eobj.area.name
 
-
-            variable: Variable = variables.get(variable_name, None)
+            # Distinguish variable data type (Profile or Single Value).
+            data_type = DataType.PROFILE if is_profile_variable else DataType.SINGLE_VALUE
+            key = variable_name + data_type.name
+            variable = variables.get(key, None)
             if variable is None:
                 if variable_name is None:
                     logger.warn(f"Variable name is empty for {eobj}, ignoring")
                     continue
-
-                # Distinguish variable data type (Profile or Single Value).
-                data_type = DataType.PROFILE if is_profile_variable else DataType.SINGLE_VALUE
 
                 variable = Variable(
                     name=variable_name,
@@ -702,8 +703,9 @@ class DataManager:
                     quantity=qau.physicalQuantity.name if qau.physicalQuantity else None,
                     datatype=data_type
                 )
-                variables[variable.name] = variable
+                variables[key] = variable
                 data_list.append(variable)
+
             # update input description if necessary
             if d.input is not None and variable.input_description is None:
                 variable.input_description = "Carrier"
