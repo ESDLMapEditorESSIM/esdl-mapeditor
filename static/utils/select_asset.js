@@ -149,6 +149,13 @@ class SelectAssets {
                     (asset_leaflet_obj.type == 'Building'))) {
                 option['disabled'] = true;
             }
+
+            // Support for services that can run on multiple selected assets
+            let extra_options = option['extra_options'] || {};
+            let multiple_assets_support = extra_options['multiple_assets_support'] || false;
+            if (multiple_assets_support) {
+                option['disabled'] = false;
+            }
         }
     }
 

@@ -610,6 +610,7 @@ function add_service_to_contextmenu(layer, service, callback) {
         text: service['name'],
         icon: resource_uri + 'icons/service.png',
         callback: callback,
+        extra_options: service['options'] || {}
     });
 }
 
@@ -706,6 +707,12 @@ function update_esdl_services(event) {
                                 }
                             })
                         } else {
+                            if ("options" in service && "multiple_assets_support" in service["options"] && service["options"]["multiple_assets_support"]) {
+                                if (window.select_assets.select_mode) {
+                                    console.log(window.select_assets.selected_assets);
+                                    state["asset_ids"] = window.select_assets.selected_assets;
+                                }
+                            }
                             if (service['type'] === 'vueworkflow' || service['type'] === 'workflow') {
                                 window.show_service_settings(i, state);
                             } else {
