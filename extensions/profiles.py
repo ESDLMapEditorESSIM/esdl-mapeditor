@@ -1682,8 +1682,6 @@ class Profiles:
     def serialize_qau(qau: esdl.QuantityAndUnitType | esdl.QuantityAndUnitReference) -> dict | None:
         """
         Return a dict representation for QuantityAndUnit.
-
-        TODO: handle custom QaU; try parsing with get_asset_attributes?
         """
         if not qau:
             return None
@@ -1802,7 +1800,7 @@ def _clone_qau(qau):
 def _get_enum_name(enum_obj):
     """A util function to get the ENUM name string."""
     enum_name = getattr(enum_obj, "name", None)
-    if enum_name == "None":
+    if enum_name == "NONE" or enum_name == "None":
         return None
     return enum_name
 
@@ -1944,12 +1942,12 @@ def _get_or_add_esi_databaseconfiguration(es_id: str, db_config: esdl.DatabaseCo
 def _convert_qau_obj_into_profile_qau(es_id: str, qau_obj: dict):
     """
     Convert a given predefined qau_obj (dict) into an ESDL QuantityAndUnitReference.
-
-    TODO: handle custom QaU
+    If qau_obj contains an id, try to reuse or load the predefined QaU.
+    If not, construct a new ESDLQuantityAndUnits instance.
     """
     esh = get_handler()
 
-    # If id is present, it a predefined qau.
+    # If id is present, it is either a predefined qau or referenced qau. Try to reuse it.
     predefined_qau_id = qau_obj.get("id")
     if predefined_qau_id:
         try:
@@ -1957,14 +1955,27 @@ def _convert_qau_obj_into_profile_qau(es_id: str, qau_obj: dict):
             qau = esh.get_by_id(es_id, predefined_qau_id)
         except KeyError:
             qau = ESDLQuantityAndUnits.build_qau_from_dict(qau_obj)
-            esi_qau = ESDLQuantityAndUnits.get_or_create_esi_qau(esh, es_id)
-            esi_qau.quantityAndUnit.append(qau)
-            esh.add_object_to_dict(es_id, qau)
-
-        qau_ref = esdl.QuantityAndUnitReference(reference=qau)
-        return qau_ref
     else:
-        return None
+        qau = ESDLQuantityAndUnits.build_qau_from_dict(qau_obj)
+
+    if not qau.description:
+        qau.description = qau_to_string(qau)
+
+    applied_qau = None
+    # check if the same qau definition has been defined in the energy system information
+    # reuse it if found.
+    esi_qau_container = ESDLQuantityAndUnits.get_or_create_esi_qau(esh, es_id)
+    for esi_qau in esi_qau_container.quantityAndUnit:
+        if esi_qau.description == qau.description:
+            applied_qau = esi_qau
+            break
+
+    if applied_qau is None:
+        applied_qau = qau
+        esi_qau_container.quantityAndUnit.append(applied_qau)
+        esh.add_object_to_dict(es_id, applied_qau)
+
+    return esdl.QuantityAndUnitReference(reference=applied_qau)
 
 def _dt_str_to_tz_aware_datetime(dt_str: str, default_tz=timezone.utc) -> datetime:
     """
