@@ -15,7 +15,7 @@
 from uuid import uuid4
 
 from flask import Flask
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO
 import requests
 from typing import Any, Dict, Optional, List, Union
 from dataclasses import asdict
@@ -31,10 +31,10 @@ from extensions.vue_backend.messages.map_layers_message import (WmsLayerFeatureR
                                                                 WmsLayerRequestInfo, 
                                                                 WmsLayerFeatureResp, 
                                                                 LayerFeaturePropsResp,
-                                                                WmsGetCapabilitiesRequestBody,
-                                                                WmsServiceLayerInfo,
-                                                                WmsGetCapabilitiesResp,
-                                                                WmsSaveOpacitySettingRequestBody)
+                                                                GetCapabilitiesRequestBody,
+                                                                ServiceLayerInfo,
+                                                                ServiceGetCapabilitiesResp,
+                                                                LayerOpacitySettingRequestBody)
 
 logger = log.get_logger(__name__)
 
@@ -56,19 +56,25 @@ class WMSLayers:
             logger.info('Found WMS layers in System Settings')
 
     def register(self):
-        logger.info('Registering WMS layer extension')
+        logger.info('Registering web service layer extension')
 
-        @self.socketio.on('get_wms_layer', namespace='/esdl')
-        def _get_wms_layer(params):
-            return self.get_wms_layer(params['id'])
+        @self.socketio.on('get_service_layer', namespace='/esdl')
+        def _get_service_layer(params):
+            return self.get_service_layer(params['id'])
 
-        @self.socketio.on('get_wms_layer_group', namespace='/esdl')
-        def _get_wms_layer_group(params):
-            return self.get_wms_layer_group(params['id'])
+        @self.socketio.on('get_service_layer_group', namespace='/esdl')
+        def _get_service_layer_group(params):
+            return self.get_service_layer_group(params['id'])
 
-        @self.socketio.on('save_wms_layer', namespace='/esdl')
-        def _save_wms_layer(params):
-            self.save_wms_layer(params['id'], params['lyr_info'])
+        @self.socketio.on('save_service_layer', namespace='/esdl')
+        def _save_service_layer(params):
+            type = params['type']
+            if type == "WMS":
+                self.save_wms_layer(params['id'], params['lyr_info'])
+            elif type == "WFS":
+                self.save_wfs_layer(params['id'], params['lyr_info'])
+            else:
+                logger.error(f"Unsupported type: {type}")
             return self.get_layers()
 
         @self.socketio.on('add_wms_layer_group', namespace='/esdl')
@@ -93,24 +99,34 @@ class WMSLayers:
             self.rename_layer_group(params['group_id'], params['group_name'])
             return self.get_layers()
 
-        @self.socketio.on('add_wms_layer', namespace='/esdl')
-        def _add_wms_layer(params):
+        @self.socketio.on('add_service_layer', namespace='/esdl')
+        def _add_service_layer(params):
             logger.info(params)
+            type = params['type']
             layer_id = params['id']
             parent_group_id = params['parent_group_id']
 
             layer = {
+                "type": params['type'],
                 "description": params['description'],
                 "url": params['url'],
                 "layer_name": params['name'],
                 "setting_type": params['setting_type'],
                 "project_name": params['project_name'],
-                "legend_url": params['legend_url'],
                 "layer_ref": None,
-                "visible": False
+                "visible": False,
+                "min_zoom_level": params.get('min_zoom_level')
             }
 
-            self.add_wms_layer(layer_id, layer, parent_group_id)
+            if type == "WMS":
+                layer["legend_url"] = params.get('legend_url')
+            elif type == "WFS":
+                layer["style"] = params.get('style')
+            else:
+                logger.error(f"Unsupported type: {type}")
+
+            self.add_layer_to_storage(layer_id, layer, parent_group_id)
+            
             return self.get_layers()
 
         @self.socketio.on('remove_wms_layer', namespace='/esdl')
@@ -145,7 +161,7 @@ class WMSLayers:
             return self.get_layers()
         
         @self.socketio.on('query_wms_layer_feature', namespace='/esdl')
-        def _query_wms_layer_feature(params: Dict[str, Union[Dict, List]]) -> None:
+        def _query_wms_layer_feature(params: Dict[str, Union[Dict, List]]) -> Dict[str, Any]:
             """
             Args:
                 params (Dict): A dict with structure as {ev_lat_lng: MouseEventLatLng, layers: List[WmsLayerRequestInfo]}
@@ -157,26 +173,26 @@ class WMSLayers:
                 props = self.query_wms_layer_feature_properties(layer.url)
                 layers_features_props.append(LayerFeaturePropsResp(layer.name, props))
             resp = WmsLayerFeatureResp(req.ev_lat_lng, layers_features_props)
-            emit('on_wms_layer_feature_resp', asdict(resp))
+            return asdict(resp)
 
-        @self.socketio.on('get_wms_getcapabilities', namespace='/esdl')
-        def _get_wms_getcapabilities(params: Dict[str, str]) -> Dict[str, Any]:
+        @self.socketio.on('get_service_getcapabilities', namespace='/esdl')
+        def _get_service_getcapabilities(params: Dict[str, str]) -> Dict[str, Any]:
             """
             Args:
-                params (Dict): A dict with structure as {url: str}
+                params (Dict): A dict with structure as {url: str, service_type: str}
             """
-            req = WmsGetCapabilitiesRequestBody(**params)
-            result = self.get_wms_getcapabilities(req.url)
+            req = GetCapabilitiesRequestBody(**params)
+            result = self.get_service_getcapabilities(req.url, req.service_type)
             return asdict(result)
         
-        @self.socketio.on('save_wms_layer_opacity_setting', namespace='/esdl')
-        def _save_wms_layer_opacity_setting(params: Dict[str, Union[str, float]]) -> Dict[str, Dict]:
+        @self.socketio.on('save_layer_opacity_setting', namespace='/esdl')
+        def _save_layer_opacity_setting(params: Dict[str, Union[str, float]]) -> Dict[str, Dict]:
             """
             Args:
                 params (Dict): A dict with structure as {layer_id: str, opacity: float}
             """
-            req = WmsSaveOpacitySettingRequestBody(**params)
-            self.save_wms_layer_opacity_setting(req.layer_id, req.opacity)
+            req = LayerOpacitySettingRequestBody(**params)
+            self.save_layer_opacity_setting(req.layer_id, req.opacity)
             return self.get_layers()
 
 
@@ -194,9 +210,14 @@ class WMSLayers:
             logger.warning(f"An unexpected error occurred while querying layer feature: {str(e)}")
         return feature_props
     
-    def get_wms_getcapabilities(self, url: str) -> WmsGetCapabilitiesResp:
+    def get_service_getcapabilities(self, url: str, service_type: str = "WMS") -> ServiceGetCapabilitiesResp:
+        """
+        Fetches GetCapabilities for either WMS or WFS.
+        
+        service_type: "WMS" or "WFS"
+        """
         try:
-            resp = requests.get(url, params={"service": "WMS", 
+            resp = requests.get(url, params={"service": service_type, 
                                              "request": "GetCapabilities"})
             resp.raise_for_status()
 
@@ -205,20 +226,26 @@ class WMSLayers:
                 raise Exception(f"Expected XML response, but received {content_type}")
             
             getcapabilities_xml = resp.text
-            layer_options = self.parse_getcapabilities_xml(getcapabilities_xml)
-            if len(layer_options):
-                return WmsGetCapabilitiesResp(True, layer_options)
+            if service_type == "WMS":
+                layer_options = self.parse_wms_getcapabilities_xml(getcapabilities_xml)
+            elif service_type == "WFS":
+                layer_options = self.parse_wfs_getcapabilities_xml(getcapabilities_xml)
             else:
-                return WmsGetCapabilitiesResp(False, "No layer available.")
+                return ServiceGetCapabilitiesResp(False, f"Unsupported service type {service_type}.")
+
+            if len(layer_options):
+                return ServiceGetCapabilitiesResp(True, layer_options)
+            else:
+                return ServiceGetCapabilitiesResp(False, "No layer or feature types available.")
         except Exception as e:
             logger.warning(e)
-            return WmsGetCapabilitiesResp(False, f"{str(e)}.")
+            return ServiceGetCapabilitiesResp(False, f"{str(e)}.")
         
-    def parse_getcapabilities_xml(self, xml_string: str) -> List[WmsServiceLayerInfo]:
+    def parse_wms_getcapabilities_xml(self, xml_string: str) -> List[ServiceLayerInfo]:
         """
         Parses a WMS GetCapabilities XML string and extracts layer attributes.
 
-        It returns a list of WmsServiceLayerInfo data class. Each WmsServiceLayerInfo contains
+        It returns a list of ServiceLayerInfo data class. Each ServiceLayerInfo contains
         'name', 'title', and 'legend_url' attributes. If a layer does not have a
         legend URL, the 'legend_url' will be an empty string.
 
@@ -226,12 +253,12 @@ class WMSLayers:
             xml_string (str): The XML string of the WMS GetCapabilities document.
 
         Returns:
-            list: A list of WmsServiceLayerInfo data class, each with 'name', 'title', and 'legend_url' attributes.
+            list: A list of ServiceLayerInfo data class, each with 'name', 'title', and 'legend_url' attributes.
         """
         namespaces = {'wms': 'http://www.opengis.net/wms', 'xlink': 'http://www.w3.org/1999/xlink'}
         root = ET.fromstring(xml_string)
         layers = root.findall(".//wms:Layer", namespaces)
-        layer_options: List[WmsServiceLayerInfo] = []
+        layer_options: List[ServiceLayerInfo] = []
 
         for layer in layers:
             layer_name_elem = layer.find("wms:Name", namespaces)
@@ -253,9 +280,26 @@ class WMSLayers:
                             legend_url = online_resource.get(f"{{{namespaces['xlink']}}}href")
 
                 if layer_name is not None and not any(l.name == layer_name for l in layer_options):
-                    layer_info = WmsServiceLayerInfo(layer_name, layer_title, legend_url)
+                    layer_info = ServiceLayerInfo(layer_name, layer_title, legend_url)
                     layer_options.append(layer_info)
                 
+        return layer_options
+    
+    def parse_wfs_getcapabilities_xml(self, xml_string: str) -> List[ServiceLayerInfo]:
+        """
+        Parses a WFS GetCapabilities XML string and extracts layer attributes.
+        """
+        root = ET.fromstring(xml_string)
+        layer_options: List[ServiceLayerInfo] = []
+
+        feature_types = root.findall(".//{*}FeatureType") 
+        
+        for ft in feature_types:
+            name = ft.findtext("{*}Name")
+            title = ft.findtext("{*}Title")
+            if name and title:
+                layer_options.append(ServiceLayerInfo(name, title, None))
+
         return layer_options
     
     def add_wms_layer_group(self, layer_group_id: str, layer_group: dict, parent_group_id: str = None,
@@ -272,7 +316,7 @@ class WMSLayers:
         self.settings_storage.set(setting_type, identifier, LAYERS_GROUP_SETTING, layer_groups)
         self.add_child_to_layer_group(parent_group_id, layer_group_id, position)
 
-    def get_wms_layer_group(self, group_id: str):
+    def get_service_layer_group(self, group_id: str):
         # as we only have an ID, we don't know if it is a user, project or system layer
         # get the whole list, so we can find out the setting_type
         group = self.get_layers()[LAYERS_GROUP_SETTING][group_id]
@@ -280,7 +324,7 @@ class WMSLayers:
 
     def add_child_to_layer_group(self, group_id: str, child_id: str, position: int = None):
         if group_id:
-            group = self.get_wms_layer_group(group_id)
+            group = self.get_service_layer_group(group_id)
             if isinstance(position, int):
                 group["child_ids"].insert(position, child_id)
             else:
@@ -288,7 +332,7 @@ class WMSLayers:
             self.add_wms_layer_group(group_id, group)
 
     def remove_child_from_layer_group(self, group_id: str, child_id: str):
-        group = self.get_wms_layer_group(group_id)
+        group = self.get_service_layer_group(group_id)
         if child_id in group['child_ids']:
             group['child_ids'].remove(child_id)
         self.add_wms_layer_group(group_id, group)
@@ -347,7 +391,7 @@ class WMSLayers:
                 "layer_ref": None,
                 "visible": False
             }
-            self.add_wms_layer(new_item_id, new_layer, new_parent_id, position)
+            self.add_layer_to_storage(new_item_id, new_layer, new_parent_id, position)
         elif item_id in all_layers[LAYERS_GROUP_SETTING]:
             layer_group = all_layers[LAYERS_GROUP_SETTING][item_id]
             new_layer_group = {
@@ -361,11 +405,11 @@ class WMSLayers:
                 self.copy_wms_item_and_children(child_id, new_item_id, None)
 
     def rename_layer_group(self, group_id: str, group_name: str):
-        group = self.get_wms_layer_group(group_id)
+        group = self.get_service_layer_group(group_id)
         group["description"] = group_name
         self.add_wms_layer_group(group_id, group)
 
-    def add_wms_layer(self, layer_id: str, layer: dict, parent_group_id: str = None, position: str = None):
+    def add_layer_to_storage(self, layer_id: str, layer: dict, parent_group_id: str = None, position: str = None):
         setting_type = SettingType(layer['setting_type'])
         project_name = layer.get('project_name')
         identifier = self._get_identifier(setting_type, project_name)
@@ -379,26 +423,30 @@ class WMSLayers:
 
         self.add_child_to_layer_group(parent_group_id, layer_id, position)
 
-    def save_wms_layer_opacity_setting(self, layer_id: str, opacity: float) -> None:
-        layer = self.get_wms_layer(layer_id)
+    def save_layer_opacity_setting(self, layer_id: str, opacity: float) -> None:
+        layer = self.get_service_layer(layer_id)
+        layer_type = layer.get("type", "WMS")
         setting_type = SettingType(layer['setting_type'])
         project_name = layer.get('project_name')
         identifier = self._get_identifier(setting_type, project_name)
         if identifier is not None and self.settings_storage.has(setting_type, identifier, LAYERS_SETTING):
             layers = self.settings_storage.get(setting_type, identifier, LAYERS_SETTING)
-            layers[layer_id]['opacity'] = opacity
+            if layer_type == "WMS" and layer['opacity']:
+                layers[layer_id]['opacity'] = opacity
+            elif layer_type == "WFS" and layer['style']:
+                layers[layer_id]['style']['opacity'] = opacity
             self.settings_storage.set(setting_type, identifier, LAYERS_SETTING, layers)
         else:
-            logger.error("Error whiling saving WMS layer opacity setting to the settings_storage.")
+            logger.error("Error whiling saving layer opacity setting to the settings_storage.")
 
-    def get_wms_layer(self, layer_id: str):
+    def get_service_layer(self, layer_id: str):
         # as we only have an ID, we don't know if it is a user, project or system layer
         # get the whole list, so we can find out the setting_type
         layer = self.get_layers()[LAYERS_SETTING][layer_id]
         return layer
 
     def save_wms_layer(self, layer_id: str, lyr_info: dict):
-        layer = self.get_wms_layer(layer_id)
+        layer = self.get_service_layer(layer_id)
 
         layer["description"] = lyr_info["description"]
         layer["url"] = lyr_info["url"]
@@ -407,14 +455,24 @@ class WMSLayers:
         layer["attribution"] = lyr_info["attribution"]
         layer["min_zoom_level"] = lyr_info["min_zoom_level"]
 
-        self.add_wms_layer(layer_id, layer)
+        self.add_layer_to_storage(layer_id, layer)
+
+    def save_wfs_layer(self, layer_id: str, lyr_info: dict):
+        layer = self.get_service_layer(layer_id)
+
+        layer["description"] = lyr_info["description"]
+        layer["url"] = lyr_info["url"]
+        layer["layer_name"] = lyr_info["layer_name"]
+        layer["min_zoom_level"] = lyr_info["min_zoom_level"]
+
+        self.add_layer_to_storage(layer_id, layer)
 
     def remove_wms_layer(self, layer_id: str, parent_id: str):
         # as we only have an ID, we don't know if it is a user, project or system layer
         # get the whole list, so we can find out the setting_type
         if layer_id not in self.get_layers()[LAYERS_SETTING]:
             return False
-        layer = self.get_layers()[LAYERS_SETTING][layer_id]
+        layer = self.get_service_layer(layer_id)
         setting_type = SettingType(layer['setting_type'])
         identifier = self._get_identifier(setting_type, layer['project_name'])
         if identifier is None:
@@ -478,7 +536,7 @@ class WMSLayers:
         return identifier
 
     def get_layers(self):
-        # gets the wms layer and group layer lists
+        # gets the web service layers and group layer lists
         all_layers = dict()
         all_layer_groups = dict()
 

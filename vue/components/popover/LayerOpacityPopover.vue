@@ -46,9 +46,10 @@
       const layer = getVisibleLayerById(props.layerId);
       if (layer) {
         isOpened = true;
+        const type = layer.type ? layer.type : "WMS";
         const layerDescription = layer.description;
-        const currentLayerOpacity = layer.layer_ref.options.opacity;
-        popoverTitle = `Adjust '${layerDescription}' WMS layer opacity`;
+        const currentLayerOpacity = type === "WMS" ? layer.layer_ref.options.opacity : layer.style?.opacity;
+        popoverTitle = `Adjust '${layerDescription}' layer opacity`;
         layerOpacity = currentLayerOpacity;
       } else {
         console.error("Layer not found");

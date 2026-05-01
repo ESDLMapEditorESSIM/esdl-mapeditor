@@ -17,7 +17,7 @@
 <template>
   <div id="visible_layers_view" style="padding-left: 8px;">
     <a-row>
-      <h4>Visible WMS layers</h4>
+      <h4>Visible layers</h4>
     </a-row>
     <a-row v-if="treeData.length > 0">
       <a-col :span="24">

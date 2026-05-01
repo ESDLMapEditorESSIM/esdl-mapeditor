@@ -556,6 +556,24 @@ function set_area_handlers(area) {
     }
 }
 
+// TODO: find a better place for this
+function set_wfs_handlers(marker) {
+    // console.log(marker);
+    marker.bindContextMenu({
+        contextmenu: true,
+        contextmenuWidth: 140,
+        contextmenuItems: [],
+        contextmenuInheritItems: false
+    });
+
+    // let extensions know they can update this layer.
+    // e.g. add a context menu item
+    for (let i=0; i<extensions.length; i++) {
+        updatefun = extensions[i];
+        updatefun({type: 'add_contextmenu', layer: marker, layer_type: 'wfs'});
+    }
+}
+
 function format_KPI_value(value) {
     if (typeof(value) == "number") {
         value_str = value.toString();

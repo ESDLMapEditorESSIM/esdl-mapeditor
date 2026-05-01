@@ -118,7 +118,8 @@ function query_esdl_service(service, state_params) {
         service['type'] !== "map_context_menu" &&
         service['location'] !== "map_context_menu" &&
         service['type'] !== "area_context_menu" &&
-        service['location'] !== "area_context_menu"
+        service['location'] !== "area_context_menu" &&
+        service['location'] !== "wfs_context_menu"
     ) {
         document.getElementById('query_service_button').style.display = 'none';
     }
@@ -521,6 +522,7 @@ function esdl_services_info() {
                 esdl_services_information[i]['location'] !== "map_context_menu" &&
                 esdl_services_information[i]['type'] !== "area_context_menu" &&
                 esdl_services_information[i]['location'] !== "area_context_menu" &&
+                esdl_services_information[i]['location'] !== "wfs_context_menu" &&
                 esdl_services_information[i]['location'] !== "hidden"
             ) {
                 table += '<tr><td><button onclick="show_service_settings(' + i + ');">Open</button></td><td>' + esdl_services_information[i]['name'] + '</td></tr>';
@@ -671,6 +673,21 @@ function add_service_to_area_contextmenu(layer, service, idx) {
     });
 }
 
+function add_service_to_wfs_object_contextmenu(layer, service, idx) {
+    add_service_to_contextmenu(layer, service, function (e) {
+        const state = {
+            wfs_object_id: layer.id,
+            wfs_object_name: layer.name,
+            wkt: toWKT(layer),
+        }
+        if (service['type'] === 'vueworkflow' || service['type'] === 'workflow') {
+            window.show_service_settings(idx, state);
+        } else {
+            query_esdl_service(service, state);
+        }
+    });
+}
+
 function update_esdl_services(event) {
     if (event.type === 'add_contextmenu') {
         let layer = event.layer;
@@ -720,6 +737,14 @@ function update_esdl_services(event) {
                             }
                         }
                     });
+                }
+            }
+        }
+
+        if (event.layer_type === 'wfs') {
+            for (let i = 0; i < esdl_services_information.length; i++) {
+                if (esdl_services_information[i]['type'] == "wfs_context_menu" || esdl_services_information[i]['location'] == "wfs_context_menu") {
+                    add_service_to_wfs_object_contextmenu(layer, esdl_services_information[i], i);
                 }
             }
         }

@@ -9,7 +9,7 @@ import MarginalCostsEdit from "@/apps/MarginalCostsEdit.vue";
 import ObjectProperties from '@/apps/ObjectProperties.vue';
 import EDRAssets from '@/apps/EDRAssets.vue';
 import EnvironmentalProfiles from '@/apps/EnvironmentalProfiles.vue';
-import AddEditWmsLayer from '@/apps/AddEditWmsLayer.vue';
+import AddEditServiceLayer from '@/apps/AddEditServiceLayer.vue';
 import SpatialVisualization from '@/apps/SpatialVisualization.vue';
 import Carriers from '@/apps/Carriers.vue';
 import Sectors from '@/apps/Sectors.vue';
@@ -182,10 +182,10 @@ window.activate_admin_settings = () => {
     mountApp(ActivityContextManagement, '#admin_dialog_window');
 }
 
-window.add_edit_wms_layer = (object_id) => {
+window.add_edit_web_service_layer = (object_id) => {
     const { newObject } = useObject();
     newObject(object_id);
-    mountSidebarComponent(AddEditWmsLayer)
+    mountSidebarComponent(AddEditServiceLayer)
 }
 
 window.open_spatial_visualization = () => {
