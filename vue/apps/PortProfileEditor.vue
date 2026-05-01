@@ -49,7 +49,7 @@
                     type="text"
                     size="small"
                     danger
-                    @click="onDeleteRecord(record.id)"
+                    @click="onDeleteRecord(record)"
                   >
                     <delete-outlined />
                   </a-button>
@@ -68,7 +68,7 @@
         <ProfileEditForm
           :visible="profileModalVisible"
           :active-esdl-id="activeEsdlId"
-          :active-port-id="activePortId"
+          :active-profile-container-id="activePortId"
           :profile-tag="activeProfileTag"
           :profile-info="activeProfile"
           @on-save="onSaveProfileFormData"
@@ -133,8 +133,8 @@ const columns = [
   },
   {
     title: "Unit",
-    dataIndex: ["profileQuantityAndUnit", "description"],
     key: "profileUnit",
+    customRender: ({ record }) => { return getProfileUnit(record) },
     width: 100,
   },
   {
@@ -248,12 +248,16 @@ const listPortProfiles = (activePortId) => {
   return profiles;
 };
 
-const getProfileDisplayedName = (profileObj) => {
-  if (profileObj["profileClass"] === "SingleValue") {
-    return profileObj["name"] || profileObj["id"];
+const getProfileDisplayedName = (profileInfo) => {
+  if (profileInfo.profileClass === "SingleValue") {
+    return profileInfo.profileObj.name || profileInfo.profileObj.id;
   } else {
-    return profileObj["columnName"];
+    return profileInfo.profileObj.columnName;
   }
+}
+
+const getProfileUnit = (profileInfo) => {
+  return profileInfo.profileObj.profileQuantityAndUnit.description;
 }
 
 const onSelectPortSegment = (portId) => {
@@ -271,9 +275,9 @@ const onEditRecord = (record) => {
   profileModalVisible.value = true;
 };
 
-const onDeleteRecord = async (recordId) => {
+const onDeleteRecord = async (record) => {
   const portId = activePortId.value;
-  const profileId = recordId;
+  const profileId = record.profileObj.id;
 
   // Remove profile from port
   window.remove_profile_from_port(portId, profileId);

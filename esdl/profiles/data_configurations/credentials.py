@@ -9,11 +9,12 @@ class Credentials:
     Use the static function create_dict() to create a compatible dict to be used in the DataTableProfileManager
     load() and save() methods for authentication
     """
+
     username: str
     password: str
 
     @staticmethod
-    def create_dict(id: str, username: str, password: str) -> dict[str, 'Credentials']:
+    def create_dict(id: str, username: str, password: str) -> dict[str, "Credentials"]:
         """
         Creates a new credential dict with a mapping from id -> Credential[Username, Password] which can be used directly
         in the load() and save() methods of the DataTableProfileManager class
@@ -26,4 +27,3 @@ class Credentials:
         d = dict()
         d[id] = Credentials(username, password)
         return d
-

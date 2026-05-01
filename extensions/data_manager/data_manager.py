@@ -202,6 +202,8 @@ def handle_profile(profile: esdl.InfluxDBProfile | esdl.DataTableProfile, ds: Da
     elif isinstance(container, esdl.CostInformation):
         # TODO?
         logger.warn("Profile with CostInformation as a container is not yet supported")
+    elif isinstance(container, esdl.ProfileConstraint):
+        logger.warn("Profile with ProfileConstraint as a container is not yet supported")
 
     d.labels = labels
     
@@ -464,10 +466,10 @@ class DataManager:
             elif isinstance(eobj, esdl.ProfileReference):
                 # handle reference too, as we need a reference to the asset
                 d, qau, variable_name = handle_static_profile(eobj, ds, variable_name)
-            elif isinstance(eobj, esdl.InfluxDBProfile):
-                is_profile_variable = True
-                d, qau, variable_name = handle_profile(eobj, ds)
-            elif isinstance(eobj, esdl.DataTableProfile):
+            elif isinstance(eobj, esdl.InfluxDBProfile) or isinstance(eobj, esdl.DataTableProfile):
+                # skip profileConstraint profiles handling
+                if isinstance(eobj.eContainer(), esdl.ProfileConstraint):
+                    continue
                 is_profile_variable = True
                 d, qau, variable_name = handle_profile(eobj, ds)
             elif isinstance(eobj, esdl.DoubleKPI):

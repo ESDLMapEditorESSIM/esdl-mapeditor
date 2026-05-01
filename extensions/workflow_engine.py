@@ -132,7 +132,7 @@ class WorkflowStep:
             queries_error_message = ""
             for query_config in config["query_list"]:
                 # update values with query response
-                queries_error_message += self.update_values_from_query(updated_values, query_config)
+                queries_error_message += self.do_query_and_update_values(updated_values, query_config)
 
             if queries_error_message:  # allow a number of errors (temporarily unavailable api)
                 nr_of_query_errors += 1
@@ -144,6 +144,10 @@ class WorkflowStep:
                     current_model_run_data = self.models_storage.get_model_run(self.sequence_data.run_id)
                     updated_values[LOGS] = f"{current_model_run_data.get(LOGS, '')}\n{queries_error_message}"
             elif STATUS not in updated_values or updated_values[STATUS] is None:
+                logger.error(
+                    f"Workflow engine sequence for user '{self.sequence_data.user_email}' terminated:"
+                    f" no status was returned/configured (model run '{self.sequence_data.run_id}')."
+                )
                 return False
             updated_values[LAST_UPDATED_TO_EXTERNAL_MODEL_AT] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -235,7 +239,7 @@ class WorkflowStep:
                 )
         return True
 
-    def update_values_from_query(self, updated_values: dict, query_config: dict) -> str:
+    def do_query_and_update_values(self, updated_values: dict, query_config: dict) -> str:
         url = parse_string_with_parameters(query_config["url"], self.sequence_data.as_dict())
         error_message = ""
         try:

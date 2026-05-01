@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import TypedDict, Literal, List, Optional
+from typing import TypedDict, Literal, Optional
 
 
 class ConstraintType(Enum):
@@ -7,21 +7,25 @@ class ConstraintType(Enum):
     RANGED = "RangedConstraint"
     PIPEDIAMETER = "PipeDiameterConstraint"
 
-class ProfileClass(Enum):
-    INFLUXDB = "InfluxDBProfile"
+
+class ProfileClassEnum(Enum):
+    """Supported profile classes for profile creation and update"""
+    SINGLEVALUE = "SingleValue"
+    INFLUXDBPROFILE = "InfluxDBProfile"
+    DATATABLEPROFILE = "DataTableProfile"
 
 
-class InfluxDBProfileMsg(TypedDict):
-    id: str
-    name: Optional[str]
-    displayed_name: str
-    profile_class: Literal[ProfileClass.INFLUXDB]
-    multiplier: float
-    qau_description: str
+class ProfileInfo(TypedDict):
+    profileClass: ProfileClassEnum
+    profileObj: dict
+    """
+    A dictionary contains profile data (with SingleValue or DataTableProfile-like structure)
+    for instantiating an ESDL profile, or is returned as a serialized profile for the frontend application.
+    """
 
 
 class ConstraintBase(TypedDict):
-    id: str
+    id: Optional[str]
     name: str
     description: Optional[str]
     attributeReference: Optional[str]
@@ -29,12 +33,12 @@ class ConstraintBase(TypedDict):
 
 class ProfileConstraintMsg(ConstraintBase):
     type: Literal[ConstraintType.PROFILE]
-    maximum: Optional[InfluxDBProfileMsg]
-    minimum: Optional[InfluxDBProfileMsg]
+    maximum: Optional[ProfileInfo]
+    minimum: Optional[ProfileInfo]
 
 
 class RangeMsg(TypedDict):
-    id: str
+    id: Optional[str]
     name: str
     min_value: Optional[float]
     mid_value: Optional[float]

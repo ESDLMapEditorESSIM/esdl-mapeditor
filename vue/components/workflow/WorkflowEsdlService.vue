@@ -106,7 +106,9 @@ const loadEsdl = () => {
   if (stepConfig && stepConfig["datetimes_convert_Z"]) {  // for i.e. essim
     for (const [key, value] of Object.entries(params["state_params"])) {
       if (!isNaN(new Date(value).getTime())) { // string is in datetime format
-        params["state_params"][key] = value.replace(".000Z", "+0100");
+        if (typeof value === "string") {
+          params["state_params"][key] = value.replace(".000Z", "+0100");
+        }
       }
     }
   }
@@ -128,7 +130,7 @@ const loadEsdl = () => {
       window.hide_loader();
     });
   } else {
-    window.socket.emit("command", {cmd: "query_esdl_service", params: params},() => {
+    window.socket.emit("command", {cmd: "query_esdl_service", params: params}, () => {
       if (stepParams.value.nextStep) {
         goToStep(stepParams.value.nextStep);
       }

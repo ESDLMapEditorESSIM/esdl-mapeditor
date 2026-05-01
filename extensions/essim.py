@@ -155,6 +155,12 @@ class ESSIM:
                                     edt = datetime.strptime(active_simulation['endDate'], '%Y-%m-%dT%H:%M:%S%z')
                                     influxdb_startdate = sdt.strftime('%Y-%m-%dT%H:%M:%SZ')
                                     influxdb_enddate = edt.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+                                    # if "kpiModule" in result:
+                                    #     if "modules" in result["kpiModule"]:
+                                    #         modules = result["kpiModule"]["modules"]
+                                    #         self.get_essim_kpi_results()
+                                    #
                                     self.essim_kpis.init_simulation(current_es, es_simid, influxdb_startdate,
                                                                     influxdb_enddate)
 
@@ -246,6 +252,39 @@ class ESSIM:
 
                 return json.dumps({'simulations': last_list, 'favorites': fav_list})
 
+        @self.socketio.on('essim_get_esdl_with_results', namespace='/esdl')
+        def essim_get_esdl_with_results(sim_id):
+            with self.flask_app.app_context():
+                esh = get_handler()
+
+                print('Querying ESSIM KPI for ESDL with results for sim_id: ' + sim_id)
+                if sim_id:
+                    ESSIM_config = settings.essim_config
+                    url = ESSIM_config['ESSIM_host'] + ESSIM_config['ESSIM_path'] + '/' + sim_id + '/ESDLWithProfiles'
+
+                    try:
+                        r = requests.get(url)
+                        if r.status_code == 200:
+                            result = json.loads(r.text)
+                            b64_esdlstr = result["esdl"]
+                            b64_esdlstr_bytes = b64_esdlstr.encode("utf-8")
+                            esdlstr_bytes = base64.b64decode(b64_esdlstr_bytes)
+                            esdlstr = esdlstr_bytes.decode("utf-8")
+
+                            filename = "ESSIM OUTPUT.esdl"
+                            es, parse_info = esh.add_from_string(filename, esdlstr,
+                                                                 overwrite_existing=False)
+
+                            self.executor.submit(process_energy_system, esh, 'ESSIM_result')  # run in separate thread
+                            set_session('active_es_id', es.id)
+                        else:
+                            send_alert('Error in getting the ESSIM KPI list')
+                            abort(r.status_code, 'Error in getting the ESSIM KPI list')
+                    except Exception as e:
+                        send_alert('Error accessing ESSIM API: ' + str(e))
+                        abort(500, 'Error accessing ESSIM API: ' + str(e))
+
+
         @self.flask_app.route('/essim_kpis')
         def essim_kpi_list():
             ESSIM_config = settings.essim_config
@@ -268,6 +307,7 @@ class ESSIM:
                             })
                             already_added_kpi_modules.append(kpi["calculator_id"])
 
+                    kpi_list.sort(key=lambda x: x["name"])
                     # store kpi_list in session, in order to look up name/descr in a later stage
                     set_session('kpi_list', kpi_list)
                     return json.dumps(kpi_list), 200
@@ -632,8 +672,8 @@ class ESSIM:
         kpi_list = get_session('kpi_list')  # contains id, name and description
 
         for kpi_result_item in kpi_result_array:
-            kpi_id = list(kpi_result_item.keys())[0]
-            kpi_result = kpi_result_item[kpi_id]
+            kpi_id = kpi_result_item['id']
+            kpi_result = kpi_result_item['result']
 
             kpi_info = dict()
             kpi_info['id'] = kpi_id
@@ -659,15 +699,18 @@ class ESSIM:
 
         simid = get_session('es_simid')
         active_es_id = get_session('active_es_id')
-        kpi_result_list = get_session('kpi_result_list')
+        # Disable storinge data for multiple simulation runs for now
+        # kpi_result_list = get_session('kpi_result_list')
+        #
+        # if kpi_result_list:
+        #     kpis_per_simid = kpi_result_list["kpis_per_simid"]
+        #     if active_es_id != kpi_result_list["es_id"]:  # if this is a simulation of a new energy system
+        #         kpis_per_simid = dict()  # start with an empty dict
+        #         kpi_result_list["es_id"] = active_es_id  # set the current es_id
+        #     kpis_per_simid[simid] = kpis_this_sim_run  # add the kpis of the last simulation run
+        # else:
 
-        if kpi_result_list:
-            kpis_per_simid = kpi_result_list["kpis_per_simid"]
-            if active_es_id != kpi_result_list["es_id"]:  # if this is a simulation of a new energy system
-                kpis_per_simid = dict()  # start with an empty dict
-                kpi_result_list["es_id"] = active_es_id  # set the current es_id
-            kpis_per_simid[simid] = kpis_this_sim_run  # add the kpis of the last simulation run
-        else:
+        if True:
             kpi_result_list = dict()  # first KPIs for the energy system
             kpi_result_list["es_id"] = active_es_id
             kpi_result_list["kpis_per_simid"] = dict()
@@ -729,8 +772,10 @@ class ESSIM:
 
         if kpi_list:
             kpi_info = {
-                'kpis_description': kpis_description,
-                'kpi_list': kpi_list
+                "ESSIM KPIs": {
+                    'kpis_description': kpis_description,
+                    'kpi_list': kpi_list
+                }
             }
 
             print("Emit kpi_list for visualization:")

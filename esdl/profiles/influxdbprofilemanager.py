@@ -35,9 +35,9 @@ class ConnectionSettings:
     """hostname of the InfluxDB server to connect to"""
     port: int
     """port to connect to"""
-    username: str
+    username: str | None
     """username of the user that has permission to access the database"""
-    password: str
+    password: str | None
     """password of the user"""
     database: str
     """database to connect to"""
@@ -76,8 +76,18 @@ class InfluxDBProfileManager(ProfileManager):
             verify_ssl=settings.verify_ssl
         )
 
-        if settings.database not in [db['name'] for db in self.influxdb_client.get_list_database()]:
-            self.influxdb_client.create_database(settings.database)
+        # Only create database if the user has rights to do so
+        try:
+            if settings.database not in [db['name'] for db in self.influxdb_client.get_list_database()]:
+                self.influxdb_client.create_database(settings.database)
+        except:
+            pass
+
+        # If the user cannot list the measurements, the database probably doesn't exist (or connection is wrong)
+        if not self.influxdb_client.get_list_measurements():
+            print (f"ERROR: user {settings.username} is not allowed to list the measurements for database "
+                   + f"{settings.database} on host {settings.host}")
+            return
 
         if source_profile:
             self.convert(source_profile)

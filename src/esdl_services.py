@@ -333,7 +333,7 @@ class ESDLServices:
                             body[param["parameter"]] = esdlstr
                         elif param["encoding"] == "url_encoded":
                             body[param["parameter"]] = urllib.parse.quote(esdlstr)
-                        elif param["encoding"] == "base64_encoded":
+                        elif param["encoding"] == "base64_encoded" or param["encoding"] == "base64":
                             esdlstr_bytes = esdlstr.encode("utf-8")
                             esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
                             body[param["parameter"]] = esdlstr_base64_bytes.decode("utf-8")
