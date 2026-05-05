@@ -51,7 +51,7 @@ logging.config.dictConfig(
             "default": {
                 "level": "DEBUG" if FLASK_DEBUG else "INFO",
                 "class": "logging.StreamHandler",
-                "formatter": "colored" if FLASK_DEBUG else "json",
+                "formatter": "colored",
             },
         },
         "loggers": {

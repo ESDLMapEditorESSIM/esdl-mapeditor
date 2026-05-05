@@ -360,6 +360,15 @@
                       @change="onSelectDisplayOptions"
                   />
                   <br>
+                  <a-row style="align-items: center; padding-top: 12px;">
+                    <a-typography-paragraph style="padding-left: 8px; margin-bottom: 0px;">Show single tooltip</a-typography-paragraph>
+                    <a-switch
+                      v-model:checked="showSingleTooltip"
+                      size="small"
+                      style="position: absolute; right: 0px"
+                      @change="onSelectDisplayOptions"
+                    />
+                  </a-row>
                   <a-row
                       v-if="!isProfileVariable || (isProfileVariable && profileVizTypeSelected === 'Aggregated')"
                       style="align-items: center; padding-top: 12px;"
@@ -597,6 +606,7 @@ const initOptions = {
   filterOptions: [],
   filterSelected: [],
   dataGrouping: 1,
+  showSingleTooltip: false,
   showBarNumbers: false,
   paletteSelected: colorPalettes[0]
 };
@@ -656,6 +666,7 @@ const groupbySelected = ref(appliedOptions.groupbySelected);
 const filterOptions = ref(appliedOptions.filterOptions);
 const filterSelected = ref(appliedOptions.filterSelected);
 const dataGrouping = ref(appliedOptions.dataGrouping);
+const showSingleTooltip = ref(appliedOptions.showSingleTooltip);
 const showBarNumbers = ref(appliedOptions.showBarNumbers);
 const paletteSelected = ref(appliedOptions.paletteSelected);
 
@@ -688,6 +699,7 @@ const getOptions = () => {
     filterOptions: filterOptions.value,
     filterSelected: filterSelected.value,
     dataGrouping: dataGrouping.value,
+    showSingleTooltip: showSingleTooltip.value,
     showBarNumbers: showBarNumbers.value,
     paletteSelected: paletteSelected.value
   };
@@ -1136,6 +1148,7 @@ const resetMenuToDefault = () => {
   profileAggIntervalSelected.value = initOptions.profileAggIntervalSelected;
   profileIntervalAggFuncSelected.value = initOptions.profileIntervalAggFuncSelected;
   dataGrouping.value = initOptions.dataGrouping;
+  showSingleTooltip.value = initOptions.showSingleTooltip;
   showBarNumbers.value = initOptions.showBarNumbers;
   paletteSelected.value = initOptions.paletteSelected;
 }
@@ -1419,7 +1432,7 @@ const disabledDate = (current) => {
   const profileLayout = {
     title: variableSelected.value,
     xaxis: { automargin: true },
-    hovermode: 'x unified',
+    hovermode: showSingleTooltip.value ? 'closest' : 'x unified',
     hoversubplots: 'axis',
     legend: { groupclick: 'toggleitem' },
     grid: grid,
@@ -1474,7 +1487,7 @@ const barChartTraceHandler = (traces) => {
       exponentformat: "SI", // see https://github.com/plotly/plotly.py/issues/4787 for values larger than Giga...
       //ticksuffix: variableOptions.value[variableSelected.value].unit,
     },
-    hovermode: 'x unified',
+    hovermode: showSingleTooltip.value ? 'closest' : 'x unified',
     barmode: [1, 2].includes(dataGrouping.value) ? 'stack' : 'group',
     barnorm: dataGrouping.value === 2 ? 'percent' : '',
     showlegend: true,

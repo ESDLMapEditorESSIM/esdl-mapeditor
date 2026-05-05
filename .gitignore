@@ -72,6 +72,8 @@ data_manager.db
 
 # Editors
 .idea/
+.vscode/
+%LOCALAPPDATA%
 
 *.xmi
 *.esdl
