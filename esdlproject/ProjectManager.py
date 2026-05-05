@@ -17,6 +17,7 @@ from esdl.resources.project_resource import ProjectResource
 from esdl.resources.xmlresource import XMLResource, ProjectManagerResourceType
 from esdl.undo import ChangeTracker, Tracker, UndoRedoCommandStack, ChangeContext
 from esdlproject import ESDLProject, HighLevelChange, Variant, VariantCollection, AbstractChange
+from esdlproject.MergeConflictHandler import MergeConflictHandler
 from esdlproject.change_handler import applyChange
 from esdlproject.variant_api import get_parent_variant, get_variant_path_list
 from utils.utils import timed, timed_context
@@ -125,6 +126,9 @@ class ProjectManager:
     # Dict for all variant collections, key is the variant collection id. We need this because we juggle with the
     # energysystemRef while saving, which leads to race conditions.
     variant_collection_resources: dict[str, XMLResource]
+    # conflict handler for merge conflicts
+    conflict_handler: MergeConflictHandler
+
 
     lock: threading.Lock
     # needed to deal with race conditions when saving a project and saving a esdl at the same time
@@ -146,7 +150,8 @@ class ProjectManager:
         self.active_variant_lock = threading.Lock()
         self.save_resource_lock = threading.Lock()
         self.rset = self.__create_resource_set()
-        self.change_tracker = ChangeTracker(change_handler=self.change_handler)
+        self.conflict_handler = MergeConflictHandler()
+        self.change_tracker = ChangeTracker(change_handler=self.change_handler, conflict_handler=self.conflict_handler)
 
         if uri:
             self.load(uri)
@@ -520,6 +525,7 @@ class ProjectManager:
         es = self.get_or_create_variant_snapshot(target_variant)
         resource = es.eResource
         tracker = self.change_tracker.get_tracker(resource=resource)
+        self.conflict_handler.clear()  # needed because the conflict handler is used
         if tracker is None:
             tracker = self.change_tracker.new_tracker(target_variant, eobj=es, resource=resource)
         for high_level_change in change_list:
@@ -529,12 +535,13 @@ class ProjectManager:
                 try:
                     logger.debug(f"Apply variant change: High level change {high_level_change.label}")
                     for change in high_level_change.change:
-                        applyChange(change, resource)
+                        applyChange(change, resource, target_variant, self.conflict_handler)
                 finally:
                     if record_changes:
                         tracker.stack.stop_recording()
             else:
                 logger.warn(f"Fixme: ignoring DetailedChanges at this level")
+        self.conflict_handler.clear()  # needed because the conflict handler is used
 
     # def apply_variant_changes(self, variant: Variant, es: esdl.EnergySystem, record_changes: bool):
     #     """
@@ -659,7 +666,6 @@ class ProjectManager:
             snapshot.name = variant.name  # overwrite name of ES to match the variant name
             # TODO: Should we keep these the same? ID's should probably be unique
             snapshot.id = variant.id  # str(uuid4())  # generate a new energy system id for this variant
-
             #snapshot_resource.uuid_dict = dict(es.eResource.uuid_dict) # copy uuid_dict to speed up lookups by id
             #update_uuid_dict(snapshot_resource.contents[0])
             snapshot_resource.uuid_dict[snapshot.id] = snapshot

@@ -25,7 +25,7 @@ from esdl.processing.ESDLEnergySystem import get_es_visualization_options
 from esdl.processing.string_uri import StringURI
 from esdlproject import ESDLProject
 from esdlproject.variant_api import create_new_variant
-from extensions.session_manager import get_project_manager, set_session, del_session
+from extensions.session_manager import get_project_manager, set_session, del_session, get_session
 from src.app import executor, socketio
 from src.process_es_area_bld import process_energy_system
 from src.tno.live_model_interface.api import send_project_manager_to_lmi_async, send_delete_variant_message_to_lmi
@@ -237,7 +237,7 @@ def rename_variant(message: RenameVariantRequest):
             year = match.group(1)
             if variant.snapshotRef:
                 instance = variant.snapshotRef.instance[0]
-                instance.date = esdl.InstanceYear(year=year)
+                instance.date = esdl.InstanceYear(year=int(year))
 
     if variant.snapshotRef:
         # don't track this change as when changing a parent variant name, this variant name will also change...
@@ -248,11 +248,24 @@ def rename_variant(message: RenameVariantRequest):
 class FlattenVariantRequest(TypedDict):
     id: str
 
+class RefreshVariantRequest(TypedDict):
+    id: str
 
 @socketio.on('flatten_variant', namespace='/esdl')
 def flatten_variant(message: FlattenVariantRequest):
     pm = get_project_manager()
     variant = pm.get_variant_by_id(message["id"])
     flattened_variant = pm.flatten_variant(variant)
+    emit_active_esdl_project()
+    send_project_manager_to_lmi_async(only_send_for_client_id=session['client_id'])
+
+@socketio.on('refresh_variant', namespace='/esdl')
+def refresh_variant(message: RefreshVariantRequest):
+    pm = get_project_manager()
+    variant = pm.get_variant_by_id(message["id"])
+    es_info_list = get_session("es_info_list")
+    del es_info_list[pm.get_energy_system(variant).id]
+    pm.remove_variant_snapshot(variant)
+    pm.set_active_variant(variant)
     emit_active_esdl_project()
     send_project_manager_to_lmi_async(only_send_for_client_id=session['client_id'])

@@ -92,7 +92,7 @@ def on_high_level_change(message: HighLevelChangeMessage):
     context = ChangeContext(source=ChangeSource.EXTERNAL, client_id=client_id, resource=es.eResource, flask_app=LOCAL_APP)
     with tracker.stack.track_changes(label=hlc.label, change_context=context):
         for change in hlc.change:
-            applyChange(change, es.eResource)
+            applyChange(change, es.eResource, variant, pm.conflict_handler)
     #lock.release()
     #logger.info(f"Lock released by {current_thread()}")
 

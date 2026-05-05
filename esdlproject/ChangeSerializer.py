@@ -102,13 +102,15 @@ def filterDoubleConnectedTo(change_list: List[DetailedChange]) -> (List[Detailed
     for i, (index, change) in enumerate(connected_to_list):
         for j, (jndex, change2) in enumerate(connected_to_list[i+1:]):
             #k = i+1+j
-            if change.ownerFragment == change2.objectFragment and change2.ownerFragment == change.objectFragment:
+            if change.ownerFragment == change2.objectFragment and change2.ownerFragment == change.objectFragment and \
+                change.eClass.name == change2.eClass.name:
                 # change2 is double
                 #print(f'DoubleConnectedTo: {i} remove {j}: {change2.ownerFragment} <-> {change2.objectFragment}')
                 connected_to_list.remove((jndex, change2))
                 doubles.append(change2)
                 return_list.remove(change2)
-            elif change.ownerFragment == change2.ownerFragment and change2.objectFragment == change.objectFragment:
+            elif change.ownerFragment == change2.ownerFragment and change2.objectFragment == change.objectFragment and \
+                change.eClass.name == change2.eClass.name:
                 #print(f'DoubleConnectedTo: {i} remove {j} {change2.ownerFragment} <-> {change2.objectFragment}')
                 connected_to_list.remove((jndex, change2))
                 doubles.append(change2)

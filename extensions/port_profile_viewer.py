@@ -12,22 +12,20 @@
 #  Manager:
 #      TNO
 
-from flask import Flask
-from flask_socketio import SocketIO, emit
-
-from esdl.units.parser import qau_to_string
-
 from dataclasses import dataclass
 from typing import List
 
+from flask import Flask
+from flask_socketio import SocketIO, emit
+
+import src.log as log
 from esdl import esdl
+from esdl.units.parser import qau_to_string, unit_to_string
 # TODO: phase out panel service
 from extensions.panel_service import get_panel_service_datasource, create_panel_multiple
-from extensions.settings_storage import SettingsStorage
-from extensions.session_manager import get_project_manager, get_session
-from src.esdl_helper import get_port_profile_info
 from extensions.profiles import Profiles, ProfileTracesRequest, ProfileVizOptions, EmptyProfileWarning
-import src.log as log
+from extensions.session_manager import get_project_manager, get_session
+from extensions.settings_storage import SettingsStorage
 
 logger = log.get_logger(__name__)
 
@@ -413,7 +411,8 @@ def _get_profile_metadata(es_id: str, profile_id: str) -> dict:
     if qau and isinstance(qau, esdl.QuantityAndUnitReference):
         qau = qau.reference
     if qau:
-        qau_description = qau.description if qau.description else qau_to_string(qau)
+        #qau_description = qau.description if qau.description else qau_to_string(qau)
+        qau_description = qau_to_string(qau)
 
     meta_parts = [] 
     if port_name is not None:
@@ -430,9 +429,10 @@ def _get_profile_metadata(es_id: str, profile_id: str) -> dict:
     elif isinstance(profile, esdl.InfluxDBProfile):
         profile_name = profile.field
     else:
-        profile_name = "Unknown"
-    qau_unit = qau_description.split(" ")[-1]
+        profile_name = profile.name or "Unknown"
+    qau_unit = unit_to_string(qau)  #qau_description.split(" ")[-1]
     displayed_name = f"{profile_name} [{qau_unit}]{meta_suffix}"
+    print(displayed_name)
 
     return {
         "displayed_name": displayed_name,

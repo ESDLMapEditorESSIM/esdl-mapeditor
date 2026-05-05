@@ -498,8 +498,7 @@
 </template>
 
 <script setup>
-import {notification} from 'ant-design-vue';
-import { computed, defineProps, ref, h, onMounted, onUnmounted } from 'vue';
+import {computed, defineProps, h, onMounted, onUnmounted, ref} from 'vue';
 import {
   BarChartOutlined,
   DeleteOutlined,
@@ -511,13 +510,13 @@ import {
   MenuUnfoldOutlined,
   SaveOutlined,
   SyncOutlined,
-  UploadOutlined,
-	TableOutlined }
-from "@ant-design/icons-vue";
+  TableOutlined,
+  UploadOutlined
+} from "@ant-design/icons-vue";
 import AnalyticsPlot from '@/components/plot/AnalyticsPlot.vue';
-import { fetchData } from '@/utils/api';
-import { config, normalizePlotlyDateTimeStr } from '@/utils/profileVisualization';
-import { displayNotification } from '@/utils/notification';
+import {fetchData} from '@/utils/api';
+import {config, normalizePlotlyDateTimeStr} from '@/utils/profileVisualization';
+import {displayNotification} from '@/utils/notification';
 import dayjs from 'dayjs';
 import minMax from 'dayjs/plugin/minMax';
 import VueJsTree from '@/components/jstree/VueJsTree.vue';
@@ -1190,6 +1189,7 @@ const updateVariables = async() => {
       const options = {};
       variables.forEach((v) => {
         if (!Object.keys(options).includes(v.name)) {
+          // todo: distinguish between SINGLE value and PROFILE datatypes
           options[v.name] = {
             value: v.name,
             label: v.label,

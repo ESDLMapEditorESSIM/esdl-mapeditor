@@ -28,6 +28,21 @@ def esdl_attr_to_dict(esdl_object):
             d[attr] = attr_value
     return d
 
+def attr_string(e: EObject):
+    cls: EClass = e.eClass
+    s = []
+    for f in cls.eAllStructuralFeatures():
+        if e.eIsSet(f):
+            if isinstance(f, EAttribute):
+                s.append(f'{f.name}="{e.eGet(f)}"')
+            else:
+                v = e.eGet(f)
+                content = "[content]"
+                if isinstance(v, EObject):
+                    content = f'<{v.eClass.name} {"name=" + v.name + "" if hasattr(v, "name") and v.name is not None else ""}>'
+                s.append(f'{f.name}={content}')
+    return ', '.join(s)
+
 
 def patch_esdl():
     """
@@ -65,25 +80,13 @@ def patch_esdl():
     esdl.Port.__repr__ = \
         lambda x: f'<{x.eClass.name}[{x.name}] of {x.eContainer().name if x.eContainer() else None}, id="{x.id}">'
     esdl.Area.__repr__ = \
-        lambda x: f'<{x.eClass.name}[{x.name}] of {x.eContainer().name if x.eContainer() else None}, id="{x.id}">'
+        lambda x: f'<{x.eClass.name}[{x.name}] of {x.eContainer().name if x.eContainer() and hasattr(x.eContainer(), "name") else None}, id="{x.id}">'
 
     esdlproject.DetailedChange.__repr__ = \
         lambda x: f'<{x.eClass.name} {attr_string(x)}>'
         #lambda x: f'<{x.eClass.name} ownerFragment="{x.ownerFragment}", feature="{x.feature}", stringValue="{x.stringValue}", previousValue="{x.previousValue}", objectFragment="{x.objectFragment}">'
     esdlproject.HighLevelChange.__repr__ = \
         lambda x: f'<{x.eClass.name} label="{x.label}", len(change)={len(x.change)}>'
+    esdlproject.Variant.__repr__ = \
+        lambda x: f'<{x.eClass.name} name="{x.name}">'
 
-    def attr_string(e: EObject):
-        cls: EClass = e.eClass
-        s = []
-        for f in cls.eAllStructuralFeatures():
-            if e.eIsSet(f):
-                if isinstance(f, EAttribute):
-                    s.append(f'{f.name}="{e.eGet(f)}"')
-                else:
-                    v = e.eGet(f)
-                    content = "[content]"
-                    if isinstance(v, EObject):
-                        content = f'<{v.eClass.name} {"name=" + v.name + "" if hasattr(v, "name") and v.name is not None else ""}>'
-                    s.append(f'{f.name}={content}')
-        return ', '.join(s)

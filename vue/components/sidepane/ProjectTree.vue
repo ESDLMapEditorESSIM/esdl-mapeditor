@@ -60,11 +60,11 @@ TODO:
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
-import { CaretDownFilled } from '@ant-design/icons-vue';
-import { useESDLProjects } from '@/composables/esdlProjects';
-import { useEsdlLayers } from '@/composables/esdlLayers';
-import { useSocketIO } from "@/composables/socketio";
+import {computed, onMounted, ref, watch} from 'vue';
+import {CaretDownFilled} from '@ant-design/icons-vue';
+import {useESDLProjects} from '@/composables/esdlProjects';
+import {useEsdlLayers} from '@/composables/esdlLayers';
+import {useSocketIO} from "@/composables/socketio";
 
 // Composables
 const { esdlProject, getESDLProject, activeVariant, setActiveVariant, getAllVariants } = useESDLProjects();
@@ -95,6 +95,7 @@ const contextMenuItems = computed(() => {
       { key: 'rename', icon: 'fas fa-edit', label: 'Rename variant' },
       { key: 'delete', icon: 'fas fa-trash', label: 'Remove variant' },
       { key: 'flatten', icon: 'fas fa-layer-group', label: 'Flatten variant' },
+      { key: 'refresh', icon: 'fas fa-sync', label: 'Refresh variant' },
     ];
   } else if (dataType === 'project') {
     return [
@@ -293,6 +294,8 @@ function onContextMenuClick({ key }) {
     removeVariant(node.variant);
   } else if (key === 'flatten') {
     flattenVariant(node.variant);
+  } else if (key === 'refresh') {
+    refreshVariant(node.variant);
   }
 
   contextMenu.value.open = false;
@@ -349,6 +352,13 @@ function flattenVariant(variant) {
   // TODO
   const msg = {id: variant.id};
   socket.value.emit("flatten_variant", msg);
+}
+
+function refreshVariant(variant) {
+  console.debug(`Refresh variant ${variant.id}`);
+  // TODO
+  const msg = {id: variant.id};
+  socket.value.emit("refresh_variant", msg);
 }
 </script>
 
