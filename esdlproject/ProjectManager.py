@@ -525,6 +525,7 @@ class ProjectManager:
         es = self.get_or_create_variant_snapshot(target_variant)
         resource = es.eResource
         tracker = self.change_tracker.get_tracker(resource=resource)
+        self.conflict_handler.clear()  # needed because the conflict handler is used
         if tracker is None:
             tracker = self.change_tracker.new_tracker(target_variant, eobj=es, resource=resource)
         for high_level_change in change_list:
@@ -540,6 +541,7 @@ class ProjectManager:
                         tracker.stack.stop_recording()
             else:
                 logger.warn(f"Fixme: ignoring DetailedChanges at this level")
+        self.conflict_handler.clear()  # needed because the conflict handler is used
 
     # def apply_variant_changes(self, variant: Variant, es: esdl.EnergySystem, record_changes: bool):
     #     """

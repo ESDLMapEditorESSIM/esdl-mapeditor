@@ -47,12 +47,12 @@ def applyChange(change: DetailedChange, resource: XMLResource, target_variant: V
     if merge_conflict_handler:
         #f = pformat(merge_conflict_handler.resolutions)
         #logger.debug(f"Resolutions: {merge_conflict_handler.resolutions}")
-        conflict_resolution = merge_conflict_handler.get_resolution_for_change(target_variant, change)
-        if conflict_resolution:
-            logger.debug(f" \\- Found conflict resolution for {change} in {target_variant.name}: {conflict_resolution}")
+        conflict_resolutions = merge_conflict_handler.get_resolutions_for_change(target_variant, change)
+        if conflict_resolutions:
+            logger.debug(f" \\- Found conflict resolution(s) for {change} in {target_variant.name}: {conflict_resolutions}")
             # following statement removes eContainer() reference (as it is a copy of the original)
             # therefore use original_change_container
-            change = merge_conflict_handler.apply(target_variant, change, conflict_resolution)
+            change = merge_conflict_handler.apply(target_variant, change, conflict_resolutions)
 
     if isinstance(change, Set):
         if change.objectValue is not None:
@@ -64,6 +64,8 @@ def applyChange(change: DetailedChange, resource: XMLResource, target_variant: V
             feature: EStructuralFeature = owner.eClass.findEStructuralFeature(change.feature)
             if isinstance(feature, EAttribute):
                 owner.eSet(change.feature, feature.eType.from_string(change.stringValue))
+            elif feature is None:
+                logger.warning(f"Missing feature {change.feature} for Set of owner {owner}, ignoring")
             else:  # eReference and not many
                 if change.stringValue == "":
                     owner.eSet(change.feature, None)

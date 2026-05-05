@@ -74,6 +74,32 @@ class ProjectManagerMergeTests(unittest.TestCase):
         # Note: changes are applied by date order, therefore PVPark comes first in V2023, and not the
         # split_conductor result.
         pm.set_active_variant(v2030)
+        es = pm.get_active_energy_system()
+        for asset in es.instance[0].area.asset:
+            print(f"{asset}:")
+            for port in asset.port:
+                print(f"-- {port} connectedTo:  {port.connectedTo}")
+                print(f"-- {port.eURIFragment()} connectedTo:  {[p.eURIFragment() for p in port.connectedTo]}")
+                # for op in port.connectedTo:
+                #     print(f"==== {op} ({op.energyasset})")
+
+        # validate connections
+        # Pipe1_a - OutPort -connectedTo-> InPort - Joint - OutPort -connectedTo-> Pipe1_b
+        assets = es.instance[0].area.asset
+        self.assertEqual(len(assets), 4)
+        self.assertEqual(assets[0].eClass.name, "PVPark")
+        self.assertEqual(assets[1].name, "Pipe1_a")
+        self.assertEqual(assets[2].name, "Pipe1_b")
+        self.assertEqual(assets[3].eClass.name, "Joint")
+        self.assertEqual(len(assets[1].port[0].connectedTo), 0)
+        self.assertEqual(len(assets[1].port[1].connectedTo), 1)
+        self.assertEqual(len(assets[2].port[0].connectedTo), 1)
+        self.assertEqual(len(assets[2].port[1].connectedTo), 0)
+        self.assertEqual(len(assets[3].port[0].connectedTo), 1)
+        self.assertEqual(len(assets[3].port[1].connectedTo), 1)
+        self.assertEqual(assets[3].port[1].connectedTo[0], assets[2].port[0])
+        self.assertEqual(assets[3].port[0].connectedTo[0], assets[1].port[1])
+
 
 
 

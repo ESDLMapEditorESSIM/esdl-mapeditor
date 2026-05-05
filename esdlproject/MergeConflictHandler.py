@@ -32,6 +32,7 @@
 #  Manager:
 #      TNO
 from datetime import datetime
+from typing import List
 from weakref import WeakKeyDictionary
 
 from esdlproject import Variant, DetailedChange, AbstractChange, HighLevelChange
@@ -73,8 +74,8 @@ class MergeConflictHandler:
             #self.resolutions[variant]: WeakKeyDictionary[DetailedChange, ConflictResolution] = WeakKeyDictionary()
             self.resolutions[variant]: dict[DetailedChange, list[ConflictResolution]] = dict()
         logger.debug("Adding resolution for change", variant=variant, change=change, resolution=resolution)
-        if change in self.resolutions[variant]:
-            logger.warning("Resolution already exists for change", change=change)
+        #if change in self.resolutions[variant]:
+        #    logger.warning("Resolution already exists for change", change=change)
         if change not in self.resolutions[variant]:
             self.resolutions[variant][change] = list()
         self.resolutions[variant][change].append(resolution)
@@ -82,20 +83,9 @@ class MergeConflictHandler:
     def get_resolution(self, variant) -> WeakKeyDictionary[DetailedChange, ConflictResolution] | None:
         return self.resolutions.get(variant, None)
 
-    def get_resolution_for_change(self, variant:Variant, change:DetailedChange) -> ConflictResolution | None:
+    def get_resolutions_for_change(self, variant:Variant, change:DetailedChange) -> List[ConflictResolution] | None:
         if self.resolutions.get(variant, None):
-            res_list = self.resolutions[variant].get(change, None)
-            if not res_list or len(res_list) == 0:
-                return None
-            elif len(res_list) == 1:
-                return res_list[0]
-            else:
-                logger.info(f"Merging resolutions: {res_list}")
-                uri = res_list[0].merged_uri
-                for r in res_list:
-                    if uri == r.original_uri:
-                        uri = r.merged_uri
-                return ConflictResolution(original_uri=res_list[0].original_uri, merged_uri=uri, apply_from=res_list[0].apply_from)  # for now
+            return self.resolutions[variant].get(change, None)
         return None
 
     def clear_resolutions(self, variant: Variant):
@@ -122,7 +112,7 @@ class MergeConflictHandler:
     #         # No resolution found, return the original change
     #         return change
 
-    def apply(self, variant: Variant, change: DetailedChange, merge_conflict: ConflictResolution) -> DetailedChange:
+    def apply(self, variant: Variant, change: DetailedChange, conflict_resolutions: ConflictResolution | List[ConflictResolution]) -> DetailedChange:
         """
         Applies the conflict resolution to a change by updating its URI fragment.
         And deletes the change from the resolution list if it exists.
@@ -130,7 +120,7 @@ class MergeConflictHandler:
         ----------
         variant
         change
-        merge_conflict
+        conflict_resolutions
 
         Returns
         -------
@@ -141,8 +131,15 @@ class MergeConflictHandler:
         if self.resolutions.get(variant, None) and change in self.resolutions[variant]:
             del self.resolutions[variant][change]
         new_change = change.deepcopy()
-        logger.debug(" \\- Applying conflict resolution for change", change=change, merge_conflict=merge_conflict)
-        update_change_uri_fragment(new_change, merge_conflict.original_uri, merge_conflict.merged_uri)
+        logger.debug(" \\- Applying conflict resolution for change", change=change, merge_conflict=conflict_resolutions)
+        if isinstance(conflict_resolutions, List):
+            # reverse the list to make sure asset.0 -> asset.1 and asset.2 -> asset.3 are not updated to
+            # asset.0 -> asset.3 as that is wrong. If we reverse it, the individual resolutions are applied correctly.
+            for conflict_res in reversed(conflict_resolutions):
+                update_change_uri_fragment(new_change, conflict_res.original_uri, conflict_res.merged_uri)
+        else:
+            conflict_res = conflict_resolutions
+            update_change_uri_fragment(new_change, conflict_res.original_uri, conflict_res.merged_uri)
         return new_change
 
     def is_affected(self, change: DetailedChange, resolution: ConflictResolution) -> bool:
