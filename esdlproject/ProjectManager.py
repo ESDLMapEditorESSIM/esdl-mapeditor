@@ -17,6 +17,7 @@ from esdl.resources.project_resource import ProjectResource
 from esdl.resources.xmlresource import XMLResource, ProjectManagerResourceType
 from esdl.undo import ChangeTracker, Tracker, UndoRedoCommandStack, ChangeContext
 from esdlproject import ESDLProject, HighLevelChange, Variant, VariantCollection, AbstractChange
+from esdlproject.IgnoredChanges import ignored_change
 from esdlproject.MergeConflictHandler import MergeConflictHandler
 from esdlproject.change_handler import applyChange
 from esdlproject.variant_api import get_parent_variant, get_variant_path_list
@@ -535,7 +536,14 @@ class ProjectManager:
                 try:
                     logger.debug(f"Apply variant change: High level change {high_level_change.label}")
                     for change in high_level_change.change:
-                        applyChange(change, resource, target_variant, self.conflict_handler)
+                        if high_level_change.eContainer() != target_variant:
+                            # source of change is not target_variant: some changes will be ignored (e.g. setting of instanceyear)
+                            if not ignored_change(change):
+                                applyChange(change, resource, target_variant, self.conflict_handler)
+                            else:
+                                logger.debug(f"Ignoring change {change.eClass.name}, because it is in the ignore list")
+                        else:
+                            applyChange(change, resource, target_variant, self.conflict_handler)
                 finally:
                     if record_changes:
                         tracker.stack.stop_recording()
