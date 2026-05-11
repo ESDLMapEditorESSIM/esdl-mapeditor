@@ -17,7 +17,7 @@ Support functions for managing EObjects
 """
 import logging
 from functools import lru_cache
-from typing import Dict
+from typing import Dict, List
 
 from pyecore.ecore import EAttribute, EObject, EClass, EReference, EStructuralFeature
 from pyecore.innerutils import InternalSet
@@ -25,6 +25,37 @@ from pyecore.valuecontainer import ECollection
 
 logger = logging.getLogger(__name__)
 
+
+def EClass_eAllStructuralFeatures_gen(self):
+    if self._feature_cache:
+        return self._feature_cache
+    else:
+        s = list(self.eStructuralFeatures)
+        # yield from self.eStructuralFeatures
+        for parent in self.eSuperTypes:
+        #     yield from parent._eAllStructuralFeatures_gen()
+            s.extend(parent._eAllStructuralFeatures_gen())
+        for parent in self.eGenericSuperTypes:
+        #     yield from parent.eClassifier._eAllStructuralFeatures_gen()
+            s.extend(parent.eClassifier._eAllStructuralFeatures_gen())
+        self._feature_cache = s
+        return s
+
+# Enable the two options below for an even more speed up for deepcopy(), although not tested extensively.
+#EClass._feature_cache = []
+#EClass._eAllStructuralFeatures_gen = EClass_eAllStructuralFeatures_gen
+
+@lru_cache(maxsize=None)
+def get_all_structural_features_for_class(eclass: EClass) -> List[EStructuralFeature]:
+    return eclass.eAllStructuralFeatures()
+
+@lru_cache(maxsize=None)
+def get_all_attributes_for_class(eclass: EClass) -> List[EAttribute]:
+    return eclass.eAllAttributes()
+
+@lru_cache(maxsize=None)
+def get_all_references_for_class(eclass: EClass) -> List[EReference]:
+    return eclass.eAllReferences()
 
 # add support for shallow copying or cloning an object
 # it copies the object's attributes (e.g. clone an object), does only shallow copying
@@ -38,9 +69,8 @@ def clone(self):
     """
     newone = type(self)()
     eclass = self.eClass
-    for x in eclass.eAllStructuralFeatures():
-        if isinstance(x, EAttribute):
-            #logger.trace("clone: processing attribute {}".format(x.name))
+    for x in get_all_attributes_for_class(eclass):
+        if self.eIsSet(x):
             if x.many:
                 eOrderedSet = newone.eGet(x.name)
                 for v in self.eGet(x.name):
@@ -49,9 +79,7 @@ def clone(self):
                 newone.eSet(x.name, self.eGet(x.name))
     return newone
 
-@lru_cache(maxsize=None)
-def get_features_for_class(eclass: EClass):
-    return eclass.eAllStructuralFeatures()
+
 
 
 def deepcopy(self, memo=None, uuid_dict: Dict[str, EObject]=None ) -> EObject:
@@ -76,11 +104,11 @@ def deepcopy(self, memo=None, uuid_dict: Dict[str, EObject]=None ) -> EObject:
     memo[self] = copy
 
     eclass: EClass = self.eClass
-    features = get_features_for_class(eclass)
+    features = get_all_references_for_class(eclass)
     for x in features:
-        if isinstance(x, EReference):
+        if self.eIsSet(x):
             ref: EReference = x
-            value: EStructuralFeature = self.eGet(ref)
+            value = self.eGet(ref)
             if value is None:
                 continue
             if ref.containment:
