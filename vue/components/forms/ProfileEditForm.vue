@@ -1,6 +1,6 @@
 <template>
   <a-modal
-    :open="props.visible"
+    :open="props.visible && props.profileInfo?.profileClass !== 'TimeSeriesProfile'"
     :title="`Profile Editor${props.profileTag ? ` - ${props.profileTag}` : ''}`"
     width="50%"
     @cancel="onCancel"
@@ -279,7 +279,9 @@ const formModeEnum = Object.freeze({
 const profileClassEnum = Object.freeze({
   SINGLEVALUE: "SingleValue",
   INFLUXDBPROFILE: "InfluxDBProfile",
-  DATATABLEPROFILE: "DataTableProfile"
+  DATATABLEPROFILE: "DataTableProfile",
+  // TimeSeriesProfile is NOT fully supported yet
+  // TIMESERIESPROFILE: "TimeSeriesProfile"
 })
 
 const profileClassOptions = Object.entries(profileClassEnum).map(([_, label]) => ({
@@ -418,8 +420,7 @@ onMounted(async () => {
 watch(
   () => props.visible,
   () => {
-    formMode.value = formModeEnum.CREATE;
-    initForm(profileClassEnum.INFLUXDBPROFILE)
+    resetForm();
 
     if (props.visible && props.profileInfo) {
       // profile id is assigned when the profile is instantiated in the backend.
@@ -443,10 +444,22 @@ const initializeProfileEditing = (profileInfo) => {
   profileForm.profileClass = profileInfo.profileClass;
   if (profileInfo.profileClass === profileClassEnum.SINGLEVALUE) {
     castSingleValueObjToFormData(profileInfo.profileObj);
-  } else {
+  } 
+  else if (profileInfo.profileClass === "TimeSeriesProfile") {
+    displayNotification("warning", "Editing of TimeSeriesProfile is not supported in the Port Profile Editor yet.");
+    resetForm();
+    return;
+  }
+  else {
     castProfileObjToFormData(profileInfo.profileObj);
     updateTrace();
   }
+}
+
+// Reset the form to the initial state.
+const resetForm = () => {
+  formMode.value = formModeEnum.CREATE;
+  initForm(profileClassEnum.INFLUXDBPROFILE);
 }
 
 /**
@@ -498,7 +511,11 @@ const castProfileObjToFormData = (profileObj) => {
  * @param {Object} profileQaUObj 
  */
 const castProfileQaUToFormData = (profileQaUObj) => {
-  const isPredefQaU = predefinedQaUOptions.value.find(opt => opt.label === profileQaUObj.description);
+  if (profileQaUObj == null) {
+    return;
+  }
+  
+  const isPredefQaU = predefinedQaUOptions.value.find(opt => opt.label === profileQaUObj?.description);
   if (isPredefQaU) {
     profileForm.qauType = QaUType.PREDEFINED;
     profileForm.qau = profileQaUObj.description;

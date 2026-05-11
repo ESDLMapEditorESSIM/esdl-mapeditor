@@ -196,17 +196,25 @@ const listProfileOptions = async (esId, selectedAssetIds) => {
           children: port.port_profiles.map((p) => {
             const profileClass = p.profileClass;
             const profileObj = p.profileObj;
-            if (profileClass === "InfluxDBProfile" || profileClass === "DataTableProfile") {
-              const profileDisplayedName = `${profileObj.columnName} [${profileObj.profileQuantityAndUnit?.description?.split(" ").at(-1) ?? "Unknown"}]`;
+            if (profileClass === "InfluxDBProfile" || profileClass === "DataTableProfile" || profileClass === "TimeSeriesProfile") {
+              const profileDisplayedName = `${profileObj.columnName || "Undefined"} [${profileObj.profileQuantityAndUnit?.description?.split(" ").at(-1) ?? "Undefined"}]`;
+
+              if (profileClass === "TimeSeriesProfile") {
+                displayNotification(
+                  "warning",
+                  `Profile downsampling is not supported for ${profileClass} profile ${profileDisplayedName}.`
+                );
+              }
+              
               return {
                 title: profileDisplayedName,
                 value: profileObj.id,
                 checkable: true,
               }
             }
-            // SingleValue profile
+            // Unsupported profile for visualization, e.g. SingleValue profile
             else {
-              const profileDisplayedName = `${profileObj.name || profileObj.id} [${profileObj.profileQuantityAndUnit?.description?.split(" ").at(-1) ?? "Unknown"}]`;
+              const profileDisplayedName = `${profileObj.name || profileObj.id} [${profileObj.profileQuantityAndUnit?.description?.split(" ").at(-1) ?? "Undefined"}]`;
               displayNotification(
                 "warning",
                 `${profileClass} profile ${profileDisplayedName} is not supported for visualization in Port Profile Viewer.`

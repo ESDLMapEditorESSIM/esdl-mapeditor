@@ -12,7 +12,7 @@
 #  Manager:
 #      TNO
 import base64
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, List, Optional, Any
 from enum import Enum
 
@@ -1320,7 +1320,9 @@ class Profiles:
         if not profile:
             raise ProfileNotFoundError(f"Profile (id={profile_id}) from ESDL (id={es_id}) not found.")
         
-        if isinstance(profile, esdl.DataTableProfile):
+        if isinstance(profile, esdl.TimeSeriesProfile):
+            return Profiles.get_timeseriesprofile_trace(profile, viz_options)
+        elif isinstance(profile, esdl.DataTableProfile):
             dtp = profile
         elif isinstance(profile, esdl.InfluxDBProfile):
             dtp = Profiles.influxdbprofile_to_datatableprofile(profile)
@@ -1359,6 +1361,59 @@ class Profiles:
             })
         
         return results
+
+    @staticmethod
+    def get_timeseriesprofile_trace(tsp: esdl.TimeSeriesProfile, viz_options: Optional[ProfileVizOptions]) -> dict:
+        """
+        Return a trace dict for a TimeSeriesProfile, applying visualization overrides
+        from ProfileVizOptions (start_datetime, end_datetime).     
+        """
+        base_start = tsp.startDateTime
+        step = timedelta(seconds=tsp.timestep)
+
+        # Apply visualization overrides if applicable
+        if viz_options and viz_options.start_datetime is not None:
+            start_dt = viz_options.start_datetime
+        else:
+            start_dt = base_start
+
+        if viz_options and viz_options.end_datetime is not None:
+            end_dt = viz_options.end_datetime
+        else:
+            end_dt = base_start + step * (len(tsp.values) - 1)
+
+        if start_dt.tzinfo is not None and base_start.tzinfo is None:
+            tz = start_dt.tzinfo
+            base_start = base_start.replace(tzinfo=tz)
+
+        full_datetimes = [
+            base_start + i * step
+            for i in range(len(tsp.values))
+        ]
+
+        # Find indices where datetime is within [start_dt, end_dt]
+        sliced_indices = [
+            i for i, dt in enumerate(full_datetimes)
+            if dt >= start_dt and dt <= end_dt
+        ]
+
+        # If no overlap, return empty trace
+        if not sliced_indices:
+            return {
+                "name": tsp.name,
+                "x": [],
+                "y": [],
+            }
+    
+        # Slice datetimes and values
+        x = [full_datetimes[i].strftime(dt_str_format) for i in sliced_indices]
+        y = [tsp.values[i] for i in sliced_indices]
+
+        return {
+            "name": tsp.name,
+            "x": x,
+            "y": y,
+        }
 
     @staticmethod
     def get_datatableprofile_trace(dtp: esdl.DataTableProfile, viz_options: Optional[ProfileVizOptions]) -> dict:
@@ -1604,9 +1659,9 @@ class Profiles:
             raise ProfileUpdateError(f"An error occurs while updating profile (id={profile_id}): {e}") from e
         
     @staticmethod
-    def serialize_esdl_profile(profile: esdl.DataTableProfile | esdl.InfluxDBProfile | esdl.SingleValue) -> Dict[str, Any]:
+    def serialize_esdl_profile(profile: esdl.DataTableProfile | esdl.InfluxDBProfile | esdl.TimeSeriesProfile | esdl.SingleValue) -> Dict[str, Any]:
         """
-        An utiltiy function to convert an ESDL profile instance (DataTableProfile, InfluxDBProfile, or SingleValue)
+        An utiltiy function to convert an ESDL profile instance (DataTableProfile, InfluxDBProfile, TimeSeriesProfile, or SingleValue)
         into a dictionary structure suitable for API responses.
 
         :param profile: An ESDL profile instance.
@@ -1622,6 +1677,11 @@ class Profiles:
             dtp = profile
         elif isinstance(profile, esdl.InfluxDBProfile):
             dtp = Profiles.influxdbprofile_to_datatableprofile(profile)
+        elif isinstance(profile, esdl.TimeSeriesProfile):
+            return {
+                "profileClass": profile_class,
+                "profileObj": Profiles.serialize_timeseriesprofile(profile) 
+            }
         elif isinstance(profile, esdl.SingleValue):
             return {
                 "profileClass": profile_class,
@@ -1663,7 +1723,25 @@ class Profiles:
                 "tls": dtp.configuration.tls
             }
         }
-    
+
+    @staticmethod
+    def serialize_timeseriesprofile(tsp: esdl.TimeSeriesProfile) -> dict:
+        """Return a dict representation of `TimeSeriesProfile` for client consumption."""
+
+        qau_dict = Profiles.serialize_qau(getattr(tsp, "profileQuantityAndUnit", None))
+
+        dt_fmt = "%Y-%m-%dT%H:%M:%S%z"
+
+        return {
+            "id": tsp.id,
+            "name": tsp.name,
+            "profileType": _get_enum_name(tsp.profileType),
+            "startDateTime": tsp.startDateTime.strftime(dt_fmt) if tsp.startDateTime else None,
+            "timestep": tsp.timestep,
+            "profileQuantityAndUnit": qau_dict,
+            "values": tsp.values
+        }
+
     @staticmethod
     def serialize_singlevalue(sv: esdl.SingleValue) -> dict:
         """Return a dict representation of `SingleValue` for client consumption."""

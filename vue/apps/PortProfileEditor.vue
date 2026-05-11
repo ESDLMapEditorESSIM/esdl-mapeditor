@@ -252,12 +252,12 @@ const getProfileDisplayedName = (profileInfo) => {
   if (profileInfo.profileClass === "SingleValue") {
     return profileInfo.profileObj.name || profileInfo.profileObj.id;
   } else {
-    return profileInfo.profileObj.columnName;
+    return profileInfo.profileObj.columnName || "Undefined";
   }
 }
 
 const getProfileUnit = (profileInfo) => {
-  return profileInfo.profileObj.profileQuantityAndUnit.description;
+  return profileInfo.profileObj.profileQuantityAndUnit?.description || "Undefined";
 }
 
 const onSelectPortSegment = (portId) => {

@@ -141,11 +141,11 @@ def check_qau(qau: esdl.AbstractQuantityAndUnit) -> esdl.QuantityAndUnitType:
         qau = esdl.QuantityAndUnitType()  # empty/unknown unit
     return qau
 
-def handle_profile(profile: esdl.InfluxDBProfile | esdl.DataTableProfile, ds: DataSet):
+def handle_profile(profile: esdl.InfluxDBProfile | esdl.DataTableProfile | esdl.TimeSeriesProfile, ds: DataSet):
     """
-    Process an esdl (legacy) InfluxDBProfile or DataTableProfile
+    Process an esdl (legacy) InfluxDBProfile, DataTableProfile, or TimeSeriesProfile
 
-    :param profile: InfluxDBProfile or DataTableProfile to process
+    :param profile: InfluxDBProfile, DataTableProfile or TimeSeriesProfile to process
     :param ds: Data set this data belongs to
     :return: Data point, its unit and variable_name of this data point
     """
@@ -155,6 +155,9 @@ def handle_profile(profile: esdl.InfluxDBProfile | esdl.DataTableProfile, ds: Da
     if isinstance(profile, esdl.InfluxDBProfile):
         profile = Profiles.influxdbprofile_to_datatableprofile(profile)
 
+    if isinstance(profile, esdl.TimeSeriesProfile):
+        profile.columnName = profile.name
+
     d = Data(dataset=ds, value=None) # Default value to None
     qau = check_qau(profile.profileQuantityAndUnit)
     variable_name = f"{profile.columnName} [{unit_to_string(qau)}]"
@@ -162,9 +165,11 @@ def handle_profile(profile: esdl.InfluxDBProfile | esdl.DataTableProfile, ds: Da
     labels = {}
     # Label profile id, so it can be retrieved when the query_profile() method is called.
     labels['profile_id'] = profile.id
-    # TBD: Measurement label is from (legacy) InfluxDBProfile (profile.measurement), keep using it to avoid confusing users?
-    labels['Measurement'] = profile.tableName
     labels['Profile Type'] = profile.profileType.name
+    # TBD: Measurement label is from (legacy) InfluxDBProfile (profile.measurement), keep using it to avoid confusing users?
+    # This tag is not applicable to TimeSeriesProfile
+    if not isinstance(profile, esdl.TimeSeriesProfile):
+        labels['Measurement'] = profile.tableName
 
     if isinstance(container, esdl.Port):
         port: esdl.Port = container
@@ -459,14 +464,14 @@ class DataManager:
             variable_name = None
             is_profile_variable = None
 
-            if isinstance(eobj, esdl.SingleValue) or isinstance(eobj, esdl.TimeSeriesProfile):
+            if isinstance(eobj, esdl.SingleValue):
                 # single value profile
                 # profile: esdl.SingleValue = eobj
                 d, qau, variable_name = handle_static_profile(eobj, ds, variable_name)
             elif isinstance(eobj, esdl.ProfileReference):
                 # handle reference too, as we need a reference to the asset
                 d, qau, variable_name = handle_static_profile(eobj, ds, variable_name)
-            elif isinstance(eobj, esdl.InfluxDBProfile) or isinstance(eobj, esdl.DataTableProfile):
+            elif isinstance(eobj, (esdl.InfluxDBProfile, esdl.DataTableProfile, esdl.TimeSeriesProfile)):
                 # skip profileConstraint profiles handling
                 if isinstance(eobj.eContainer(), esdl.ProfileConstraint):
                     continue
@@ -929,7 +934,7 @@ class DataManager:
         agg_interval = options.profile.get('agg_interval')
         agg_func = options.profile.get('agg_func')
 
-        logger.info(f"Querying influxdb profile traces with {vars(options)}")
+        logger.info(f"Querying profile traces with {vars(options)}")
         
         resp = { "data_range": [], "traces": [], "warnings": [], "errors": [], "warning_msg": "", "error_msg": "" }
 
