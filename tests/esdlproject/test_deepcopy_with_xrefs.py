@@ -98,7 +98,7 @@ class DeepCopyTest(unittest.TestCase):
 
     def test_deepcopy_with_project_issue(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        esdl_dir = os.path.join(os.path.dirname(current_dir), 'esdl')
+        esdl_dir = os.path.join(os.path.dirname(current_dir), 'resources')
 
         pm = ProjectManager()
         pm.add_energy_system(URI(os.path.join(esdl_dir, 'SimpleES.esdl')))

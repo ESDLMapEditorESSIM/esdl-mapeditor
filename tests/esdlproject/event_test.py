@@ -6,6 +6,7 @@ from pyecore.resources.json import JsonResource
 from esdl import esdl
 from esdl.processing.string_uri import StringURI
 from esdlproject.ProjectManager import ProjectManager, resource_as_string
+from esdlproject.change_handler import applyChange
 
 import json
 import datetime
@@ -66,7 +67,7 @@ class SerializeHLCTest(unittest.TestCase):
         tracker2.stack.start_recording(label=external_hlc.label)
         print(f"Handling High level change {external_hlc.label}")
         for change in external_hlc.change:
-            pm2.processChange(change, resource2)
+            applyChange(change, resource2, pm2.active_variant)
         tracker2.stack.stop_recording()
 
         print(es2)

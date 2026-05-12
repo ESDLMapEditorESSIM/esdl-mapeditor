@@ -19,8 +19,8 @@ import base64
 class MyTestCase(unittest.TestCase):
     def test_something(self):
         s = "a string with utf-8 characters: € çé m³"
-        b64 = base64.b64encode(s)
-        #b = base64.enc
+        b64 = base64.b64encode(s.encode("utf-8"))
+        self.assertEqual(base64.b64decode(b64).decode("utf-8"), s)
 
 
 

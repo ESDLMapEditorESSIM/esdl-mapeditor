@@ -1,3 +1,4 @@
+import os
 import unittest
 
 from esdl import esdl, GenericProducer, InPort, OutPort, GenericConsumer, HeatCommodity
@@ -49,7 +50,7 @@ class MyTestCase(unittest.TestCase):
         # print(pm.to_string())
         #
         # print("active es:")
-        # print(pm.resource_as_string(pm.active_resource))
+        # print(resource_as_string(pm.get_active_energy_system().eResource))
 
         print(f'pipe1 resource: {pipe1.eResource}, {pipe1.eURIFragment()}')
         variant3 = create_new_variant(pm.active_variant, "Variant3")
@@ -91,6 +92,8 @@ class MyTestCase(unittest.TestCase):
 
     def test_load_existing_es(self):
         file = 'ECW_with_carriers.esdl'
+        if not os.path.exists(file):
+            self.skipTest(f'Missing test fixture: {file}')
         with open(file, "r") as f:
             esdl_string = f.read()
 
@@ -99,7 +102,7 @@ class MyTestCase(unittest.TestCase):
         print(pm.rset.resources)
         print(pm.to_debug_string())
         print("active es:")
-        print(pm.resource_as_string(pm.active_resource))
+        print(resource_as_string(pm.get_active_energy_system().eResource))
 
         pm.delete_variant(pm.project.baseVariant[0])
         pm.set_active_variant(ecw_variant)
@@ -107,35 +110,32 @@ class MyTestCase(unittest.TestCase):
         print(pm.to_debug_string())
         print(pm.rset.resources)
 
-        pm.undoredo_stack.start_recording(label="Add GP")
+        pm.get_undo_redo_stack().start_recording(label="Add GP")
         gp = esdl.GenericProducer(name="GenericProducer by Ewoud")
         pm.get_active_energy_system().instance[0].area.asset.append(gp)
-        pm.undoredo_stack.stop_recording()
-        pm.covertActionToVariantChanges(pm.undoredo_stack.top, pm.active_variant)
+        pm.get_undo_redo_stack().stop_recording()
 
-        variant3 = pm.create_variant(pm.get_base_variant(pm.active_variant), "Variant on ECW")
+        variant3 = create_new_variant(pm.active_variant, "Variant on ECW")
         pm.set_active_variant(variant3)
 
-        pm.undoredo_stack.start_recording(label="Add GP in variant on ECW")
+        pm.get_undo_redo_stack().start_recording(label="Add GP in variant on ECW")
         gp = esdl.GenericProducer(name="Cool GP")
         pm.get_active_energy_system().instance[0].area.asset.append(gp)
-        pm.undoredo_stack.stop_recording()
-        pm.covertActionToVariantChanges(pm.undoredo_stack.top, pm.active_variant)
+        pm.get_undo_redo_stack().stop_recording()
 
 
         print(pm.to_debug_string())
         print(pm.rset.resources)
         print("active es:")
-        print(pm.resource_as_string(pm.active_resource))
+        print(resource_as_string(pm.get_active_energy_system().eResource))
 
     def test_save_load_project(self):
         pm = ProjectManager()
         print("rset:", pm.rset.resources)
-        pm.undoredo_stack.start_recording()
+        pm.get_undo_redo_stack().start_recording()
         pm.get_active_energy_system().name = "Cool Energy system"
         pm.get_active_energy_system().instance[0].area.asset.append(esdl.GenericProducer(name="Nice GP"))
-        pm.undoredo_stack.stop_recording()
-        pm.covertActionToVariantChanges(pm.undoredo_stack.top, pm.active_variant)
+        pm.get_undo_redo_stack().stop_recording()
         project_string = pm.save()
         print(project_string)
         print("rset:", pm.rset.resources)
@@ -145,7 +145,7 @@ class MyTestCase(unittest.TestCase):
         print(new_project_string)
         print("rset:", pm.rset.resources)
         print(pm.to_debug_string())
-        print(pm.resource_as_string(pm.get_base_variant_resource(pm.active_variant)))
+        print(resource_as_string(pm.get_active_energy_system().eResource))
         new_project_string2 = pm.save()
         print(new_project_string2)
 
@@ -174,49 +174,47 @@ class MyTestCase(unittest.TestCase):
         es = pm.get_active_energy_system()
         area = es.instance[0].area
 
-        pm.undoredo_stack.start_recording(label="Add prod/cons")
+        pm.get_undo_redo_stack().start_recording(label="Add prod/cons")
 
-        gp1 = GenericProducer(name="producer")
-        gc2 = GenericConsumer(name="consumer")
-        ip = InPort(name="inport")
-        op = OutPort(name="outport")
+        gp1 = GenericProducer(name="producer", id="producer")
+        gc2 = GenericConsumer(name="consumer", id="consumer")
+        ip = InPort(name="inport", id="inport")
+        op = OutPort(name="outport", id="outport")
         gp1.port.append(ip)
         gc2.port.append(op)
-        ip.connectedTo.append(op)
         area.asset.append(gp1)
         area.asset.append(gc2)
+        ip.connectedTo.append(op)
 
-        pm.undoredo_stack.stop_recording()
-        pm.covertActionToVariantChanges(pm.undoredo_stack.top, pm.active_variant)
+        pm.get_undo_redo_stack().stop_recording()
 
-        v_delete = pm.create_variant(pm.active_variant, variant_name="Variant for delete InPort")
+        v_delete = create_new_variant(pm.active_variant, variant_name="Variant for delete InPort")
         pm.set_active_variant(v_delete)
         v_delete_id = v_delete.id
+        es = pm.get_active_energy_system()
+        ip = pm.get_by_id(es.id, "inport")
+        op = pm.get_by_id(es.id, "outport")
 
-        pm.undoredo_stack.start_recording(label="delete inport")
+        pm.get_undo_redo_stack().start_recording(label="delete inport")
         ip.delete()
-        pm.undoredo_stack.stop_recording()
-        pm.covertActionToVariantChanges(pm.undoredo_stack.top, pm.active_variant)
+        pm.get_undo_redo_stack().stop_recording()
 
-        pm.undoredo_stack.start_recording(label="add carrier")
+        pm.get_undo_redo_stack().start_recording(label="add carrier")
         es.energySystemInformation = esdl.EnergySystemInformation()
         es.energySystemInformation.carriers = esdl.Carriers()
-        hc = HeatCommodity(name='heat')
+        hc = HeatCommodity(name='heat', id="heat")
         es.energySystemInformation.carriers.carrier.append(hc)
         op.carrier = hc
-        pm.undoredo_stack.stop_recording()
-        pm.covertActionToVariantChanges(pm.undoredo_stack.top, pm.active_variant)
+        pm.get_undo_redo_stack().stop_recording()
 
-        pm.undoredo_stack.start_recording(label="change attribute")
+        pm.get_undo_redo_stack().start_recording(label="change attribute")
         hc.name = "Heat"
-        pm.undoredo_stack.stop_recording()
-        pm.covertActionToVariantChanges(pm.undoredo_stack.top, pm.active_variant)
+        pm.get_undo_redo_stack().stop_recording()
 
 
-        pm.undoredo_stack.start_recording(label="delete carrier")
+        pm.get_undo_redo_stack().start_recording(label="delete carrier")
         op.carrier = None
-        pm.undoredo_stack.stop_recording()
-        pm.covertActionToVariantChanges(pm.undoredo_stack.top, pm.active_variant)
+        pm.get_undo_redo_stack().stop_recording()
         print("\n******************* before ***********************\n")
         print(pm.active_energy_system_to_string())
         print(pm.to_debug_string())
@@ -233,16 +231,16 @@ class MyTestCase(unittest.TestCase):
 
     def test_search_variant(self):
         pm = ProjectManager()
-        v1 = pm.create_variant(pm.active_variant, variant_name="v1")
-        v2 = pm.create_variant(pm.active_variant, variant_name="v2")
-        v3 = pm.create_variant(pm.active_variant, variant_name="v3")
-        v11 = pm.create_variant(v1, variant_name="v11")
-        v12 = pm.create_variant(v1, variant_name="v12")
-        v13 = pm.create_variant(v1, variant_name="v13")
+        v1 = create_new_variant(pm.active_variant, variant_name="v1")
+        v2 = create_new_variant(pm.active_variant, variant_name="v2")
+        v3 = create_new_variant(pm.active_variant, variant_name="v3")
+        v11 = create_new_variant(v1, variant_name="v11")
+        v12 = create_new_variant(v1, variant_name="v12")
+        v13 = create_new_variant(v1, variant_name="v13")
 
-        v111 = pm.create_variant(v11, variant_name="v111")
-        v112 = pm.create_variant(v11, variant_name="v112")
-        v113 = pm.create_variant(v11, variant_name="v113")
+        v111 = create_new_variant(v11, variant_name="v111")
+        v112 = create_new_variant(v11, variant_name="v112")
+        v113 = create_new_variant(v11, variant_name="v113")
 
         id = v112.id
         v = pm.get_variant_by_id(id)

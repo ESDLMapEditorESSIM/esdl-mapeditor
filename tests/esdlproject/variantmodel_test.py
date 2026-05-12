@@ -5,14 +5,13 @@ from pyecore.ecore import EObject
 from pyecore.resources import ResourceSet
 
 from esdl import EnergySystem, Pipe, Instance, Area, InPort, OutPort
-from esdl.esdl_handler import EnergySystemHandler
 from esdl.processing.string_uri import StringURI
 from esdl.resources.json import JsonResource
 from esdl.resources.xmlresource import XMLResource
 from esdl.undo import ChangeTracker
 from esdlproject import VariantCollection, Variant, ESDLProject, HighLevelChange, Add, Set
 from esdl.support_functions import clone, deepcopy
-from esdlproject.actions import convertActionToVariantChanges
+from esdlproject.ProjectManager import create_empty_energysystem
 
 
 class VariantModelTestCase(unittest.TestCase):
@@ -89,7 +88,7 @@ class VariantModelTestCase(unittest.TestCase):
         h = HighLevelChange(label="HighlevelChange", commitMessage="Added a pipe")
         v1.change.append(h)
         a1 = Add(owner=area, feature="asset", objectValue=pipe.deepcopy())
-        a2 = Add(owner=area, feature="asset", objectReference=pipe)
+        a2 = Add(owner=area, feature="asset", objectFragment=pipe.eURIFragment())
         h.change.extend((a1,a2))
 
         rset_config = create_rset(project, es_copy, json=False)
@@ -114,10 +113,13 @@ class VariantModelTestCase(unittest.TestCase):
 
         project_resource.append(project)
 
-        # add deepcopy support to EObjects by importing the ESH
-        esh = EnergySystemHandler()
         # create simple energy system
-        es: EnergySystem = esh.create_empty_energy_system(name="delete test", es_description="none", area_title="area52", inst_title="instance1")
+        es: EnergySystem = create_empty_energysystem(
+            name="delete test",
+            es_description="none",
+            area_title="area52",
+            inst_title="instance1",
+        )
         es_resource.append(es)
 
         #vb.energysystem = es
@@ -127,7 +129,7 @@ class VariantModelTestCase(unittest.TestCase):
 
         #undoredo: UndoRedoCommandStack = esh.change_tracker.get_tracker_stack(es)
         ct = ChangeTracker()
-        tracker = ct.new_tracker(eobj=es)
+        tracker = ct.new_tracker(v1, eobj=es)
         undoredo = tracker.stack
 
         undoredo.start_recording(label="Add Pipe")
@@ -140,7 +142,7 @@ class VariantModelTestCase(unittest.TestCase):
 
         print(f'project resource: {project.eResource}: {project.eResource.uri}')
         action = undoredo.top
-        convertActionToVariantChanges(action, v1)
+        v1.change.append(action)
 
         print("** Current project after adding 1st pipe add: ")
         project_resource.save()
@@ -158,7 +160,7 @@ class VariantModelTestCase(unittest.TestCase):
 
         #active_es_resource: XMLResource = self.get_or_create_resource(rset, StringURI('active.esdl'))
         #rset.resources['active.esdl'].contents[0]
-        ct.new_tracker(eobj=rset.resources[StringURI('active.esdl').normalize()].contents[0])
+        ct.new_tracker(v1, eobj=rset.resources[StringURI('active.esdl').normalize()].contents[0])
 
         undoredo = tracker.stack
         undoredo.start_recording(label="add 2nd pipe and connect")
@@ -172,7 +174,7 @@ class VariantModelTestCase(unittest.TestCase):
         v2 = Variant(name="Add 2nd pipe")
         v1.variant.append(v2)
         action = undoredo.top
-        convertActionToVariantChanges(action, v2)
+        v2.change.append(action)
 
         print("current project after adding 2nd pipe and connect: ")
         project_resource.save()
@@ -236,8 +238,7 @@ def eobject_tree_to_string(eobject: EObject):
 # remove me
 #  def test_variantModel_delete_old(self):
 #         # add deepcopy support to EObjects
-#         esh = EnergySystemHandler()
-#         es: EnergySystem = esh.create_empty_energy_system(name="delete test", es_description="none", area_title="area52", inst_title="instance1")
+#         es: EnergySystem = create_empty_energysystem(name="delete test", es_description="none", area_title="area52", inst_title="instance1")
 #
 #         undoredo: UndoRedoCommandStack = esh.change_tracker.get_tracker_stack(es)
 #

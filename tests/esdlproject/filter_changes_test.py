@@ -46,12 +46,20 @@ class TestFilterChanges(unittest.TestCase):
         print(len(result))
         pprint(result)
 
-        Add.__hash__ = lambda x: hash((x.feature, x.ownerFragment, x.objectFragment))
-        Add.__eq__ = lambda x, y: (x.objectFragment == y.objectFragment and x.ownerFragment == y.ownerFragment) or \
-                                  (x.objectFragment == y.ownerFragment and x.ownerFragment == y.objectFragment)
-        result = set(self.data)
-        print(len(result))
-        pprint(result)
+        original_hash = getattr(Add, "__hash__", None)
+        original_eq = Add.__eq__
+        try:
+            Add.__hash__ = lambda x: hash((x.feature, x.ownerFragment, x.objectFragment))
+            Add.__eq__ = lambda x, y: y is not None and (
+                (x.objectFragment == y.objectFragment and x.ownerFragment == y.ownerFragment) or
+                (x.objectFragment == y.ownerFragment and x.ownerFragment == y.objectFragment)
+            )
+            result = set(self.data)
+            print(len(result))
+            pprint(result)
+        finally:
+            Add.__eq__ = original_eq
+            Add.__hash__ = original_hash
 
 
 

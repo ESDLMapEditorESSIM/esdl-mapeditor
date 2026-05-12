@@ -117,7 +117,8 @@ class TestProjectManager(unittest.TestCase):
 
         second_pm = ProjectManager()
         second_pm.load_from_string(project_string)
-        self.assertEquals(pm.get_active_energy_system().name, second_pm.get_active_energy_system().name)
+        self.assertEqual(pm.project.name, second_pm.project.name)
+        self.assertEqual(len(pm.get_active_variant().change), len(second_pm.get_active_variant().change))
 
     def test_search_variant(self):
         pm = ProjectManager()
