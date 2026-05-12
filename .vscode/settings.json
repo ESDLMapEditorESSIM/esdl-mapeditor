@@ -1,0 +1,19 @@
+{
+    "editor.rulers": [
+        120
+    ],
+    "editor.formatOnSave": false,
+    "[vue]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[javascript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter"
+    },
+    // "[python]": {
+    //     "editor.defaultFormatter": "charliermarsh.ruff"
+    // },
+    "python-envs.defaultEnvManager": "ms-python.python:venv"
+}
