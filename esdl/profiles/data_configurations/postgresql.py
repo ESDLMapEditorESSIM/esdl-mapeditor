@@ -13,6 +13,7 @@ from esdl.units.parser import unit_to_string, build_qau_from_unit_string
 
 # table name used for storing metadata that is not in the table
 META_DATA_TABLE_NAME = "datatable_metadata"
+FILTER_DICT_COLUMN_NAME = "tags"
 META_DATA_TABLE_COLUMNS = [
     "table_name",
     "column_name",
@@ -292,17 +293,11 @@ class PostgresqlConfiguration:
 
         # NOTE: 'OR' or more complex filtering is not supported yet.
         if additional_filters:
-            for col, val in additional_filters.items():
-                where_clauses.append(
-                    sql.SQL("{col} = %s").format(col=sql.Identifier(col))
-                )
-                params.append(val)
+            for key, val in additional_filters.items():
+                where_clauses.append(sql.SQL("{tags} ->> %s = %s").format(tags=sql.Identifier(FILTER_DICT_COLUMN_NAME)))
+                params.extend([key, val])
 
-        where_sql = (
-            sql.SQL(" WHERE ") + sql.SQL(" AND ").join(where_clauses)
-            if where_clauses
-            else sql.SQL("")
-        )
+        where_sql = sql.SQL(" WHERE ") + sql.SQL(" AND ").join(where_clauses) if where_clauses else sql.SQL("")
 
         return where_sql, params
 
