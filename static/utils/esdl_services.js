@@ -16,6 +16,31 @@
 
 var esdl_services_information;
 
+/**
+ * Turn a base64 encoded string back into a binary array. For details see:
+ * http://stackoverflow.com/questions/16245767/creating-a-blob-from-a-base64-string-in-javascript
+ * @param {*} base64_str
+ */
+function base64_str_to_byte_array(base64_str) {
+    const byteCharacters = atob(base64_str);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    return new Uint8Array(byteNumbers);
+}
+
+function download_binary_file_from_base64_str_with_type(base64_str, file_name, content_type) {
+    const byte_array = base64_str_to_byte_array(base64_str)
+    const blob = new Blob([byte_array], { 'type': content_type });
+    const a = document.createElement('a');
+    const url = window.URL.createObjectURL(blob);
+    a.href = url;
+    a.download = file_name;
+    a.click();
+    window.URL.revokeObjectURL(url);
+}
+
 function set_esdl_services_information(info) {
     esdl_services_information = info;
 
@@ -42,7 +67,7 @@ function query_esdl_service(service, state_params) {
     }
 
     params['state_params'] = {}
-    let q_params = service['query_parameters'];
+    let q_params = service['query_parameters'] || [];
     for (let i = 0; i < q_params.length; i++) {
         let parameter_name = q_params[i]['parameter_name'];
         let ptype = '';
@@ -93,7 +118,8 @@ function query_esdl_service(service, state_params) {
         service['type'] !== "map_context_menu" &&
         service['location'] !== "map_context_menu" &&
         service['type'] !== "area_context_menu" &&
-        service['location'] !== "area_context_menu"
+        service['location'] !== "area_context_menu" &&
+        service['location'] !== "wfs_context_menu"
     ) {
         document.getElementById('query_service_button').style.display = 'none';
     }
@@ -497,6 +523,7 @@ function esdl_services_info() {
                 esdl_services_information[i]['location'] !== "map_context_menu" &&
                 esdl_services_information[i]['type'] !== "area_context_menu" &&
                 esdl_services_information[i]['location'] !== "area_context_menu" &&
+                esdl_services_information[i]['location'] !== "wfs_context_menu" &&
                 esdl_services_information[i]['location'] !== "hidden"
             ) {
                 table += '<tr><td><button onclick="show_service_settings(' + i + ');">Open</button></td><td>' + esdl_services_information[i]['name'] + '</td></tr>';
@@ -586,6 +613,7 @@ function add_service_to_contextmenu(layer, service, callback, icon) {
         text: service['name'],
         icon: resource_uri + (icon ? icon : 'icons/service.png'),
         callback: callback,
+        extra_options: service['options'] || {}
     });
 }
 
@@ -660,6 +688,21 @@ function add_service_to_area_contextmenu(layer, service, idx, icon) {
     }, icon);
 }
 
+function add_service_to_wfs_object_contextmenu(layer, service, idx) {
+    add_service_to_contextmenu(layer, service, function (e) {
+        const state = {
+            wfs_object_id: layer.id,
+            wfs_object_name: layer.name,
+            wkt: toWKT(layer),
+        }
+        if (service['type'] === 'vueworkflow' || service['type'] === 'workflow') {
+            window.show_service_settings(idx, state);
+        } else {
+            query_esdl_service(service, state);
+        }
+    });
+}
+
 function update_esdl_services(event) {
     if (event.type === 'add_contextmenu') {
         let layer = event.layer;
@@ -704,6 +747,12 @@ function update_esdl_services(event) {
                                 }
                             })
                         } else {
+                            if ("options" in service && "multiple_assets_support" in service["options"] && service["options"]["multiple_assets_support"]) {
+                                if (window.select_assets.select_mode) {
+                                    console.log(window.select_assets.selected_assets);
+                                    state["asset_ids"] = window.select_assets.selected_assets;
+                                }
+                            }
                             if (service['type'] === 'vueworkflow' || service['type'] === 'workflow') {
                                 window.show_service_settings(i, state);
                             } else {
@@ -711,6 +760,14 @@ function update_esdl_services(event) {
                             }
                         }
                     });
+                }
+            }
+        }
+
+        if (event.layer_type === 'wfs') {
+            for (let i = 0; i < esdl_services_information.length; i++) {
+                if (esdl_services_information[i]['type'] == "wfs_context_menu" || esdl_services_information[i]['location'] == "wfs_context_menu") {
+                    add_service_to_wfs_object_contextmenu(layer, esdl_services_information[i], i);
                 }
             }
         }

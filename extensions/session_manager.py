@@ -31,7 +31,6 @@ SESSION_MANAGER_LISTENER_ID = "session_manager"
 
 logger = log.get_logger(__name__)
 managed_sessions = dict()
-ESH_KEY = "esh"
 PM_KEY = "pm"
 LAST_ACCESSED_KEY = "last-accessed"
 SESSION_TIMEOUT = 60 * 60 * 24  # 1 day

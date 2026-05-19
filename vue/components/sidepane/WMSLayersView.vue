@@ -39,7 +39,9 @@ import {computed} from 'vue';
 // eslint-disable-next-line no-unused-vars
 import VueJsTree from "@/components/jstree/VueJsTree";
 import {useBaseLayers,} from "@/composables/baseLayers";
-import {useWmsLayers} from "@/composables/wmsLayers";
+// eslint-disable-next-line no-unused-vars
+import VisibleLayersView from "./VisibleLayersView.vue";
+import {useWmsLayers, showLayer, hideLayer} from "@/composables/wmsLayers";
 import {useVisibleLayers} from "@/composables/visibleLayers";
 import { notification } from 'ant-design-vue';
 import {useSocketIO} from "@/composables/socketio";
@@ -49,9 +51,7 @@ const {showBaseLayer, baseLayerDefinitions, getBaseLayerByLabel, hideBaseLayer} 
 const {layerExists} = useVisibleLayers(window.map, socket);
 const {
   getWmsLayerList,
-  showWmsLayer,
-  deactivateWmsLayer,
-  deleteWmsLayer,
+  removeWmsLayer,
   addWmsLayerGroup,
   renameWmsLayerGroup,
   removeWmsLayerGroup,
@@ -90,7 +90,7 @@ const treeData = computed(() => {
 });
 
 const showAddLayerDialog = (objectId) => {
-  window.add_edit_wms_layer(objectId);
+  window.add_edit_web_service_layer(objectId);
 }
 
 const getRootGroupsWithChildren = () => {
@@ -111,7 +111,7 @@ const getChildrenOfGroup = (layerGroup) => {
     for (const childId of layerGroup.child_ids) {
       // check if child is a group
       let child = getWmsLayerList().layer_groups[childId];
-      let type = "wms_layer";
+      let type = "service_layer_tree";
       let children = [];
       if (child !== undefined && child !== null) {  // if a group, find children
         type = "wms_layer_folder";
@@ -129,7 +129,7 @@ const getChildrenOfGroup = (layerGroup) => {
 }
 
 const addTreeItem = (items, item, itemId, type, children) => {
-  // const a_attr = {"class": type !== "wms_layer" ? "no_checkbox" : item.active ? "bold" : "", title: item.description};
+  // const a_attr = {"class": type !== "service_layer_tree" ? "no_checkbox" : item.active ? "bold" : "", title: item.description};
   const a_attr = {"class": item.active ? "bold" : "", title: item.description};
   items.push({
     id: itemId,
@@ -214,7 +214,7 @@ class LayerFolderTreeSpec {
   contextMenus(node, tree) {
     return {
       'add_layer': {
-        'label': 'Add WMS layer',
+        'label': 'Add WMS/WFS layer',
         'icon': 'fas fa-plus',
         'action': function () {
           showAddLayerDialog("__" + node.id); // add '__' to give parent folder id
@@ -260,27 +260,29 @@ class LayerFolderTreeSpec {
 }
 
 /**
- * WMS Layer tree specification
- * @type {WmsLayerTreeSpec}
+ * Service layer tree specification
+ * @type {ServiceLayerTreeSpec}
  *
- * Represents the WMS layer tree specification for the jstree component.
+ * Represents the layer tree specification for the jstree component.
  */
-class WmsLayerTreeSpec {
+class ServiceLayerTreeSpec {
   constructor() {
-    this.type = "wms_layer";
+    this.type = "service_layer_tree";
     this.icon = 'fas fa-map';
     this.max_depth = 0;
     this.events = {
       'check_node.jstree': function (e, data) {
-        showWmsLayer(data.node.id);
+        showLayer(data.node.id);
       },
       'uncheck_node.jstree': function (e, data) {
-        deactivateWmsLayer(data.node.id)
+        hideLayer(data.node.id)
       },
       'move_node.jstree':function (e, data) {
+        // TODO: rename
         moveWmsItem(data.node.id, data.old_parent, data.node.parents[0], data.position);
       },
       'copy_node.jstree': function (e, data) {
+        // TODO: rename
         copyWmsItem(data.original.id, data.node.parents[0], data.position);
       },
     }
@@ -289,7 +291,7 @@ class WmsLayerTreeSpec {
   contextMenus(node) {
     return {
       'edit': {
-        'label': 'Edit WMS layer',
+        'label': 'Edit layer',
         'icon': 'far fa-edit',
         'action': function () {
           showAddLayerDialog(node.id);
@@ -297,10 +299,11 @@ class WmsLayerTreeSpec {
         '_disabled': node.original.readonly,
       },
       'delete': {
-        'label': 'Delete WMS layer',
+        'label': 'Delete layer',
         'icon': 'fa fa-trash-o',
         'action': function () {
-          deleteWmsLayer(node.id, node.parents[0]);
+          // TODO: rename
+          removeWmsLayer(node.id, node.parents[0]);
         },
         '_disabled': node.original.readonly,
       },
@@ -346,7 +349,7 @@ class BaseLayerTreeSpec {
 }
 
 // eslint-disable-next-line no-unused-vars
-const treeTypeSpecs = [new LayerFolderTreeSpec(), new BaseLayerTreeSpec(), new BaseLayerFolderTreeSpec(), new WmsLayerTreeSpec];
+const treeTypeSpecs = [new LayerFolderTreeSpec(), new BaseLayerTreeSpec(), new BaseLayerFolderTreeSpec(), new ServiceLayerTreeSpec];
 
 // eslint-disable-next-line no-unused-vars
 const eventHandlersByName = {

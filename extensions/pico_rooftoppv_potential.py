@@ -27,8 +27,6 @@ from extensions.boundary_service import is_valid_boundary_id
 from extensions.session_manager import get_project_manager, get_session, get_session_for_esid
 from src.esdl_helper import get_tooltip_asset_attrs, add_extra_attributes
 from src.process_es_area_bld import calc_building_assets_location, recalculate_area_bld_list, get_area_id_from_mapeditor_id
-import uuid
-import requests
 
 logger = log.get_logger(__name__)
 
@@ -277,7 +275,7 @@ class PICORooftopPVPotential:
                         [building.geometry.lat, building.geometry.lon], True, {}, extra_attributes]
 
     @staticmethod
-    def convert_potential(esh, active_es_id, pot, add_to_building, percentage, asset_list):
+    def convert_potential(pm, active_es_id, pot, add_to_building, percentage, asset_list):
         pot_container = pot.eContainer()
 
         # Determine orientation from potential information
@@ -315,7 +313,7 @@ class PICORooftopPVPotential:
 
         # Add the PVInstallation to the same container as the SolarPotential (Area or Building)
         pot_container.asset.append(pv_installation)
-        esh.add_object_to_dict(active_es_id, pv_installation, recursive=True)
+        pm.add_object_to_dict(active_es_id, pv_installation, recursive=True)
         if isinstance(pot_container, esdl.AbstractBuilding):
             calc_building_assets_location(pot_container, True)
 

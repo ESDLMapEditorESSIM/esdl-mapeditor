@@ -1080,7 +1080,7 @@ class ProjectManager:
         -------
         Tuple from ESDL object tree and the parse information
         """
-        return load_external_string(name, esdl_string)
+        return load_external_string(esdl_string=esdl_string, name=name)
 
     def debug(self, dump_project=False):
         #if settings.FLASK_DEBUG:

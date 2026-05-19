@@ -81,7 +81,7 @@ class IBISBedrijventerreinen:
 
             return { "bedrijventerreinen": bedrijventerreinen_list }
 
-    def emit_geometries_to_client(self, esh, es_id, area_list):
+    def emit_geometries_to_client(self, pm, es_id, area_list):
         with self.flask_app.app_context():
             # print(area_list)
 

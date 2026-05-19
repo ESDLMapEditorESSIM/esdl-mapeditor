@@ -53,7 +53,9 @@ def handle_esdl_duplicate_inline_import(choice_key: str, context: dict):
         new_name = next_available_name(pm, temp_es.name)
         file_content = generate_renamed_esdl_string(file_content, filename, new_name=new_name)
 
-    imported_es, parse_info = pm.add_from_string(name=filename, esdl_string=file_content)
+    variant, parse_info = pm.add_energy_system(StringURI(filename, file_content))
+    pm.set_active_variant(variant)
+    imported_es = pm.get_energy_system(variant)
     if len(parse_info) > 0:
         info = ""
         for line in parse_info:
@@ -61,7 +63,7 @@ def handle_esdl_duplicate_inline_import(choice_key: str, context: dict):
         logger.warning("Warnings while importing {}:\n\n{}".format(filename, info))
     set_session('active_es_id', imported_es.id)
     set_session('es_filename', filename)
-    call_process_energy_system.submit()
+    call_process_energy_system.submit(force_update_es_id=imported_es.id)
 
 
 PromptManager.register_handler(ESDL_DUPLICATE_INLINE_IMPORT, handle_esdl_duplicate_inline_import)
@@ -128,9 +130,9 @@ class ESDLFileImport:
                         ))
                         return {'status': 'pending_prompt'}, 202
 
-                    imported_es, parse_info = pm.add_from_string(
-                        name=filename, esdl_string=file_content
-                    )
+                    variant, parse_info = pm.add_energy_system(StringURI(filename, file_content))
+                    pm.set_active_variant(variant)
+                    imported_es = pm.get_energy_system(variant)
 
                     if len(parse_info) > 0:
                         info = ''

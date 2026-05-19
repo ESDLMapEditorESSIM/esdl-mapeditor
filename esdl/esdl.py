@@ -176,6 +176,9 @@ DatabaseTypeEnum = EEnum('DatabaseTypeEnum', literals=[
 
 FileTypeEnum = EEnum('FileTypeEnum', literals=['UNDEFINED', 'CSV', 'EXCEL', 'PARQUET', 'NETCDF'])
 
+DataSourceTypeEnum = EEnum('DataSourceTypeEnum', literals=[
+                           'UNDEFINED', 'DOCUMENT', 'DATASET', 'MODEL'])
+
 
 class EnergySystem(EObject, metaclass=MetaEClass):
     """This is the main class to describe an EnergySystem in ESDL. Each energy system description should start with this class. More information about ESDL and the Energy System can be found in the gitbook at https://energytransition.gitbook.io/esdl/"""
@@ -2459,8 +2462,9 @@ class DataSource(AbstractDataSource):
     license = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     author = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
     contactDetails = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
+    type = EAttribute(eType=DataSourceTypeEnum, unique=True, derived=False, changeable=True)
 
-    def __init__(self, *, name=None, description=None, reference=None, attribution=None, releaseDate=None, version=None, license=None, author=None, contactDetails=None, **kwargs):
+    def __init__(self, *, name=None, description=None, reference=None, attribution=None, releaseDate=None, version=None, license=None, author=None, contactDetails=None, type=None, **kwargs):
 
         super().__init__(**kwargs)
 
@@ -2490,6 +2494,9 @@ class DataSource(AbstractDataSource):
 
         if contactDetails is not None:
             self.contactDetails = contactDetails
+
+        if type is not None:
+            self.type = type
 
 
 class MultiPolygon(Geometry):

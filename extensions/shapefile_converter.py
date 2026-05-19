@@ -115,9 +115,9 @@ class ShapefileConverter:
             with self.flask_app.app_context():
                 print("Received shpcvrt_receive_energyasset_info")
 
-                esh = get_project_manager()
+                pm = get_project_manager()
                 active_es_id = get_session('active_es_id')
-                es = esh.get_active_energy_system()
+                es = pm.get_active_energy_system()
                 area = es.instance[0].area
 
                 for shapefile_energyasset in shapefile_energyasset_list:
@@ -136,8 +136,8 @@ class ShapefileConverter:
                         area.area.append(subarea)
                         self.process_shapefile(subarea, shapefile_name_base, energy_asset)
                 # update uuid_dict recursively for the main area (could take long?)
-                esh.add_object_to_dict(es_id=active_es_id, esdl_object=area, recursive=True)
-                self.executor.submit(process_energy_system, esh=esh, filename='test', force_update_es_id=active_es_id)
+                pm.add_object_to_dict(active_es_id, area, recursive=True)
+                self.executor.submit(process_energy_system, force_update_es_id=active_es_id)
 
     def get_coordinate_transformer(self, wkt=None, epsg_in="epsg:28992", epsg_out="epsg:4326"):
         # wkt = 'PROJCS["RD_New",GEOGCS["GCS_Amersfoort",DATUM["D_Amersfoort",SPHEROID["Bessel_1841",6377397.155,299.1528128]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],PROJECTION["Double_Stereographic"],PARAMETER["False_Easting",155000.0],PARAMETER["False_Northing",463000.0],PARAMETER["Central_Meridian",5.38763888888889],PARAMETER["Scale_Factor",0.9999079],PARAMETER["Latitude_Of_Origin",52.15616055555555],UNIT["Meter",1.0]]'

@@ -196,7 +196,7 @@ const formatDate = (row) => {
 };
 
 const getTagColor = (text) => {
-  let up = text.toUpperCase();
+  let up = text === null ? "" : text.toUpperCase();
   if (up === "FINISHED" || up === "SUCCESS" || up === "SUCCEEDED" || up === "OK" || up === "READY") {
     return "green";
   } else if (up === "SUCC_PEND") {
@@ -245,7 +245,7 @@ const doAction = (record, action) => {
       }
     } else if (action.title === VIEW_FEEDBACK) {
       params.service_config.external_model = "output_or_input_esdl";
-      params.service_config.result[0].show_asset_feedback = true;
+      params.service_config.result[0].external_model_asset_feedback = true;
     } else if (action.title === LOAD_INPUT_ESDL) {
       params.service_config.external_model = "input_esdl";
     }

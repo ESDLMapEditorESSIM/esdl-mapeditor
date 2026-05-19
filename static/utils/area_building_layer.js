@@ -596,10 +596,28 @@ function set_area_handlers(area) {
     });
 
     // let extensions know they can update this layer.
-    // e.g. add a context menu item
+    // For example, add a context menu item.
     for (let i=0; i<extensions.length; i++) {
         updatefun = extensions[i];
         updatefun({type: 'add_contextmenu', layer: area, layer_type: 'area'});
+    }
+}
+
+// TODO: find a better place for this
+function set_wfs_handlers(marker) {
+    // console.log(marker);
+    marker.bindContextMenu({
+        contextmenu: true,
+        contextmenuWidth: 140,
+        contextmenuItems: [],
+        contextmenuInheritItems: false
+    });
+
+    // let extensions know they can update this layer.
+    // For example, add a context menu item.
+    for (let i=0; i<extensions.length; i++) {
+        updatefun = extensions[i];
+        updatefun({type: 'add_contextmenu', layer: marker, layer_type: 'wfs'});
     }
 }
 

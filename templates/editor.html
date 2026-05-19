@@ -241,7 +241,6 @@
         var profile_array;
         var quantity_and_units_info;
         var control_strategy_config;
-        var wms_layer_list;
         var leaflet_layers = {};
         var cap_pot_list;
 
@@ -659,25 +658,6 @@
                 set_esdl_services_information(list);
             });
 
-            {#socket.on('wms_layer_list', function(wms_layer_lst) {#}
-            {#    wms_layer_list = wms_layer_lst;#}
-            {#    // console.log(wms_layer_list);#}
-            {##}
-            {#    for (var key in wms_layer_list['layers']) {#}
-            {#        var layer_info = wms_layer_list['layers'][key];#}
-            {##}
-            {#        layer_info.layer_ref = L.tileLayer.wms(layer_info.url, {#}
-            {#            layers: layer_info.layer_name,#}
-            {#            format: 'image/png',#}
-            {#            transparent: true,#}
-            {#            attribution: layer_info.attribution#}
-            {#        });#}
-            {#        if (layer_info.visible) {#}
-            {#            layer_info.layer_ref.addTo(map);#}
-            {#            layer_info.layer_ref.bringToFront();#}
-            {#        }#}
-            {#    }#}
-            {#);#}
 
             // populate the asset menu grouped by capability
             socket.on('cap_pot_list', function(obj_list) {

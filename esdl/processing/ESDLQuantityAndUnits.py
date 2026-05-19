@@ -20,6 +20,11 @@ from pyecore.ecore import EEnum, EAttribute, EOrderedSet
 from esdl import esdl
 from esdlproject.ProjectManager import ProjectManager
 
+"""
+Note previous methods found here have been moved to esdl.units.parser.py to create compatibility with
+pyESDL.
+"""
+
 
 def get_or_create_esi_qau(pm: ProjectManager, active_es_id: str) -> esdl.QuantityAndUnits:
     es: esdl.EnergySystem = pm.get_energy_system_by_id(active_es_id)

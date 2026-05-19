@@ -56,5 +56,6 @@ class LoadDurationCurve {
 
 var load_duration_curve; // global load_duration_curve variable
 $(document).ready(function() {
-    extensions.push(function(event) { LoadDurationCurve.create(event) });
+    // disable LDC functionality for now, it's not working and will be replaced by other means
+    // extensions.push(function(event) { LoadDurationCurve.create(event) });
 });

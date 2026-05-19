@@ -106,7 +106,7 @@
             <a-form-item label="ID">
               <a-input v-model:value="formData.id" disabled />
             </a-form-item>
-            <a-form-item label="Name" required>
+            <a-form-item label="Name">
               <a-input
                 v-model:value="formData.name"
                 placeholder="Constraint name"
@@ -132,16 +132,7 @@
               <a-form-item label="Maximum">
                 <a-row v-if="formData.maximum !== null">
                   <a-col :span="20">
-                    <p
-                      v-if="
-                        formData.maximum.displayed_name &&
-                          formData.maximum.qau_description
-                      "
-                    >
-                      {{
-                        `${formData.maximum.displayed_name} [${formData.maximum.qau_description}]`
-                      }}
-                    </p>
+                    <p>{{ constructProfileDisplayedName(formData.maximum.profileObj) }}</p>
                   </a-col>
                   <a-col :span="4">
                     <div class="action-buttons">
@@ -172,16 +163,7 @@
               <a-form-item label="Minimum">
                 <a-row v-if="formData.minimum !== null">
                   <a-col :span="20">
-                    <p
-                      v-if="
-                        formData.minimum.displayed_name &&
-                          formData.minimum.qau_description
-                      "
-                    >
-                      {{
-                        `${formData.minimum.displayed_name} [${formData.minimum.qau_description}]`
-                      }}
-                    </p>
+                    <p>{{ constructProfileDisplayedName(formData.minimum.profileObj) }}</p>
                   </a-col>
                   <a-col :span="4">
                     <div class="action-buttons">
@@ -209,10 +191,13 @@
                   Add minimum
                 </a-button>
               </a-form-item>
-              <ProfileFormEdit
+              <ProfileEditForm
                 :visible="profileModalVisible"
+                :active-esdl-id="activeEsdlId"
+                :active-profile-container-id="null"
                 :profile-tag="activeProfileTag"
                 :profile-info="activeProfile"
+                :return-profile-payload-on-save="true"
                 @on-save="onSaveProfileFormData"
                 @on-cancel="onCancelProfileFormData"
               />
@@ -224,7 +209,7 @@
               <a-form-item label="ID">
                 <a-input v-model:value="formData.range.id" disabled />
               </a-form-item>
-              <a-form-item label="Name" required>
+              <a-form-item label="Name">
                 <a-input v-model:value="formData.range.name" />
               </a-form-item>
               <a-row>
@@ -313,10 +298,9 @@ import {
   DeleteOutlined,
 } from "@ant-design/icons-vue";
 import { notification } from "ant-design-vue";
-import { v4 as uuidv4 } from "uuid";
-import ProfileFormEdit from "@/components/forms/ProfileFormEdit.vue";
 import { useObject } from "../composables/ObjectID";
 import { useEsdlLayers } from "../composables/esdlLayers";
+import ProfileEditForm from "@/components/forms/ProfileEditForm.vue";
 
 const { currentObjectID } = useObject();
 const { getActiveEsdlLayerId } = useEsdlLayers();
@@ -352,8 +336,8 @@ const attributeReferenceOptions = [
 ];
 
 // State
-const activeEsdlId = ref(getActiveEsdlLayerId().value);
-const assetId = ref(currentObjectID.value);
+const activeEsdlId = ref(null);
+const assetId = ref(null);
 
 const activeSegment = ref(SegmentOptions.CONSTRAINTS);
 
@@ -425,13 +409,16 @@ const columns = [
 onMounted(() => {
   console.debug("Asset Constraint component mounted");
 
-  activeEsdlId.value = getActiveEsdlLayerId().value;
-  assetId.value = currentObjectID.value;
+  activeEsdlId.value = currentObjectID.value["es_id"] ? currentObjectID.value["es_id"] : getActiveEsdlLayerId().value;
+  assetId.value = currentObjectID.value["object_id"] ? currentObjectID.value["object_id"] : null;
 
   getAssetConstraint(activeEsdlId.value, assetId.value);
 });
 
 onUnmounted(() => {
+  activeEsdlId.value = null;
+  assetId.value = null;
+
   console.debug("Asset Constraint component unmounted");
 });
 
@@ -521,11 +508,6 @@ const resetForm = async () => {
     console.error("Unsupported constraint type.");
   }
 
-  newForm.id = newForm.id ? newForm.id : uuidv4();
-  if (formData.type === ConstraintType.RANGED) {
-    newForm.range.id = uuidv4();
-  }
-
   // Clear all existing keys
   Object.keys(formData).forEach((key) => {
     delete formData[key];
@@ -557,11 +539,11 @@ const onSelectSegment = () => {
 
 const openProfileModal = (profileTag) => {
   if (profileTag === ProfileTag.MAX) {
-    activeProfile.value = formData.maximum;
+    activeProfile.value = formData.maximum ? {...formData.maximum} : null;
     activeProfileTag.value = ProfileTag.MAX;
   }
   if (profileTag === ProfileTag.MIN) {
-    activeProfile.value = formData.minimum;
+    activeProfile.value = formData.minimum ? {...formData.minimum} : null;
     activeProfileTag.value = ProfileTag.MIN;
   }
   profileModalVisible.value = true;
@@ -574,11 +556,20 @@ const closeProfileModal = () => {
 };
 
 const onSaveProfileFormData = (profileFormData) => {
+  // Retrieve profileInfo emitted from the stateful form inputs.
+  const profileInfo = {...profileFormData.profileInfo};
+
   if (profileFormData.tag === ProfileTag.MAX) {
-    formData.maximum = profileFormData.data;
+    formData.maximum = {
+      profileClass: profileInfo.profileClass,
+      profileObj: profileInfo.profileObj
+    };
   }
   if (profileFormData.tag === ProfileTag.MIN) {
-    formData.minimum = profileFormData.data;
+    formData.minimum = {
+      profileClass: profileInfo.profileClass,
+      profileObj: profileInfo.profileObj
+    };
   }
   closeProfileModal();
 };
@@ -599,6 +590,17 @@ const onDeleteConstraintMinMax = (profileTag) => {
     formData.minimum = null;
   }
 };
+
+const constructProfileDisplayedName = (profileObj) => {
+  const qau = profileObj.profileQuantityAndUnit.description;
+  let displayedName = ``;
+  if (profileObj.name) {
+    displayedName = `${profileObj.name} [${qau}]`;
+  } else {
+    displayedName = `${profileObj.columnName} [${qau}]`;
+  }
+  return displayedName;
+}
 
 const onAddConstraint = async () => {
   constraints.value.push({ ...formData });

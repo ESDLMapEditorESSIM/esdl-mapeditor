@@ -98,5 +98,56 @@ const generateColorscale = (palette, numColors, defaultColors = defaultColorSche
     return colorscale.map(c => c.startsWith('#') ? c : `#${c}`);
 };
 
-export { getAssetFields, generateColorscale, nseColorPalette };
+/**
+ * @typedef {Object} FeatureStyle
+ * @property {string} [color]
+ * @property {number} [opacity]
+ * @property {number} [radius]
+ * @property {number} [weight]
+ * @property {boolean} [stroke]
+ */
+
+/**
+ * @param {string} geometryType Leaflet geometry type
+ * @param {FeatureStyle} style a basic feature style object
+ */
+const setLeafletFeatureStyle = (geometryType, style = {}) => {
+  const {
+    color = '#1f78b4',
+    opacity = 1,
+    radius = 5,
+    weight = 2,
+    stroke = false
+  } = style;
+
+  switch (geometryType) {
+    case "Point":
+    case "MultiPoint":
+      return {
+        fillColor: color,
+        radius: radius,
+        fillOpacity: opacity,
+        stroke: stroke,
+      };
+    case "LineString":
+    case "MultiLineString":
+      return {
+        color: color,
+        weight: weight,
+        opacity: opacity,
+      };
+    case "Polygon":
+    case "MultiPolygon":
+      return {
+        fillColor: color,
+        fillOpacity: opacity,
+        stroke: stroke,
+      };
+    default:
+      console.error(`Unsupported geometry type: ${geometryType}.`);
+      return {};
+  }
+}
+
+export { getAssetFields, generateColorscale, nseColorPalette, setLeafletFeatureStyle };
 

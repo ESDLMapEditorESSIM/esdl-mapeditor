@@ -108,3 +108,5 @@ package-lock.json
 !static/vendor/cdn.jsdelivr.net/npm/leaflet-toolbar@0.4.0-alpha.2/dist
 
 .DS_Store
+
+%LOCALAPPDATA%

@@ -15,13 +15,13 @@
  */
 
 import {ref, watch} from "vue";
-import {useWmsLayers} from "@/composables/wmsLayers";
+import {useWmsLayers, showLayer} from "@/composables/wmsLayers";
 import {useEsdlAreas} from "@/composables/esdlAreas";
 import {useEsdlBuildings} from "./esdlBuildings";
 import { useToast } from "vue-toastification";
 import {useEsdlLayers} from "@/composables/esdlLayers";
 
-const { clearWmsLayers, showWmsLayer } = useWmsLayers();
+const { clearWmsLayers } = useWmsLayers();
 const { addAreaContextMenuItem, totalEntriesAndAreas, esdlAreasDict,
     removeAreaContextMenuItem, saveAreaContextMenuState, restoreAreaContextMenuState } = useEsdlAreas();
 const { addBuildingContextMenuItem, removeBuildingContextMenuItem } = useEsdlBuildings();
@@ -187,7 +187,7 @@ const {hideEsdlLayerAllEsdls, showEsdlLayerAllEsdls} = useEsdlLayers();
             // clearWmsLayers()
             for (const layer of activityContext.wms_layers) {
                 try {
-                    showWmsLayer(layer)
+                    showLayer(layer)
                 } catch (e) {
                     // Check if TypeError, then the layer does not exist.
                     if (e instanceof TypeError) {

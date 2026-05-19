@@ -109,7 +109,7 @@ class BAG:
         #
         #     return { "buildings": building_list }
 
-    def emit_geometries_to_client(self, esh, es_id, building_list):
+    def emit_geometries_to_client(self, pm, es_id, building_list):
         with self.flask_app.app_context():
             # print(area_list)
 

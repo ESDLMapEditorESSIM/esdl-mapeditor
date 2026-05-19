@@ -143,8 +143,8 @@ def get_asset_geom_info(asset):
     return ()
 
 
-def get_asset_from_port_id(esh: ProjectManager, es_id, pid):
-    port = esh.get_by_id(es_id, pid)
+def get_asset_from_port_id(pm: ProjectManager, es_id, pid):
+    port = pm.get_by_id(es_id, pid)
     return port.eContainer()
 
 

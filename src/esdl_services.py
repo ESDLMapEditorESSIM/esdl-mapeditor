@@ -158,7 +158,7 @@ class ESDLServices:
                 uri = StringURI("obj.esdl")
                 rset = ResourceSet()
                 resource = rset.create_resource(uri)
-                resource.append(obj.deepcopy())
+                resource.append(obj.deepcopy(copy_xrefs=False))
                 resource.save()
                 obj_esdl_string = uri.getvalue()
                 return {"esdl": obj_esdl_string}
@@ -349,7 +349,7 @@ class ESDLServices:
                             body[param["parameter"]] = esdlstr
                         elif param["encoding"] == "url_encoded":
                             body[param["parameter"]] = urllib.parse.quote(esdlstr)
-                        elif param["encoding"] == "base64_encoded":
+                        elif param["encoding"] == "base64_encoded" or param["encoding"] == "base64":
                             esdlstr_bytes = esdlstr.encode("utf-8")
                             esdlstr_base64_bytes = base64.b64encode(esdlstr_bytes)
                             body[param["parameter"]] = esdlstr_base64_bytes.decode("utf-8")
@@ -905,16 +905,20 @@ class ESDLServices:
         message = None
         backend_action = {"force_update_es_id": es.id}
 
-        if "show_asset_feedback" in result_config and result_config["show_asset_feedback"]:
+        if (
+            result_config.get("show_asset_feedback")
+            or result_config.get("external_model_asset_feedback")
+        ):
             model_run_data = self.models_storage.get_model_run(state_params["run_id"])
             if ESDL_FEEDBACK in model_run_data:
                 feedback = model_run_data[ESDL_FEEDBACK]
             else:
                 feedback = {}
 
-            variant, parse_info = pm.add_energy_system(StringURI(service["name"], esdl_response))
-            # TODO deal with parse_info?
-            message = {"asset_feedback": feedback}
+            asset_results_dict = dict()
+            for sr in feedback:
+                asset_results_dict[sr["assetID"]] = sr["messages"]
+            message = {"asset_feedback": asset_results_dict}
             backend_action["run_after_esdl_loaded"] = True
 
         if "animation" in result_config:
@@ -957,8 +961,6 @@ class ESDLServices:
                 logger.error(e)
                 return False, str(e), None
 
-            # TODO: Check if this is correct?!
-            return True, {}, {"es": pm.get_energy_system(variant)}
         if "external_link" in result_config:
             model_run_data = self.models_storage.get_model_run(state_params["run_id"])
             external_link_url = get_nested_dict_value(

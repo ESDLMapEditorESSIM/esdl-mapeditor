@@ -261,15 +261,17 @@ function set_marker_handlers(marker) {
                 }
             });
 
+            marker.options.contextmenuItems.push('-');
+
             marker.options.contextmenuItems.push({
                 text: 'Set constraint',
                 icon: 'icons/Chain.png',
-                callback: function() {
-                    window.activate_asset_constraint(asset_id)
+                callback: function(e) {
+                    const es_id = e.relatedTarget?.esid;
+                    window.activate_asset_constraint(es_id, asset_id)
                 }
             });
 
-            marker.options.contextmenuItems.push('-');
             marker.options.contextmenuItems.push({
                 text: 'Set carrier',
                 icon: 'icons/SetCarrier.png',
@@ -499,8 +501,9 @@ function set_line_handlers(line) {
     line.options.contextmenuItems.push({
         text: 'Set constraint',
         icon: 'icons/Chain.png',
-        callback: function() {
-            window.activate_asset_constraint(line_id)
+        callback: function(e) {
+            const es_id = line.esid || e.relatedTarget?.esid;
+            window.activate_asset_constraint(es_id, line_id)
         }
     });
 

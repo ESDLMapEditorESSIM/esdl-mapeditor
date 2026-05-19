@@ -194,29 +194,35 @@ const listProfileOptions = async (esId, selectedAssetIds) => {
           value: `${asset.asset_id}-${port.port_name}`,
           checkable: false,
           children: port.port_profiles.map((p) => {
-            if (p["profileClass"] == "InfluxDBProfile" || p["profileClass"] == "DataTableProfile" ) {
-              const profileDisplayedName = `${p.columnName} [${p.profileQuantityAndUnit?.description?.split(" ").at(-1) ?? "Unknown"}]`;
-              return {
-                title: profileDisplayedName,
-                value: p.id,
-                checkable: true,
+            const profileClass = p.profileClass;
+            const profileObj = p.profileObj;
+            if (profileClass === "InfluxDBProfile" || profileClass === "DataTableProfile" || profileClass === "TimeSeriesProfile") {
+              const profileName = profileClass === "TimeSeriesProfile"
+                ? profileObj.name || profileObj.id
+                : profileObj.columnName || profileObj.name || "Undefined";
+              const profileDisplayedName = `${profileName} [${profileObj.profileQuantityAndUnit?.description?.split(" ").at(-1) ?? "Undefined"}]`;
+
+              if (profileClass === "TimeSeriesProfile") {
+                displayNotification(
+                  "warning",
+                  `Profile downsampling is not supported for ${profileClass} profile ${profileDisplayedName}.`
+                );
               }
-            } else if (p["profileClass"] == "TimeSeriesProfile") {
-              const profileDisplayedName = `${p.name} [${p.profileQuantityAndUnit?.description?.split(" ").at(-1) ?? "Unknown"}]`;
+
               return {
                 title: profileDisplayedName,
-                value: p.id,
+                value: profileObj.id,
                 checkable: true,
               }
             } else {
-              const profileDisplayedName = `${p.name || p.id} [${p.profileQuantityAndUnit?.description?.split(" ").at(-1) ?? "Unknown"}]`;
+              const profileDisplayedName = `${profileObj.name || profileObj.id} [${profileObj.profileQuantityAndUnit?.description?.split(" ").at(-1) ?? "Undefined"}]`;
               displayNotification(
                 "warning",
-                `${p["profileClass"]} profile ${profileDisplayedName} is not supported for visualization in Port Profile Viewer.`
+                `${profileClass} profile ${profileDisplayedName} is not supported for visualization in Port Profile Viewer.`
               );
               return {
                 title: profileDisplayedName,
-                value: p.id,
+                value: profileObj.id,
                 checkable: true,
                 disabled: true
               }

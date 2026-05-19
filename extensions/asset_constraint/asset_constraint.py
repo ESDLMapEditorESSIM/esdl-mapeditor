@@ -13,14 +13,12 @@
 #      TNO
 
 from flask import Flask, request, Response
-from typing import List, Optional
+from typing import List
 from uuid import uuid4
 
 import esdl
 from extensions.asset_constraint.asset_constraint_message import (
     ConstraintType,
-    ProfileClass,
-    InfluxDBProfileMsg,
     RangeMsg,
     ProfileConstraintMsg,
     RangedConstraintMsg,
@@ -28,10 +26,7 @@ from extensions.asset_constraint.asset_constraint_message import (
 )
 from extensions.profiles import Profiles
 from esdl.processing.ESDLEcore import get_asset_attributes, get_asset_references
-from esdl.processing import ESDLQuantityAndUnits
-import src.esdl_config as esdl_config
 from extensions.session_manager import get_project_manager
-from src.esdl_helper import generate_profile_info
 
 import src.log as log
 
@@ -105,7 +100,7 @@ class AssetConstraint:
 
         attrs = get_asset_attributes(constraint)
         refs = get_asset_references(constraint)
-        
+
         return {
             "attrs": attrs,
             "refs": refs
@@ -145,13 +140,13 @@ class AssetConstraint:
         Parse an esdl ProfileConstraint instance into a ProfileConstraintMsg
         """
 
-        max_profile_msg = None
-        if constraint.maximum and isinstance(constraint.maximum, esdl.InfluxDBProfile):
-            max_profile_msg = self._get_influxdb_profile_msg(constraint.maximum)
+        max_profile_info = None
+        if constraint.maximum and isinstance(constraint.maximum, esdl.GenericProfile):
+            max_profile_info = Profiles.serialize_esdl_profile(constraint.maximum)
 
-        min_profile_msg = None
-        if constraint.minimum and isinstance(constraint.minimum, esdl.InfluxDBProfile):
-            min_profile_msg = self._get_influxdb_profile_msg(constraint.minimum)
+        min_profile_info = None
+        if constraint.minimum and isinstance(constraint.minimum, esdl.GenericProfile):
+            min_profile_info = Profiles.serialize_esdl_profile(constraint.minimum)
 
         profile_constraint_msg = ProfileConstraintMsg(
             id=constraint.id,
@@ -159,25 +154,11 @@ class AssetConstraint:
             description=constraint.description,
             attributeReference=constraint.attributeReference,
             type=ConstraintType.PROFILE.value,
-            maximum=max_profile_msg,
-            minimum=min_profile_msg,
+            maximum=max_profile_info,
+            minimum=min_profile_info,
         )
 
         return profile_constraint_msg
-
-    def _get_influxdb_profile_msg(
-        self, minmax_profile: esdl.InfluxDBProfile
-    ) -> InfluxDBProfileMsg:
-        profile_info = generate_profile_info([minmax_profile])[0]
-        influxdb_profile_msg = InfluxDBProfileMsg(
-            id=minmax_profile.id,
-            name=minmax_profile.name,
-            displayed_name=profile_info["uiname"],
-            profile_class=ProfileClass.INFLUXDB.value,
-            multiplier=minmax_profile.multiplier,
-            qau_description=profile_info["type"],
-        )
-        return influxdb_profile_msg
 
     def _get_ranged_constraint_msg(
         self, constraint: esdl.RangedConstraint
@@ -206,7 +187,7 @@ class AssetConstraint:
         )
 
         return ranged_constraint_msg
-    
+
     def _get_pipediameter_constraint_msg(
         self, constraint: esdl.PipeDiameterConstraint
     ) -> PipeDiameterConstraintMsg:
@@ -254,62 +235,36 @@ class AssetConstraint:
         self, es_id: str, constraintMsg: ProfileConstraintMsg
     ) -> esdl.ProfileConstraint:
         c = esdl.ProfileConstraint(
-            id=constraintMsg["id"],
+            id=constraintMsg.get("id") or str(uuid4()),
             name=constraintMsg["name"],
             description=constraintMsg.get("description"),
             attributeReference=constraintMsg.get("attributeReference"),
         )
 
-        if constraintMsg["maximum"]:
-            c.maximum = self._handle_influxdb_profile(es_id, constraintMsg["maximum"])
-        if constraintMsg["minimum"]:
-            c.minimum = self._handle_influxdb_profile(es_id, constraintMsg["minimum"])
+        maximum_profile = constraintMsg["maximum"]
+        minimum_profile = constraintMsg["minimum"]
+
+        if maximum_profile:
+            c.maximum = Profiles.construct_esdl_profile_instance(es_id=es_id,
+                                                                 profile_class=maximum_profile["profileClass"],
+                                                                 profile_obj=maximum_profile["profileObj"])
+        if minimum_profile:
+            c.minimum = Profiles.construct_esdl_profile_instance(es_id=es_id,
+                                                                 profile_class=minimum_profile["profileClass"],
+                                                                 profile_obj=minimum_profile["profileObj"])
 
         return c
-
-    def _handle_influxdb_profile(
-        self, es_id: str, profileMsg: InfluxDBProfileMsg
-    ) -> Optional[esdl.InfluxDBProfile]:
-        id = profileMsg["id"]
-        profile_uiname = profileMsg["displayed_name"]
-        multiplier = profileMsg["multiplier"]
-        predefined_qau_name = profileMsg["qau_description"]
-
-        pm = get_project_manager()
-        esdl_profile = Profiles.get_instance().create_esdl_influxdb_profile(
-            profile_uiname, multiplier
-        )
-        esdl_profile.id = id
-
-        for pqau in esdl_config.esdl_config["predefined_quantity_and_units"]:
-            if pqau["description"].lower() == predefined_qau_name.lower():
-                predefined_qau_id = pqau["id"]
-                try:
-                    # check if predefined qau is already present in the ESDL
-                    qau = pm.get_by_id(es_id, predefined_qau_id)
-                except KeyError:
-                    qau = ESDLQuantityAndUnits.build_qau_from_dict(pqau)
-                    esi_qau = ESDLQuantityAndUnits.get_or_create_esi_qau(pm, es_id)
-                    esi_qau.quantityAndUnit.append(qau)
-                    pm.add_object_to_dict(es_id, qau)
-                break
-
-        # make a reference instead of a direct link
-        qau_ref = esdl.QuantityAndUnitReference(reference=qau)
-        esdl_profile.profileQuantityAndUnit = qau_ref
-
-        return esdl_profile
 
     def _handle_ranged_constraint(
         self, constraintMsg: RangedConstraintMsg
     ) -> esdl.RangedConstraint:
         c = esdl.RangedConstraint(
-            id=constraintMsg["id"],
+            id=constraintMsg.get("id") or str(uuid4()),
             name=constraintMsg["name"],
             description=constraintMsg.get("description"),
             attributeReference=constraintMsg.get("attributeReference"),
             range=esdl.Range(
-                id=constraintMsg["range"]["id"],
+                id=constraintMsg["range"].get("id") or str(uuid4()),
                 name=constraintMsg["range"]["name"],
             ),
         )
@@ -327,7 +282,7 @@ class AssetConstraint:
         self, constraintMsg: PipeDiameterConstraintMsg
     ) -> esdl.PipeDiameterConstraint:
         c = esdl.PipeDiameterConstraint(
-            id=constraintMsg["id"],
+            id=constraintMsg.get("id") or str(uuid4()),
             name=constraintMsg["name"],
             description=constraintMsg.get("description"),
             attributeReference=constraintMsg.get("attributeReference"),

@@ -27,6 +27,7 @@ from extensions.profiles import Profiles, ProfileTracesRequest, ProfileVizOption
 from extensions.session_manager import get_project_manager, get_session
 from extensions.settings_storage import SettingsStorage
 
+
 logger = log.get_logger(__name__)
 
 DEFAULT_PROFILE_AGGREGATION_METHOD = "sum"
@@ -328,9 +329,11 @@ class PortProfileViewer:
                         "port_name": "In",
                         "port_profiles": [
                             {
-                                "id": "profile123",
-                                "profileClass": "InfluxDBProfile"
-                                ...
+                                "profileClass": "InfluxDBProfile",
+                                "profileObj": {
+                                    "id": "profile123",
+                                    ...
+                                }
                             },
                             ...
                         ]
@@ -411,7 +414,6 @@ def _get_profile_metadata(es_id: str, profile_id: str) -> dict:
     if qau and isinstance(qau, esdl.QuantityAndUnitReference):
         qau = qau.reference
     if qau:
-        #qau_description = qau.description if qau.description else qau_to_string(qau)
         qau_description = qau_to_string(qau)
 
     meta_parts = [] 
@@ -430,9 +432,8 @@ def _get_profile_metadata(es_id: str, profile_id: str) -> dict:
         profile_name = profile.field
     else:
         profile_name = profile.name or "Unknown"
-    qau_unit = unit_to_string(qau)  #qau_description.split(" ")[-1]
+    qau_unit = unit_to_string(qau) if qau else "Unknown"
     displayed_name = f"{profile_name} [{qau_unit}]{meta_suffix}"
-    print(displayed_name)
 
     return {
         "displayed_name": displayed_name,

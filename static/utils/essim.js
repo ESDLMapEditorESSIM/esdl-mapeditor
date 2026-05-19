@@ -155,6 +155,11 @@ function download_results(sim_id) {
     });
 }
 
+function get_essim_result(sim_id) {
+    show_loader();
+    socket.emit('essim_get_esdl_with_results', sim_id);
+}
+
 function add_simulation_row(tbody, data, is_favorite) {
     let simulation_id = data['simulation_id']
     let $tr = $("<tr>").attr("id", simulation_id);
@@ -174,6 +179,11 @@ function add_simulation_row(tbody, data, is_favorite) {
         .attr('title', 'View ESDL on map')
         .click( function(e) { sidebar.hide(); set_simulation_id(simulation_id); });
     $actions.append($select_scenario_button);
+    let $download_result_button = $('<button>').addClass('btn')
+        .append($('<i>').addClass('fas fa-tachometer-alt').css('color', 'blue'))
+        .attr('title', 'Get ESSIM results (profiles and KPIs)')
+        .click( function(e) { sidebar.hide(); get_essim_result(simulation_id); });
+    $actions.append($download_result_button);
     let $animate_scenario_button = $('<button>').addClass('btn')
         .append($('<i>').addClass('far fa-play-circle').css('color', 'black'))
         .attr('title', 'Animate ESDL on map')
@@ -202,12 +212,6 @@ function add_simulation_row(tbody, data, is_favorite) {
             .click( function(e) { download_results(simulation_id); });
         $actions.append($view_download_button);
     }
-    if (data['kpi_result_list']) {
-        let $view_kpis_button = $('<button>').addClass('btn').append($('<i>')
-            .addClass('fas fa-tachometer-alt').css('color', 'blue')).attr('title', 'Show KPIs')
-            .click( function(e) { show_kpis(simulation_id, 'favorite'); });
-        $actions.append($view_kpis_button);
-    }
 
     let sim_fav;
     if (is_favorite) {
@@ -215,6 +219,14 @@ function add_simulation_row(tbody, data, is_favorite) {
     } else {
         sim_fav = 'simulation';
     }
+
+    // if (data['kpi_result_list']) {
+    //     let $view_kpis_button = $('<button>').addClass('btn').append($('<i>')
+    //         .addClass('fas fa-tachometer-alt').css('color', 'blue')).attr('title', 'Show KPIs')
+    //         .click( function(e) { show_kpis(simulation_id, sim_fav); });
+    //     $actions.append($view_kpis_button);
+    // }
+
     let $remove_scenario_button = $('<button>').addClass('btn')
         .append($('<i>').addClass('fas fa-trash-alt').css('color', 'black'))
         .attr('title', 'Remove from list')

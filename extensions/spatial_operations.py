@@ -124,7 +124,7 @@ class SpatialOperations:
                     self.create_pipes(edges, None, mapping_centroid_wkt_to_joint)
 
         @self.socketio.on('spatop_joint_delaunay_subarea', namespace='/esdl')
-        def spatop_joint_delaunay():
+        def spatop_joint_delaunay_subarea():
             with self.flask_app.app_context():
 
                 sub_area_shape_list = get_session('sub_area_shape_list')
@@ -162,9 +162,9 @@ class SpatialOperations:
                 connect_asset_type = params["connect_asset_type"]
                 connect_to_asset_type = params["connect_to_asset_type"]
 
-                esh = get_project_manager()
+                pm = get_project_manager()
                 active_es_id = get_session('active_es_id')
-                es = esh.get_active_energy_system()
+                es = pm.get_active_energy_system()
 
                 # Collect all assets of the required types
                 connect_asset_list = list()
@@ -204,8 +204,8 @@ class SpatialOperations:
                             if isinstance(p, find_port_type):
                                 p.connectedTo.append(port_c)
 
-                                pct_coord = get_asset_and_coord_from_port_id(esh, active_es_id, p.id)['coord']
-                                pc_coord = get_asset_and_coord_from_port_id(esh, active_es_id, port_c.id)['coord']
+                                pct_coord = get_asset_and_coord_from_port_id(pm, active_es_id, p.id)['coord']
+                                pc_coord = get_asset_and_coord_from_port_id(pm, active_es_id, port_c.id)['coord']
 
                                 connections_list.append \
                                     ({'from-port-id': port_c.id, 'from-asset-id': c.id,

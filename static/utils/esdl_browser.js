@@ -664,8 +664,16 @@ class ESDLBrowser {
             let layer = event.layer;
             let id = layer.id;
             // console.log('Extension HeatNetwork add_contextmenu for id=' + id)
-            layer.options.contextmenuItems.push(
-                    { text: 'Edit', icon: resource_uri + 'icons/Edit.png', callback: function(e) { esdl_browser.open_browser_with_event(e, id); } });
+
+            // Be more selective on when to add ESDL browser, only for ESDL objects
+            if (event.layer_type !== 'wfs') {
+                layer.options.contextmenuItems.push(
+                    {
+                        text: 'Edit', icon: resource_uri + 'icons/Edit.png', callback: function (e) {
+                            esdl_browser.open_browser_with_event(e, id);
+                        }
+                    });
+            }
         }
     }
 }

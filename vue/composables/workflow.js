@@ -28,6 +28,7 @@ export const WorkflowStepTypes = Object.freeze({
     TABLE: 'table',
     TABLE_EXTERNAL_MODEL: 'table-external-model',
     ESDL_SERVICE: 'esdl-service',
+    CODE_EDITOR: 'code-editor',
     JSON_FORM: 'json-form',
     JSON_FORM2: 'json-form2',
     DOWNLOAD_FILE: 'download_file',

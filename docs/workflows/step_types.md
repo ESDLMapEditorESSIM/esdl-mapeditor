@@ -7,6 +7,7 @@ Below is a list of the available workflow step types following steps (click to v
 - [table](#table): show a table with row actions.
 - [table-external-model](#table-external-model): show a table with runs for an external model with row actions.
 - [esdl-service](#esdl-service): call an esdl service, such as an api request with the active esdl as parameter.
+- [code-editor](#code-editor): code editor window, with parsing and formatting: json, yaml, xml, python and markdown.
 - [json-form2](#json-form2): json-forms input, from url, socket or config.
 - [download_file](#download_file)
 - [upload_file](#upload_file)
@@ -433,6 +434,60 @@ Example config for loading an ESDL from an external model run:
   },
   "next_step": "base_steps_with_table",
   "next_step_trigger": "loading_complete"
+}
+```
+
+## `code-editor`
+
+Shows a code editor window, with parsing and formatting: json, yaml, xml, python and markdown.
+Will highlight if invalid code (if parser supplied) and format.
+
+#### `config` options
+
+For more details see the json example below.
+
+- `language`: must be one of: json, yaml, xml, python and markdown.
+- `number_of_rows`: height of the window in number of rows.
+
+#### required input data
+
+No required input data, but if provided will be used as initial code, see example below.
+
+#### output data
+
+The `code` is sent as output: an object for json, xml and yaml, a string for other languages.
+
+Example config:
+
+```json
+{
+  "id": "dots_set_calc_services",
+  "description": "Calculation services config:",
+  "type": "code-editor",
+  "config": {
+    "language": "json",
+    "number_of_rows": 15
+  },
+  "data": {
+    "from_config": [
+      {
+        "esdl_type": "ElectricityDemand",
+        "calc_service_name": "edemandservice",
+        "service_image_url": "ghcr.io/dots-energy-services/edemandservice:latest",
+        "nr_of_models": 1
+      },
+      {
+        "esdl_type": "EConnection",
+        "calc_service_name": "emsservice",
+        "service_image_url": "ghcr.io/dots-energy-services/hemsworkshop:latest",
+        "nr_of_models": 1
+      }
+    ],
+    "to_state": {},
+    "output_wrapper_variable": "calculation_services"
+  },
+  "next_step": "dots_base_steps_with_table",
+  "next_step_trigger": "input_change"
 }
 ```
 
