@@ -10,11 +10,14 @@
 import {ref} from "vue";
 import {useVisibleLayers} from "@/composables/visibleLayers";
 import {MessageNames, PubSubManager} from "@/bridge";
+import {useEsdlLayerMapActions} from "./esdlLayerMapActions";
 
 /** @type {import('vue').Ref<string[]>} */
 const enabledEsdlIdList = ref([]);
 
 const esdlLoadingStatus = ref({});
+
+const {hideEsdlLayerFromMap, showEsdlLayerOnMap} = useEsdlLayerMapActions();
 
 export function useEsdlLayers() {
     const {createVisibleLayerGroup, removeVisibleLayerGroup, hideVisibleLayer, showVisibleLayer} = useVisibleLayers();
@@ -160,15 +163,6 @@ export function useEsdlLayers() {
         enabledEsdlIdList.value.forEach((es_id) => {
             disableEsdl(es_id);
         });
-    }
-
-    function showEsdlLayerOnMap(es_id, layer_name, parent_esdl_layer) {
-        window.show_esdl_layer_on_map(es_id, layer_name, parent_esdl_layer);
-        window.set_leaflet_sizes();
-    }
-
-    function hideEsdlLayerFromMap(es_id, layer_name, parent_esdl_layer) {
-        window.hide_esdl_layer_from_map(es_id, layer_name, parent_esdl_layer);
     }
 
     /**

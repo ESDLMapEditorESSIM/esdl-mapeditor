@@ -21,12 +21,19 @@
  *
  */
 import {ref, toValue} from "vue";
-import {useVisibleLayers} from "./visibleLayers";
 import { setLeafletFeatureStyle } from "../utils/spatialVisualization";
+import {useServiceLayerFeaturePopup} from "./serviceLayerFeaturePopup";
+import {useVisibleLayerState} from "./visibleLayerState";
 
-const {addToVisibleLayerList, removeFromVisibleLayerList, layerIsVisible, showServiceLayerFeaturePopup} = useVisibleLayers();
+const {
+    addLayerToVisibleLayerGroup,
+    layerIsVisible,
+    removeLayerFromVisibleLayerGroups,
+    WMS_LAYERS_GROUP_NAME
+} = useVisibleLayerState();
+const {showServiceLayerFeaturePopup} = useServiceLayerFeaturePopup();
 
-export const WMS_LAYERS_GROUP_NAME = 'wms_layers';
+export {WMS_LAYERS_GROUP_NAME};
 
 const L = window.L;
 const map = window.map;
@@ -45,7 +52,7 @@ const globalServiceLayerList = ref(null);
     socket.on('wms_layer_list', updateGlobalServiceLayerList);
 })();
 
-const updateGlobalServiceLayerList = async (layerList, visibleId) => {
+async function updateGlobalServiceLayerList(layerList, visibleId) {
     if (globalServiceLayerList.value !== null) {
         for (const layerId in globalServiceLayerList.value['layers']) {
             if (layerId in layerList['layers']) {
@@ -112,7 +119,7 @@ const updateGlobalServiceLayerList = async (layerList, visibleId) => {
             }
         }
     }
-};
+}
 
 /**
  * Extracts and returns the base URL of the WMS/WFS service.
@@ -234,7 +241,7 @@ const showLayer = async (layerId) => {
             }
         }
 
-        addToVisibleLayerList(layer, WMS_LAYERS_GROUP_NAME);
+        addLayerToVisibleLayerGroup(layer, WMS_LAYERS_GROUP_NAME);
     }
 }
 
@@ -373,7 +380,7 @@ export function useWmsLayers() {
         if (layer && layer.layer_ref) {
             map.removeLayer(layer.layer_ref);
         }
-        removeFromVisibleLayerList(layerId);
+        removeLayerFromVisibleLayerGroups(layerId);
     };
 
     const clearWmsLayers = () => {
@@ -506,7 +513,7 @@ const removeLayerFromMapAndVisibleLayers = (layerId) => {
     if (layer) {
         layer.visible = false;
     }
-    removeFromVisibleLayerList(layerId);
+    removeLayerFromVisibleLayerGroups(layerId);
 };
 
 const createWmsLayerLegend = (url) => {
@@ -548,7 +555,7 @@ const removeGroupChildrenFromMap = (layerGroupId) => {
             if (layer.layer_ref) {
                 map.removeLayer(layer.layer_ref);
             }
-            removeFromVisibleLayerList(childId);
+            removeLayerFromVisibleLayerGroups(childId);
         }
     }
 };

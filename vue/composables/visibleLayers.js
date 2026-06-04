@@ -18,16 +18,32 @@
  * A composable for managing items currently visible.
  *
  */
-import {computed, ref} from "vue";
-import {constructWfsLayerUrl, updateGlobalServiceLayerList, useWmsLayers, WMS_LAYERS_GROUP_NAME, showLayer, hideLayer} from "./wmsLayers";
-import {useEsdlLayers} from "./esdlLayers";
+import {constructWfsLayerUrl, updateGlobalServiceLayerList, useWmsLayers, showLayer, hideLayer} from "./wmsLayers";
+import {useEsdlLayerMapActions} from "./esdlLayerMapActions";
 import {useSocketIO} from "./socketio";
 import { setLeafletFeatureStyle } from "../utils/spatialVisualization";
+import {useVisibleLayerState} from "./visibleLayerState";
+import {useServiceLayerFeaturePopup} from "./serviceLayerFeaturePopup";
 
 const {socket} = useSocketIO();
+const {hideEsdlLayerFromMap, showEsdlLayerOnMap} = useEsdlLayerMapActions();
+const {showServiceLayerFeaturePopup} = useServiceLayerFeaturePopup();
+const {
+    addLayerToVisibleLayerGroup,
+    createVisibleLayerGroupState,
+    getVisibleLayerById: getVisibleLayerByIdState,
+    getVisibleLayerGroups: getVisibleLayerGroupsState,
+    getVisibleLayerList: getVisibleLayerListState,
+    layerExists: layerExistsState,
+    layerIsVisible: layerIsVisibleState,
+    layerOrderCache,
+    layerVisibilityCache,
+    removeLayerFromVisibleLayerGroups,
+    visibleLayerGroups,
+    WMS_LAYERS_GROUP_NAME
+} = useVisibleLayerState();
 
 const {getWmsLayerList} = useWmsLayers();
-const {enabledEsdlIdList, hideEsdlLayerFromMap, showEsdlLayerOnMap} = useEsdlLayers();
 
 /**
  * Debounce a function call.
@@ -65,13 +81,6 @@ function debounce(func, wait) {
  */
 
 
-// Group structure for visible layers
-/** @type {import('vue').Ref<VisibleLayerGroup[]>} */
-const visibleLayerGroups = ref([]);
-
-// Cache for layer order within groups.
-const layerOrderCache = ref({});
-const layerVisibilityCache = ref({});
 
 /**
  * @enum {string}
@@ -92,7 +101,7 @@ function getLayerType(layer) {
     const serviceLayers = getWmsLayerList()?.layers || {};
     if (layer && layer.id in serviceLayers) {
         return serviceLayers[layer.id].type || VisibleLayerType.WMS;
-    } else if (layer && enabledEsdlIdList.value.includes(layer.es_id)) {
+    } else if (layer && layer.es_id !== undefined) {
         return VisibleLayerType.ESDL;
     } else {
         return VisibleLayerType.UNKNOWN;
@@ -100,14 +109,6 @@ function getLayerType(layer) {
 }
 
 const map = window.map;
-
-// Initialize the layer popup and specify popup options
-const L = window.L;
-const layersPopup = L.popup({
-    autoPan: true,
-    maxWidth: 400,
-    maxHeight: 400
-});
 
 /**
  * Constructs and returns a WMS layer GetFeatureInfo URL
@@ -173,66 +174,6 @@ const queryWmsLayersFeaturesOnClick = async (event) => {
             resolve(resp.layers_features_props);
         });
     });
-};
-
-/**
- * Show the map popup of WMS or WFS layers features properties
- *
- * @param {Object} latlng a latlng object {lat: number, lng: number} for adding the popup.
- * @param {Array} layersFeatures an array of layer feature objects with structure { name: str, feature_props: Object | null }
- */
-const showServiceLayerFeaturePopup = (latlng, layersFeatures) => {
-    if (layersFeatures.length === 0) {
-        return;
-    }
-
-    const popupDivId = "layer-feature-popup-node";
-    // Check if the popup already exists and removes it
-    const existingPopupDiv = document.getElementById(popupDivId);
-    if (existingPopupDiv) {
-        existingPopupDiv.remove();
-    }
-    const popupDiv = document.createElement("div");
-    popupDiv.setAttribute("id", popupDivId);
-    popupDiv.classList.add("layer-feature-props-popup");
-
-    // Updating the popup content
-    layersFeatures.forEach((l) => {
-        const layerName = l.name;
-        const layerFeatureProps = l.feature_props;
-
-        // Layer name node
-        const layerNameNode = document.createElement("h4");
-        layerNameNode.innerHTML = `${layerName}`;
-        popupDiv.appendChild(layerNameNode);
-
-        if (layerFeatureProps !== null) {
-            if (Object.keys(layerFeatureProps).length) {
-                // Layer feature properties node
-                Object.keys(layerFeatureProps).forEach((pName) => {
-                    const propNameNode = document.createElement("p");
-                    const propValueNode = document.createElement("span");
-                    propNameNode.innerHTML = `${pName}: `;
-                    propValueNode.innerHTML = `${layerFeatureProps[pName]}`;
-                    popupDiv.appendChild(propNameNode).appendChild(propValueNode);
-                });
-            } else {
-                // If the event location has no feature, remove the layerNameNode from the popup
-                popupDiv.removeChild(layerNameNode);
-            }
-        } else {
-            console.warn(`${layerName} has null props. An error occurred while fetching ${layerName} layer feature properties.`);
-            const propErrorNode = document.createElement("p");
-            propErrorNode.innerHTML = `An error occurred while fetching ${layerName} layer feature properties`;
-            popupDiv.appendChild(propErrorNode);
-        }
-    });
-
-    if (popupDiv.hasChildNodes()) {
-        // Set the popup content and open it
-        layersPopup.setLatLng(latlng).setContent(popupDiv);
-        map.openPopup(layersPopup);
-    }
 };
 
 /**
@@ -314,45 +255,19 @@ export function useVisibleLayers() {
      * Get list of visible layers. This is a list of objects, that are either service layers or energy systems.
      * @returns {VisibleLayer[]} List of visible layers
      */
-    const getVisibleLayerList = () => {
-        // Get all layers from all groups.
-        return visibleLayerGroups.value.reduce((acc, group) => {
-            return acc.concat(group.layers);
-        }, []);
-    }
+    const getVisibleLayerList = getVisibleLayerListState;
 
     /**
      * Get the list of visible layer groups. This includes grouped layers for ESDL.
      */
-    const getVisibleLayerGroups = () => {
-        return visibleLayerGroups.value;
-    };
+    const getVisibleLayerGroups = getVisibleLayerGroupsState;
 
     /**
      * Remove visible layer by ID.
      */
     const removeFromVisibleLayerList = (id) => {
-        const layerToRemove = getVisibleLayerList().find(
-            layer => layer.id === id
-        );
-        if (layerToRemove !== undefined) {
-            // Remove it from its group.
-            const layerType = getLayerType(layerToRemove)
-            let groupId = null;
-            if (layerType === VisibleLayerType.WMS || layerType === VisibleLayerType.WFS) {
-                groupId = WMS_LAYERS_GROUP_NAME;
-            } else if (layerType === VisibleLayerType.ESDL) {
-                groupId = layerToRemove.es_id;
-            }
-            const layerToRemoveGroup = visibleLayerGroups.value.find(group => group.id === groupId);
-            if (layerToRemoveGroup) {
-                layerToRemoveGroup.layers = layerToRemoveGroup.layers.filter(layer => layer.id !== id);
-            }
-            // Remove group if now empty.
-            if (layerToRemoveGroup && layerToRemoveGroup.layers.length === 0) {
-                visibleLayerGroups.value = visibleLayerGroups.value.filter(group => group.id !== layerToRemoveGroup.id);
-            }
-        } else {
+        const layerToRemove = removeLayerFromVisibleLayerGroups(id);
+        if (layerToRemove === undefined) {
             console.warn(`Layer with ID ${id} not found in visible layer list.`);
         }
         return layerToRemove;
@@ -365,29 +280,8 @@ export function useVisibleLayers() {
      * @param {boolean} updateMap - Whether to update the map. Set to false if part of bulk operation.
      */
     const addToVisibleLayerList = (layer, groupId = WMS_LAYERS_GROUP_NAME, updateMap = true) => {
-        if (groupId === 0) {
-            groupId = WMS_LAYERS_GROUP_NAME;
-        }
-        if (layer.id in layerVisibilityCache.value) {
-            layer.visible = layerVisibilityCache.value[layer.id];
-        } else {
-            layer.visible = true;
-        }
-        // Add the layer to the group.
-        let group = visibleLayerGroups.value.find(group => group.id === groupId);
+        const group = addLayerToVisibleLayerGroup(layer, groupId);
         if (!group) {
-            createVisibleLayerGroup(groupId, groupId === WMS_LAYERS_GROUP_NAME ? "Service layers" : "Untitled Group", [], false);
-            group = visibleLayerGroups.value.find(group => group.id === groupId);
-        }
-        if (group) {
-            // Check if the layer already exists in the group. If so, replace it. Otherwise add it.
-            const existingLayerIndex = group.layers.findIndex(l => l.id === layer.id);
-            if (existingLayerIndex !== -1) {
-                group.layers.splice(existingLayerIndex, 1, layer);
-            } else {
-                group.layers.push(layer);
-            }
-        } else {
             console.warn(`Group with ID ${groupId} not found.`);
         }
         if (layer.visible) {
@@ -403,20 +297,7 @@ export function useVisibleLayers() {
      * @param {boolean} updateMap - Whether to update map order after creating the group.
      */
     const createVisibleLayerGroup = (groupId, description = "Untitled Group", sublayers, updateMap = true) => {
-        if (!visibleLayerGroups.value.find(group => group.id === groupId)) {
-            /** @type {VisibleLayerGroup} */
-            const group = {
-                id: groupId,
-                visible: computed(() => {
-                    const thisGroup = visibleLayerGroups.value.find(group => group.id === groupId);
-                    return thisGroup.layers.some(layer => layer.visible);
-                }),
-                description,
-                layers: [],
-            }
-
-            visibleLayerGroups.value.push(group);
-
+        if (createVisibleLayerGroupState(groupId, description)) {
             if (sublayers) {
                 sublayers.forEach(sublayer => {
                     addToVisibleLayerList(sublayer, groupId, false);
@@ -444,14 +325,14 @@ export function useVisibleLayers() {
      * @param {string} groupId - The ID of the group to remove.
      */
     const removeVisibleLayerGroup = (groupId) => {
-        const groupIndex = visibleLayerGroups.value.findIndex(group => group.id === groupId);
-        if (groupIndex !== -1) {
+        const group = visibleLayerGroups.value.find(group => group.id === groupId);
+        if (group) {
             // Remove all layers in the group from the visible layer list
-            visibleLayerGroups.value[groupIndex].layers.forEach(layer => {
+            group.layers.slice().forEach(layer => {
                 removeFromVisibleLayerList(layer.id);
             });
             // Remove the group from visibleLayerGroups
-            visibleLayerGroups.value.splice(groupIndex, 1);
+            visibleLayerGroups.value = visibleLayerGroups.value.filter(group => group.id !== groupId);
         } else {
             console.warn(`Group with ID ${groupId} not found.`);
         }
@@ -516,22 +397,13 @@ export function useVisibleLayers() {
         });
     }, 100);
 
-    const layerIsVisible = (layerId) => {
-        for (const visibleLayer of getVisibleLayerList()) {
-            if (visibleLayer.id === layerId && visibleLayer.visible) {
-                return true;
-            }
-        }
-        return false;
-    };
+    const layerIsVisible = layerIsVisibleState;
 
     /**
      * Check if a layer with this layer ID exists in the visible layer list.
      * @param layerId
      */
-    const layerExists = (layerId) => {
-        return getVisibleLayerList().find(layer => layer.id === layerId) !== undefined;
-    };
+    const layerExists = layerExistsState;
 
     /**
      * Hides a visible layer from the map.
@@ -633,9 +505,7 @@ export function useVisibleLayers() {
      * @param {string} id Layer Id
      * @returns {Object|undefined} The targeted visible layer object; If not found, undefined is returned
      */
-    const getVisibleLayerById = (id) => {
-        return getVisibleLayerList().find(layer => layer.id === id);
-    };
+    const getVisibleLayerById = getVisibleLayerByIdState;
 
     /**
      * Adjusts the opacity of the visible layer.
