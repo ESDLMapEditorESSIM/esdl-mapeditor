@@ -38,10 +38,6 @@ export {WMS_LAYERS_GROUP_NAME};
 const L = window.L;
 const map = window.map;
 let socket = null;
-const treeId = "layer_tree";
-const $ = window.$;
-const getTree = () => $('#' + treeId).jstree(true);
-
 const globalServiceLayerList = ref(null);
 
 // retrieve service layers info
@@ -401,16 +397,7 @@ export function useWmsLayers() {
             'project_name': project_name,
             'parent_group_id': parentId,
         };
-        socket.emit('add_wms_layer_group', layerGroup);
-        // Create node programmatically to enable entering into edit name mode
-        getTree().create_node(parentId, {
-            id: groupId,
-            text: 'new folder',
-            setting_type: setting_type,
-            project_name: project_name,
-            type: 'wms_layer_folder',
-            state: {opened: false},
-        });
+        socket.emit('add_wms_layer_group', layerGroup, updateGlobalServiceLayerList);
     };
 
     const renameWmsLayerGroup = (groupId, name) => {

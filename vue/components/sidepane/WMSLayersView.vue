@@ -16,18 +16,43 @@
 
 <template>
   <div id="wms_layers_view">
-    <a-space
+    <a-tree
       v-if="treeData != null"
-      direction="vertical"
-      style="width: 95%;"
+      v-model:expanded-keys="expandedKeys"
+      :show-icon="true"
+      :show-line="true"
+      :tree-data="treeData"
+      checkable
+      :check-strictly="true"
+      :checked-keys="checkedKeys"
+      @check="onCheck"
+      @expand="onExpand"
+      @right-click="onRightClick"
     >
-      <vue-js-tree
-        :tree-id="treeId" :plugins="['contextmenu', 'types', 'checkbox', 'dnd']"
-        :data="treeData" :events="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
-        :check-call-back="checkCallBack" :dnd-is-draggable="dnbIsDraggable"
-      />
-      <a-divider style="margin: 8px;" />
-    </a-space>
+      <template #icon="{ iconClass }">
+        <span v-if="iconClass" :class="iconClass" />
+      </template>
+
+      <template #switcherIcon="{ switcherCls }"><caret-down-filled :class="switcherCls" /></template>
+      <template #title="{ title }">
+        <a-dropdown :trigger="['contextmenu']" overlay-class-name="wms-layer-context-menu">
+          <span>{{ title }}</span>
+          <template #overlay>
+            <a-menu
+              :disabled="contextMenuItems.length === 0"
+              @click="onContextMenuClick"
+            >
+              <template v-for="item in contextMenuItems" :key="item.key">
+                <a-menu-item class="menu-item-with-icon" :disabled="item.disabled">
+                  <i :class="item.icon" />
+                  {{ item.label }}
+                </a-menu-item>
+              </template>
+            </a-menu>
+          </template>
+        </a-dropdown>
+      </template>
+    </a-tree>
     <div v-else>
       <p class="text-only">No WMS layers visible.</p>
     </div>
@@ -35,18 +60,15 @@
 </template>
 
 <script setup>
-import {computed} from 'vue';
-// eslint-disable-next-line no-unused-vars
-import VueJsTree from "@/components/jstree/VueJsTree";
-import {useBaseLayers,} from "@/composables/baseLayers";
-// eslint-disable-next-line no-unused-vars
-import VisibleLayersView from "./VisibleLayersView.vue";
+import {computed, ref, watch} from 'vue';
+import {CaretDownFilled} from '@ant-design/icons-vue';
+import {useBaseLayers} from "@/composables/baseLayers";
 import {useWmsLayers, showLayer, hideLayer} from "@/composables/wmsLayers";
 import {useVisibleLayers} from "@/composables/visibleLayers";
-import { notification } from 'ant-design-vue';
+import {notification} from 'ant-design-vue';
 import {useSocketIO} from "@/composables/socketio";
-const {socket} = useSocketIO();
 
+const {socket} = useSocketIO();
 const {showBaseLayer, baseLayerDefinitions, getBaseLayerByLabel, hideBaseLayer} = useBaseLayers();
 const {layerExists} = useVisibleLayers(window.map, socket);
 const {
@@ -56,391 +78,330 @@ const {
   renameWmsLayerGroup,
   removeWmsLayerGroup,
   setWmsLayerGroupOpened,
-  getDescendantLayerNodeIds,
   setVisibilityWmsLayerGroup,
-  moveWmsItem,
-  copyWmsItem
 } = useWmsLayers();
 
+const expandedKeys = ref([]);
+const checkedBaseLayers = ref(baseLayerDefinitions
+  .filter((baseLayer) => baseLayer.enabled)
+  .map((baseLayer) => baseLayer.label));
+const contextMenu = ref({node: null});
 
-// eslint-disable-next-line no-unused-vars
-const treeId = "layer_tree";
-const $ = window.$;
-const openedFolders = [];
-
-// Maximum layer count to be opened by the user at once
 const MaxLayerOpenCount = 10;
 
-const getTree = () => $('#' + treeId).jstree(true);
-// eslint-disable-next-line no-unused-vars
 const treeData = computed(() => {
   if (getWmsLayerList()) {
-    let wmsGroupsJstreeData = [];
+    let wmsGroupsTreeData = [];
     for (const [key, rootGroup] of Object.entries(getRootGroupsWithChildren())) {
-      addTreeItem(wmsGroupsJstreeData, rootGroup, key, "wms_layer_folder", rootGroup.children);
+      addTreeItem(wmsGroupsTreeData, rootGroup, key, "wms_layer_folder", rootGroup.children, null);
     }
 
     return [
       getBaseLayersControlTreeData(),
-      ...wmsGroupsJstreeData,
+      ...wmsGroupsTreeData,
     ];
   } else {
     return null;
   }
 });
 
-const showAddLayerDialog = (objectId) => {
+const checkedKeys = computed(() => {
+  const checked = [];
+
+  for (const baseLayer of checkedBaseLayers.value) {
+    checked.push(baseLayer);
+  }
+
+  const layerList = getWmsLayerList();
+  if (!layerList) {
+    return checked;
+  }
+
+  for (const layerId of Object.keys(layerList.layers)) {
+    if (layerExists(layerId)) {
+      checked.push(layerId);
+    }
+  }
+
+  for (const groupId of Object.keys(layerList.layer_groups)) {
+    const layerIds = getLayerIdsForGroup(groupId);
+    if (layerIds.length && layerIds.every((layerId) => layerExists(layerId))) {
+      checked.push(groupId);
+    }
+  }
+
+  return checked;
+});
+
+watch(treeData, (newData) => {
+  if (newData && !expandedKeys.value.length) {
+    expandedKeys.value = getInitiallyExpandedKeys(newData);
+  }
+}, {immediate: true});
+
+const contextMenuItems = computed(() => {
+  const node = contextMenu.value.node?.dataRef;
+  if (!node) {
+    return [];
+  }
+
+  if (node.dataType === 'wms_layer_folder') {
+    const readonly = node.readonly;
+    const isRoot = node.isRoot;
+    return [
+      {key: 'add_layer', icon: 'fas fa-plus', label: 'Add WMS/WFS layer', disabled: readonly},
+      {key: 'add_folder', icon: 'fas fa-plus', label: 'Add folder', disabled: readonly},
+      {key: 'rename_folder', icon: 'far fa-edit', label: 'Rename folder', disabled: readonly || isRoot},
+      {key: 'delete_folder', icon: 'fa fa-trash-o', label: 'Delete folder', disabled: readonly || isRoot},
+    ];
+  } else if (node.dataType === 'service_layer_tree') {
+    return [
+      {key: 'edit_layer', icon: 'far fa-edit', label: 'Edit layer', disabled: node.readonly},
+      {key: 'delete_layer', icon: 'fa fa-trash-o', label: 'Delete layer', disabled: node.readonly},
+    ];
+  }
+
+  return [];
+});
+
+function showAddLayerDialog(objectId) {
   window.add_edit_web_service_layer(objectId);
 }
 
-const getRootGroupsWithChildren = () => {
+function getRootGroupsWithChildren() {
   const rootGroups = [];
-  // const foundChildIds = [];
   for (const [key, layerGroup] of Object.entries(getWmsLayerList().layer_groups)) {
     if (layerGroup.is_root) {
       rootGroups[key] = {...layerGroup};
-      rootGroups[key]['children'] = getChildrenOfGroup(layerGroup);
+      rootGroups[key]['children'] = getChildrenOfGroup(layerGroup, key);
     }
   }
   return rootGroups;
 }
 
-const getChildrenOfGroup = (layerGroup) => {
+function getChildrenOfGroup(layerGroup, parentGroupId) {
   const layers = [];
   if (typeof layerGroup.child_ids !== 'undefined' && layerGroup.child_ids.length > 0) {
     for (const childId of layerGroup.child_ids) {
-      // check if child is a group
       let child = getWmsLayerList().layer_groups[childId];
       let type = "service_layer_tree";
       let children = [];
-      if (child !== undefined && child !== null) {  // if a group, find children
+      if (child !== undefined && child !== null) {
         type = "wms_layer_folder";
-        children = getChildrenOfGroup(child);
-      } else { // get layer
+        children = getChildrenOfGroup(child, childId);
+      } else {
         child = getWmsLayerList().layers[childId];
       }
 
       if (child !== undefined && child !== null) {
-        addTreeItem(layers, child, childId, type, children);
+        addTreeItem(layers, child, childId, type, children, parentGroupId);
       }
     }
   }
   return layers;
 }
 
-const addTreeItem = (items, item, itemId, type, children) => {
-  // const a_attr = {"class": type !== "service_layer_tree" ? "no_checkbox" : item.active ? "bold" : "", title: item.description};
-  const a_attr = {"class": item.active ? "bold" : "", title: item.description};
+function addTreeItem(items, item, itemId, type, children, parentId) {
   items.push({
-    id: itemId,
-    text: item.description,
+    title: item.description,
+    key: itemId,
     setting_type: item.setting_type,
     project_name: item.project_name,
+    parentId: parentId,
     readonly: item.readonly,
-    type: type,
-    a_attr: a_attr,
-    state: {"checked": layerExists(itemId), opened: openedFolders.includes(itemId)},
+    dataType: type,
+    iconClass: type === "service_layer_tree" ? 'fas fa-map' : 'fas fa-layer-group',
+    checkable: true,
+    selectable: false,
+    isRoot: item.is_root,
+    opened: item.opened,
+    class: item.active ? 'bold' : '',
     children: children,
   });
 }
 
-/**
- * WMS Layer folder tree specification
- * @type {LayerFolderTreeSpec}
- *
- * Represents the WMS layer folder tree specification for the jstree component.
- */
-class LayerFolderTreeSpec {
-  constructor() {
-    this.type = "wms_layer_folder";
-    this.icon = 'fas fa-layer-group';
-    this.events = {
-      'check_node.jstree': (e, data) => {
-        // Hide any opened child layer from the partially opened folder.
-        if (this._getCheckedChildNodeIds(data.node).length) {
-          setTimeout(() => getTree().uncheck_node(data.node));
-        }
-        else {
-          const layerIds = getDescendantLayerNodeIds(data.node);
-          if (layerIds.length <= MaxLayerOpenCount) {
-            setVisibilityWmsLayerGroup(data.node.id, true);
-          }
-          else {
-            // setTimeout to ensure it happens after the check_node event has been processed.
-            setTimeout(() => getTree().uncheck_node(data.node));
-            this._showWarningMsg(layerIds.length, MaxLayerOpenCount);
-          }
-        }
-      },
-      'uncheck_node.jstree': (e, data) => {
-        setVisibilityWmsLayerGroup(data.node.id, false);
-      },
-      'open_node.jstree': (e, data) => {
-        setWmsLayerGroupOpened(data.node.id, true);
-      },
-      'close_node.jstree': (e, data) => {
-        setWmsLayerGroupOpened(data.node.id, false);
-      }
-    };
-  }
-
-  /**
-   * Returns an array of child node Ids in checked state.
-   *
-   * @param {Object} node jsTree node object
-   * @returns {string[]} An array of checked child node Ids.
-   */
-  _getCheckedChildNodeIds(node) {
-    const children = getTree().get_node(node).children_d;
-    const checkedChildren = children.filter((childId) => getTree().is_checked(childId));
-    return checkedChildren;
-  }
-
-  /**
-   * Show a warning message when trying to open too many layers at once.
-   *
-   * @param {number} hiddenLayerCount The number of hidden layers being opened.
-   * @param {number} maxLayerOpenCount The maximum number of layers can be opened at once.
-   */
-  _showWarningMsg(hiddenLayerCount, maxLayerOpenCount) {
-    notification['warning']({
-      message: 'Warning',
-      description: `You are trying to open ${hiddenLayerCount} map layers. Opening more than ${maxLayerOpenCount} layers at once is not allowed, `
-                    + "please open layers individually.",
-      placement: 'bottomLeft',
-    });
-  }
-
-  contextMenus(node, tree) {
-    return {
-      'add_layer': {
-        'label': 'Add WMS/WFS layer',
-        'icon': 'fas fa-plus',
-        'action': function () {
-          showAddLayerDialog("__" + node.id); // add '__' to give parent folder id
-        },
-        '_disabled': node.original.readonly
-      },
-      'add_folder': {
-        'label': 'Add folder',
-        'icon': 'fas fa-plus',
-        'action': function () {
-          let project_name;
-          if (Object.hasOwn(node.original, 'project_name')) {
-            project_name = node.original.project_name;
-          } else {
-            project_name = node.original.setting_type;
-          }
-          addWmsLayerGroup(node.id, node.original.setting_type, project_name);
-        },
-        '_disabled': node.original.readonly
-      },
-      'rename_folder': {
-        'label': 'Rename folder',
-        'icon': 'far fa-edit',
-        'action': function () {
-          tree.edit(node, undefined, (node, isSuccessful, isCancelled) => {
-            if (isSuccessful && !isCancelled) {
-              renameWmsLayerGroup(node.id, node.text);
-            }
-          });
-        },
-        '_disabled': node.original.readonly || node.parents.length < 2, // do not rename root folders
-      },
-      'delete': {
-        'label': 'Delete folder',
-        'icon': 'fa fa-trash-o',
-        'action': function () {
-          removeWmsLayerGroup(node.id, node.parents[0]);
-        },
-        '_disabled': node.original.readonly || node.parents.length < 2, // do not delete root folders
-      },
-    };
-  }
-}
-
-/**
- * Service layer tree specification
- * @type {ServiceLayerTreeSpec}
- *
- * Represents the layer tree specification for the jstree component.
- */
-class ServiceLayerTreeSpec {
-  constructor() {
-    this.type = "service_layer_tree";
-    this.icon = 'fas fa-map';
-    this.max_depth = 0;
-    this.events = {
-      'check_node.jstree': function (e, data) {
-        showLayer(data.node.id);
-      },
-      'uncheck_node.jstree': function (e, data) {
-        hideLayer(data.node.id)
-      },
-      'move_node.jstree':function (e, data) {
-        // TODO: rename
-        moveWmsItem(data.node.id, data.old_parent, data.node.parents[0], data.position);
-      },
-      'copy_node.jstree': function (e, data) {
-        // TODO: rename
-        copyWmsItem(data.original.id, data.node.parents[0], data.position);
-      },
-    }
-  }
-
-  contextMenus(node) {
-    return {
-      'edit': {
-        'label': 'Edit layer',
-        'icon': 'far fa-edit',
-        'action': function () {
-          showAddLayerDialog(node.id);
-        },
-        '_disabled': node.original.readonly,
-      },
-      'delete': {
-        'label': 'Delete layer',
-        'icon': 'fa fa-trash-o',
-        'action': function () {
-          // TODO: rename
-          removeWmsLayer(node.id, node.parents[0]);
-        },
-        '_disabled': node.original.readonly,
-      },
-    };
-  }
-}
-
-class BaseLayerFolderTreeSpec {
-  constructor() {
-    this.type = "root_layer_folder";
-    this.icon = "fas fa-layer-group";
-  }
-}
-
-class BaseLayerTreeSpec {
-  constructor() {
-    this.type = "base_layer";
-    this.icon = 'far fa-map';
-    this.max_depth = 0;
-    this.events = {
-      'check_node.jstree': function (e, data) {
-        const id = data.node.id;
-        // Single base layer selection
-        for (const checkedNode of getTree().get_checked_descendants(data.node.parent)) {
-          if (checkedNode !== id) {
-            getTree().uncheck_node(checkedNode)
-          }
-        }
-        for (const baseLayer of baseLayerDefinitions) {
-          hideBaseLayer(baseLayer);
-        }
-
-        const baseLayer = getBaseLayerByLabel(id);
-        showBaseLayer(baseLayer);
-      },
-      'uncheck_node.jstree': function (e, data) {
-        const id = data.node.id;
-        const baseLayer = getBaseLayerByLabel(id);
-        hideBaseLayer(baseLayer);
-      },
-    }
-  }
-}
-
-// eslint-disable-next-line no-unused-vars
-const treeTypeSpecs = [new LayerFolderTreeSpec(), new BaseLayerTreeSpec(), new BaseLayerFolderTreeSpec(), new ServiceLayerTreeSpec];
-
-// eslint-disable-next-line no-unused-vars
-const eventHandlersByName = {
-  'create_node.jstree': function (e, data) {
-    getTree().edit(data.node, undefined, (node, isSuccessful, isCancelled) => {
-      if (isSuccessful && !isCancelled) {
-        renameWmsLayerGroup(node.id, node.text);
-      }
-    });
-  },
-  'open_node.jstree': function (e, data) {
-    const id = data.node.id;
-    if (!openedFolders.includes(id)) {
-      openedFolders.push(id);
-    }
-  },
-  'close_node.jstree': function (e, data) {
-    const id = data.node.id;
-    const index = openedFolders.indexOf(id);
-    if (index > -1) {
-      openedFolders.splice(index, 1);
-    }
-  },
-}
-
-// eslint-disable-next-line no-unused-vars
-const checkCallBack = (operation, node, node_parent, node_position, more) => {
-  if (operation === 'move_node' || operation === 'copy_node') {
-    let new_root_folder_id;
-    if (node_parent.parents.length > 1) {
-      new_root_folder_id = node_parent.parents[node_parent.parents.length - 2];
-    } else {
-      new_root_folder_id = node_parent.id;
-    }
-    if (node.type === 'visible_layer' || new_root_folder_id === '#' || new_root_folder_id === 'group_base_layers'
-        || new_root_folder_id === 'standard_layers') {
-      // don't move from visible layers or into 'root', 'Base layers' or 'Standard layers'
-      return false;
-    }
-    if (operation === 'move_node') { // don't move read only
-      if (node.original.readonly) {
-        return false;
-      }
-    }
-  }
-  return true;
-};
-
-// make sure not to drag root folders
-
-// eslint-disable-next-line no-unused-vars
-const dnbIsDraggable = (nodes) => {
-  return nodes[0].type !== "base_layer" && nodes[0].parent !== "#";
-};
-
 function getBaseLayersControlTreeData() {
-  let children = [];
-
-  for (const baseLayer of baseLayerDefinitions) {
-    let state = {};
-    if (baseLayer.enabled) {
-      state.checked = true;
-    }
-
-    const child = {
-      id: baseLayer.label,
-      text: baseLayer.label,
-      type: "base_layer",
-      state: state,
-    }
-    children.push(child);
-  }
-
   return {
-    id: "group_base_layers",
-    text: "Base layers",
-    type: "wms_layer_folder",
+    title: "Base layers",
+    key: "group_base_layers",
+    dataType: "root_layer_folder",
     readonly: true,
-    state: {
-      opened: true
-    },
-    children: children,
-    a_attr: {
-      "class": "no_checkbox"
-    }
+    checkable: false,
+    selectable: false,
+    iconClass: 'fas fa-layer-group',
+    children: baseLayerDefinitions.map((baseLayer) => ({
+      title: baseLayer.label,
+      key: baseLayer.label,
+      dataType: "base_layer",
+      iconClass: 'far fa-map',
+      selectable: false,
+      isLeaf: true,
+      children: [],
+    })),
   };
 }
 
+function getInitiallyExpandedKeys(nodes) {
+  const keys = [];
+  for (const node of nodes) {
+    if (node.key === 'group_base_layers' || node.isRoot || node.opened) {
+      keys.push(node.key);
+    }
+    if (node.children?.length) {
+      for (const childKey of getInitiallyExpandedKeys(node.children)) {
+        keys.push(childKey);
+      }
+    }
+  }
+  return keys;
+}
+
+function onRightClick(info) {
+  info.event.preventDefault();
+  if (!['wms_layer_folder', 'service_layer_tree'].includes(info.node.dataType)) {
+    return;
+  }
+  contextMenu.value = {node: info.node};
+}
+
+function onContextMenuClick({key}) {
+  const node = contextMenu.value.node?.dataRef;
+  if (!node) {
+    return;
+  }
+
+  if (key === 'add_layer') {
+    showAddLayerDialog("__" + node.key);
+  } else if (key === 'add_folder') {
+    addFolder(node);
+  } else if (key === 'rename_folder') {
+    renameFolder(node);
+  } else if (key === 'delete_folder') {
+    removeWmsLayerGroup(node.key, node.parentId);
+  } else if (key === 'edit_layer') {
+    showAddLayerDialog(node.key);
+  } else if (key === 'delete_layer') {
+    removeWmsLayer(node.key, node.parentId);
+  }
+
+  contextMenu.value = {node: null};
+}
+
+function addFolder(node) {
+  let projectName;
+  if (Object.hasOwn(node, 'project_name')) {
+    projectName = node.project_name;
+  } else {
+    projectName = node.setting_type;
+  }
+  addWmsLayerGroup(node.key, node.setting_type, projectName);
+}
+
+function renameFolder(node) {
+  const newName = window.prompt('New folder name:', node.title);
+  if (newName && newName !== node.title) {
+    renameWmsLayerGroup(node.key, newName);
+  }
+}
+
+function onExpand(keys, info) {
+  expandedKeys.value = keys;
+  const node = info.node.dataRef;
+  if (node.dataType === 'wms_layer_folder') {
+    setWmsLayerGroupOpened(node.key, info.expanded);
+  }
+}
+
+async function onCheck(_, info) {
+  const node = info.node.dataRef;
+  const isChecked = info.checked;
+  const ctrlPressed = info.nativeEvent?.ctrlKey;
+
+  if (node.dataType === 'base_layer') {
+    setBaseLayerVisibility(node.key, isChecked, ctrlPressed);
+  } else if (node.dataType === 'service_layer_tree') {
+    if (isChecked) {
+      showLayer(node.key);
+    } else {
+      hideLayer(node.key);
+    }
+  } else if (node.dataType === 'wms_layer_folder') {
+    setGroupVisibility(node.key, isChecked);
+  }
+}
+
+function setBaseLayerVisibility(layerKey, isChecked, ctrlPressed) {
+  const layer = getBaseLayerByLabel(layerKey);
+  if (isChecked) {
+    if (!ctrlPressed) {
+      for (const baseLayer of baseLayerDefinitions) {
+        hideBaseLayer(baseLayer);
+      }
+      checkedBaseLayers.value = [];
+    }
+    showBaseLayer(layer);
+    if (!checkedBaseLayers.value.includes(layerKey)) {
+      checkedBaseLayers.value.push(layerKey);
+    }
+  } else {
+    hideBaseLayer(layer);
+    checkedBaseLayers.value = checkedBaseLayers.value.filter((key) => key !== layerKey);
+  }
+}
+
+function setGroupVisibility(groupId, isChecked) {
+  const layerIds = getLayerIdsForGroup(groupId);
+  if (!isChecked) {
+    setVisibilityWmsLayerGroup(groupId, false);
+    return;
+  }
+
+  const visibleLayerIds = layerIds.filter((layerId) => layerExists(layerId));
+  if (visibleLayerIds.length) {
+    return;
+  }
+
+  if (layerIds.length <= MaxLayerOpenCount) {
+    setVisibilityWmsLayerGroup(groupId, true);
+  } else {
+    showWarningMsg(layerIds.length, MaxLayerOpenCount);
+  }
+}
+
+function getLayerIdsForGroup(groupId) {
+  const layerList = getWmsLayerList();
+  const layerIds = [];
+
+  if (!layerList || !(groupId in layerList.layer_groups)) {
+    return layerIds;
+  }
+
+  collectLayerIds(groupId, layerIds);
+  return layerIds;
+}
+
+function collectLayerIds(itemId, layerIds) {
+  const layerList = getWmsLayerList();
+  if (itemId in layerList.layers) {
+    layerIds.push(itemId);
+  } else if (itemId in layerList.layer_groups) {
+    for (const childId of layerList.layer_groups[itemId].child_ids) {
+      collectLayerIds(childId, layerIds);
+    }
+  }
+}
+
+function showWarningMsg(hiddenLayerCount, maxLayerOpenCount) {
+  notification['warning']({
+    message: 'Warning',
+    description: `You are trying to open ${hiddenLayerCount} map layers. Opening more than ${maxLayerOpenCount} layers at once is not allowed, `
+      + "please open layers individually.",
+    placement: 'bottomLeft',
+  });
+}
 </script>
 
-<style lang="scss">
+<style scoped lang="scss">
 #wms_layers_view {
   overflow-y: auto;
 
@@ -448,9 +409,29 @@ function getBaseLayersControlTreeData() {
     padding-left: 8px;
   }
 
+  :deep(.ant-tree-treenode) {
+    padding-bottom: 0;
+  }
+
+  :deep(.ant-tree-switcher) {
+    line-height: inherit;
+
+    .ant-tree-switcher-line-icon {
+      display: none;
+    }
+  }
+
+  :deep(.ant-tree-checkbox) {
+    align-self: flex-start;
+    margin-inline-end: auto;
+  }
+
+  :deep(.bold) {
+    font-weight: bold;
+  }
 }
 
-.bold {
-  font-weight: bold;
+:global(.wms-layer-context-menu .menu-item-with-icon i) {
+  width: 18px;
 }
 </style>
