@@ -710,6 +710,38 @@ z-index for jstree context menu, sidebar has 2000
     width: auto;
 }
 
+@media (max-width: 991.98px) {
+    #menu,
+    #ctrl {
+        float: none !important;
+        width: 100%;
+    }
+
+    #menu .navbar {
+        padding: 4px 16px;
+    }
+
+    #menu .navbar .container {
+        width: 100%;
+    }
+
+    #navbarNavDropdown {
+        margin-top: 4px;
+    }
+
+    #navbarNavDropdown .navbar-nav {
+        width: 100%;
+    }
+
+    #ctrl {
+        clear: both;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        align-items: center;
+    }
+}
+
 .menu-icon {
     width: 16px;
     height: 16px;
