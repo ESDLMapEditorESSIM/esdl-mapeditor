@@ -22,6 +22,7 @@ from typing import Any, Tuple
 import requests
 from flask import Flask
 from flask_socketio import SocketIO, emit
+from pyecore.ecore import EDate
 from pyecore.resources import ResourceSet
 from requests import Response
 
@@ -30,6 +31,7 @@ import src.log as log
 from esdl import esdl
 from esdl.esdl_handler import StringURI
 from esdl.processing import ESDLAsset, ESDLGeometry
+from esdl.units.parser import build_qau_from_unit_string
 from extensions.external_models.external_models_storage import (
     ExternalModelsStorage,
     ESDL_FEEDBACK,
@@ -758,6 +760,39 @@ class ESDLServices:
             else:
                 logger.error("Service was expected to give back a profile")
                 return False, None, None
+        elif result_config["action"] == "add_profile_values":
+            es_edit = esh.get_energy_system(es_id=active_es_id)
+            json_input_data = json.loads(input_data)
+            if "results" in json_input_data:
+                profile_values = json_input_data["results"]
+
+                profile = esdl.TimeSeriesProfile(id=str(uuid.uuid4()))
+                profile.startDateTime = EDate.from_string("2019-01-01 00:00:00")
+                profile.values = profile_values
+
+                qau = build_qau_from_unit_string("J", esdl.PhysicalQuantityEnum.ENERGY)
+                profile.profileQuantityAndUnit = qau
+            else:
+
+                return False, "", None
+
+            if "asset_id" in state_params:
+                asset_id = state_params["asset_id"]
+                asset = esh.get_by_id(active_es_id, object_id=asset_id)
+
+                profile_port = None
+                for p in asset.port:
+                    if isinstance(p, esdl.InPort):
+                        profile_port = p
+
+                if not profile_port:
+                    profile_port = esdl.InPort(id=str(uuid.uuid4()), name="InPort")
+                    asset.port.append(profile_port)
+
+                profile_port.profile.append(profile)
+
+                return True, None, None
+
         elif result_config["action"] == "add_notes":
             es_edit = esh.get_energy_system(es_id=active_es_id)
             esi = es_edit.energySystemInformation
