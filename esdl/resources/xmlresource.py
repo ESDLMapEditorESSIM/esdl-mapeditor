@@ -12,12 +12,18 @@
 #  Manager:
 #      TNO
 
-from pyecore.resources.xmi import XMIResource, XMIOptions, XMI_URL, XSI_URL, XSI
-from lxml.etree import QName, Element, ElementTree
 import logging
 
+from lxml.etree import QName, Element, ElementTree
+from pyecore.ecore import EObject, EProxy
+from pyecore.resources.xmi import XMIResource, XMIOptions, XMI_URL, XSI_URL, XSI, XMI
+
+from esdl.resources.resource_type import ProjectManagerResourceType
+from utils.utils import timed
 
 logger = logging.getLogger(__name__)
+
+
 
 """
 Extension of pyecore's XMIResource to support the XMLResource in EMF.
@@ -25,6 +31,8 @@ It basically removes the xmi:version stuff from the serialization.
 It also adds parse_information that can be inspected for errors when reading an ESDL file.
 """
 class XMLResource(XMIResource):
+    type: ProjectManagerResourceType = ProjectManagerResourceType.UNKNOWN
+
     def __init__(self, uri=None, use_uuid=False):
         super().__init__(uri, use_uuid)
         self._later = []
@@ -32,8 +40,92 @@ class XMLResource(XMIResource):
         self.reverse_nsmap = {}
         self.parse_information = []
 
+    def set_content(self, root):
+        if not isinstance(root, EObject):
+            raise ValueError('The resource requires an EObject type, '
+                             f'but received {type(root)} instead.')
+        if len(self.contents) > 0 and self.contents[0]:
+            self.remove(self.contents[0])
+        self.contents.insert(0, root)
+        root._eresource = self
+        if root._container is not None:
+            container = root._container
+            feature = root._containment_feature
+            if feature.many:
+                container.eGet(feature).remove(root)
+            else:
+                container.eSet(feature, None)
+            root._container = None # as root is added to the resource, there is no container anymore
+
+    def set_content_without_detaching(self, root: EObject):
+        """
+        This function sets the content 'root' to an eObject in that is contained in another resource, but does
+        not move the eObject to this resource.
+        This function allows to serialize parts of an ESDL without deepcopying it to avoid moving it to a different resource
+        Parameters
+        ----------
+        root: EObject to seralize
+
+        Returns
+        -------
+
+        """
+        if not isinstance(root, EObject):
+            raise ValueError('The resource requires an EObject type, '
+                             f'but received {type(root)} instead.')
+        self.contents.clear()
+        self.contents.insert(0, root)
+
+    def __str__(self):
+        return f'XMLResource(type={self.type}, uri={self.uri}, content[0]={self.contents[0].name if len(self.contents) > 0 else None})'
+
     def get_parse_information(self):
         return self.parse_information
+
+    def load_subtree(self, original_root, sub_tree, options=None):
+        """
+        Loads a subtree of an XML as a resource, e.g. the energysystems in a Project's variant collection
+        See Also ProjectResource that uses this function
+        """
+        self.type = ProjectManagerResourceType.VARIANT_COLLECTION
+        self.options = options or {}
+        self.cache_enabled = True
+        self.prefixes.update(original_root.nsmap)
+        self.reverse_nsmap = {v: k for k, v in self.prefixes.items()}
+
+        self.xsitype = f'{{{self.prefixes.get(XSI)}}}type'
+        self.xmiid = f'{{{self.prefixes.get(XMI)}}}id'
+        self.schema_tag = f'{{{self.prefixes.get(XSI)}}}schemaLocation'
+
+        # Decode the XMI
+        # if f'{{{self.prefixes.get(XMI)}}}XMI' == xmlroot.tag:
+        #     real_roots = xmlroot
+        # else:
+        #     real_roots = [xmlroot]
+        real_roots = [sub_tree]
+
+        def grouper(iterable):
+            args = [iter(iterable)] * 2
+            return zip(*args)
+
+        self.schema_locations = {}
+        schema_tag_list = original_root.attrib.get(self.schema_tag, '')
+        for prefix, path in grouper(schema_tag_list.split()):
+            if '#' not in path:
+                path = path + '#'
+            self.schema_locations[prefix] = EProxy(path, self)
+
+        for root in real_roots:
+            modelroot = self._init_modelroot(root)
+            for child in root:
+                self._decode_eobject(child, modelroot)
+
+        if self.contents:
+            self._decode_ereferences()
+
+        self._clean_registers()
+        self.uri.close_stream()
+
 
     def save(self, output=None, options=None):
         self.options = options or {}
@@ -103,3 +195,4 @@ class XMLResource(XMIResource):
                 logger.warning(s)
                 self.parse_information.append(s)
             return feature
+

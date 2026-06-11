@@ -5,7 +5,7 @@ from typing import Tuple
 from flask import Flask, jsonify, request
 import requests
 
-from extensions.session_manager import get_handler, get_session
+from extensions.session_manager import get_session, get_project_manager
 from src.log import get_logger
 from src.esdl_config import ESDL_COST_SERVICE_HOST
 
@@ -27,10 +27,10 @@ class CostInformation:
         def generate_cost_information_template():
             url = f"{ESDL_COST_SERVICE_HOST}/cost-information/generate"
             active_es_id = get_session("active_es_id")
-            esh = get_handler()
+            pm = get_project_manager()
 
             base64_es = base64.b64encode(
-                esh.to_string(active_es_id).encode("utf-8")
+                pm.energy_system_to_string(active_es_id).encode("utf-8")
             ).decode()
             payload = dict(
                 energysystem=base64_es,
@@ -70,9 +70,9 @@ class CostInformation:
             cost_information_upload_file = base64.b64decode(base64_file, b"-_")
             url = f"{ESDL_COST_SERVICE_HOST}/cost-information/parse"
             active_es_id = get_session("active_es_id")
-            esh = get_handler()
+            pm = get_project_manager()
             base64_es = base64.b64encode(
-                esh.to_string(active_es_id).encode("utf-8")
+                pm.energy_system_to_string(active_es_id).encode("utf-8")
             ).decode()
             files = dict(
                 energysystem=base64_es,
@@ -94,8 +94,8 @@ class CostInformation:
                 )
             elif status == "finished":
                 content, filename = _download_result(process_id)
-                esh = get_handler()
-                esh.add_from_string(filename, content.decode("utf-8"))
+                pm = get_project_manager()
+                pm.add_from_string(filename, content.decode("utf-8"))
 
                 return jsonify(dict(
                     filename=filename,

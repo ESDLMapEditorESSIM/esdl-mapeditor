@@ -6,7 +6,7 @@
     >
       &nbsp;
     </div>
-    Show/hide services toolbar
+    Show services toolbar
   </a>
 </template>
 

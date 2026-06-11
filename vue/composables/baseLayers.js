@@ -17,7 +17,6 @@
 const L = window.L;
 const map = window.map;
 
-
 const baseLayerDefinitions = [
     {
         label: 'OpenStreetMap',
@@ -31,8 +30,16 @@ const baseLayerDefinitions = [
         enabled: true,
     },
     {
+        label: 'OpenTopoMap',
+        layer: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+            maxZoom: 17,
+            attribution: 'Map data: © OpenStreetMap contributors, SRTM | Map style: © OpenTopoMap (CC-BY-SA)'
+        }),
+        enabled: false,
+    },
+    {
         label: 'Google Streets',
-        layer: L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+        layer: L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
             maxZoom: 20,
             subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
             attribution: 'Google'
@@ -41,7 +48,7 @@ const baseLayerDefinitions = [
     },
     {
         label: 'Google Satellite',
-        layer: L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+        layer: L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
             maxZoom: 20,
             subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
             attribution: 'Google'

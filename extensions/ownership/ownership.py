@@ -26,7 +26,7 @@ from extensions.ownership.ownership_messages import (
     OwnershipParty,
     GetPartiesResp,
 )
-from extensions.session_manager import get_handler
+from extensions.session_manager import get_session, get_project_manager
 import src.log as log
 
 
@@ -88,8 +88,8 @@ class Ownership:
                 return jsonify({"error": str(e)}), 500
 
     def get_es(self, es_id: str) -> esdl.EnergySystem:
-        esh = get_handler()
-        es = esh.get_energy_system(es_id)
+        pm = get_project_manager()
+        es = pm.get_energy_system_by_id(es_id)
 
         if es is None:
             raise ValueError(f"EnergySystem with id {es_id} can't be found.")
@@ -182,12 +182,12 @@ class Ownership:
             raise Exception(f"Error in assigning ownership: {str(e)}")
 
     def assign_asset_ownership(
-        self, es_id: str, asset_id: str, party_id: Optional[str]
+            self, es_id: str, asset_id: str, party_id: Optional[str]
     ) -> None:
-        esh = get_handler()
-        es = esh.get_energy_system(es_id)
+        pm = get_project_manager()
+        es = pm.get_active_energy_system()
 
-        asset: esdl.Asset = esh.get_by_id(es_id, asset_id)
+        asset: esdl.Asset = pm.get_by_id(es_id, asset_id)
 
         if party_id is not None:
             party: esdl.Party = [p for p in es.parties.party if p.id == party_id][0]

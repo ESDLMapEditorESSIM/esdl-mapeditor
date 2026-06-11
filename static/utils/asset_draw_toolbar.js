@@ -21,7 +21,7 @@ class AssetDrawToolbar {
     }
 
     initSocketIO() {
-        console.log("Registering socket io bindings for AssetDrawToolbar")
+        console.log("Registering socketio io bindings for AssetDrawToolbar")
         var self = this;
 
         socket.on('recently_used_edr_assets', function(res) {

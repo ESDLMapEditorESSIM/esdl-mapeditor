@@ -533,7 +533,7 @@ function set_line_handlers(line) {
         }
 
         // TEST IF THIS IS BETTER
-        // if (clear_layer == false) socket.emit('command', {cmd: 'remove_object', id: line.id});
+        // if (clear_layer == false) socketio.emit('command', {cmd: 'remove_object', id: line.id});
         if (deleting_objects == true) {
             // remove connections
             console.log(line.ports);
@@ -580,16 +580,19 @@ function set_line_handlers(line) {
             }
         }
     });
-    line.off('edit');
-    line.on('edit', function(e) { // in edit mode dragging has ended: update connections
-        var layer = e.target;
-        //var pos = marker.getLatLng();
-        polyline_length = calculate_length(layer);
-        socket.emit('update-line-coord', {id: layer.id, polyline: layer.getLatLngs(), length: polyline_length});
-        //socket.emit('update-coord', {id: marker.id, coordinates: pos, asspot: marker.asspot});
-        // console.log(e.oldLatLng.lat);
-        // console.log(pos.lat + ', ' + pos.lng );
-    });
+
+    // EWOUD: this is not needed, during editing we don't need to communcate with the backend, only after editing
+    // this is needed. This is handled in area_map_handler.js in map.on('draw:edited')
+//    line.off('edit');
+//    line.on('edit', function(e) { // in edit mode dragging has ended: update connections
+//        var layer = e.target;
+//        //var pos = marker.getLatLng();
+//        //polyline_length = calculate_length(layer);
+//        //socketio.emit('update-line-coord', {id: layer.id, polyline: layer.getLatLngs(), length: polyline_length});
+//        //socketio.emit('update-coord', {id: marker.id, coordinates: pos, asspot: marker.asspot});
+//        // console.log(e.oldLatLng.lat);
+//        // console.log(pos.lat + ', ' + pos.lng );
+//    });
 
     set_line_port_handlers(line);
     select_assets.add_asset_handler(line);
@@ -855,6 +858,7 @@ Refreshes the line color based on the (updated) data of the layer
 */
 var ui_counter = 0;
 function update_line_color(line_layer) {
+    console.log("ll", line_layer);
     ui_counter++;
     debug_layer = line_layer;
     let es_id = line_layer.esid;
@@ -865,7 +869,9 @@ function update_line_color(line_layer) {
         for (let p=0; p<port_list.length; p++) {
             let port_carrier_id = port_list[p]['carrier'];
             if (port_carrier_id) {
-                let carrier_info_mapping = window.get_carrier_info_mapping(es_id);
+                if (es_id !== undefined) {
+                    let carrier_info_mapping = window.get_carrier_info_mapping(es_id);
+                }
                 line_color = carrier_info_mapping[port_carrier_id]['color'];
                 break;
             }
@@ -927,7 +933,6 @@ function update_line_color(line_layer) {
         // thicker line
         line_options['weight'] = 7;
     }
-
     line_layer.setStyle(line_options);
     line_layer.color = line_color;
     //console.log('line color', line_options['color'], line_color, line_layer.selected)

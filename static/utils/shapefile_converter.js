@@ -237,7 +237,7 @@ class ShapefileConverter {
     }
 
     initSocketIO() {
-        console.log("Registering socket io bindings for ShapefileConverter")
+        console.log("Registering socketio io bindings for ShapefileConverter")
 
         socket.on('shpcvrt_files_in_zip', function(message) {
             shapefile_converter_window.updateShapefileOverview(message);
@@ -258,7 +258,7 @@ class ShapefileConverter {
             map.on('dialog:resizeend', ShapefileConverter.handle_dialog_resize_move);
             map.on('dialog:moving', ShapefileConverter.handle_dialog_resize_move);
             map.on('dialog:closed', function(e) {
-                // socket.emit('esdl_compare_closed');
+                // socketio.emit('esdl_compare_closed');
                 console.log('ESDL shapefile converter window closed');
             });
             return shapefile_converter_window;

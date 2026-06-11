@@ -14,6 +14,8 @@
  *      TNO
  */
 
+import MapEditorDialog from "./MapEditorDialog.js";
+
 class KPIDashboard extends MapEditorDialog {
 
   open() {
@@ -35,3 +37,5 @@ class KPIDashboard extends MapEditorDialog {
     this.close();
   }
 }
+
+export default KPIDashboard;

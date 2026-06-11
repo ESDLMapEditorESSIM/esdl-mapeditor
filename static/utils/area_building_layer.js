@@ -46,36 +46,77 @@ let initMapZoomLevel; // initial map zoom level used by calcPieChartRadius() to 
 //  Dictionary with info about what KPIs are set in the area and what set of values or what ranges
 // ------------------------------------------------------------------------------------------------------------
 let area_KPIs = {};
-let layersAreaFeaturesDistKPIsRange = {};
 let building_KPIs = {};
 const pie_chart_color_list = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6',
     '#6a3d9a','#ffff99','#b15928','#000000','#808080'];
 
 function isNumeric(val) { return !isNaN(val); }
 
+function get_area_id_from_mapeditor_id(id) {
+    const regex = /.* \([0-9]+ of [0-9]+\)/g;
+
+    if (id.match(regex)) {
+        return id.split(" ")[0];
+    } else {
+        return id;
+    }
+}
 
 /**
- * Flattens a list of areas such that KPIs can be properly processed
- * @param layer_data list of layers. Items in this list can be objects with grouped layers
- * @returns {*[]} flattened list of areas
+ * Recursively flattens a list of areas so that KPIs can be properly processed.
+ * Any element with an `area_list` is treated as a parent with nested layers.
+ *
+ * @param {Array} layer_data - list of layers (possibly nested)
+ * @returns {Array} - flattened list of all leaf areas
  */
 function flatten_area_list(layer_data) {
-    let flat_layer_data = [];
+    let result = [];
 
-    for (const l_index in layer_data) {
-        let layer = layer_data[l_index];
-        if (layer.hasOwnProperty('type') && layer['type']==='group') {
-            // current layer is a group of layers
-            flat_layer_data.push(...layer['area_list']);
+    for (const entry of layer_data) {
+        if (entry && Array.isArray(entry.area_list)) {
+            // Recurse into child areas
+            result.push(...flatten_area_list(entry.area_list));
         } else {
-            // current layer is a single layer
-            flat_layer_data.push(layer);
+            // Leaf node
+            result.push(entry);
         }
     }
 
-    return flat_layer_data;
+    return result;
 }
 
+/**
+ * Calculates and stores the Distribution KPI ranges for a group of layers (DSO service areas, CBS areas)
+ * @param area_data data for all areas in the group
+ * @param group_name name of the group of layers (can be null for area layers that are not part of a group)
+ */
+function calculate_area_KPI_ranges_for_group(area_data, group_name) {
+    // distKPIsRange will be used as a reference in create_area_dist_KPIs_pie_chart()
+    // to compute relative pie chart radius for the area feature.
+    const distKPIsRange = calcDistKPIsSumRangeFromFeatures(area_data);
+    let dist_kpis_ranges = get_area_dist_kpis_ranges(active_layer_id);
+    dist_kpis_ranges[group_name] = distKPIsRange;
+}
+
+/**
+ * Preprocesses area Distribution KPI ranges for all areas in the energy system
+ * @param area_data data for all areas
+ */
+function preprocess_area_distr_KPI_ranges(area_data) {
+    let other_layers = [];
+    for (const l_index in area_data) {
+        let layer = area_data[l_index];
+        if (layer.hasOwnProperty('type') && layer['type'] === 'group') {
+            // calculate the ranges for a layer group (CBS gebieden / verzorgingsgebieden) first
+            calculate_area_KPI_ranges_for_group(layer['area_list'], layer['name']);
+        } else {
+            other_layers.push(layer);
+        }
+    }
+
+    // finally calculate the ranges for the other layers
+    calculate_area_KPI_ranges_for_group(other_layers, null);
+}
 
 /**
  * Preprocess layer data of an area or building. Creates KPI's and sets colors.
@@ -173,6 +214,11 @@ function preprocess_layer_data(layer_type, layer_data, kpi_list) {
     if (layer_type === "building") {
         if (!get_building_color ) { get_building_color = get_building_default_color; }
     }
+
+    if (layer_type === "area") {
+        preprocess_area_distr_KPI_ranges(layer_data);
+    }
+    return kpi_list;
 }
 
 function calc_order_of_magnitude(n) {
@@ -531,7 +577,7 @@ function set_area_handlers(area) {
     area.on('dragend', function(e) {
         var area = e.target;
         // var pos = area.getLatLng();
-        // socket.emit('update-coord', {id: area.id, lat: pos.lat, lng: pos.lng, asspot: 'building'});
+        // socketio.emit('update-coord', {id: area.id, lat: pos.lat, lng: pos.lng, asspot: 'building'});
     });
 
     // area.on('remove', function(e) {
@@ -544,15 +590,34 @@ function set_area_handlers(area) {
             var area = e.target;
             var id = area.id;
 
-            socket.emit('command', {cmd: 'get_area_info', id: id});
+            // This command does not exist. Should something else be called?
+            // socket.emit('command', {cmd: 'get_area_info', id: id});
         }
     });
 
     // let extensions know they can update this layer.
-    // e.g. add a context menu item
+    // For example, add a context menu item.
     for (let i=0; i<extensions.length; i++) {
         updatefun = extensions[i];
         updatefun({type: 'add_contextmenu', layer: area, layer_type: 'area'});
+    }
+}
+
+// TODO: find a better place for this
+function set_wfs_handlers(marker) {
+    // console.log(marker);
+    marker.bindContextMenu({
+        contextmenu: true,
+        contextmenuWidth: 140,
+        contextmenuItems: [],
+        contextmenuInheritItems: false
+    });
+
+    // let extensions know they can update this layer.
+    // For example, add a context menu item.
+    for (let i=0; i<extensions.length; i++) {
+        updatefun = extensions[i];
+        updatefun({type: 'add_contextmenu', layer: marker, layer_type: 'wfs'});
     }
 }
 
@@ -640,6 +705,7 @@ function calcPieChartRadius(kpiItemsSum, kpiSumMin, kpiSumMax, resizeFactor=1.0)
 
 /**
  *
+ * @param {string} esdl_layer_id the id of the ESDL layer on which the action must be performed
  * @param {Object} ar area feature object
  * @param {Object} refAreaDistKPIs reference area KPIs with structure as { KPI key: { type: string, names: string[] }, ... }
  *                                 and used as a pie chart data template to ensure data structure consistency.
@@ -647,13 +713,13 @@ function calcPieChartRadius(kpiItemsSum, kpiSumMin, kpiSumMax, resizeFactor=1.0)
  * @param {Object} refDistKPIsRange KPIs range used as a reference to compute relative pie chart radius.
  * @param {number} [resizeFactor=1.0] Resize the pie chart radius when given. Default to 1.
  */
-function create_area_dist_KPIs_pie_chart(ar, refAreaDistKPIs, refDistKPIsRange, resizeFactor=1.0) {
+function create_area_dist_KPIs_pie_chart(esdl_layer_id, ar, refAreaDistKPIs, refDistKPIsRange, resizeFactor=1.0) {
     if (ar.properties.dist_KPIs && Object.keys(ar.properties.dist_KPIs).length) {
         const distKPIs = Object.keys(ar.properties.dist_KPIs);
 
         // create pieChartMarkers for all DistributionKPIs
         distKPIs.forEach((KPI) => {
-            const distKPI = ar.properties.dist_KPIs[KPI];
+            let distKPI = ar.properties.dist_KPIs[KPI];
             const unit = distKPI.unit;
 
             let r = 0;
@@ -718,6 +784,15 @@ function create_area_dist_KPIs_pie_chart(ar, refAreaDistKPIs, refDistKPIsRange, 
                 pieChartOptions.rotation = -90;
             });
 
+            // Edwin: 26-9-2024
+            // In the next few lines, new PieChartMarkers will be created and assigned to the
+            // distKPI.pieChartMarker variable. If there already is one assigned that is also visible
+            // (so added to the map), we lose its reference and can never remove it from the map anymore.
+            // This is a *quick* fix to prevent this from happening.
+            // TODO: should be improved
+            if (distKPI.pieChartMarkerVisible) {
+                distKPI.pieChartMarker.removeFrom(get_layers(esdl_layer_id, 'kpi_layer'));
+            }
             distKPI.pieChartMarker = new L.PieChartMarker(
                 new L.LatLng(distKPI.location[0], distKPI.location[1]),
                 pieChartOptions
@@ -727,37 +802,58 @@ function create_area_dist_KPIs_pie_chart(ar, refAreaDistKPIs, refDistKPIsRange, 
     }
 }
 
-function resize_area_pi_charts() {
-    let area_layers = get_layers(active_layer_id, 'area_layer');
+/**
+ * Resizes the KPIs (Pie charts) of all loaded energy systems
+ **/
+function resize_all_area_pie_charts() {
+    for (es_id in esdl_list) {
+        resize_area_pie_charts(es_id);
+    }
+}
+
+/**
+ * Resizes the KPIs (Pie charts) of the current active energy system
+ *
+ * @param {string} esdl_layer_id the id of the ESDL layer on which the action must be performed
+ *
+ **/
+function resize_area_pie_charts(esdl_layer_id) {
+    if (esdl_layer_id === null) { esdl_layer_id = active_layer_id; }
+    let area_layers = get_layers(esdl_layer_id, 'area_layer');
     if (!area_layers) {
         // in case area_layer is not present (e.g. in Building Editor)
         return;
     }
+    let layersAreaFeaturesDistKPIsRange = get_area_dist_kpis_ranges(esdl_layer_id);
+
+    // get the area legend choice for THIS esdl layer
+    let area_legend_choice = get_area_legend_choice(esdl_layer_id);
 
     area_layers.eachLayer(function(featuregroup_instance) {
         if (featuregroup_instance instanceof L.FeatureGroup) {
-            const layerName = featuregroup_instance.options.group_name;
-            const distKPIsRange = layersAreaFeaturesDistKPIsRange[layerName];
+            const groupName = featuregroup_instance.options.group_name;
+            const distKPIsRange = layersAreaFeaturesDistKPIsRange[groupName];
             
             // Loop through layer features to create pie chart if applicable.
             featuregroup_instance.eachLayer(function(layer) {
                 const feature = layer.feature;
                 if (feature.properties.dist_KPIs && Object.keys(feature.properties.dist_KPIs).length) {
-                    if (areaLegendChoice in feature.properties.dist_KPIs) {
+                    if (area_legend_choice in feature.properties.dist_KPIs) {
                         // if currently selected KPI is DistributionKPI, remove it from map
-                        let kpi = feature.properties.dist_KPIs[areaLegendChoice];
+                        let kpi = feature.properties.dist_KPIs[area_legend_choice];
+
                         if (kpi.pieChartMarkerVisible) {   // don't add if it's already visible
-                            kpi.pieChartMarker.removeFrom(get_layers(active_layer_id, 'kpi_layer'));
+                            kpi.pieChartMarker.removeFrom(get_layers(esdl_layer_id, 'kpi_layer'));
                             kpi.pieChartMarkerVisible = false;
                         }
                     }
 
-                    create_area_dist_KPIs_pie_chart(feature, area_KPIs, distKPIsRange, areaMarkerResizeSliderVal);
+                    create_area_dist_KPIs_pie_chart(esdl_layer_id, feature, area_KPIs, distKPIsRange, areaMarkerResizeSliderVal);
 
-                    if (areaLegendChoice in feature.properties.dist_KPIs) {
-                        let kpi = feature.properties.dist_KPIs[areaLegendChoice];
+                    if (area_legend_choice in feature.properties.dist_KPIs) {
+                        let kpi = feature.properties.dist_KPIs[area_legend_choice];
                         if (!kpi.pieChartMarkerVisible) {   // don't add if it's already visible
-                            kpi.pieChartMarker.addTo(get_layers(active_layer_id, 'kpi_layer'));
+                            kpi.pieChartMarker.addTo(get_layers(esdl_layer_id, 'kpi_layer'));
                             kpi.pieChartMarkerVisible = true;
                         }
                     }
@@ -810,11 +906,17 @@ function calcDistKPIsSumRangeFromFeatures (layerFeatures) {
     return distKPIsSumRange;
 }
 
+/**
+ * Add area layers and KPIs to the map
+ *
+ * @param area_data - a list of areas (for a specific group)
+ * @param group_name - the group name (is null for layers outside of a layer group)
+ * @param map_esdl_layer - the esdl layer to which the areas must be added
+ * @returns {*}
+ */
 function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
-    // distKPIsRange will be used as a reference in create_area_dist_KPIs_pie_chart() 
-    // to compute relative pie chart radius for the area feature.
-    const distKPIsRange = calcDistKPIsSumRangeFromFeatures(area_data);
-    layersAreaFeaturesDistKPIsRange[group_name] = distKPIsRange;
+    let dist_kpis_ranges = get_area_dist_kpis_ranges(active_layer_id);
+    let distKPIsRange = dist_kpis_ranges[group_name];
     // Reset to default slider value when adding a new layer
     areaMarkerResizeSliderVal = initAreaMarkerResizeSliderVal;
 
@@ -825,7 +927,7 @@ function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
             if (feature.properties.dist_KPIs && Object.keys(feature.properties.dist_KPIs).length != 0) {
                 feature.properties.get_area_color = get_area_range_colors;
 
-                create_area_dist_KPIs_pie_chart(feature, area_KPIs, distKPIsRange);
+                create_area_dist_KPIs_pie_chart(active_layer_id, feature, area_KPIs, distKPIsRange);
 
                 // Only show first DistributionKPI if it's also the first KPI in the legend list.
                 let first_kpi_key = Object.keys(area_KPIs)[0];
@@ -840,15 +942,21 @@ function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
             if (feature.properties.KPIs && Object.keys(feature.properties.KPIs).length != 0) {
                 feature.properties.get_area_color = get_area_range_colors;
             }
+            if (feature.properties && feature.properties.parent_area_id) {
+                // Set the parent area property, so we know which area this area is part of.
+                layer.parent_area_id = feature.properties.parent_area_id;
+            }
             if (feature.properties && feature.properties.id) {
                 window.PubSubManager.broadcast('ADD_AREA_TO_LAYER', { id: feature.properties.id, feature: feature, layer: layer });
                 layer.id = feature.properties.id;
 
+                // An area without KPIs gets a popup with its name and id between parenthesis
                 let text = "ID: " + feature.properties.id;
                 if (feature.properties.name) {
                     text = feature.properties.name + " (" + text + ")";
                 }
 
+                // Create the contents for an Area popup with a table with KPI values
                 if (Object.keys(feature.properties.KPIs).length != 0) {
                     text = "<b>"+ text +"</b>";
                     text += "<br><br><table class=\"kpi_table\">";
@@ -869,6 +977,8 @@ function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
                 layer.bindPopup(popup);
 
                 layer.on('mouseover', function (e) {
+                    // only highlight an area and display its popup when the area shape is fully visible
+                    // (to prevent moving of the map on mouse over)
                     if (e.sourceTarget._map.getBounds().contains(e.sourceTarget.getBounds())) {
                         let popup = e.target.getPopup();
                         let this_map = e.sourceTarget._map;     // can be area map and building map
@@ -900,27 +1010,44 @@ function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
     return geo_json_layer;
 }
 
-
 function add_area_layer(area_data) {
-    let other_layers = [];
+    // First build a list of the areas that are not part of a group
+    let non_group_layers = [];
+    for (const l_index in area_data) {
+        let layer = area_data[l_index];
+        if (!(layer.hasOwnProperty('type') && layer['type'] === 'group')) {
+            non_group_layers.push(layer)
+        }
+    }
+
+    // Add the area layers that are not part of a group
+    geojson_area_layer = add_geojson_area_layer(
+        non_group_layers,
+        null,
+        get_layers(active_layer_id, 'area_layer')
+    );
+
     for (const l_index in area_data) {
         let layer = area_data[l_index];
         if (layer.hasOwnProperty('type') && layer['type'] === 'group') {
+            // Add the layers in a layer group (CBS gebieden / verzorgingsgebieden)
             let geojson = add_geojson_area_layer(
                 layer['area_list'],
                 layer['name'],
                 get_layers(active_layer_id, 'area_layer')
             );
-        } else {
-            other_layers.push(layer);
         }
     }
 
-    geojson_area_layer = add_geojson_area_layer(
-        other_layers,
-        null,
-        get_layers(active_layer_id, 'area_layer')
-    );
+    bring_KPI_layer_to_front(active_layer_id);
+}
+
+function bring_KPI_layer_to_front(es_id) {
+    // Move all KPI pie charts to the front (in front of the area polygons)
+    let kpi_layers = get_layers(es_id, 'kpi_layer');
+    kpi_layers.eachLayer(function(layer) {
+        layer.bringToFront();
+    });
 }
 
 // ------------------------------------------------------------------------------------------------------------
@@ -1007,15 +1134,16 @@ function create_building_legendClassesDiv(legendChoice) {
     }
 }
 
-function selectBuildingKPI(selectObject) {
-    let legendChoice = selectObject.value;
-    buildingLegendChoice = legendChoice;
-    buildingLegendClassesDiv.innerHTML = create_building_legendClassesDiv(legendChoice);
+function selectBuildingKPI(kpi_name) {
+    buildingLegendChoice = kpi_name;
+    set_building_legend_choice(active_layer_id, buildingLegendChoice);
+
+    buildingLegendClassesDiv.innerHTML = create_building_legendClassesDiv(buildingLegendChoice);
 
     geojson_building_layer.eachLayer(function (layer) {
         layer.setStyle({
-            fillColor: get_building_color(layer.feature.properties.KPIs[legendChoice]),
-            color: get_building_color(layer.feature.properties.KPIs[legendChoice])
+            fillColor: get_building_color(layer.feature.properties.KPIs[buildingLegendChoice]),
+            color: get_building_color(layer.feature.properties.KPIs[buildingLegendChoice])
         });
     });
 }
@@ -1091,6 +1219,14 @@ function restoreSelectedKPI() {
 
 function selectAreaKPI(kpi_name) {
     areaLegendChoice = kpi_name;
+    set_area_legend_choice(active_layer_id, areaLegendChoice);
+
+    if (!(areaLegendChoice in area_KPIs)) {
+        console.log("*********************************************");
+        console.log("areaLegendChoice (", areaLegendChoice, ") not present in area_KPIs");
+        console.log("*********************************************");
+    }
+
     let kpi = area_KPIs[areaLegendChoice];
     document.getElementById("areaLegendSelect").value = kpi_name;
 
@@ -1100,29 +1236,32 @@ function selectAreaKPI(kpi_name) {
     area_layers.eachLayer(function(featuregroup_instance) {
         if (featuregroup_instance instanceof L.FeatureGroup) {
             featuregroup_instance.eachLayer(function (layer) {
+                // If the area contains regular KPIs
                 if (Object.keys(layer.feature.properties.KPIs).length > 0) {
+                    // and the currenly chosen KPI is a regular KPI
                     if (areaLegendChoice in layer.feature.properties.KPIs) {
-                        const areaStyle = style_area(layer.feature);
-                        layer.setStyle(areaStyle);
-                    } else {
+                        // color the area based on the KPI value
                         layer.setStyle({
-                            fillColor: "blue",
-                            weight: 1,
-                            opacity: 1,
-                            color: "blue",
-                            dashArray: '',
-                            fillOpacity: 0.3
+                            fillColor: get_area_color(layer.feature.properties.KPIs[areaLegendChoice].value),
+                            color: get_area_color(layer.feature.properties.KPIs[areaLegendChoice].value)
                         });
+                    } else {
+                        layer.setStyle(get_area_style_no_KPI(layer.feature));
                     }
                 }
 
+                // If the area contains distribution KPIs (shown as pie charts)
                 if (Object.keys(layer.feature.properties.dist_KPIs).length > 0) {
+                    // and the currenly chosen KPI is a distribution KPI
                     if (areaLegendChoice in layer.feature.properties.dist_KPIs) {
-                        // A DistributionKPI was selected
+                        // Iterate over all distribution KPIs in the area
                         for (let key in layer.feature.properties.dist_KPIs) {
                             let kpi = layer.feature.properties.dist_KPIs[key];
+                            // if this kpi is the one chosen in the legend
                             if (areaLegendChoice == key) {
-                                if (!kpi.pieChartMarkerVisible) {   // don't add if it's already visible
+                                // and it's not visible yet
+                                if (!kpi.pieChartMarkerVisible) {
+                                    // add it to the map
                                     kpi.pieChartMarker.addTo(get_layers(active_layer_id, 'kpi_layer'));
                                     kpi.pieChartMarkerVisible = true;
                                 }
@@ -1153,35 +1292,73 @@ function selectAreaKPI(kpi_name) {
     });
 }
 
+function update_area_layer(esdl_layer_id, area_kpi_list) {
+    // This function updates the area layer information in the esdl_list (multi_esdl.js)
+    // the area_kpi_list parameter contains the updated KPI information per area
+
+    let area_kpi_map = {};
+    let flattened_kpi_list = flatten_area_list(area_kpi_list);
+    flattened_kpi_list.forEach((elem) => {
+       area_kpi_map[elem.properties.id] = elem;
+    });
+
+    // area_layers contains the leaflet layers for all areas
+    let area_layers = get_layers(esdl_layer_id, 'area_layer');
+    area_layers.eachLayer(function(featuregroup_instance) {
+        if (featuregroup_instance instanceof L.FeatureGroup) {
+            featuregroup_instance.eachLayer(function (layer) {
+                if (layer.id in area_kpi_map) {
+                    let new_area_kpi_info = area_kpi_map[layer.id];
+                    if (new_area_kpi_info.properties.hasOwnProperty("KPIs")) {
+                        // TODO: Can completely new KPIs be added?  How to deal with those?
+                        // For now only handle replacement of information of already existing KPIs
+                        for (const [KPI, kpi_info] of Object.entries(layer.feature.properties.KPIs)) {
+                            if (KPI in new_area_kpi_info.properties.KPIs) {
+                                layer.feature.properties.KPIs[KPI] = new_area_kpi_info.properties.KPIs[KPI];
+                            }
+                        }
+                    }
+                    if (new_area_kpi_info.properties.hasOwnProperty("dist_KPIs")) {
+                        for (const [dist_KPI, kpi_info] of Object.entries(layer.feature.properties.dist_KPIs)) {
+                            if (dist_KPI in new_area_kpi_info.properties.dist_KPIs) {
+                                kpi_info.value = new_area_kpi_info.properties.dist_KPIs[dist_KPI].value;
+                                kpi_info.unit = new_area_kpi_info.properties.dist_KPIs[dist_KPI].unit;
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    });
+}
+
 // ------------------------------------------------------------------------------------------------------------
 //  Generate the complete Legend DIV
 // ------------------------------------------------------------------------------------------------------------
-function createBuildingLegendDiv() {
+function createBuildingLegendDiv(choice) {
     var legendDiv = L.DomUtil.create('div', 'info legend');
     legendDiv.oncontextmenu = L.DomEvent.stopPropagation;
     var legendTitleDiv = L.DomUtil.create('div', 'legend_title', legendDiv);
     legendTitleDiv.innerHTML += 'Building Legend';
 
     var selectorDiv = L.DomUtil.create('div', 'legend_select', legendDiv);
-    var selectText = '<select style="z-index:1000;" onchange="selectBuildingKPI(this);">';
+    var selectText = '<select style="z-index:1000;" onchange="selectBuildingKPI(this.value);">';
     for (bkpi in building_KPIs) {
-//        if (bkpi == 'buildingYear') {
-//            selectText += '<option value="'+bkpi+'" selected>'+bkpi+'</option>';
-//        } else {
-            selectText += '<option value="'+bkpi+'">'+bkpi+'</option>';
-//        }
+       if (bkpi === choice) {
+           selectText += '<option value="'+bkpi+'" selected>'+bkpi+'</option>';
+       } else {
+           selectText += '<option value="'+bkpi+'">'+bkpi+'</option>';
+       }
     }
     selectText += '</select>';
     selectorDiv.innerHTML = selectText;
 
     buildingLegendClassesDiv = L.DomUtil.create('div', 'info legend', legendDiv);
-
-    first_kpi_name = Object.keys(building_KPIs)[0];
-    buildingLegendClassesDiv.innerHTML = create_building_legendClassesDiv(first_kpi_name);
+    buildingLegendClassesDiv.innerHTML = create_building_legendClassesDiv(choice);
     return legendDiv;
 }
 
-function createAreaLegendDiv() {
+function createAreaLegendDiv(choice) {
     var legendDiv = L.DomUtil.create('div', 'info legend');
     legendDiv.id = areaLegendDivId;
     legendDiv.oncontextmenu = L.DomEvent.stopPropagation;
@@ -1191,15 +1368,17 @@ function createAreaLegendDiv() {
     var selectorDiv = L.DomUtil.create('div', 'legend_select', legendDiv);
     var selectText = '<select id="areaLegendSelect" style="z-index:1000;" onchange="selectAreaKPI(this.value);">';
     for (akpi in area_KPIs) {
-        selectText += '<option value="'+akpi+'">'+akpi+'</option>';
+        if (akpi === choice) {
+            selectText += '<option value="'+akpi+'" selected>'+akpi+'</option>';
+        } else {
+            selectText += '<option value="'+akpi+'">'+akpi+'</option>';
+        }
     }
     selectText += '</select>';
     selectorDiv.innerHTML = selectText;
 
     areaLegendClassesDiv = L.DomUtil.create('div', 'info legend', legendDiv);
-
-    first_kpi_name = Object.keys(area_KPIs)[0];
-    areaLegendClassesDiv.innerHTML = create_area_array_or_range_legendClassesDiv(area_KPIs[first_kpi_name]);
+    areaLegendClassesDiv.innerHTML = create_area_array_or_range_legendClassesDiv(area_KPIs[choice]);
 
     return legendDiv;
 }
@@ -1216,7 +1395,7 @@ function removeExistingAreaMarkerResizeDiv() {
 
 /**
  * Creates an areaMarkerResize element if it does not exist.
- * 
+ *
  * @param {number} sliderValue slider value
  */
 function createAreaMarkerResizeDiv(sliderValue) {
@@ -1226,17 +1405,17 @@ function createAreaMarkerResizeDiv(sliderValue) {
         const areaMarkerResizeDiv = L.DomUtil.create('div', 'area-marker-resize-container', areaLegendDiv);
         areaMarkerResizeDiv.id = areaMarkerResizeDivId;
         areaMarkerResizeDiv.innerHTML = '<label style="padding: 4px; height: 20px">Adjust pie chart size</label>';
-        
+
         const slider = L.DomUtil.create('input', 'area-marker-resize-slider', areaMarkerResizeDiv);
         slider.type = 'range';
         slider.min = 0.05;
-        slider.max = 2.0;
+        slider.max = 15.0;
         slider.step = 0.05;
         slider.value = sliderValue;
         L.DomEvent.disableClickPropagation(slider);
         L.DomEvent.on(slider, 'input', (event) => {
             areaMarkerResizeSliderVal = event.target.value;
-            resize_area_pi_charts();
+            resize_area_pie_charts(active_layer_id);
         });
     }
 }
@@ -1254,20 +1433,32 @@ function removeAreaLegend() {
 }
 
 function add_area_geojson_layer_with_legend(geojson_area_data) {
-    area_KPIs = {};
-    preprocess_layer_data("area", geojson_area_data, area_KPIs);
+    const kpi_list = preprocess_layer_data("area", geojson_area_data, {});
+    area_KPIs = kpi_list;
     set_area_kpi_list(active_layer_id, area_KPIs);
-
-    removeAreaLegend();
-    if (!jQuery.isEmptyObject(area_KPIs)) {
-        areaLegend = L.control({position: 'bottomright'});
-        areaLegend.onAdd = function (map) {
-            return createAreaLegendDiv();
-        };
-        areaLegend.addTo(map);
-    }
-
+    update_area_legend();
     add_area_layer(geojson_area_data);
+}
+
+function update_area_legend() {
+    area_KPIs = get_area_kpi_list(active_layer_id);
+    if (area_KPIs) {
+        let area_legend_choice = get_area_legend_choice(active_layer_id);
+        // If no KPI was selected yet
+        if (area_legend_choice == null) {
+            area_legend_choice = Object.keys(area_KPIs)[0];  // make the 1st KPI the selected one
+            set_area_legend_choice(active_layer_id, area_legend_choice);
+        }
+
+        removeAreaLegend();
+        if (!jQuery.isEmptyObject(area_KPIs)) {
+            areaLegend = L.control({position: 'bottomright'});
+            areaLegend.onAdd = function (map) {
+            return createAreaLegendDiv(area_legend_choice);
+            };
+            areaLegend.addTo(map);
+        }
+    }
 }
 
 /**
@@ -1279,17 +1470,29 @@ function add_building_geojson_layer_with_legend(geojson_building_data) {
     //console.log(geojson_building_data);
     building_KPIs = {};
     preprocess_layer_data("building", geojson_building_data, building_KPIs);
-
-    removeBuildingLegend();
-    if (!jQuery.isEmptyObject(building_KPIs)) {
-        buildingLegend = L.control({position: 'bottomright'});
-        buildingLegend.onAdd = function (map) {
-            return createBuildingLegendDiv();
-        };
-        buildingLegend.addTo(map);
-    }
-
+    set_building_kpi_list(active_layer_id, building_KPIs);
+    update_building_legend();
     add_building_layer(geojson_building_data);
+}
+
+function update_building_legend() {
+    building_KPIs = get_building_kpi_list(active_layer_id);
+    if (building_KPIs) {
+        let building_legend_choice = get_building_legend_choice(active_layer_id);
+        if (building_legend_choice == null) {
+            building_legend_choice = Object.keys(building_KPIs)[0];  // make the 1st KPI the selected one
+            set_building_legend_choice(active_layer_id, building_legend_choice);
+        }
+
+        removeBuildingLegend();
+        if (!jQuery.isEmptyObject(building_KPIs)) {
+            buildingLegend = L.control({position: 'bottomright'});
+            buildingLegend.onAdd = function (map) {
+                return createBuildingLegendDiv(building_legend_choice);
+            };
+            buildingLegend.addTo(map);
+        }
+    }
 }
 
 function add_potential_geojson_layer(geojson_pontential_data) {
@@ -1340,8 +1543,8 @@ function add_potential_geojson_layer(geojson_pontential_data) {
 function add_geojson_listener(socket, map) {
     initMapZoomLevel = map.getZoom();
     socket.on('geojson', function(message) {
+        console.debug("Received geojson", message);
         let layer = message['layer'];
-        hide_loader();
 
         if (layer == 'area_layer') {
             geojson_area_data = message['geojson'];     // store for redraw based on other KPI
@@ -1367,6 +1570,40 @@ function add_geojson_listener(socket, map) {
             restoreSelectedKPI()
             selectAreaKPI(areaLegendChoice);
         }
+
+        // Test what happens if we restore selected KPI from esdl list here and call selectAreaKPI in all cases
+        // and change global variable
+        // console.log("geojson handler, changing areaLegendChoice from ", areaLegendChoice, " to ", get_area_legend_choice(active_layer_id));
+        // areaLegendChoice = get_area_legend_choice(active_layer_id);
+        // selectAreaKPI(areaLegendChoice);
+
+        hide_loader();
+        window.PubSubManager.broadcast('GEOJSON_PROCESSED', { layer: message.layer, es_id: message.es_id });
+    });
+
+    socket.on('update_area_kpis', function(area_kpi_list) {
+        saveSelectedKPI()  // make sure it does not reset the current selection
+        const kpi_list = preprocess_layer_data("area", area_kpi_list, {});
+        area_KPIs = kpi_list;
+        set_area_kpi_list(active_layer_id, area_KPIs);
+
+        // restore the earlier selected KPI, if necesarry
+        if (areaLegendChoiceBackup != null) {
+            restoreSelectedKPI()
+        }
+        update_area_legend();
+
+        // update the information that is stored in area layer of the active energy system in the esdl_list
+        update_area_layer(active_layer_id, area_kpi_list);
+        // Call selectAreaKPI or recolor the area itself (this function doesn't do anything with PieCharts that are
+        // already visible)
+        selectAreaKPI(areaLegendChoice);
+        // ... and call resize_area_pie_charts to redraw pie chart KPIs
+        resize_area_pie_charts(active_layer_id);
+    });
+    socket.on('bring_kpis_to_front', function(es_id) {
+        bring_KPI_layer_to_front(es_id);
+        window.PubSubManager.broadcast('BRING_KPIS_TO_FRONT', es_id);
     });
 }
 
@@ -1383,6 +1620,22 @@ function get_area_color_old(d) {
            d > 10000   ? '#FED976' :
                       '#FFEDA0';
 }
+
+function get_area_style_no_KPI(feature) {
+    let color = "blue";
+    if (feature.properties.hasOwnProperty("type") && feature.properties.type == "SERVICE_AREA") {
+        color = "#ffcb00";  // "#bc9500";
+    }
+    return {
+        fillColor: color,
+        weight: 1,
+        opacity: 1,
+        color: color,
+        dashArray: '',
+        fillOpacity: 0.3
+    };
+}
+
 
 function style_area(feature) {
     if (Object.keys(feature.properties.KPIs).length != 0) {
@@ -1402,18 +1655,7 @@ function style_area(feature) {
             fillOpacity: 0.7
         };
     } else {
-        let color = "blue";
-        if (feature.properties.hasOwnProperty("type") && feature.properties.type == "SERVICE_AREA") {
-            color = "#ffcb00";  // "#bc9500";
-        }
-        return {
-            fillColor: color,
-            weight: 1,
-            opacity: 1,
-            color: color,
-            dashArray: '',
-            fillOpacity: 0.3
-        };
+        return get_area_style_no_KPI(feature);
     }
 }
 

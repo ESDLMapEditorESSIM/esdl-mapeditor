@@ -30,7 +30,7 @@ class ESStatistics {
     }
 
     initSocketIO() {
-        console.log("Registering socket io bindings for ESStatistics");
+        console.log("Registering socketio io bindings for ESStatistics");
 
         socket.on('tmp', function(data) {
             console.log(data);

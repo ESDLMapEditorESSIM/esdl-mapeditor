@@ -31,34 +31,58 @@
 </template>
 
 <script setup>
-import {onMounted, ref} from 'vue';
+import {onMounted, ref, watch} from 'vue';
 import {useActivityContext} from '@/composables/activityContext';
+import {MessageNames, PubSubManager} from "@/bridge";
 
-const {activateActivityContext, clearActivityContext, fetchActivityContexts} = useActivityContext();
+const {activeActivityContext, activateActivityContext, clearActivityContext, fetchActivityContexts} = useActivityContext();
 
 const selected_context = ref("");
 const activityContexts = ref([]);
+const $ = window.$;
+const isInitialized = ref(false);
+
+const initializeSelectmenu = () => {
+  $("#activity_context").selectmenu({
+    width: 350,
+    change: function (event, ui) {
+      handleChange({ target: { value: ui.item.value } });
+    }
+  });
+  isInitialized.value = true;
+};
+
+const updateSelectmenuValue = async (value) => {
+  $("#activity_context").val(value).selectmenu("refresh");
+};
 
 onMounted(async () => {
-  activityContexts.value = await fetchActivityContexts()
-  const $ = window.$;
+  activityContexts.value = await fetchActivityContexts();
   if (activityContexts.value.length > 0) {
-    $("#activity_context").selectmenu({width: 350}).on('selectmenuchange', function() {
-      handleChange({target: {value: $(this).val()}})
-    })
+    initializeSelectmenu();
   } else {
-    // We cannot easily do this in vue, because the above .selectmenu also hides the select. So that conflicts.
-    $("#activity_context").hide()
+    $("#activity_context").hide();
   }
-})
+});
 
-const handleChange = (e) => {
-  // Find the selected activity context.
-  const selectedActivityContext = activityContexts.value.find(context => context.activity_id === e.target.value);
-  if (selectedActivityContext) {
-    activateActivityContext(selectedActivityContext);
-  } else {
-    clearActivityContext();
+watch(() => activeActivityContext.value, (newValue) => {
+  if (isInitialized.value) {
+    updateSelectmenuValue(newValue?.activity_id || "");
   }
+});
+
+function handleChange(e) {
+    // Find the selected activity context.
+    const selectedActivityContext = activityContexts.value.find(context => context.activity_id === e.target.value);
+    if (selectedActivityContext) {
+        activateActivityContext(selectedActivityContext);
+    } else {
+        clearActivityContext();
+    }
 }
+
+PubSubManager.subscribe(MessageNames.KEY_ESCAPE, (name, msg) => {
+  clearActivityContext();
+});
+
 </script>

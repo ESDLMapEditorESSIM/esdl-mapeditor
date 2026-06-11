@@ -124,7 +124,7 @@ L.TimeDimension.Layer.WindowedGeoJson = L.TimeDimension.Layer.GeoJson.extend({
     },
 
 //    getSimulationData: function(date) {
-//        socket.emit('get_simulation_data', date.toISOString(), (geojson_data) => {
+//        socketio.emit('get_simulation_data', date.toISOString(), (geojson_data) => {
 //            // console.log(geojson_data);
 //            var data = JSON.parse(geojson_data);
 //
@@ -197,24 +197,20 @@ class TimeDimension {
     }
 
     initialize(
-        database,
+        es_id,
         filter_tag_name,
         filter_tag_value,
         networks = [],
-        animation_column_name,
-        influxdb_host_override = null,
-        influxdb_port_override = null,
+        animation_column_name
     ) {
         time_dimension.removeGeoJSONLayers();
         show_loader();
         socket.emit('timedimension_initialize', {
-            database: database,
+            es_id: es_id,
             filter_tag_name: filter_tag_name,
             filter_tag_value: filter_tag_value,
             networks: networks,
-            animation_column_name: animation_column_name,
-            influxdb_host_override: influxdb_host_override,
-            influxdb_port_override: influxdb_port_override
+            animation_column_name: animation_column_name
         }, function (result) {
             if (result) {
                 var time_list = result;

@@ -46,8 +46,12 @@ import {
     Tree,
     TreeSelect,
     Typography,
-    Upload
+    Timeline,
+    Upload,
 } from 'ant-design-vue';
+import MapEditorDialog from "../static/utils/MapEditorDialog";
+import Toast, {POSITION} from "vue-toastification";
+import "vue-toastification/dist/index.css"
 
 let sidebar_app= null;
 export function mountSidebarComponent(component) {
@@ -87,6 +91,13 @@ export function mountTooltipComponent(component, el_id) {
     mountApp(component, `#${el_id}`);
 }
 
+export function createVueMapEditorDialog(component, options) {
+    const mapEditorDialog = new MapEditorDialog(options);
+    mapEditorDialog.addTo(window.map);
+    mountApp(component, mapEditorDialog._contentNode);
+    return mapEditorDialog;
+}
+
 export function mountApp(component, elementSelector) {
     const app = createApp(component);
 
@@ -120,16 +131,23 @@ export function mountApp(component, elementSelector) {
     app.use(Space);
     app.use(Spin);
     app.use(Switch);
+    app.use(Tabs);
     app.use(Table);
     app.use(Tabs);
     app.use(Tag);
     app.use(Tooltip);
+    app.use(Timeline);
     app.use(Transfer);
     app.use(Tree);
     app.use(TreeSelect);
     app.use(Typography);
     app.use(Upload);
     app.use(VueGridLayout);
+
+    const toastOptions = {
+        position: POSITION.BOTTOM_RIGHT
+    };
+    app.use(Toast, toastOptions);
 
     const componentInstance = app.mount(elementSelector);
     return [app, componentInstance];

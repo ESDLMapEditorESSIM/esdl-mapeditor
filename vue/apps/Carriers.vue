@@ -1,3 +1,19 @@
+<!--
+  - This work is based on original code developed and copyrighted by TNO 2020.
+  - Subsequent contributions are licensed to you by the developers of such code and are
+  - made available to the Project under one or several contributor license agreements.
+  -
+  - This work is licensed to you under the Apache License, Version 2.0.
+  - You may obtain a copy of the license at
+  -
+  -     http://www.apache.org/licenses/LICENSE-2.0
+  -
+  - Contributors:
+  -     TNO         - Initial implementation
+  - Manager:
+  -     TNO
+  -->
+
 <template>
   <h1>
     Energy Carriers and Commodities
@@ -30,11 +46,11 @@
       </template>
       <template #color_select="{ record }">
         <span>
-          <input
+          <a-input
             type="color"
-            :value="record.color"
+            v-model:value="record.color"
             @change="e => changeColor(record, e.target.value)"
-          >
+          />
         </span>
       </template>
     </a-table>
@@ -459,6 +475,7 @@ export default {
         this.carrier_list[i]['color'] = this.carrier_info_mapping[this.carrier_list[i]['id']]['color'];
       }
       let profiles_list = window.profiles_plugin.profiles_list;
+
       let profiles = Object.entries(window.profiles_plugin.profiles_list['profiles']);
       for (let gr=0; gr<profiles_list['groups'].length; gr++) {
         let options = [];
@@ -563,7 +580,6 @@ export default {
         });
     },
     addEDRCarriers() {
-      console.log('add EDR Carriers', this.edr_carriers);
       window.socket.emit('DLA_add_EDR_carriers', {'id': this.edr_carriers},
         (res) => {
           window.set_carrier_list(this.get_active_esdl_layer_id(), res);

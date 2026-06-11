@@ -13,7 +13,14 @@
 #      TNO
 
 import re
+import threading
+import time
+from contextlib import contextmanager
+from functools import wraps
 
+from src.log import get_logger
+
+logger = get_logger(__name__)
 
 def str2float(string):
     try:
@@ -33,3 +40,83 @@ def camelCaseToWords(s):
     if re.match(r"^[A-Z]+$", s):
         return s
     return ' '.join(list(map(_unCamelCase, re.finditer(r"([a-z]+)|([A-Z][a-z]*)", s))))
+
+
+def timed(func):
+    """This decorator prints the execution time for the decorated function."""
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        start = time.time()
+        result = func(*args, **kwargs)
+        end = time.time()
+        runtime = round(end - start, 2)
+        file_path = func.__code__.co_filename
+        logger.debug(
+            f"{func.__name__} ran in {runtime}s (path: {file_path})",
+            function=func.__name__,
+            runtime=runtime,
+            path=file_path,
+        )
+        return result
+
+    return wrapper
+
+
+@contextmanager
+def timed_context(name):
+    """Context manager to measure the execution time of a code block."""
+    start = time.time()
+    yield
+    end = time.time()
+    runtime = round(end - start, 2)
+    logger.debug(
+        f"{name} ran in {runtime}s",
+        function=name,
+        runtime=runtime,
+    )
+
+# def display_mem_usage(snapshot, key_type = 'lineno', limit = 10):
+#    """ show memory stats, requires tracemalloc, but that seems to slow down everything. """
+#     # from https://stackoverflow.com/questions/552744/how-do-i-profile-memory-usage-in-python
+#     print("Creating memory stats...")
+#     snapshot = snapshot.filter_traces((
+#         tracemalloc.Filter(False, "<frozen importlib._bootstrap>"),
+#         tracemalloc.Filter(False, "<unknown>"),
+#     ))
+#     print("Create statistics")
+#     top_stats = snapshot.statistics(key_type)
+#
+#     print("Memory stats: Top %s lines" % limit)
+#     for index, stat in enumerate(top_stats[:limit], 1):
+#         frame = stat.traceback[0]
+#         # replace "/path/to/module/file.py" with "module/file.py"
+#         filename = os.sep.join(frame.filename.split(os.sep)[-2:])
+#         print("#%s: %s:%s: %.1f KiB"
+#         %(index, filename, frame.lineno, stat.size / 1024))
+#         line = linecache.getline(frame.filename, frame.lineno).strip()
+#         if line:
+#             print('    %s' % line)
+#
+#     other = top_stats[limit:]
+#     if other:
+#         size = sum(stat.size for stat in other)
+#     print("%s other: %.1f KiB" % (len(other), size / 1024))
+#     total = sum(stat.size for stat in top_stats)
+#     print("Total allocated size: %.1f KiB" % (total / 1024))
+
+class ThreadSafeCounter:
+    """A thread-safe counter that can be incremented atomically."""
+
+    def __init__(self):
+        self._value = 0
+        self._lock = threading.Lock()
+
+    def increment(self):
+        with self._lock:
+            self._value += 1
+            return self._value
+
+    def get_value(self):
+        with self._lock:
+            return self._value

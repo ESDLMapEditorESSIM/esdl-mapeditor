@@ -284,6 +284,7 @@ class UnitException(Exception):
     pass
 
 
+
 def get_attribute_unit(esdl_class: Union[EClass, EObject, Type, str], attribute: str) -> str:
     """
     Retrieves the unit defined in the ESDL ecore schema for a specific attribute

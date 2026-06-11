@@ -16,7 +16,7 @@ from flask import Flask
 from flask_socketio import SocketIO
 
 from extensions.mapeditor_settings import MapEditorSettings
-from extensions.session_manager import get_session, set_session
+from extensions.session_manager import get_session
 from extensions.settings_storage import SettingsStorage
 import src.log as log
 from src.version import __version__

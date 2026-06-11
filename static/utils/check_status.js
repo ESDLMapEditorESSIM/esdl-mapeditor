@@ -16,23 +16,31 @@
 
 // Keeps polling the auth_status endpoint to check if the authentication is still valid
 // every minute
-let auth_status = function() {
+// set  dont_reschedule to true to disable rescheduling this function.
+function auth_status(dont_reschedule) {
     $.get('/auth_status')
         .done(function (session) {
             console.log('Session status:', session);
-            setTimeout(auth_status, 60000);
+            let uri = session.redirect_uri;
+            if (!dont_reschedule) {
+                setTimeout(auth_status, 60000);
+            } else {
+                uri = window.location; // use different uri when manually invoked, as the /editor should be loaded first when restarting the mapeditor code
+            }
             if (!session.valid) {
-                const answer = confirm("Session has expired, reauthentication is necessary.\nPress Ok to reload the page");
+                const answer = confirm("Session has expired, re-authentication is necessary.\nPress Ok to reload the page");
                 if (answer) {
-                    show_loader();
-                    console.log('Redirecting to: ', session.redirect_uri);
+                    window.show_loader();
+                    console.log('Redirecting to: ', uri);
                     window.location.reload();
                 }
             }
         })
         .fail(function (data) {
-            console.log('Failed to check status, reauthentication necessary', data)
-            setTimeout(auth_status, 60000);
+            console.error('Failed to check status, re-authentication necessary', data)
+            if (!dont_reschedule) {
+                setTimeout(auth_status, 60000);
+            }
         });
-};
-//auth_status(); @see app.py where this check is implemented
+}
+auth_status();

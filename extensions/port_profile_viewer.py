@@ -12,21 +12,21 @@
 #  Manager:
 #      TNO
 
-from flask import Flask
-from flask_socketio import SocketIO, emit
-
-from esdl.units.parser import qau_to_string
-
 from dataclasses import dataclass
 from typing import List
 
+from flask import Flask
+from flask_socketio import SocketIO, emit
+
+import src.log as log
 from esdl import esdl
+from esdl.units.parser import qau_to_string, unit_to_string
 # TODO: phase out panel service
 from extensions.panel_service import get_panel_service_datasource, create_panel_multiple
-from extensions.settings_storage import SettingsStorage
-from extensions.session_manager import get_handler, get_session
 from extensions.profiles import Profiles, ProfileTracesRequest, ProfileVizOptions, EmptyProfileWarning
-import src.log as log
+from extensions.session_manager import get_project_manager, get_session
+from extensions.settings_storage import SettingsStorage
+
 
 logger = log.get_logger(__name__)
 
@@ -53,12 +53,13 @@ class PortProfileViewer:
 
     def register(self):
         logger.info("Registering PortProfileViewer extension")
-            
+
         @self.socketio.on("port_profile_viewer/assets_ports_profiles", namespace="/esdl")
         def _get_assets_ports_profiles(params: dict):
             req = AssetsPortsProfilesRequest(**params)
             return PortProfileViewer.get_assets_ports_profiles(req.es_id, req.asset_ids)
-        
+
+
         @self.socketio.on("port_profile_viewer/profile_traces", namespace="/esdl")
         def _get_port_profile_traces_from_profile_ids(params: dict):
             req = ProfileTracesRequest(**params)
@@ -67,12 +68,12 @@ class PortProfileViewer:
 
         @self.socketio.on("show_multiple_profiles", namespace="/esdl")
         def show_multiple_profiles(profile_id_list):
-            esh = get_handler()
+            pm = get_project_manager()
             active_es_id = get_session("active_es_id")
 
             profiles_list = list()
             for profile_id in profile_id_list:
-                profile = esh.get_by_id(active_es_id, profile_id)
+                profile = pm.get_by_id(active_es_id, profile_id)
                 if isinstance(profile, esdl.InfluxDBProfile):
                     profiles_list.append(profile)
 
@@ -137,11 +138,11 @@ class PortProfileViewer:
 
         @self.socketio.on("show_similar_profiles", namespace="/esdl")
         def show_similar_profiles(profile_id):
-            esh = get_handler()
+            pm = get_project_manager()
             active_es_id = get_session("active_es_id")
-            es = esh.get_energy_system(active_es_id)
+            es = pm.get_energy_system(active_es_id)
             area = es.instance[0].area
-            profile = esh.get_by_id(active_es_id, profile_id)
+            profile = pm.get_by_id(active_es_id, profile_id)
 
             if profile and isinstance(profile, esdl.InfluxDBProfile):
                 profile_class = type(profile).__name__
@@ -349,7 +350,8 @@ class PortProfileViewer:
             assets_ports_profiles.append(asset_ports_profiles)
 
         return assets_ports_profiles
-    
+
+    @staticmethod
     def get_port_profile_traces_from_profile_ids(req: ProfileTracesRequest) -> dict[str, list]:
         """Return a dictionary with profile traces for plotly visualization or warning/error messages."""
 
@@ -384,18 +386,19 @@ class PortProfileViewer:
                 })
 
         return results
-    
+
+
 def _get_profile_metadata(es_id: str, profile_id: str) -> dict:
     """A util function to get and return profile metadata in a dictionary for frontend visualization."""
 
-    esh = get_handler()
-    profile = esh.get_by_id(es_id, profile_id)
+    pm = get_project_manager()
+    profile = pm.get_by_id(es_id, profile_id)
 
-    container_name = None 
+    container_name = None
     port_name = None
     qau_description = None
     profile_type = None
-    
+
     profile_container = profile.eContainer().eContainer()
     if isinstance(profile_container, esdl.EnergyAsset):
         container_name = str(profile_container.name)
@@ -411,7 +414,7 @@ def _get_profile_metadata(es_id: str, profile_id: str) -> dict:
     if qau and isinstance(qau, esdl.QuantityAndUnitReference):
         qau = qau.reference
     if qau:
-        qau_description = qau.description if qau.description else qau_to_string(qau)
+        qau_description = qau_to_string(qau)
 
     meta_parts = [] 
     if port_name is not None:
@@ -428,8 +431,8 @@ def _get_profile_metadata(es_id: str, profile_id: str) -> dict:
     elif isinstance(profile, esdl.InfluxDBProfile):
         profile_name = profile.field
     else:
-        profile_name = "Unknown"
-    qau_unit = qau_description.split(" ")[-1] if qau_description else "Unknown"
+        profile_name = profile.name or "Unknown"
+    qau_unit = unit_to_string(qau) if qau else "Unknown"
     displayed_name = f"{profile_name} [{qau_unit}]{meta_suffix}"
 
     return {

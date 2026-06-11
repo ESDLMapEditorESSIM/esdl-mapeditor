@@ -13,6 +13,7 @@
  *  Manager:
  *      TNO
  */
+import MapEditorDialog from "./MapEditorDialog.js";
 
 class AdminDialog extends MapEditorDialog {
 
@@ -29,3 +30,5 @@ class AdminDialog extends MapEditorDialog {
     }
   }
 }
+
+export default AdminDialog;

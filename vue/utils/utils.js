@@ -36,6 +36,20 @@ export function getattrd(obj, name) {
 }
 
 /**
+ * Debounce a function call.
+ * @param func The function to debounce
+ * @param wait The time in ms to wait before calling the function
+ * @returns {(function(...[*]): void)|*}
+ */
+export function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+}
+
+/**
  * Set an attribute of an object by name. Supports dot-notation (so execution.id
  * will set obj[execution][id] to the desired value effectively).
  * @param {*} obj
@@ -55,7 +69,7 @@ export function setattrd(obj, name, value) {
             }
             currentObj = currentObj[n];
         }
-        
+
         // Merge new value with current value and/or existing values for this key
         const lastKey = splitted_name[splitted_name.length - 1];
         currentObj[lastKey] = {...currentObj[lastKey] ?? {}, ...value};
@@ -78,3 +92,10 @@ export const union = (a, b) => diff(a, b).concat(b);
 export const camelCase = (str) => {
     return window.camelCaseToWords(str);
 };
+
+export const layerHasContextMenuItem = (layer, text) => {
+    const result = layer.options.contextmenuItems.filter(function(contextmenuItem) {
+        return contextmenuItem.text == text;
+    });
+    return result.length > 0;
+}

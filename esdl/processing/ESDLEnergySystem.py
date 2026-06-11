@@ -15,6 +15,8 @@
 from esdl import esdl
 import uuid
 
+from extensions.profiles import Profiles
+
 
 def find_area(area, area_id):
     if area.id == area_id: return area
@@ -207,3 +209,50 @@ def process_area_KPIs(area):
         'kpis_description': kpis_description,
         'kpi_list': kpi_list
     }
+
+def process_area_KPIs_recursive(area: esdl.Area) -> dict[str, dict]:
+    """
+    Recursively process area KPIs.
+    :param area: The ESDL area to start processing from.
+    :return: A dictionary mapping area names/IDs to their KPIs.
+    """
+    es_area_kpis = {}
+    area_kpis = process_area_KPIs(area)
+    area_key = area.name if area.name else area.id
+    es_area_kpis[area_key] = area_kpis
+    if area.area:
+        for child_area in area.area:
+            child_es_area_kpis = process_area_KPIs_recursive(child_area)
+            es_area_kpis.update(child_es_area_kpis)
+    if "kpi_list" not in area_kpis or len(area_kpis["kpi_list"]) == 0:
+        return dict()
+    return es_area_kpis
+
+
+def get_es_visualization_options(es: esdl.EnergySystem) -> dict:
+    visualization_options = dict()
+
+    # check for kpi's
+    top_area: esdl.Area = es.instance[0].area
+    es_area_kpis = process_area_KPIs_recursive(top_area)
+    displayed_area_name = top_area.name if top_area.name else es.name
+    if len(es_area_kpis) > 0:
+        visualization_options["kpis"] = {
+            "es_id": es.id,
+            "scope": displayed_area_name,
+            "kpi_info": es_area_kpis,
+            "message": es.name,
+        }
+
+    # check for animation data
+    animation_fields = Profiles.get_animation_fields(es.id)
+    if animation_fields:
+        visualization_options["animation_esdl_data"] = {
+            "es_id": es.id,
+            "fields": animation_fields,
+            "message": es.name,
+            "filter_tag_name": None,
+            "filter_tag_value": None,
+        }
+
+    return visualization_options

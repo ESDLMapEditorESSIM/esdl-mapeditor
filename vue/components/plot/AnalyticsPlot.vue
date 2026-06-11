@@ -61,8 +61,10 @@ const resizePlot = (entries) => {
 		const entry = entries[0];
 		plotDimensions.width = entry.contentRect.width;
 
+		const globalLayout = applyGlobalLayoutConfig(props.layout);
+
 		const layout = {
-			...props.layout,
+			...globalLayout,
 			width: plotDimensions.width
 		};
 
@@ -70,13 +72,35 @@ const resizePlot = (entries) => {
 	}
 };
 
+/**
+ * The input plot layout (e.g., from props.layout) will be expaneded 
+ * with the layout configuration that should be applied globally.
+ * 
+ * @param {Object} layout Plotly layout object
+ */
+const applyGlobalLayoutConfig = (layout) => {
+	const globalLayoutConfig = {
+		hoverlabel: {
+			align: "left",
+			namelength: -1, // prevents tooltip text truncation
+			padding: 8
+		},
+	}
+
+	return {
+		...layout,
+		...globalLayoutConfig
+	}
+}
+
 onMounted(() => {
 	if (resizeObserver === null) {
 		resizeObserver = new ResizeObserver(resizePlot);
 		resizeObserver.observe(plotDiv.value);
 	}
 	config.toImageButtonOptions['filename'] = props.layout?.title?.text || "Untitled chart";
-	Plotly.newPlot(plotDiv.value, props.trace, props.layout, config);
+	const layout = applyGlobalLayoutConfig(props.layout);
+	Plotly.newPlot(plotDiv.value, props.trace, layout, config);
 
 	plotDiv.value.on('plotly_relayout', (eventData) => {
 		// Only update newLayoutRanges when zoom in/out or pan on subset of data
@@ -97,7 +121,8 @@ onMounted(() => {
 
 onUpdated(() => {
 	config.toImageButtonOptions['filename'] = props.layout?.title || "Untitled chart";
-	Plotly.react(plotDiv.value, props.trace, props.layout, config);
+	const layout = applyGlobalLayoutConfig(props.layout);
+	Plotly.react(plotDiv.value, props.trace, layout, config);
 });
 
 const unmountPlot = () => {

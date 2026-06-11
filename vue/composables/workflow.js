@@ -550,7 +550,7 @@ export class Workflow {
         let targetStepId = null;
         if (nextStepIdOrObject === null || nextStepIdOrObject === undefined) {
             // close the sidebar
-            sidebar.hide()
+            window.sidebar.hide()
             // No next step. Go to the beginning.
             // while (this.hasPreviousStep()) {
             //     this.doPrevious();

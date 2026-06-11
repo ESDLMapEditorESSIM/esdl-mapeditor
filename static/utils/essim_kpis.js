@@ -20,7 +20,7 @@ class ESSIMKPIs {
     }
 
     initSocketIO() {
-        console.log("Registering socket io bindings for ESSIMKPIs")
+        console.log("Registering socketio io bindings for ESSIMKPIs")
 
         socket.on('essim-kpi-data', function(essim_kpi_data) {
             var essim_kpi_control = L.control.essim_kpis('essim_kpis_control', {position: 'bottomright', data: essim_kpi_data});

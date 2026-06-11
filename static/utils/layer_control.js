@@ -14,7 +14,19 @@
  *      TNO
  */
 
-var layer_control = null;
+window.layer_control = null;
+let show_layer_control = false;
+
+function toggle_layer_control_visibility() {
+    if (show_layer_control) {
+        $('#menu_option_layer_control').removeClass("ui-icon-check ui-icon");
+        show_layer_control = false;
+    } else {
+        $('#menu_option_layer_control').addClass("ui-icon-check ui-icon");
+        show_layer_control = true;
+    }
+    add_layer_control();
+}
 
 // https://stackoverflow.com/questions/24471708/prevent-jstree-node-select
 
@@ -49,6 +61,9 @@ function getESDLFileContextMenu(node, tree)
 function add_layer_control() {
     if (layer_control) {
         map.removeControl(layer_control);
+    }
+    if (!show_layer_control) {
+        return;
     }
 
     layer_control = L.control({position: 'topright'});
@@ -342,7 +357,7 @@ function get_base_layers_control_tree_data() {
     }
 
     let group = {
-        id : "group_es_layers",
+        id : "group_base_layers",
         text: "Base layers",
         icon: "",
         type: "group",
@@ -367,7 +382,6 @@ function get_esdl_layer_control_tree_data() {
 
         // Dynamically create area list as ESDL can contain grouped area layers that must be turned on/off together
         let area_layer = { text: 'Area', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'area_layer'}};
-        let area_layer_children = []
         let area_layer_data = item['layers']['area_layer'];
         for (let l_idx in area_layer_data._layers) {
             let layer = area_layer_data._layers[l_idx];
@@ -398,8 +412,6 @@ function get_esdl_layer_control_tree_data() {
             { text: 'Visualization', type: "layer", state: {"checked": true}, data: {es_id: key, layer_name: 'viz_layer'}},
         ];
 
-        console.log('adding layer with id: '+ key);
-
         let esdl_layer = {
             id: key,
             text: item.title,
@@ -412,7 +424,7 @@ function get_esdl_layer_control_tree_data() {
     }
 
     let group = {
-        id : "group_base_layers",
+        id : "group_es_layers",
         text: "ESDL layers",
         icon: "",
         type: "group",

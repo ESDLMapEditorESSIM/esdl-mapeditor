@@ -12,15 +12,16 @@
 #  Manager:
 #      TNO
 
+import re
+from uuid import uuid4
+
 from pyecore.ecore import EReference
-from extensions.session_manager import get_session, set_session, get_handler
+
+import src.log as log
 from esdl import esdl
 from esdl.units.parser import unit_to_string
-from esdl.esdl_handler import EnergySystemHandler
-import src.log as log
-from uuid import uuid4
+from extensions.session_manager import get_session, get_project_manager
 from utils.utils import str2float, camelCaseToWords
-import re
 
 logger = log.get_logger(__name__)
 
@@ -160,19 +161,18 @@ def _change_cost_unit(qau, cost_unit_string):
 def _create_cost_qau(cost_unit_string):
     qau = esdl.QuantityAndUnitType(id=str(uuid4()), physicalQuantity=esdl.PhysicalQuantityEnum.COST, description='Cost in '+cost_unit_string)
     _change_cost_unit(qau, cost_unit_string)
-    print('new qau', EnergySystemHandler.attr_to_dict(qau))
     return qau
 
 
 def set_cost_information(obj, cost_information_data):
-    esh = get_handler()
+    pm = get_project_manager()
     active_es_id = get_session('active_es_id')
     
     obj_ci = obj.costInformation
     if not obj_ci:
         obj_ci = esdl.CostInformation(id=str(uuid4()))
         obj.costInformation = obj_ci
-        esh.add_object_to_dict(active_es_id, obj.costInformation)
+        pm.add_object_to_dict(active_es_id, obj.costInformation)
 
     for ci_component in cost_information_data:
         ci_component_name = ci_component['name']
@@ -199,7 +199,7 @@ def set_cost_information(obj, cost_information_data):
                         else:
                             if 'unit' in ci_component and ci_component['unit'] is not None and ci_component['unit'] != '':
                                 current_cost_component_profile.profileQuantityAndUnit = _create_cost_qau(ci_component['unit'])
-                                esh.add_object_to_dict(active_es_id, qau)
+                                pm.add_object_to_dict(active_es_id, qau)
                 else:
                     if ci_component['value'] is not None and ci_component['value'] != '':
                         new_cost_component_profile = esdl.SingleValue(id=str(uuid4()))
@@ -208,4 +208,4 @@ def set_cost_information(obj, cost_information_data):
                             new_cost_component_profile.profileQuantityAndUnit = _create_cost_qau(ci_component['unit'])
 
                         obj_ci.eSet(ci_component_name, new_cost_component_profile)
-                        esh.add_object_to_dict(active_es_id, new_cost_component_profile)
+                        pm.add_object_to_dict(active_es_id, new_cost_component_profile)

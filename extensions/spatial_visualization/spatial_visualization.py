@@ -2,9 +2,8 @@ from flask import Flask
 
 import esdl
 import esdl.processing.ESDLEcore as ESDLEcore
-from extensions.session_manager import get_handler
 import src.log as log
-
+from extensions.session_manager import get_project_manager
 
 logger = log.get_logger(__name__)
 
@@ -23,9 +22,9 @@ class SpatialVisualization:
     def get_esdl_asset_attributes(self, es_id: str, asset_id: str):
         attributes = []
 
-        esh = get_handler()
+        pm = get_project_manager()
         try:
-            asset: esdl.Asset = esh.get_by_id(es_id, asset_id)
+            asset: esdl.Asset = pm.get_by_id(es_id, asset_id)
             attrs = ESDLEcore.get_asset_attributes(asset)
             for a in attrs:
                 attributes.append({

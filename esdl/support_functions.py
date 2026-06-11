@@ -16,7 +16,8 @@
 Support functions for managing EObjects
 """
 import logging
-from typing import Dict
+from functools import lru_cache
+from typing import Dict, List
 
 from pyecore.ecore import EAttribute, EObject, EClass, EReference, EStructuralFeature
 from pyecore.innerutils import InternalSet
@@ -24,6 +25,37 @@ from pyecore.valuecontainer import ECollection
 
 logger = logging.getLogger(__name__)
 
+
+def EClass_eAllStructuralFeatures_gen(self):
+    if self._feature_cache:
+        return self._feature_cache
+    else:
+        s = list(self.eStructuralFeatures)
+        # yield from self.eStructuralFeatures
+        for parent in self.eSuperTypes:
+        #     yield from parent._eAllStructuralFeatures_gen()
+            s.extend(parent._eAllStructuralFeatures_gen())
+        for parent in self.eGenericSuperTypes:
+        #     yield from parent.eClassifier._eAllStructuralFeatures_gen()
+            s.extend(parent.eClassifier._eAllStructuralFeatures_gen())
+        self._feature_cache = s
+        return s
+
+# Enable the two options below for an even more speed up for deepcopy(), although not tested extensively.
+#EClass._feature_cache = []
+#EClass._eAllStructuralFeatures_gen = EClass_eAllStructuralFeatures_gen
+
+@lru_cache(maxsize=None)
+def get_all_structural_features_for_class(eclass: EClass) -> List[EStructuralFeature]:
+    return eclass.eAllStructuralFeatures()
+
+@lru_cache(maxsize=None)
+def get_all_attributes_for_class(eclass: EClass) -> List[EAttribute]:
+    return eclass.eAllAttributes()
+
+@lru_cache(maxsize=None)
+def get_all_references_for_class(eclass: EClass) -> List[EReference]:
+    return eclass.eAllReferences()
 
 # add support for shallow copying or cloning an object
 # it copies the object's attributes (e.g. clone an object), does only shallow copying
@@ -37,9 +69,8 @@ def clone(self):
     """
     newone = type(self)()
     eclass = self.eClass
-    for x in eclass.eAllStructuralFeatures():
-        if isinstance(x, EAttribute):
-            #logger.trace("clone: processing attribute {}".format(x.name))
+    for x in get_all_attributes_for_class(eclass):
+        if self.eIsSet(x):
             if x.many:
                 eOrderedSet = newone.eGet(x.name)
                 for v in self.eGet(x.name):
@@ -55,13 +86,8 @@ def deepcopy(self, memo=None, uuid_dict: Dict[str, EObject]=None, target_es: EOb
 
     :param memo: is used in recursive calls to find out which object have already been cloned
     :param uuid_dict: can be passed by the user to update the uuid_dict of the resource while deepcopying
-    :param target_es search for cross-references in the target_es energy system or eObject if not found in copy.
-           This can be used if the source ESDL has the same IDs as the target ESDL (e.g. quantity and units,
-           or carriers) to make use the cross references are also connected in the deepcopy, before adding it to the
-           `target_es`
-    :param copy_xrefs copy cross-references (default). Set to False to not copy cross-references, e.g. in case
-           you want to avoid copying references to other ESDLs that not have them. E.g. when cutting out an asset
-           from an ESDL, without references to other parts of this ESDL.
+    :param target_es search for cross-references in this target EnergySystem or EObject if not found in the copy
+    :param copy_xrefs copy cross-references, defaults to True
     :return a deepcopy of the object.
     """
     first_call = False
@@ -71,14 +97,18 @@ def deepcopy(self, memo=None, uuid_dict: Dict[str, EObject]=None, target_es: EOb
     if self in memo:
         return memo[self]
 
+    # update uuid_dict and memo, before visiting containment relations
     copy: EObject = self.clone()
     if uuid_dict is not None and hasattr(copy, 'id'):
         uuid_dict[copy.id] = copy
+    memo[self] = copy
+
     eclass: EClass = self.eClass
-    for x in eclass.eAllStructuralFeatures():
-        if isinstance(x, EReference):
+    features = get_all_references_for_class(eclass)
+    for x in features:
+        if self.eIsSet(x):
             ref: EReference = x
-            value: EStructuralFeature = self.eGet(ref)
+            value = self.eGet(ref)
             if value is None:
                 continue
             if ref.containment:
@@ -95,14 +125,10 @@ def deepcopy(self, memo=None, uuid_dict: Dict[str, EObject]=None, target_es: EOb
             #    # this can only be done after a full copy
             #    pass
     # now copy should a full copy, but without cross-references
-
-    memo[self] = copy
-
     if first_call and copy_xrefs:
-        #logger.debug("copying references")
         for k, v in memo.items():
             eclass: EClass = k.eClass
-            for x in eclass.eAllStructuralFeatures():
+            for x in get_all_references_for_class(eclass):
                 if isinstance(x, EReference):
                     #logger.debug("deepcopy: processing x-reference {}".format(x.name))
                     ref: EReference = x

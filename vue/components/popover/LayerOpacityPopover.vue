@@ -19,11 +19,13 @@
   import { computed, defineProps } from "vue";
   import SimpleSlider from "../slider/SimpleSlider.vue";
   import { useVisibleLayers } from "@/composables/visibleLayers";
-  const { 
+  import {useSocketIO} from "@/composables/socketio";
+  const {socket} = useSocketIO();
+  const {
     getVisibleLayerById, 
     adjustVisibleLayerOpacity,
     saveVisibleLayerOpacitySetting,
-  } = useVisibleLayers(); 
+  } = useVisibleLayers(window.map, socket);
   
   const props = defineProps({
     layerId: {
@@ -46,9 +48,10 @@
       const layer = getVisibleLayerById(props.layerId);
       if (layer) {
         isOpened = true;
+        const type = layer.type ? layer.type : "WMS";
         const layerDescription = layer.description;
-        const currentLayerOpacity = layer.layer_ref.options.opacity;
-        popoverTitle = `Adjust '${layerDescription}' WMS layer opacity`;
+        const currentLayerOpacity = type === "WMS" ? layer.layer_ref.options.opacity : layer.style?.opacity;
+        popoverTitle = `Adjust '${layerDescription}' layer opacity`;
         layerOpacity = currentLayerOpacity;
       } else {
         console.error("Layer not found");

@@ -1,6 +1,6 @@
 <template>
   <!-- Dialog header -->
-  <a-row style="height: 60px;">
+  <a-row style="height: 60px; padding-left: 0.5em;">
     <h2 style="font-weight: bold; font-size: 2rem">ESDL Analytics</h2>
   </a-row>
   <!-- Dialog content -->
@@ -18,322 +18,420 @@
         theme="light"
       >
         <a-col class="graph-options">
-          <a-col>
-            <a-typography-title :level="4">Graph configuration</a-typography-title>
-            <a-row>
-              <a-typography-title :level="5">Dataset</a-typography-title>
-              <a-select
-                v-model:value="datasetSelected"
-                :options="datasetOptions"
-                :disabled="datasetOptions.length === 0"
-                :placeholder="datasetOptions.length === 0 ? 'No datasets available' : 'Select a dataset'"
-                mode="multiple"
-                style="width: 100%"
-                @change="onSelectDataset"
-                @mouseleave="removeTooltipPopup"
-              />
-            </a-row>
-            <a-row>
-              <a-typography-title :level="5">Variable</a-typography-title>
-              <a-select
-                v-model:value="variableSelected"
-                :options="groupOptionsByDatatype(variableOptions)"
-                :disabled="datasetSelected.length === 0"
-                :placeholder="datasetSelected.length === 0 ? 'First select a dataset' : 'Select a variable'"
-                style="width: 100%"
-                @change="onSelectVariable"
-                @mouseleave="removeTooltipPopup"
-              />
-              <span
-                v-if="variableSelected !== null && variableWarningMsg !== ''"
-                style="color: #ffbb00; padding: 2px;"
-              >
+
+          <a-tabs v-model:activeKey="activeTabKey">
+            <!-- Tab 1: Variant and dataset selection -->
+            <a-tab-pane key="data" tab="Data Selection">
+              <a-row>
+                <a-typography-title :level="5">Available variants</a-typography-title>
+                <p style="font-size: small;">Select which variants need to be analysed for comparision.</p>
+                <div class="variant-tree-container">
+                  <vue-js-tree
+                      v-if="treeData != null"
+                      tree-id="analytics_variant_tree"
+                      :plugins="['types', 'checkbox']"
+                      :data="treeData"
+                      :events="treeEventHandlers"
+                      :tree-type-specs="treeTypeSpecs"
+                      :checkbox="{'three_state': false, 'whole_node': false, 'tie_selection': false}"
+                  />
+                  <div v-else class="text-only">
+                    <p>No variants available.</p>
+                  </div>
+                </div>
+              </a-row>
+
+              <a-col style="padding-top: 24px; padding-bottom: 16px;">
+                <a-row style="padding-bottom: 8px;">
+                  <a-col :span="12"><p>Target Energy Unit:</p></a-col>
+                  <a-col :span="12">
+                    <a-select
+                        style="width: 100%"
+                        size="small"
+                        v-model:value="energyUnit"
+                        :options="energyUnitOptions"
+                    />
+                  </a-col>
+                </a-row>
+                <a-row style="padding-bottom: 8px;">
+                  <a-button
+                      :disabled="variantIdsSelected.length === 0 || isSyncingMetaData"
+                      block
+                      @click="onSyncBtnClick"
+                  >
+                    <a-tooltip
+                        :title="datasetOptions.length ?
+                        'Update ESDL Analytics metadata with the current ESDL(s)' :
+                        'Add the select ESDL(s) to ESDL Analytics metadata'"
+                    >
+                      <component
+                          :is="datasetOptions.length ? SyncOutlined : UploadOutlined"
+                          style="vertical-align: 0.1rem"
+                      />
+                      {{ getAddDatasetLabel() }}
+                    </a-tooltip>
+                  </a-button>
+                </a-row>
+                <a-row style="padding-bottom: 8px;">
+                  <a-button
+                      :disabled="isDeletingMetaData || datasetOptions.length === 0"
+                      block
+                      @click="onDeleteBtnClick"
+                  >
+                    <a-tooltip title="Delete ESDL Analytics metadata">
+                      <component
+                          :is="DeleteOutlined"
+                          style="vertical-align: 0.1rem"
+                      />
+                      Delete dataset
+                    </a-tooltip>
+                  </a-button>
+                </a-row>
+              </a-col>
+
+              <a-row>
+                <a-typography-title :level="5">Datasets to compare</a-typography-title>
+                <a-select
+                    v-model:value="datasetSelected"
+                    :options="datasetOptions"
+                    :disabled="datasetOptions.length === 0"
+                    :placeholder="datasetOptions.length === 0 ? 'No datasets available' : 'Select a dataset'"
+                    mode="multiple"
+                    style="width: 100%"
+                    @change="onSelectDataset"
+                    @mouseleave="removeTooltipPopup"
+                />
+              </a-row>
+            </a-tab-pane>
+
+
+            <!-- Tab 2: Visualization Settings -->
+            <a-tab-pane key="visualization" tab="Visualization" :disabled="datasetSelected.length === 0">
+
+
+
+
+
+              <a-col>
+                <a-typography-title :level="4">Graph configuration</a-typography-title>
+                <a-row>
+                  <a-typography-title :level="5">Variable</a-typography-title>
+                  <a-select
+                      v-model:value="variableSelected"
+                      :options="groupOptionsByDatatype(variableOptions)"
+                      :disabled="datasetSelected.length === 0"
+                      :placeholder="datasetSelected.length === 0 ? 'First select a dataset' : 'Select a variable'"
+                      style="width: 100%"
+                      @change="onSelectVariable"
+                      @mouseleave="removeTooltipPopup"
+                  />
+                  <span
+                      v-if="variableSelected !== null && variableWarningMsg !== ''"
+                      style="color: #ffbb00; padding: 2px;"
+                  >
                 {{ variableWarningMsg }}
               </span>
-            </a-row>
-            <a-row>
-              <a-row style="align-items: center">
-                <a-typography-title :level="5">Group by</a-typography-title>
-                <!-- Only applicable to profile variable -->
-                <a-row v-if="isProfileVariable" style="align-items: center;">
-                  <a-tooltip title="Toggle on to display aggregated profiles in the chart. Aggregation is based on the selected group-by options and function. If no group-by option is set, profiles are aggregated across all available profiles of the selected variable.">
-                    <a-button size="small" type="text">
-                      <component :is="InfoCircleOutlined" style="vertical-align: 0.1rem" />
-                    </a-button>
-                  </a-tooltip>
-                  <a-switch
-                    v-model:checked="profileGroupbyEnabled"
-                    size="small"
-                    style="position: absolute; right: 0px"
-                    @change="onProfileGroupbyEnabled"
-                  />
                 </a-row>
-              </a-row>
-              <a-select
-                v-model:value="groupbySelected"
-                :options="groupbyOptions"
-                :disabled="datasetSelected.length === 0 || variableSelected === null || (isProfileVariable && !profileGroupbyEnabled)" 
-                :placeholder="
+                <a-row>
+                  <a-row style="align-items: center">
+                    <a-typography-title :level="5">Group by</a-typography-title>
+                    <!-- Only applicable to profile variable -->
+                    <a-row v-if="isProfileVariable" style="align-items: center;">
+                      <a-tooltip title="Toggle on to display aggregated profiles in the chart. Aggregation is based on the selected group-by options and function. If no group-by option is set, profiles are aggregated across all available profiles of the selected variable.">
+                        <a-button size="small" type="text">
+                          <component :is="InfoCircleOutlined" style="vertical-align: 0.1rem" />
+                        </a-button>
+                      </a-tooltip>
+                      <a-switch
+                          v-model:checked="profileGroupbyEnabled"
+                          size="small"
+                          style="position: absolute; right: 0px"
+                          @change="onProfileGroupbyEnabled"
+                      />
+                    </a-row>
+                  </a-row>
+                  <a-select
+                      v-model:value="groupbySelected"
+                      :options="groupbyOptions"
+                      :disabled="datasetSelected.length === 0 || variableSelected === null || (isProfileVariable && !profileGroupbyEnabled)"
+                      :placeholder="
                   datasetSelected.length === 0 ? 'First select a dataset'
                   : variableSelected === null ? 'First select a variable'
                     : 'Select a category'"
-                :max-tag-count="maxGroupbySelectedCount"
-                :status="chartType === 'chart' && !isProfileVariable && groupbySelected.length > maxGroupbySelectedCount ? 'warning' : ''"
-                allow-clear
-                mode="multiple"
-                style="width: 100%"
-                @change="onSelectGroupBy"
-                @mouseleave="removeTooltipPopup"
-              />
-              <span
-                v-if="chartType === 'chart' && !isProfileVariable && groupbySelected.length > maxGroupbySelectedCount"
-                style="color: #ffbb00; padding: 2px;"
-              >
-                Grouping in a bar chart supports up to two selections only.
-              </span>
-              <!-- Only applicable to profile variable -->
-              <a-segmented
-                v-if="isProfileVariable"
-                v-model:value="profileGroupbyAggFuncSelected"
-                :options="profileAggFuncs"
-                style="width: 100%; margin-top: 6px;"
-                size="small"
-                block
-                :disabled="isProfileVariable && !profileGroupbyEnabled"
-                @change="onSelectProfileGroupbyAggFunc"
-              />
-            </a-row>
-            <a-row>
-              <a-row style="align-items: center;">
-                <a-typography-title :level="5">Filter</a-typography-title>
-                <a-tooltip title="Type to search filter options">
-                  <a-button size="small" type="text">
-                    <component :is="InfoCircleOutlined" style="vertical-align: 0.1rem" />
-                  </a-button>
-                </a-tooltip>
-              </a-row>
-              <a-cascader
-                v-model:value="filterSelected"
-                style="width: 100%"
-                :options="filterOptions"
-                :disabled="datasetSelected.length === 0 || variableSelected === null" 
-                :placeholder="
+                      :max-tag-count="maxGroupbySelectedCount"
+                      :status="chartType === 'chart' && !isProfileVariable && groupbySelected.length > maxGroupbySelectedCount ? 'warning' : ''"
+                      allow-clear
+                      mode="multiple"
+                      style="width: 100%"
+                      @change="onSelectGroupBy"
+                      @mouseleave="removeTooltipPopup"
+                  />
+                  <span
+                      v-if="chartType === 'chart' && !isProfileVariable && groupbySelected.length > maxGroupbySelectedCount"
+                      style="color: #ffbb00; padding: 2px;"
+                  >
+                    Grouping in a bar chart supports up to two selections only.
+                  </span>
+                  <!-- Only applicable to profile variable -->
+                  <a-segmented
+                      v-if="isProfileVariable"
+                      v-model:value="profileGroupbyAggFuncSelected"
+                      :options="profileAggFuncs"
+                      style="width: 100%; margin-top: 6px;"
+                      size="small"
+                      block
+                      :disabled="isProfileVariable && !profileGroupbyEnabled"
+                      @change="onSelectProfileGroupbyAggFunc"
+                  />
+                </a-row>
+                <a-row>
+                  <a-row style="align-items: center;">
+                    <a-typography-title :level="5">Filter</a-typography-title>
+                    <a-tooltip title="Type to search filter options">
+                      <a-button size="small" type="text">
+                        <component :is="InfoCircleOutlined" style="vertical-align: 0.1rem" />
+                      </a-button>
+                    </a-tooltip>
+                  </a-row>
+                  <a-cascader
+                      v-model:value="filterSelected"
+                      style="width: 100%"
+                      :options="filterOptions"
+                      :disabled="datasetSelected.length === 0 || variableSelected === null"
+                      :placeholder="
                   datasetSelected.length === 0 ? 'First select a dataset'
                   : variableSelected === null ? 'First select a variable'
-                    : 'Select a category'" 
-                :show-search="true"
-                allow-clear multiple
-                @change="onSelectFilters"
-                @mouseleave="removeTooltipPopup"
-              />
-              <br>
-            </a-row>
-            <a-col
-              v-if="currentTrace.length > 0"
-            >
-              <br>
-              <a-typography-title
-                :level="4"
-              >
-                Display options
-              </a-typography-title>
-              <a-row>
-                <a-segmented
-                  v-model:value="chartType"
-                  :options="chartTypes"
-                  style="width: 100%;"
-                  size="small"
-                  block
-                  @change="onChartTypeBtnClick"
+                    : 'Select a category'"
+                      :show-search="true"
+                      allow-clear multiple
+                      @change="onSelectFilters"
+                      @mouseleave="removeTooltipPopup"
+                  />
+                  <br>
+                </a-row>
+                <a-col
+                    v-if="currentTrace.length > 0"
                 >
-                  <template #label="{ value: value, payload = {} }">
-                    <component :is="payload.icon" style="vertical-align: 0.05rem" />
-                    {{ value.charAt(0).toUpperCase() + value.slice(1) }}
-                  </template>
-                </a-segmented>
-              </a-row>
-            </a-col>
-            <!----------------------------------------------->
-            <!----- Profile variable - Display options ------>
-            <!----------------------------------------------->
-            <a-col v-if="isProfileVariable">
-              <a-row>
-                <a-typography-title :level="5">Date selection</a-typography-title>
-                <a-range-picker
-                  v-model:value="profileDataRangeSelected"
-                  :disabled-date="disabledDate"
-                  :show-time="{ 
+                  <br>
+                  <a-typography-title
+                      :level="4"
+                  >
+                    Display options
+                  </a-typography-title>
+                  <a-row>
+                    <a-segmented
+                        v-model:value="chartType"
+                        :options="chartTypes"
+                        style="width: 100%;"
+                        size="small"
+                        block
+                        @change="onChartTypeBtnClick"
+                    >
+                      <template #label="{ value: value, payload = {} }">
+                        <component :is="payload.icon" style="vertical-align: 0.05rem" />
+                        {{ value.charAt(0).toUpperCase() + value.slice(1) }}
+                      </template>
+                    </a-segmented>
+                  </a-row>
+                </a-col>
+                <!----------------------------------------------->
+                <!----- Profile variable - Display options ------>
+                <!----------------------------------------------->
+                <a-col v-if="isProfileVariable">
+                  <a-row>
+                    <a-typography-title :level="5">Date selection</a-typography-title>
+                    <a-range-picker
+                        v-model:value="profileDataRangeSelected"
+                        :disabled-date="disabledDate"
+                        :show-time="{
                     hideDisabledOptions: true,
                     defaultValue: [dayjs('00:00:00', 'HH:mm:ss'), dayjs('11:59:59', 'HH:mm:ss')]
                   }"
-                  :format="dateTimeFormat"
-                  @change="onSelectProfileDataRange"
-                />
-              </a-row>
-              <a-row>
-                <a-typography-title :level="5">Visualization type</a-typography-title>
-                <a-segmented
-                  v-model:value="profileVizTypeSelected"
-                  :options="profileVizTypes"
-                  style="width: 100%;"
-                  size="small"
-                  block
-                  @change="onSelectProfileVizType"
-                />
-              </a-row>
-              <a-row style="align-items: center; padding-top: 12px;">
-                <a-typography-paragraph style="padding-left: 8px; margin-bottom: 0px;">
-                  Downsampling
-                  <a-tooltip :title="profileDownsampleMsg">
-                    <a-button size="small" type="text">
-                      <component :is="InfoCircleOutlined" style="vertical-align: 0.1rem" />
-                    </a-button>
-                  </a-tooltip>
-                </a-typography-paragraph>
-                <a-switch
-                  v-model:checked="profileDownsampling"
-                  size="small"
-                  style="position: absolute; right: 0px"
-                  :disabled="profileVizTypeSelected === 'Aggregated'"
-                  @change="onProfileDownsampling"
-                />
-              </a-row>
-              <!-- Only show subplot toggle when more than one dataset is selected and with profile data -->
-              <a-row 
-                v-if="chartType==='chart' && isProfileVariable && datasetSelected.length > 1"
-                style="align-items: center; padding-top: 12px;"
-              >
-                <a-typography-paragraph style="padding-left: 8px; margin-bottom: 0px;">Display in subplots</a-typography-paragraph>
-                <a-switch
-                  v-model:checked="profileSubplotView"
-                  size="small"
-                  style="position: absolute; right: 0px"
-                  @change="onProfileSubplotView"
-                />
-              </a-row>
-              <a-row v-if="profileVizTypeSelected === 'Aggregated'">
-                <a-typography-title :level="5">Aggregation interval</a-typography-title>
-                <a-segmented
-                  v-model:value="profileAggIntervalSelected"
-                  :options="profileAggIntervals"
-                  style="width: 100%;"
-                  size="small"
-                  block
-                  @change="onSelectProfileAggInterval"
-                />
-              </a-row>
-              <a-row v-if="profileVizTypeSelected === 'Aggregated'" style="align-items: center;">
-                <a-typography-title :level="5">Aggregation function</a-typography-title>
-                <a-tooltip title="Aggregates data within the selected time interval using the chosen function.">
-                  <a-button size="small" type="text">
-                    <component :is="InfoCircleOutlined" style="vertical-align: 0.1rem" />
-                  </a-button>
-                </a-tooltip>
-                <a-segmented
-                  v-model:value="profileIntervalAggFuncSelected"
-                  :options="profileAggFuncs"
-                  style="width: 100%;"
-                  size="small"
-                  block
-                  @change="onSelectProfileIntervalAggFunc"
-                />
-              </a-row>
-            </a-col>
-            <!---------------------------------------------------->
-            <!----- Display options for Bar / Profile chart ------>
-            <!---------------------------------------------------->
-            <a-col
-              v-if="chartType==='chart' && 
+                        :format="dateTimeFormat"
+                        @change="onSelectProfileDataRange"
+                    />
+                  </a-row>
+                  <a-row>
+                    <a-typography-title :level="5">Visualization type</a-typography-title>
+                    <a-segmented
+                        v-model:value="profileVizTypeSelected"
+                        :options="profileVizTypes"
+                        style="width: 100%;"
+                        size="small"
+                        block
+                        @change="onSelectProfileVizType"
+                    />
+                  </a-row>
+                  <a-row style="align-items: center; padding-top: 12px;">
+                    <a-typography-paragraph style="padding-left: 8px; margin-bottom: 0px;">
+                      Downsampling
+                      <a-tooltip :title="profileDownsampleMsg">
+                        <a-button size="small" type="text">
+                          <component :is="InfoCircleOutlined" style="vertical-align: 0.1rem" />
+                        </a-button>
+                      </a-tooltip>
+                    </a-typography-paragraph>
+                    <a-switch
+                        v-model:checked="profileDownsampling"
+                        size="small"
+                        style="position: absolute; right: 0px"
+                        :disabled="profileVizTypeSelected === 'Aggregated'"
+                        @change="onProfileDownsampling"
+                    />
+                  </a-row>
+                  <!-- Only show subplot toggle when more than one dataset is selected and with profile data -->
+                  <a-row
+                      v-if="chartType==='chart' && isProfileVariable && datasetSelected.length > 1"
+                      style="align-items: center; padding-top: 12px;"
+                  >
+                    <a-typography-paragraph style="padding-left: 8px; margin-bottom: 0px;">Display in subplots</a-typography-paragraph>
+                    <a-switch
+                        v-model:checked="profileSubplotView"
+                        size="small"
+                        style="position: absolute; right: 0px"
+                        @change="onProfileSubplotView"
+                    />
+                  </a-row>
+                  <a-row v-if="profileVizTypeSelected === 'Aggregated'">
+                    <a-typography-title :level="5">Aggregation interval</a-typography-title>
+                    <a-segmented
+                        v-model:value="profileAggIntervalSelected"
+                        :options="profileAggIntervals"
+                        style="width: 100%;"
+                        size="small"
+                        block
+                        @change="onSelectProfileAggInterval"
+                    />
+                  </a-row>
+                  <a-row v-if="profileVizTypeSelected === 'Aggregated'" style="align-items: center;">
+                    <a-typography-title :level="5">Aggregation function</a-typography-title>
+                    <a-tooltip title="Aggregates data within the selected time interval using the chosen function.">
+                      <a-button size="small" type="text">
+                        <component :is="InfoCircleOutlined" style="vertical-align: 0.1rem" />
+                      </a-button>
+                    </a-tooltip>
+                    <a-segmented
+                        v-model:value="profileIntervalAggFuncSelected"
+                        :options="profileAggFuncs"
+                        style="width: 100%;"
+                        size="small"
+                        block
+                        @change="onSelectProfileIntervalAggFunc"
+                    />
+                  </a-row>
+                </a-col>
+                <!---------------------------------------------------->
+                <!----- Display options for Bar / Profile chart ------>
+                <!---------------------------------------------------->
+                <a-col
+                    v-if="chartType==='chart' &&
                 ((!isProfileVariable && variableSelected !== null) || isProfileVariable)"
-            >
-              <a-row style="width: 100%">
-                <a-typography-title :level="5">Color palette</a-typography-title>
-                <a-select
-                  v-model:value="paletteSelected"
-                  style="width: 100%"
-                  @change="onSelectPalette"
                 >
-                  <a-select-option
-                    v-for="option in colorPalettes"
-                    :key="option.value"
-                    :value="option.value"
+                  <a-row style="width: 100%">
+                    <a-typography-title :level="5">Color palette</a-typography-title>
+                    <a-select
+                        v-model:value="paletteSelected"
+                        style="width: 100%"
+                        @change="onSelectPalette"
+                    >
+                      <a-select-option
+                          v-for="option in colorPalettes"
+                          :key="option.value"
+                          :value="option.value"
+                      >
+                        {{ option.label }}
+                        <a-row>
+                          <a-col
+                              v-for="color in option.sample"
+                              :key="color"
+                              :span="Math.round(24/option.sample.length)"
+                              :style="{ backgroundColor: color.startsWith('#') ? color : `#${color}`, height: '10px' }"
+                          />
+                        </a-row>
+                      </a-select-option>
+                    </a-select>
+                  </a-row>
+                  <a-radio-group
+                      v-if="!isProfileVariable || (isProfileVariable && profileVizTypeSelected === 'Aggregated')"
+                      v-model:value="dataGrouping"
+                      name="groupStackRadio"
+                      :options="groupStackOptions"
+                      style="display: flex; flex-direction: column; padding-top: 12px;"
+                      @change="onSelectDisplayOptions"
+                  />
+                  <br>
+                  <a-row style="align-items: center; padding-top: 12px;">
+                    <a-typography-paragraph style="padding-left: 8px; margin-bottom: 0px;">Show single tooltip</a-typography-paragraph>
+                    <a-switch
+                      v-model:checked="showSingleTooltip"
+                      size="small"
+                      style="position: absolute; right: 0px"
+                      @change="onSelectDisplayOptions"
+                    />
+                  </a-row>
+                  <a-row
+                      v-if="!isProfileVariable || (isProfileVariable && profileVizTypeSelected === 'Aggregated')"
+                      style="align-items: center; padding-top: 12px;"
                   >
-                    {{ option.label }}
-                    <a-row>
-                      <a-col
-                        v-for="color in option.sample"
-                        :key="color"
-                        :span="Math.round(24/option.sample.length)"
-                        :style="{ backgroundColor: color.startsWith('#') ? color : `#${color}`, height: '10px' }"
-                      />
-                    </a-row>
-                  </a-select-option>
-                </a-select>
-              </a-row>
-              <a-radio-group
-                v-if="!isProfileVariable || (isProfileVariable && profileVizTypeSelected === 'Aggregated')"
-                v-model:value="dataGrouping" 
-                name="groupStackRadio"
-                :options="groupStackOptions"
-                style="display: flex; flex-direction: column; padding-top: 12px;"
-                @change="onSelectDisplayOptions"
-              />
-              <br>
-              <a-row 
-                v-if="!isProfileVariable || (isProfileVariable && profileVizTypeSelected === 'Aggregated')"
-                style="align-items: center; padding-top: 12px;"
-              >
-                <a-typography-paragraph style="padding-left: 8px; margin-bottom: 0px;">Show numbers on bar chart</a-typography-paragraph>
-                <a-switch
-                  v-model:checked="showBarNumbers"
-                  size="small"
-                  style="position: absolute; right: 0px"
-                  @change="onSelectDisplayOptions"
-                />
-              </a-row>
-            </a-col>
-            <!------------------------------------------->
-            <!------------- Dataset handler ------------->
-            <!------------------------------------------->
-            <a-col style="padding-top: 24px; padding-bottom: 16px;">
-              <br>
-              <a-row style="padding-bottom: 8px;">
-                <a-button
-                  :disabled="isSyncingMetaData"
-                  block
-                  @click="onSyncBtnClick"
-                >
-                  <a-tooltip 
-                    :title="datasetOptions.length ? 
-                      'Update ESDL Analytics metadata with the current ESDL(s)' : 
+                    <a-typography-paragraph style="padding-left: 8px; margin-bottom: 0px;">Show numbers on bar chart</a-typography-paragraph>
+                    <a-switch
+                        v-model:checked="showBarNumbers"
+                        size="small"
+                        style="position: absolute; right: 0px"
+                        @change="onSelectDisplayOptions"
+                    />
+                  </a-row>
+                </a-col>
+                <!------------------------------------------->
+                <!------------- Dataset handler ------------->
+                <!------------------------------------------->
+                <a-col style="padding-top: 24px; padding-bottom: 16px;">
+                  <br>
+                  <a-row style="padding-bottom: 8px;">
+                    <a-button
+                        :disabled="isSyncingMetaData"
+                        block
+                        @click="onSyncBtnClick"
+                    >
+                      <a-tooltip
+                          :title="datasetOptions.length ?
+                      'Update ESDL Analytics metadata with the current ESDL(s)' :
                       'Add the current ESDL(s) to ESDL Analytics metadata'"
-                  >
-                    <component
-                      :is="datasetOptions.length ? SyncOutlined : UploadOutlined"
-                      style="vertical-align: 0.1rem"
-                    />
-                    {{ datasetOptions.length ? 'Update dataset' : 'Add dataset' }}
-                  </a-tooltip>
-                </a-button>
-              </a-row>
-              <a-row>
-                <!-- TODO & NOTE: A temporary implementation to clean up dataset -->
-                <a-button
-                  :disabled="isDeletingMetaData || datasetOptions.length === 0"
-                  block
-                  @click="onDeleteBtnClick"
-                >
-                  <a-tooltip title="Delete ESDL Analytics metadata">
-                    <component 
-                      :is="DeleteOutlined"
-                      style="vertical-align: 0.1rem"
-                    />
-                    Delete dataset
-                  </a-tooltip>
-                </a-button>
-              </a-row>
-            </a-col>
-          </a-col>
+                      >
+                        <component
+                            :is="datasetOptions.length ? SyncOutlined : UploadOutlined"
+                            style="vertical-align: 0.1rem"
+                        />
+                        {{ datasetOptions.length ? 'Update dataset' : 'Add dataset' }}
+                      </a-tooltip>
+                    </a-button>
+                  </a-row>
+                  <a-row>
+                    <!-- TODO & NOTE: A temporary implementation to clean up dataset -->
+                    <a-button
+                        :disabled="isDeletingMetaData || datasetOptions.length === 0"
+                        block
+                        @click="onDeleteBtnClick"
+                    >
+                      <a-tooltip title="Delete ESDL Analytics metadata">
+                        <component
+                            :is="DeleteOutlined"
+                            style="vertical-align: 0.1rem"
+                        />
+                        Delete dataset
+                      </a-tooltip>
+                    </a-button>
+                  </a-row>
+                </a-col>
+              </a-col>
+
+
+
+
+
+
+            </a-tab-pane>
+          </a-tabs>
         </a-col>
       </a-layout-sider>
       <a-layout>
@@ -378,7 +476,7 @@
                 title="Export CSV"
               >
                 <a-button @click="exportChartDataToCSV">
-                  <component 
+                  <component
                     :is="DownloadOutlined"
                     style="vertical-align: 0.1rem"
                   />
@@ -400,7 +498,7 @@
 </template>
 
 <script setup>
-import { defineProps, ref, h, onMounted, onUnmounted } from 'vue';
+import {computed, defineProps, h, onMounted, onUnmounted, ref} from 'vue';
 import {
   BarChartOutlined,
   DeleteOutlined,
@@ -408,19 +506,23 @@ import {
   EditOutlined,
   InfoCircleOutlined,
   LoadingOutlined,
-	MenuFoldOutlined,
-	MenuUnfoldOutlined,
-  UploadOutlined,
-	SaveOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+  SaveOutlined,
   SyncOutlined,
-	TableOutlined }
-from "@ant-design/icons-vue";
+  TableOutlined,
+  UploadOutlined
+} from "@ant-design/icons-vue";
 import AnalyticsPlot from '@/components/plot/AnalyticsPlot.vue';
-import { fetchData } from '@/utils/api';
-import { config, normalizePlotlyDateTimeStr } from '@/utils/profileVisualization';
-import { displayNotification } from '@/utils/notification';
+import {fetchData} from '@/utils/api';
+import {config, normalizePlotlyDateTimeStr} from '@/utils/profileVisualization';
+import {displayNotification} from '@/utils/notification';
 import dayjs from 'dayjs';
 import minMax from 'dayjs/plugin/minMax';
+import VueJsTree from '@/components/jstree/VueJsTree.vue';
+import {useESDLProjects} from "@/composables/esdlProjects";
+
+const { esdlProject, getESDLProject } = useESDLProjects();
 
 dayjs.extend(minMax);
 
@@ -454,9 +556,9 @@ const profileAggIntervals = ['Week', 'Month', 'Quarter', 'Year'];
 const profileAggFuncs = ['Mean', 'Sum', 'Max', 'Min', 'Count'];
 
 const profileMaxDataPoints = config.profileMaxDataPoints;
-const profileDownsampleMsg = "Downsampling simplifies large dataset for better chart readability and performance. " + 
+const profileDownsampleMsg = "Downsampling simplifies large dataset for better chart readability and performance. " +
                              "The average value is used to represent data within each interval. " +
-                             "Toggle it on to explore general trends or off to access the full dataset. " + 
+                             "Toggle it on to explore general trends or off to access the full dataset. " +
                              "It is disabled by default for the aggregated visualization type."
 
 const sampleColorCount = 12;
@@ -503,6 +605,7 @@ const initOptions = {
   filterOptions: [],
   filterSelected: [],
   dataGrouping: 1,
+  showSingleTooltip: false,
   showBarNumbers: false,
   paletteSelected: colorPalettes[0]
 };
@@ -517,6 +620,7 @@ const collapsed = ref(false);
 
 const title = ref(appliedOptions.title);
 const editingTitle = ref(false);
+const activeTabKey = ref('data');
 
 const minWidth = 180;
 const inputWidth = ref(minWidth);
@@ -539,6 +643,8 @@ const isLoadingData = ref(false);
 
 const currentTrace = ref(appliedOptions.currentTrace);
 const currentLayout =  ref(appliedOptions.currentLayout);
+// A list of selected variant IDs.
+const variantIdsSelected = ref([]);
 const datasetOptions = ref(appliedOptions.datasetOptions);
 const datasetSelected = ref(appliedOptions.datasetSelected);
 const variableOptions = ref(appliedOptions.variableOptions);
@@ -559,11 +665,12 @@ const groupbySelected = ref(appliedOptions.groupbySelected);
 const filterOptions = ref(appliedOptions.filterOptions);
 const filterSelected = ref(appliedOptions.filterSelected);
 const dataGrouping = ref(appliedOptions.dataGrouping);
+const showSingleTooltip = ref(appliedOptions.showSingleTooltip);
 const showBarNumbers = ref(appliedOptions.showBarNumbers);
 const paletteSelected = ref(appliedOptions.paletteSelected);
 
 /**
- * Return an object of reactive states of the component options. 
+ * Return an object of reactive states of the component options.
  * This can be used, together with defineExpose(), when other Vue components need to access the states of the component instance.
  */
 const getOptions = () => {
@@ -591,6 +698,7 @@ const getOptions = () => {
     filterOptions: filterOptions.value,
     filterSelected: filterSelected.value,
     dataGrouping: dataGrouping.value,
+    showSingleTooltip: showSingleTooltip.value,
     showBarNumbers: showBarNumbers.value,
     paletteSelected: paletteSelected.value
   };
@@ -599,6 +707,20 @@ const getOptions = () => {
 defineExpose({
   getOptions
 });
+
+const energyUnitOptions = [
+  { label: 'No conversion', value: 'None' },
+  { label: 'PJ', value: 'PJ' },
+  { label: 'TJ', value: 'TJ' },
+  { label: 'GJ', value: 'GJ' },
+	{ label: 'MJ', value: 'MJ' },
+	{ label: 'J', value: 'J' },
+	{ label: 'TWh', value: 'TWh' },
+	{ label: 'GWh', value: 'GWh' },
+	{ label: 'MWh', value: 'MWh' },
+	{ label: 'kWh', value: 'kWh' },
+];
+const energyUnit = ref(energyUnitOptions[0].value );
 
 const onSelectPalette = () => {
   updateTrace();
@@ -690,12 +812,12 @@ const onProfileSubplotView = () => {
 }
 
 /**
- * Triggered to update profileDataRangeSelected state when newLayoutRanges is emitted from 
+ * Triggered to update profileDataRangeSelected state when newLayoutRanges is emitted from
  * the user interaction with AnalyticsPlot (zoom in/out or pan). Only updateTrace() when interacting with profile data.
- * 
+ *
  * @param {Object|null} newLayoutRanges An object with structure as {x: [xaxis.range[0], xaxis.range[1]], y: [yaxis.range[0], yaxis.range[1]]}
  *                                      when zoom in/out or pan event is occurred; otherwise, null is returned.
- */ 
+ */
 const onAnalyticsPlotRelayout = (newLayoutRanges) => {
   if (!isProfileVariable.value) {
     return;
@@ -708,7 +830,7 @@ const onAnalyticsPlotRelayout = (newLayoutRanges) => {
   // Restore to default data range when newLayoutRanges is null.
   if (newLayoutRanges === null) {
     profileDataRangeSelected.value = [];
-  } 
+  }
   // Apply subset of data range for querying data.
   else {
     try {
@@ -747,12 +869,134 @@ const onSelectProfileIntervalAggFunc = () => {
 
 onMounted(() => {
   console.info("Initializing ESDL Analytics");
+  getESDLProject(); // Get project data with variant hierarchy
   updateDatasets();
 });
 
 onUnmounted(() => {
   console.info("Unmounting ESDL Analytics");
 });
+
+// ------------------------------------- //
+// ------- Variant Tree Setup ---------- //
+// ------------------------------------- //
+
+// Tree data for the variant selection
+const treeData = computed(() => {
+  if (esdlProject.value && esdlProject.value.variants.length > 0) {
+    const rootVariants = [];
+
+    // Process variants recursively to maintain the hierarchy
+    for (const variant of esdlProject.value.variants) {
+      rootVariants.push(variantToJstreeData(variant));
+    }
+
+    return rootVariants;
+  }
+  return null;
+});
+
+// Helper function to recursively convert variants to jstree data format
+function variantToJstreeData(variant) {
+  const children = [];
+
+  // Process child variants
+  for (const child of variant.children || []) {
+    children.push(variantToJstreeData(child));
+  }
+
+  return {
+    id: variant.id,
+    esId: variant.es_id,
+    text: variant.name,
+    children: children,
+    type: "variant",
+    state: {
+      "checked": variantIdsSelected.value.includes(variant.id),
+      "opened": children.length > 0,
+    }
+  };
+}
+
+// Tree type specifications
+class VariantTreeSpec {
+  constructor() {
+    this.type = "variant";
+    this.icon = 'fas fa-bezier-curve';
+  }
+}
+
+const treeTypeSpecs = [new VariantTreeSpec()];
+
+/**
+ * Recursively collects all child node IDs from a JSTree node
+ *
+ * @param {Object} node - The JSTree node to get children from
+ * @param {Object} treeInstance - The JSTree instance
+ * @returns {Array} Array of child node IDs
+ */
+const getAllChildIds = (node, treeInstance) => {
+  let childIds = [];
+  if (node.children && node.children.length > 0) {
+    // For each child, get its ID and recursively get its children's IDs
+    for (const childId of node.children) {
+      const childNode = treeInstance.get_node(childId);
+      childIds.push(childNode.id);
+      childIds = childIds.concat(getAllChildIds(childNode, treeInstance));
+    }
+  }
+  return childIds;
+};
+
+// Tree event handlers
+const treeEventHandlers = {
+  'check_node.jstree': function(e, data) {
+    if (data.node.type === 'variant') {
+      const variantId = data.node.id;
+      if (!variantIdsSelected.value.includes(variantId)) {
+        variantIdsSelected.value.push(variantId);
+      }
+
+      const isShiftPressed = data.event && data.event.shiftKey;
+      // If shift key is pressed, select all children
+      if (isShiftPressed) {
+        const childIds = getAllChildIds(data.node, data.instance);
+        console.log("Selected children", childIds);
+
+        for (const childId of childIds) {
+          if (!variantIdsSelected.value.includes(childId)) {
+            variantIdsSelected.value.push(childId);
+            data.instance.check_node(childId);
+          }
+        }
+      }
+    }
+  },
+  'uncheck_node.jstree': function(e, data) {
+    if (data.node.type === 'variant') {
+      const variantId = data.node.id;
+      const index = variantIdsSelected.value.indexOf(variantId);
+      if (index !== -1) {
+        variantIdsSelected.value.splice(index, 1);
+      }
+
+      const isShiftPressed = data.event && data.event.shiftKey;
+      // If shift key is pressed, unselect all children
+      if (isShiftPressed) {
+        const childIds = getAllChildIds(data.node, data.instance);
+
+        for (const childId of childIds) {
+          const childIndex = variantIdsSelected.value.indexOf(childId);
+          if (childIndex !== -1) {
+            variantIdsSelected.value.splice(childIndex, 1);
+            data.instance.uncheck_node(childId);
+          }
+        }
+      }
+    }
+  }
+};
+
 
 // ------------------------------------- //
 // --------- Component methods --------- //
@@ -780,6 +1024,42 @@ const modifyMetadata = async(action, requestBody) => {
 };
 
 
+const getAddDatasetLabel = () => {
+  if (datasetOptions.value.length) {
+    return "Update dataset"
+  } else if (variantIdsSelected.value.length) {
+    return "Add dataset from selected ESDLs";
+  } else {
+    return "Please select ESDLs";
+  }
+};
+
+/**
+ * Recursively finds selected variants in the variant hierarchy.
+ *
+ * @param {Array} variants - The array of variants to search through
+ * @param {Array} selectedVariantIds - Array of selected variant IDs
+ * @param {Array} result - Array to collect the selected variants
+ */
+const findSelectedVariants = (variants, selectedVariantIds, result = []) => {
+  for (const variant of variants) {
+    if (selectedVariantIds.includes(variant.id)) {
+      result.push({
+        value: variant.id,
+        label: variant.name,
+        esId: variant.es_id
+      });
+    }
+
+    // Process children recursively
+    if (variant.children && variant.children.length > 0) {
+      findSelectedVariants(variant.children, selectedVariantIds, result);
+    }
+  }
+
+  return result;
+};
+
 /**
  * Adds or updates ESDLs into metadata by iterating over the list of energy systems.
  */
@@ -787,23 +1067,29 @@ const onSyncBtnClick = async() => {
   console.debug("Synchronizing ESDLs into metadata");
   isSyncingMetaData.value = true;
 
-  const esObjects = window.esdl_list;
-  const promises = Object.keys(esObjects).map(async(esId) => {
-    const esTitle = esObjects[esId].title;
-    try {
-      displayNotification("info", `Adding ${esTitle} [${esId}] into the database.`);
-      const reqBody = { es_id: esId };
-      const resp = await modifyMetadata('add_update', reqBody);
-      displayNotification(resp.status, resp.message);
-    } catch (error) {
-      console.error(error);
-      displayNotification("error", `An unknown error occurred while adding ${esTitle} [${esId}] to the database`);
-    }
-  });
+  const selectedVariants = [];
+  if (esdlProject.value && esdlProject.value.variants) {
+    findSelectedVariants(esdlProject.value.variants, variantIdsSelected.value, selectedVariants);
+  }
+  console.debug("Selected variants", selectedVariants);
 
   try {
-    await Promise.all(promises);
-    updateDatasets();
+    // Process variants sequentially
+    for (const variant of selectedVariants) {
+      const esId = variant.value;
+      const esTitle = variant.label;
+
+      try {
+        displayNotification("info", `Adding ${esTitle} [${esId}] into the database.`);
+        const reqBody = { es_id: esId, energyUnit: energyUnit.value };
+        const resp = await modifyMetadata('add_update', reqBody);
+        displayNotification(resp.status, resp.message);
+      } catch (error) {
+        console.error(error);
+        displayNotification("error", `An unknown error occurred while adding ${esTitle} [${esId}] to the database`);
+      }
+    }
+    await updateDatasets();
   } catch (error) {
     console.error(error);
     displayNotification("error", `An error occurred while synchronizing metadata: ${error}`);
@@ -827,7 +1113,7 @@ const onDeleteBtnClick = async() => {
     const reqBody = { dataset_name: null };
     const resp = await modifyMetadata('delete', reqBody);
     displayNotification(resp.status, resp.message);
-    updateDatasets();
+    await updateDatasets();
   } catch (error) {
     console.error(error);
     displayNotification("error", `An error occurred while deleting metadata: ${error}`);
@@ -861,6 +1147,7 @@ const resetMenuToDefault = () => {
   profileAggIntervalSelected.value = initOptions.profileAggIntervalSelected;
   profileIntervalAggFuncSelected.value = initOptions.profileIntervalAggFuncSelected;
   dataGrouping.value = initOptions.dataGrouping;
+  showSingleTooltip.value = initOptions.showSingleTooltip;
   showBarNumbers.value = initOptions.showBarNumbers;
   paletteSelected.value = initOptions.paletteSelected;
 }
@@ -902,6 +1189,7 @@ const updateVariables = async() => {
       const options = {};
       variables.forEach((v) => {
         if (!Object.keys(options).includes(v.name)) {
+          // todo: distinguish between SINGLE value and PROFILE datatypes
           options[v.name] = {
             value: v.name,
             label: v.label,
@@ -1003,7 +1291,7 @@ const updateTrace = async() => {
   }
 
   // Only take the first two elements as group_by selections for a bar chart visualization.
-  const groupBySelection = (chartType.value === 'chart' && !queryProfileData) ? 
+  const groupBySelection = (chartType.value === 'chart' && !queryProfileData) ?
     groupbySelected.value.slice(0, maxGroupbySelectedCount) : groupbySelected.value;
 
   let filterSelection = {};
@@ -1028,7 +1316,7 @@ const updateTrace = async() => {
   if (queryProfileData) {
     options['profile'] = {
         'viz_type': profileVizTypeSelected.value,
-        'data_range': profileDataRangeSelected.value !== null ? 
+        'data_range': profileDataRangeSelected.value !== null ?
           profileDataRangeSelected.value.map(dt => formatAsDateTimeStr(dt)) : [],
         'group_by_enabled': profileGroupbyEnabled.value
       };
@@ -1057,13 +1345,13 @@ const updateTrace = async() => {
         displayNotification('warning', results['warning_msg']);
         console.warn(results['warnings']);
       }
-      const formattedData = chartType.value === 'table' ? 
+      const formattedData = chartType.value === 'table' ?
         tableTraceHandler(traces) : profileTraceHandler(traces);
       currentTrace.value = formattedData.traces;
       currentLayout.value = formattedData.layout;
     }
     else {
-      const formattedData = chartType.value === 'table' ? 
+      const formattedData = chartType.value === 'table' ?
         tableTraceHandler(traces) : barChartTraceHandler(traces);
       currentTrace.value = formattedData.traces;
       currentLayout.value = formattedData.layout;
@@ -1075,7 +1363,7 @@ const updateTrace = async() => {
   isLoadingData.value = false;
 };
 
-// A helper function to format a DayJs object and return a datetime string that can be parsed by the backend. 
+// A helper function to format a DayJs object and return a datetime string that can be parsed by the backend.
 const formatAsDateTimeStr = (obj) => {
   if (!obj) {
     return;
@@ -1098,7 +1386,7 @@ const disabledDate = (current) => {
 
 /**
  * Configures profile line chart traces and layout for visualization.
- * 
+ *
  * @param {Array} traces An array of trace objects to be configured for profile line chart visualization.
  * @returns {Object} An object containing the configured traces and layout for the profile line chart.
  */
@@ -1129,7 +1417,7 @@ const disabledDate = (current) => {
     if (isGroupbyAggregated && !isAggregated && t['isGroupbyAggregated']) {
       t.line = {dash: 'dot'}
     }
-    
+
     if (t.name.length >= 25) {
       t.name = t.name.replace(new RegExp(`(.{1,${25}})`, 'g'), '$1<br>');
     }
@@ -1144,7 +1432,7 @@ const disabledDate = (current) => {
   const profileLayout = {
     title: variableSelected.value,
     xaxis: { automargin: true },
-    hovermode: 'x unified',
+    hovermode: showSingleTooltip.value ? 'closest' : 'x unified',
     hoversubplots: 'axis',
     legend: { groupclick: 'toggleitem' },
     grid: grid,
@@ -1196,8 +1484,10 @@ const barChartTraceHandler = (traces) => {
     yaxis: {
       title: variableOptions.value[variableSelected.value].unit,
       automargin: true,
+      exponentformat: "SI", // see https://github.com/plotly/plotly.py/issues/4787 for values larger than Giga...
+      //ticksuffix: variableOptions.value[variableSelected.value].unit,
     },
-    hovermode: 'x unified',
+    hovermode: showSingleTooltip.value ? 'closest' : 'x unified',
     barmode: [1, 2].includes(dataGrouping.value) ? 'stack' : 'group',
     barnorm: dataGrouping.value === 2 ? 'percent' : '',
     showlegend: true,
@@ -1387,6 +1677,21 @@ const exportChartDataToCSV = () => {
   z-index: 100;
   background-color: rgba(0, 0, 0, 0.03);
   border-radius: 5px;
+}
+
+.variant-tree-container {
+  border: 1px solid #d9d9d9;
+  border-radius: 2px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 4px;
+  margin-bottom: 16px;
+  background-color: white;
+}
+
+.text-only {
+  padding: 8px;
+  color: rgba(0, 0, 0, 0.45);
 }
 
 </style>

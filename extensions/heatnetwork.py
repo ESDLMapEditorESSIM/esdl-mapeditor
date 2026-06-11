@@ -17,19 +17,20 @@
 #  Manager:
 #      TNO
 from builtins import isinstance
-
-import esdl
-from esdl.esdl_handler import EnergySystemHandler
-from esdl import Pipe, Line, Point, EnergyAsset, AbstractConductor, Port, InPort, OutPort, Polygon
-from esdl.processing import ESDLAsset
 from uuid import uuid4
+
 from flask import Flask
 from flask_socketio import SocketIO, emit
-from extensions.session_manager import get_handler, get_session, get_session_for_esid
+
+import esdl
 import src.log as log
-from src.esdl_helper import asset_state_to_ui, get_tooltip_asset_attrs, add_spatial_attributes, add_extra_attributes
+from esdl import Pipe, Line, Point, EnergyAsset, AbstractConductor, Polygon
+from esdl.processing import ESDLAsset
 from esdl.processing import ESDLGeometry
-from src.incremental_ui import create_asset_port_message
+from esdlproject.ProjectManager import ProjectManager
+from extensions.session_manager import get_project_manager, get_session, get_session_for_esid
+from src.esdl_helper import asset_state_to_ui, get_tooltip_asset_attrs, add_spatial_attributes, add_extra_attributes
+from src.incremental_ui.incremental_ui_messages import create_asset_port_message
 
 logger = log.get_logger(__name__)
 
@@ -50,30 +51,38 @@ class HeatNetwork:
         @self.socketio.on('duplicate', namespace='/esdl')
         def socketio_duplicate(message):
             with self.flask_app.app_context():
-                esh = get_handler()
+                pm = get_project_manager()
                 active_es_id = get_session('active_es_id')
                 print('Duplicate EnergyAsset: %s' % message)
-                duplicate = duplicate_energy_asset(esh, active_es_id, message['asset_id'])
-                self.add_asset_and_emit(active_es_id, duplicate)
+                stack = pm.get_undo_redo_stack(es_id=active_es_id)
+                with stack.track_changes(label="Duplicate asset"):
+                    duplicate = duplicate_energy_asset(pm, active_es_id, message['asset_id'])
+                    stack.update_label("Duplicate {} {}".format(duplicate.eClass.name, duplicate.name or ""))
+                    self.add_asset_and_emit(pm, active_es_id, duplicate, message['area_bld_id'])
 
         @self.socketio.on('reverse_conductor', namespace='/esdl')
         def reverse_conductor(message):
             # reverses the points in the line, so the in and outport are swapped
-            esh = get_handler()
+            pm = get_project_manager()
             active_es_id = get_session('active_es_id')
             print('Reverse conductor: %s' % message)
             asset_id = message['asset_id']
-            conductor = esh.get_by_id(es_id=active_es_id, object_id=asset_id)
-            self.reverse_conductor(active_es_id, conductor)
+            conductor = pm.get_by_id(es_id=active_es_id, object_id=asset_id)
+            stack = pm.get_undo_redo_stack(es_id=active_es_id)
+            with stack.track_changes(label="Reverse {}".format(conductor.eClass.name)):
+                self.reverse_conductor(active_es_id, conductor)
 
-    def add_asset_and_emit(self, es_id: str, asset: EnergyAsset):
+    def add_asset_and_emit(self, pm: ProjectManager, es_id: str, asset: EnergyAsset, area_bld_id: str):
         with self.flask_app.app_context():
-
             asset_to_be_added_list = list()
             port_list = create_asset_port_message(asset)
             message = self.create_asset_description_message(asset, port_list)
             asset_to_be_added_list.append(message)
-            add_to_building = True if isinstance(asset.eContainer(), esdl.AbstractBuilding) else False
+
+            add_to_building = False
+            if not ESDLAsset.add_object_to_area(pm.get_energy_system_by_id(es_id), asset, area_bld_id):
+                ESDLAsset.add_object_to_building(pm.get_energy_system_by_id(es_id), asset, area_bld_id)
+                add_to_building = True
 
             emit('add_esdl_objects', {'es_id': es_id, 'add_to_building': add_to_building, 'asset_pot_list': asset_to_be_added_list, 'zoom': False}, namespace='/esdl')
 
@@ -235,8 +244,8 @@ def _shift_point(point: Point):
         point.lon = point.lon - DEFAULT_SHIFT_LON
 
 
-def duplicate_energy_asset(esh: EnergySystemHandler, es_id, energy_asset_id: str):
-    original_asset = esh.get_by_id(es_id, energy_asset_id)
+def duplicate_energy_asset(pm: ProjectManager, es_id, energy_asset_id: str):
+    original_asset = pm.get_by_id(es_id, energy_asset_id)
 
     duplicate_asset = original_asset.deepcopy()
     # reset all id's
@@ -257,7 +266,7 @@ def duplicate_energy_asset(esh: EnergySystemHandler, es_id, energy_asset_id: str
     geometry = duplicate_asset.geometry
     if isinstance(geometry, Line):
         line: Line = geometry  # geometry.clone()
-        rev_point = list(reversed(line.point))  # reverse coordinates
+        rev_point = list(reversed(line.point)) # reverse coordinates
         line.point.clear()
         line.point.extend(rev_point)
         for p in line.point:
@@ -275,5 +284,5 @@ def duplicate_energy_asset(esh: EnergySystemHandler, es_id, energy_asset_id: str
 
     container = original_asset.eContainer()  # find the area or building the original asset is contained by
     container.asset.append(duplicate_asset)
-    esh.add_object_to_dict(es_id, duplicate_asset, recursive=True)  # add to UUID registry
+    pm.add_object_to_dict(es_id, duplicate_asset, recursive=True)  # add to UUID registry
     return duplicate_asset

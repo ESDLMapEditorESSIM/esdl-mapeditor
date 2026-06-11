@@ -26,18 +26,21 @@ Connects to the ESDL Drive API for file sharing
 #  :license: Apache License, Version 2.0
 #
 
-from flask import Flask
-from flask_socketio import SocketIO, emit
-from extensions.session_manager import get_handler, get_session, set_session
-import requests
-from pyecore.resources import URI, Resource
 from io import BytesIO
-from src.process_es_area_bld import process_energy_system
+
+import requests
+from flask import Flask
 from flask_executor import Executor
+from flask_socketio import SocketIO, emit
+from pyecore.resources import URI, Resource
+
 import src.log as log
-from src.settings import esdl_drive_config
+from esdlproject.ProjectManager import update_energy_system_version
 from extensions.esdl_drive.api import DRIVE_URL, get_drive_post_headers, browse_endpoint, resource_endpoint, \
-    drive_name, upload_esdl_to_drive
+    upload_esdl_to_drive, DrivePutParams
+from extensions.session_manager import get_session, set_session, get_project_manager
+from src.process_es_area_bld import process_energy_system
+from src.settings import esdl_drive_config
 
 logger = log.get_logger(__name__)
 
@@ -76,35 +79,25 @@ class ESDLDrive:
                 #token = get_session('jwt-token')
                 uri = ESDLDriveHttpURI(DRIVE_URL + resource_endpoint + path, headers_function=get_drive_post_headers, getparams=params)
                 logger.debug('ESDLDrive open: {} ({})'.format(message, uri.plain))
-                esh = get_handler()
+                pm = get_project_manager()
                 try:
                     if import_es:
-                        es, parse_info = esh.import_file(uri)
+                        variant, parse_info = pm.add_energy_system(uri)
                     else:
-                        es, parse_info = esh.load_file(uri)
+                        variant, parse_info = pm.add_energy_system(uri)
                     if len(parse_info) > 0:
                         info = ''
                         for line in parse_info:
                             info += line + "\n"
                         message = "Warnings while opening {}:\n\n{}".format(uri.last_segment, info)
                         emit('alert', message, namespace='/esdl')
-                        #print(esh.rset.resources)
+                        # print(pm.rset.resources)
                 except Exception as e:
                     logger.error("Error in loading file from ESDLDrive: "+ str(e))
                     return
-
-                if hasattr(es, 'name') and es.name:
-                    title = drive_name + ': ' + es.name
-                else:
-                    title = drive_name + ' ES id: ' + es.id
-
-                set_session('active_es_id', es.id)
-                set_session('es_filename', uri.last_segment)  # TODO: separate filename and title
-                es_info_list = {}
-                set_session("es_info_list", es_info_list)
-                emit('clear_ui')
-                emit('clear_esdl_layer_list')
-                self.executor.submit(process_energy_system, esh, uri.last_segment, title)  # run in seperate thread
+                pm.set_active_variant(variant)
+                set_session('es_filename', uri.last_segment)
+                self.executor.submit(process_energy_system)  # run in seperate thread
 
         @self.socketio.on('cdo_save', namespace='/esdl')
         def socketio_esdldrive_save(message):
@@ -115,31 +108,30 @@ class ESDLDrive:
                 params = {}
                 if 'commitMessage' in message:
                     commitMessage = message['commitMessage']
-                    params['commitMessage'] = commitMessage
+                params['commitMessage'] = commitMessage
                 if 'forceOverwrite' in message:
                     overwrite = message['forceOverwrite']
-                    params['overwrite'] = overwrite
-                print(message)
+                params['overwrite'] = overwrite
 
                 uri = DRIVE_URL + resource_endpoint + path
-                esh = get_handler()
+                pm = get_project_manager()
                 active_es_id = get_session('active_es_id')
-                esh.update_version(es_id=active_es_id)
-                resource: Resource = esh.get_resource(active_es_id)
+                update_energy_system_version(pm.get_active_energy_system())
+                resource: Resource = pm.get_energy_system_resource_by_id(active_es_id)
                 logger.debug('ESDLDrive saving resource {}, commitMessage={}, overwrite={}'.format(resource.uri, commitMessage, overwrite))
 
-                if resource.uri.normalize() == uri:
-                    # resource already in CDO
-                    logger.debug('Saving resource that is already loaded from ESDLDrive: {}'.format(resource.uri.plain))
-                    # update uri with commit message
-                    resource.uri = ESDLDriveHttpURI(uri, headers_function=get_drive_post_headers, putparams=params)
-                    response = resource.save()
-                else:
-                    logger.debug('Saving to a new resource in ESDLDrive: {}'.format(resource.uri.plain))
-                    resource.uri = ESDLDriveHttpURI(uri, headers_function=get_drive_post_headers, putparams=params)
-                    response: requests.Response = resource.save()
-                    esh.esid_uri_dict[resource.contents[0].id] = resource.uri.normalize()
-                    # new resource
+                response = upload_esdl_to_drive(pm.active_energy_system_to_string(), path, DrivePutParams(**params))
+
+                # if resource.uri.normalize() == uri:
+                #     # resource already in CDO
+                #     logger.debug('Saving resource that is already loaded from ESDLDrive: {}'.format(resource.uri.plain))
+                #     # update uri with commit message
+                #     resource.uri = ESDLDriveHttpURI(uri, headers_function=get_drive_post_headers, putparams=params)
+                #     response = resource.save()
+                # else:
+                #     logger.debug('Saving to a new resource in ESDLDrive: {}'.format(resource.uri.plain))
+                #     resource.uri = ESDLDriveHttpURI(uri, headers_function=get_drive_post_headers, putparams=params)
+                #     response: requests.Response = resource.save()
                 if response.ok:
                     return {'path': path, 'success': True}
                 else:
@@ -224,7 +216,6 @@ class ESDLDrive:
 
     def save(self, path, content_as_string):
         location = DRIVE_URL + resource_endpoint + path
-        esh = get_handler()
 
         #active_es_id = get_session('active_es_id')
         # esh.get_energy_system(active_es_id)

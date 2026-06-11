@@ -30,7 +30,7 @@ from extensions.toast_notifications import (
     FileDownloadType,
 )
 from src import log
-from extensions.session_manager import get_session, get_handler
+from extensions.session_manager import get_session, get_project_manager
 from extensions.external_models.external_models_storage import (
     ExternalModelsStorage,
     MODEL_NAME,
@@ -113,8 +113,6 @@ class ExternalModels:
             filter_on_tag = model_run_info.get("filter_on_tag")
             esdl_object_name_field = model_run_info.get("esdl_object_name_field")
             excel_sheets_per_table = model_run_info.get("excel_sheets_per_table")
-            influxdb_host_override = model_run_info.get("influxdb_host_override")
-            influxdb_port_override = model_run_info.get("influxdb_port_override")
 
             run_data = self.external_models_storage.get_model_run(run_id)
 
@@ -130,14 +128,12 @@ class ExternalModels:
             if not esdl_str:
                 esdl_str = run_data.get("input_esdl")
 
-            esh = get_handler()
-            es, parse_info = esh.add_from_string("ext_mod_download", esdl_str)
+            pm = get_project_manager()
+            es, parse_info = pm.add_from_string("ext_mod_download", esdl_str)
 
             influxdb_client = None
             try:
-                influxdb_client = Profiles.connect_to_animation_profiles_database(
-                    es.id, es.id, influxdb_host_override, influxdb_port_override
-                )
+                influxdb_client = Profiles.connect_to_animation_profiles_database(es.id)
                 # Query to get the list of measurements in the database
                 measurements_query = "SHOW MEASUREMENTS"
                 measurements_result = influxdb_client.query(measurements_query)

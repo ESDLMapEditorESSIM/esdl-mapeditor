@@ -12,16 +12,16 @@
 #  Manager:
 #      TNO
 
-import logging
 import logging.config
+from typing import Callable
 
-from typing import List, Any
 import structlog
-from src.settings import FLASK_DEBUG
 from structlog.threadlocal import merge_threadlocal
 
+from src.settings import FLASK_DEBUG
+
 timestamper = structlog.processors.TimeStamper(fmt="iso")
-shared_processors: List[Any] = [
+shared_processors: list[Callable] = [
     structlog.stdlib.add_logger_name,
     structlog.stdlib.add_log_level,
     structlog.stdlib.PositionalArgumentsFormatter(),
@@ -49,16 +49,21 @@ logging.config.dictConfig(
         },
         "handlers": {
             "default": {
-                "level": "INFO" if not FLASK_DEBUG else "DEBUG",
+                "level": "DEBUG" if FLASK_DEBUG else "INFO",
                 "class": "logging.StreamHandler",
-                "formatter": "colored" if FLASK_DEBUG else "json",
-            }
+                "formatter": "colored",
+            },
         },
         "loggers": {
             "": {
-                "handlers": ["default"], 
+                "handlers": ["default"],
                 "level": "DEBUG" if FLASK_DEBUG else "INFO",
             },
+            "werkzeug": {
+                "handlers": ["default"],
+                "level": "WARNING"
+            },
+            "pika": {"handlers": ["default"], "level": "WARNING"},
             "src": {
                 "handlers": ["default"],
                 "level": "DEBUG" if FLASK_DEBUG else "INFO",
@@ -69,6 +74,42 @@ logging.config.dictConfig(
                 "level": "INFO",
                 "propagate": False,
             },
+            # SQLAlchemy is very noisy.
+            "sqlalchemy.engine": {
+                "handlers": ["default"],
+                "level": "WARNING",
+                "propagate": False,
+            },
+            "sqlalchemy.engine.Engine": {
+                "handlers": ["default"],
+                "level": "WARNING",
+                "propagate": False,
+            },
+            # "esdl.undo": {
+            #     "handlers": ["default"],
+            #     "level": "DEBUG" if FLASK_DEBUG else "INFO",
+            #     "propagate": False,
+            # },
+            "extensions": {
+                "handlers": ["default"],
+                "level": "DEBUG" if FLASK_DEBUG else "INFO",
+                "propagate": False,
+            },
+            "utils.utils": {
+                "handlers": ["default"],
+                "level": "DEBUG" if FLASK_DEBUG else "INFO",
+                "propagate": False,
+            },
+            # "esdlproject": {
+            #     "handlers": ["default"],
+            #     "level": "DEBUG" if FLASK_DEBUG else "INFO",
+            #     "propagate": False,
+            # },
+            # "esdlproject.ChangeSerializer": {
+            #     "handlers": ["default"],
+            #     "level": "INFO",
+            #     "propagate": False,
+            # },
         },
     }
 )
@@ -83,5 +124,5 @@ structlog.configure(
 )
 
 
-def get_logger(name):
+def get_logger(name) -> structlog.stdlib.BoundLogger:
     return structlog.get_logger(name)

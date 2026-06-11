@@ -118,7 +118,8 @@ function query_esdl_service(service, state_params) {
         service['type'] !== "map_context_menu" &&
         service['location'] !== "map_context_menu" &&
         service['type'] !== "area_context_menu" &&
-        service['location'] !== "area_context_menu"
+        service['location'] !== "area_context_menu" &&
+        service['location'] !== "wfs_context_menu"
     ) {
         document.getElementById('query_service_button').style.display = 'none';
     }
@@ -300,7 +301,8 @@ function process_service_results(results) {
     }
 
     if (!('show_asset_results' in results) && !('asset_feedback' in results) &&
-        !('show_url' in results) && !('message' in results)) {
+        !('show_url' in results) && !('message' in results) &&
+        !(('esdl_service_result' in results) && 'continue_workflow' in results['esdl_service_result'])) {
         sidebar.hide();
     }
 }
@@ -521,6 +523,7 @@ function esdl_services_info() {
                 esdl_services_information[i]['location'] !== "map_context_menu" &&
                 esdl_services_information[i]['type'] !== "area_context_menu" &&
                 esdl_services_information[i]['location'] !== "area_context_menu" &&
+                esdl_services_information[i]['location'] !== "wfs_context_menu" &&
                 esdl_services_information[i]['location'] !== "hidden"
             ) {
                 table += '<tr><td><button onclick="show_service_settings(' + i + ');">Open</button></td><td>' + esdl_services_information[i]['name'] + '</td></tr>';
@@ -605,10 +608,10 @@ function update_map_service_contextmenus(services_list) {
  * @param service
  * @param callback
  */
-function add_service_to_contextmenu(layer, service, callback) {
+function add_service_to_contextmenu(layer, service, callback, icon) {
     layer.options.contextmenuItems.push({
         text: service['name'],
-        icon: resource_uri + 'icons/service.png',
+        icon: resource_uri + (icon ? icon : 'icons/service.png'),
         callback: callback,
         extra_options: service['options'] || {}
     });
@@ -656,11 +659,40 @@ function toWKT(layer) {
  * @param service
  * @param idx
  */
-function add_service_to_area_contextmenu(layer, service, idx) {
+function add_service_to_area_contextmenu(layer, service, idx, icon) {
+    const scope_map = {
+        "PV": "PROVINCE",
+        "ES": "REGION",
+        "GM": "MUNICIPALITY",
+        "WK": "DISTRICT",
+        "BU": "NEIGHBOURHOOD"
+    }
+    add_service_to_contextmenu(layer, service, function (e) {
+        let area_id = window.get_area_id_from_mapeditor_id(layer.id);
+        let state = {
+            area_id: area_id,
+            area_name: layer.name,
+            lat: e.latlng.lat.toString(),
+            lng: e.latlng.lng.toString(),
+            wkt: toWKT(layer),
+        }
+        const scope_abbr = area_id.substring(0, 2);
+        if (scope_abbr in scope_map) {
+            state.scope = scope_map[scope_abbr];
+        }
+        if (service['type'] === 'vueworkflow' || service['type'] === 'workflow') {
+            window.show_service_settings(idx, state);
+        } else {
+            query_esdl_service(service, state);
+        }
+    }, icon);
+}
+
+function add_service_to_wfs_object_contextmenu(layer, service, idx) {
     add_service_to_contextmenu(layer, service, function (e) {
         const state = {
-            area_id: layer.id,
-            area_name: layer.name,
+            wfs_object_id: layer.id,
+            wfs_object_name: layer.name,
             wkt: toWKT(layer),
         }
         if (service['type'] === 'vueworkflow' || service['type'] === 'workflow') {
@@ -676,10 +708,18 @@ function update_esdl_services(event) {
         let layer = event.layer;
         let id = layer.id;
 
+        let scope_map = {
+            "PV": "PROVINCE",
+            "ES": "REGION",
+            "GM": "MUNICIPALITY",
+            "WK": "DISTRICT",
+            "BU": "NEIGHBOURHOOD"
+        }
+
         if (event.layer_type === 'area') {
             for (let i = 0; i < esdl_services_information.length; i++) {
                 if (esdl_services_information[i]['type'] == "area_context_menu" || esdl_services_information[i]['location'] == "area_context_menu") {
-                    add_service_to_area_contextmenu(layer, esdl_services_information[i], i);
+                    add_service_to_area_contextmenu(layer, esdl_services_information[i], i, null);
                 }
             }
         }
@@ -729,6 +769,14 @@ function update_esdl_services(event) {
                             }
                         }
                     });
+                }
+            }
+        }
+
+        if (event.layer_type === 'wfs') {
+            for (let i = 0; i < esdl_services_information.length; i++) {
+                if (esdl_services_information[i]['type'] == "wfs_context_menu" || esdl_services_information[i]['location'] == "wfs_context_menu") {
+                    add_service_to_wfs_object_contextmenu(layer, esdl_services_information[i], i);
                 }
             }
         }

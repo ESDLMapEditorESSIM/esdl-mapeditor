@@ -84,7 +84,7 @@ function remove_sim_fav(sim_fav, sim_id) {
 }
 
 function show_kpis(sim_id, sim_fav) {
-//    socket.emit('essim_set_simulation_id', sim_id);
+//    socketio.emit('essim_set_simulation_id', sim_id);
     socket.emit('show_previous_sim_kpis', { sim_id: sim_id, sim_fav: sim_fav });
 }
 

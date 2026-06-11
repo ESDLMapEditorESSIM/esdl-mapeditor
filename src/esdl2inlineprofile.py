@@ -1,7 +1,3 @@
-import copy
-from typing import Dict, Optional
-from uuid import uuid4
-
 from flask import Flask, make_response, Response
 from pyecore.ecore import EAttribute
 from pyecore.resources import ResourceSet
@@ -9,11 +5,12 @@ from pyecore.valuecontainer import EOrderedSet
 
 from esdl import EnergySystem, EnergySystemInformation, InfluxDBProfile, TimeSeriesProfile, Asset, InPort, OutPort, \
     Port, GenericProfile, ProfileReference
-from esdl.esdl_handler import StringURI
+from esdl.processing.string_uri import StringURI
 from esdl.profiles.influxdbprofilemanager import InfluxDBProfileManager, ConnectionSettings
 import esdl
+from esdlproject.ProjectManager import load_external_string
 from extensions.profiles import Profiles
-from extensions.session_manager import get_session, get_handler
+from extensions.session_manager import get_session, get_project_manager
 import src.log as log
 
 logger = log.get_logger(__name__)
@@ -31,6 +28,16 @@ class ESDL2InlineProfile:
         @self.flask_app.route('/esdl2inlineprofile')
         def export_to_profile_reference():
             active_es_id = get_session('active_es_id')
+            pm = get_project_manager()
+            es = pm.get_active_energy_system()
+
+            # Create copy of energy system so we do not convert the original
+            # TODO: I don't know why copy.deepcopy(es) does not work. Maybe it works in a later version of pyesdl?
+            # es_copy = copy.deepcopy(es)
+            es_string = pm.energy_system_to_string(es.id)
+            es_copy, parse_info = load_external_string(es_string, name=f"{es.name} - In-line Profiles")
+            es_copy.name = get_session('es_filename') or (es.name or "Untitled EnergySystem") + " - In-line Profiles"
+            # es_copy.id = str(uuid4())
 
             with self.flask_app.app_context():
                 try:
@@ -58,10 +65,10 @@ class ESDL2InlineProfile:
         """
         Copy the active EnergySystem and convert its profiles to in-line profiles.
         """
-        esh = get_handler()
-        es = esh.get_energy_system(es_id=es_id)
-        es_string = esh.to_string(es_id=es_id)
-        es_copy, parse_info = esh.load_external_string(es_string, name=f"{es.name} - In-line Profiles")
+        pm = get_project_manager()
+        es = pm.get_energy_system_by_id(es_id)
+        es_string = pm.energy_system_to_string(es_id)
+        es_copy, parse_info = load_external_string(es_string, name=f"{es.name} - In-line Profiles")
         es_copy.name = get_session('es_filename') or (es.name or "Untitled EnergySystem") + " - In-line Profiles"
         profiles_settings = Profiles.get_instance().get_profiles_settings()
         es_converted = self.convert_esdl_profiles(es_copy, profiles_settings)
@@ -190,10 +197,10 @@ def copy_and_convert_esdl_profiles(
     """
     Copy the active EnergySystem and convert its profiles to in-line profiles.
     """
-    esh = get_handler()
-    es = esh.get_energy_system(es_id=es_id)
-    es_string = esh.to_string(es_id=es_id)
-    es_copy, parse_info = esh.load_external_string(es_string, name=f"{es.name} - In-line Profiles")
+    pm = get_project_manager()
+    es = pm.get_energy_system_by_id(es_id=es_id)
+    es_string = pm.energy_system_to_string(es_id=es_id)
+    es_copy, parse_info = load_external_string(es_string, name=f"{es.name} - In-line Profiles")
     es_copy.name = get_session('es_filename') or (es.name or "Untitled EnergySystem") + " - In-line Profiles"
     profiles_settings = Profiles.get_instance().get_profiles_settings()
     es_converted = convert_esdl_profiles(es_copy, profiles_settings)
@@ -248,8 +255,8 @@ def convert_asset_profiles(asset: Asset, esi: EnergySystemInformation, handled_p
 def convert_profile_for_port(
         esi: EnergySystemInformation,
         port: Port,
-        handled_profiles: Dict[str, GenericProfile],
-        profiles_settings: Dict[str, object],
+        handled_profiles: dict[str, GenericProfile],
+        profiles_settings: dict[str, object],
 ):
     def convert_influx_profile(prof: InfluxDBProfile):
         # Create TimeSeriesProfile for the profile of the port in global profiles if it does not exist yet

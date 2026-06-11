@@ -16,7 +16,6 @@ from flask import Flask
 from flask_socketio import SocketIO
 from flask_executor import Executor
 from extensions.settings_storage import SettingsStorage
-from extensions.session_manager import get_handler
 import src.log as log
 
 logger = log.get_logger(__name__)
@@ -41,5 +40,4 @@ class AppSettings:
         @self.socketio.on('app_settings', namespace='/esdl')
         def app_settings(prmtr):
             with self.flask_app.app_context():
-                esh = get_handler()
                 print(prmtr)

@@ -14,11 +14,11 @@
  *      TNO
  */
 
-var esdl_list = {};         // Dictionairy to keep energysystem information
+var esdl_list = {};         // Dictionary to keep energysystem information
 var active_layer_id = null;     // es_id of current layer that is being editted
 var draw_control = null;
 var draw_control_map = {};
-var select_esdl_control = null;
+// var select_esdl_control = null;
 
 // -----------------------------------------------------------------------------------------------------------
 //  Update the overlays in the Layer Control Tree
@@ -51,51 +51,59 @@ function update_layer_control_tree() {
     layer_ctrl_tree.setOverlayTree(overlaysTree);
 }
 
-function select_active_layer_old() {
-    let active_esdl_layer_index = document.getElementById('esdl_layer_select').selectedIndex;
-    let active_esdl_layer_options = document.getElementById('esdl_layer_select').options;
-    let active_esdl_layer = active_esdl_layer_options[active_esdl_layer_index].id;
-    select_active_layer(active_esdl_layer);
-}
+// function select_active_layer_old() {
+//     let active_esdl_layer_index = document.getElementById('esdl_layer_select').selectedIndex;
+//     let active_esdl_layer_options = document.getElementById('esdl_layer_select').options;
+//     let active_esdl_layer = active_esdl_layer_options[active_esdl_layer_index].id;
+//     select_active_layer(active_esdl_layer);
+// }
 
 function select_active_layer(active_esdl_layer) {
+    if (!(active_esdl_layer in esdl_list)) {
+        console.debug("Ignoring select active layer, as layers are not loaded yet in the front-end");
+        return;
+    }
+    console.debug("changing from esdl ("+active_layer_id+") to new active esdl ("+active_esdl_layer+")");
     active_layer_id = active_esdl_layer;
     socket.emit('set_active_es_id', active_layer_id);
     draw_control = add_draw_control(draw_control, map);         // connect draw control to new active layer
     update_area_bld_list_select();
     update_title(esdl_list[active_layer_id].title);
-    let bounds = get_layers(active_layer_id, 'esdl_layer').getBounds();
-    if (Object.keys(bounds).length !== 0) {
-        map.flyToBounds(bounds, {padding: [50, 50], animate: true});     // zoom to layer
-    }
+    update_area_legend();
+    update_building_legend();
+    // Do not fly to bounds when switching between variants
+    //let bounds = get_layers(active_layer_id, 'esdl_layer').getBounds();
+    //if (Object.keys(bounds).length !== 0) {
+    //    map.flyToBounds(bounds, {padding: [50, 50], animate: true});     // zoom to layer
+    //}
     window.PubSubManager.broadcast('SELECT_ACTIVE_LAYER', {active_layer_id: active_layer_id});
 }
 
-function add_select_esdl() {
-    if (select_esdl_control) {
-        map.removeControl(select_esdl_control);
-    }
-
-    select_esdl_control = L.control({position: 'topright'});
-    select_esdl_control.onAdd = function (map) {
-        var div = L.DomUtil.create('div', 'info legend');
-
-        var select = '<select id="esdl_layer_select" onchange="select_active_layer_old();">';
-        for (let id in esdl_list) {
-            es = esdl_list[id]
-            select += '<option id="' + es.id + '"';
-            if (es.id == active_layer_id) {
-                select += ' selected';
-            }
-            select += '>' + es.title + '</option>';
-        }
-        select += '</select>';
-        div.innerHTML += select;
-        div.firstChild.onmousedown = div.firstChild.ondblclick = L.DomEvent.stopPropagation;
-        return div;
-    };
-    select_esdl_control.addTo(map);
-}
+// function add_select_esdl() {
+//     if (select_esdl_control) {
+//         map.removeControl(select_esdl_control);
+//     }
+//
+//     select_esdl_control = L.control({position: 'topright'});
+//     select_esdl_control.onAdd = function (map) {
+//         var div = L.DomUtil.create('div', 'info legend');
+//
+//         var select = '<select id="esdl_layer_select" onchange="select_active_layer_old();">';
+//         for (let id in esdl_list) {
+//             es = esdl_list[id]
+//             select += '<option id="' + es.id + '"';
+//             if (es.id == active_layer_id) {
+//                 select += ' selected';
+//             }
+//             select += '>' + es.title + '</option>';
+//         }
+//         select += '</select>';
+//         div.innerHTML += select;
+//         div.firstChild.onmousedown = div.firstChild.ondblclick = L.DomEvent.stopPropagation;
+//         return div;
+//     };
+//     select_esdl_control.addTo(map);
+// }
 
 
 function add_draw_control(dc, mp) {
@@ -160,7 +168,7 @@ function create_new_esdl_layer(es_id, title) {
         remove_esdl_layer_from_ui(es_id);
     }
 
-    esdl_list_item = {
+    let esdl_list_item = {
         id: es_id,
         title: title,
         layers: {
@@ -179,6 +187,10 @@ function create_new_esdl_layer(es_id, title) {
         area_bld_list: null,
         kpi_info: null,
         area_kpi_list: null,
+        area_legend_choice: null,
+        area_dist_kpis_ranges: {},
+        building_kpi_list: null,
+        building_legend_choice: null
     };
 
     esdl_list[es_id] = esdl_list_item;
@@ -189,12 +201,13 @@ function create_new_esdl_layer(es_id, title) {
 function remove_esdl_layer_from_ui(es_id) {
     if (es_id in esdl_list) {
 
-        esdl_list_item = esdl_list[es_id]
+        let esdl_list_item = esdl_list[es_id]
         for (let lyr in esdl_list_item.layers) {
             if (map.hasLayer(esdl_list_item.layers[lyr]))
                 map.removeLayer(esdl_list_item.layers[lyr])
         }
         delete esdl_list[es_id];
+        window.PubSubManager.broadcast('REMOVE_ESDL_LAYER', {es_id: es_id});
     } else {
         console.log("Cannot remove layers from ui for esdl_id ", es_id);
     }
@@ -202,12 +215,12 @@ function remove_esdl_layer_from_ui(es_id) {
 
 function remove_esdl_layer(es_id) {
     remove_esdl_layer_from_ui(es_id);
-    socket.emit('command', {cmd: 'remove_energysystem', remove_es_id: es_id});
-    // set new active_es_id
-    let list = Object.keys(esdl_list);
-    if (list.length > 0) {
-        active_es_id = list[list.length - 1];  // select last esdl from the list
-        es_bld_id = active_es_id
+
+    // set new active_layer_id
+    let es_id_list = Object.keys(esdl_list);
+    if (es_id_list.length > 0) {
+        let active_es_id = es_id_list[es_id_list.length - 1];  // select last esdl from the list
+        es_bld_id = active_es_id;
         select_active_layer(active_es_id);
     }
     window.PubSubManager.broadcast('REMOVE_LAYER', {removed_layer_id: es_id});
@@ -222,7 +235,7 @@ function rename_esdl_energy_system(es_id, name) {
 }
 
 function create_new_bld_layer(bld_id, title, bld_map) {
-    esdl_list_item = {
+    let esdl_list_item = {
         id: bld_id,
         title: title,
         layers: {
@@ -246,14 +259,119 @@ function remove_bld_layer(bld_id) {
     delete esdl_list[bld_id];
 }
 
-function show_esdl_layer_on_map(es_id, layer_name) {
-    if (!map.hasLayer(esdl_list[es_id].layers[layer_name]))
-        esdl_list[es_id].layers[layer_name].addTo(map);
+/**
+ * Shows one or more ESDL layers on the Leaflet map.
+ *
+ * @param es_id - Identifier of the ESDL instance to show layers from.
+ * @param layer_name - Logical layer name (level_name) to show. If omitted, all base layers are shown.
+ * @param es_layer_name - Specific ESDL layer key to search within. If omitted, matches top-level layers.
+ */
+function show_esdl_layer_on_map(es_id, layer_name, es_layer_name) {
+    console.debug("Showing ESDL layer", es_id, layer_name, es_layer_name);
+    const es = esdl_list[es_id];
+    if (!es) {
+        return;
+    }
+
+    if (!layer_name) {
+        // Show all base ESDL layers
+        for (const lname of Object.keys(es.layers)) {
+            show_esdl_layer_on_map(es_id, lname);
+        }
+        return;
+    }
+
+    if (!es_layer_name && es.layers[layer_name] !== undefined) {
+        const layer = es.layers[layer_name];
+        if (layer) {
+            if (!map.hasLayer(layer)) layer.addTo(map);
+        } else {
+            console.warn("Unknown layer", es_id, layer_name);
+        }
+        return;
+    }
+
+    const es_layer = es.layers[es_layer_name];
+    if (!es_layer) {
+        return;
+    }
+
+    // Recursively walk children and hide those matching layer_name
+    function show_recursive(layer) {
+        if (!layer) {
+            return;
+        }
+
+        // We match on level_name which is set by visibleLayers.js when creating layers.
+        if (layer.options && layer.options.level_name === layer_name) {
+            if (!map.hasLayer(layer)) {
+                layer.addTo(map);
+            }
+        }
+
+        if (typeof layer.eachLayer === "function") {
+            layer.eachLayer(child => show_recursive(child));
+        }
+    }
+
+    show_recursive(es_layer);
 }
 
-function hide_esdl_layer_from_map(es_id, layer_name) {
-    if (map.hasLayer(esdl_list[es_id].layers[layer_name]))
-        esdl_list[es_id].layers[layer_name].removeFrom(map);
+/**
+ * Hides one or more ESDL layers from the Leaflet map.
+ *
+ * @param es_id - Identifier of the ESDL instance whose layers should be hidden.
+ * @param layer_name - Logical layer name (level_name) to hide. If omitted, all layers are hidden.
+ * @param es_layer_name - Specific ESDL layer key to search within. If omitted, matches top-level layers.
+ */
+function hide_esdl_layer_from_map(es_id, layer_name, es_layer_name) {
+    console.debug("Hiding ESDL layer", es_id, layer_name, es_layer_name);
+    const es = esdl_list[es_id];
+    if (!es) {
+        return;
+    }
+
+    if (!layer_name) {
+        // No args: Hide all layers for this es_id
+        for (const layer_name of Object.keys(es.layers)) {
+            hide_esdl_layer_from_map(es_id, layer_name);
+        }
+        return;
+    }
+
+    if (!es_layer_name && es.layers[layer_name] !== undefined) {
+        // Hide the specified es layer.
+        const layer = es.layers[layer_name];
+        if (layer && map.hasLayer(layer)) {
+            layer.removeFrom(map);
+        }
+        return;
+    }
+
+    const esLayer = es.layers[es_layer_name];
+    if (!esLayer) {
+        return;
+    }
+
+    // Recursively walk children and hide those matching layer_name.
+    function hide_recursive(layer) {
+        if (!layer) {
+            return;
+        }
+
+        // We match on level_name which is set by visibleLayers.js when creating layers.
+        if (layer.options && layer.options.level_name === layer_name) {
+            if (map.hasLayer(layer)) {
+                layer.removeFrom(map);
+            }
+        }
+
+        if (typeof layer.eachLayer === "function") {
+            layer.eachLayer(child => hide_recursive(child));
+        }
+    }
+
+    hide_recursive(esLayer);
 }
 
 function clear_esdl_layer_list() {
@@ -264,6 +382,7 @@ function clear_esdl_layer_list() {
         }
     }
     esdl_list = {};
+    window.PubSubManager.broadcast('CLEAR_ESDL_LAYER_LIST', {});
 }
 
 function add_object_to_layer(es_id, layer_name, object) {
@@ -341,6 +460,38 @@ function get_area_kpi_list(es_id) {
     return esdl_list[es_id].area_kpi_list;
 }
 
+function set_area_dist_kpis_ranges(es_id, area_dist_kpis_ranges) {
+    esdl_list[es_id].area_dist_kpis_ranges = area_dist_kpis_ranges;
+}
+
+function get_area_dist_kpis_ranges(es_id) {
+    return esdl_list[es_id].area_dist_kpis_ranges;
+}
+
+function set_area_legend_choice(es_id, legend_choice) {
+    esdl_list[es_id].area_legend_choice = legend_choice;
+}
+
+function get_area_legend_choice(es_id) {
+    return esdl_list[es_id].area_legend_choice;
+}
+
+function set_building_kpi_list(es_id, kpi_list) {
+    esdl_list[es_id].building_kpi_list = kpi_list;
+}
+
+function get_building_kpi_list(es_id) {
+    return esdl_list[es_id].building_kpi_list;
+}
+
+function set_building_legend_choice(es_id, legend_choice) {
+    esdl_list[es_id].building_legend_choice = legend_choice;
+}
+
+function get_building_legend_choice(es_id) {
+    return esdl_list[es_id].building_legend_choice;
+}
+
 function get_carrier_style_class_name(carrier_mapping) {
     return 'car_' + carrier_mapping.name.replace(/[^a-z0-9]/ig, ''); // only a-z and 0-9 in class name, no spaces
 }
@@ -383,7 +534,7 @@ function set_carrier_list(es_id, carrier_list) {
     esdl_list[es_id].carrier_list = carrier_list;
 
     let carrier_info_mapping = {};
-    carrier_info_mapping[0] = {color: '#808080', name: 'No carrier specified'}
+    carrier_info_mapping[0] = {color: '#404040', name: 'No carrier specified'}
     carrier_info_mapping[1] = {color: '#FF0000', name: 'Conflicting carriers specified'}
 
     for (let i = 0; i < carrier_list.length; i++) {
@@ -447,7 +598,7 @@ function get_kpi_info(es_id) {
 
 function get_all_kpi_info() {
     // returns a dictionary with the energy system ID as a key and the KPI information of that energy system as a value
-    kpi_info = {};
+    let kpi_info = {};
     for (let es_id in esdl_list) {
         kpi_es = esdl_list[es_id].kpi_info;
         if (kpi_es) {

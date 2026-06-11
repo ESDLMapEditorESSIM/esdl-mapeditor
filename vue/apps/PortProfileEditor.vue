@@ -249,16 +249,17 @@ const listPortProfiles = (activePortId) => {
 };
 
 const getProfileDisplayedName = (profileInfo) => {
-  if (profileInfo.profileClass === "SingleValue") {
+  if (profileInfo.profileClass === "SingleValue" || profileInfo.profileClass === "TimeSeriesProfile") {
     return profileInfo.profileObj.name || profileInfo.profileObj.id;
   } else {
-    return profileInfo.profileObj.columnName;
+    return profileInfo.profileObj.columnName || profileInfo.profileObj.name || "Undefined";
   }
 }
 
 const getProfileUnit = (profileInfo) => {
-  return profileInfo.profileObj.profileQuantityAndUnit.description;
+  return profileInfo.profileObj.profileQuantityAndUnit?.description || "Undefined";
 }
+
 
 const onSelectPortSegment = (portId) => {
   listedPortProfiles.value = listPortProfiles(portId);

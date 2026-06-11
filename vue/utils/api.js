@@ -10,7 +10,7 @@ import {genericErrorHandler} from "./errors";
  * @returns {Promise<Response|null>} The response, or null if nothing was received / an error occurs.
  */
 export async function doGet(url, request_params) {
-    window.show_loader();
+    window.show_loader("doGet");
     try {
         const is_logged_in = await checkAndRefreshAuthStatus();
         if (is_logged_in) {
@@ -32,7 +32,7 @@ export async function doGet(url, request_params) {
         handleErrorResponse(e);
         return null;
     } finally {
-        window.hide_loader();
+        window.hide_loader("doGet");
     }
 }
 
@@ -44,7 +44,7 @@ export async function doGet(url, request_params) {
  * @returns {Promise<Response|null>} The response, or null if nothing was received / an error occurs.
  */
 export async function doPost(url, payload) {
-    window.show_loader();
+    window.show_loader("doPost");
     try {
         const is_logged_in = await checkAndRefreshAuthStatus();
         if (is_logged_in) {
@@ -67,7 +67,7 @@ export async function doPost(url, payload) {
         handleErrorResponse(e);
         return null;
     } finally {
-        window.hide_loader();
+        window.hide_loader("doPost");
     }
 }
 

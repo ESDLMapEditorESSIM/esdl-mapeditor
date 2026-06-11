@@ -24,7 +24,7 @@ import pytz
 from esdl import esdl
 from esdl.units.parser import unit_to_string
 from extensions.profiles import Profiles
-from extensions.session_manager import get_handler, get_session, set_session
+from extensions.session_manager import get_project_manager, get_session, set_session
 from extensions.settings_storage import SettingsStorage
 from extensions.mapeditor_settings import MapEditorSettings, MAPEDITOR_UI_SETTINGS
 
@@ -93,7 +93,7 @@ class TimeDimension:
             This function is called when the user selects to use the TimeDimension functionality
             """
             with self.flask_app.app_context():
-                database = info["database"]
+                animation_es_id = info["es_id"]
                 animation_column_name = info["animation_column_name"]
 
                 filter_tag_name = info["filter_tag_name"]
@@ -108,14 +108,8 @@ class TimeDimension:
 
                 set_session("td_monitor_ids", [])
 
-                active_es_id = get_session("active_es_id")
-                set_session("active_es_id_animation", active_es_id)
-                set_session(
-                    "influxdb_connection",
-                    Profiles.connect_to_animation_profiles_database(
-                        active_es_id, database, info["influxdb_host_override"], info["influxdb_port_override"]
-                    ),
-                )
+                set_session("animation_es_id", animation_es_id)
+                set_session("influxdb_connection", Profiles.connect_to_animation_profiles_database(animation_es_id))
 
                 self.preprocess_data(networks)
                 time_list = self.get_all_times_from_simulation()
@@ -157,10 +151,10 @@ class TimeDimension:
         @self.socketio.on("request_load_duration_curve", namespace="/esdl")
         def request_load_duration_curve(info):
             asset_id = info["id"]
-            active_es_id = get_session("active_es_id_animation")
+            animation_es_id = get_session("animation_es_id")
             timedimension_parameter = get_session("timedimension-parameter")
-            esh = get_handler()
-            asset = esh.get_by_id(active_es_id, asset_id)
+            pm = get_project_manager()
+            asset = pm.get_by_id(animation_es_id, asset_id)
             asset_name = asset.name
             power = None
             # TODO leave out for mesido for now
@@ -279,22 +273,22 @@ class TimeDimension:
         set_session("timedimension-allocation-boundaries", allocation_boundaries)
 
     def get_colors(self):
-        active_es_id = get_session("active_es_id_animation")
-        esh = get_handler()
+        animation_es_id = get_session("animation_es_id")
+        pm = get_project_manager()
         colors = dict()
         color_index = 0
 
-        es = esh.get_energy_system(active_es_id)
+        es = pm.get_energy_system_by_id(animation_es_id)
         esi = es.energySystemInformation
         if esi:
             carriers = esi.carriers
             if carriers:
                 for c in carriers.carrier:
-                    if active_es_id + c.id in self.mapeditor_colors:
-                        colors[active_es_id + c.id] = self.mapeditor_colors[active_es_id + c.id]
+                    if animation_es_id + c.id in self.mapeditor_colors:
+                        colors[animation_es_id + c.id] = self.mapeditor_colors[animation_es_id + c.id]
                     else:
-                        colors[active_es_id + c.id] = {
-                            "es_id": active_es_id,
+                        colors[animation_es_id + c.id] = {
+                            "es_id": animation_es_id,
                             "carrier_id": c.id,
                             "color": default_colors[color_index],
                         }
@@ -359,14 +353,14 @@ class TimeDimension:
         logger.debug("--- Retrieving Simulation Data ---")
         influxdb_client = get_session("influxdb_connection")
         # active_simulation = get_session('active_simulation')
-        active_es_id = get_session("active_es_id_animation")
+        animation_es_id = get_session("animation_es_id")
 
         sdt = datetime.strptime(start, "%Y-%m-%dT%H:%M:%S.%f%z")
         edt = datetime.strptime(end, "%Y-%m-%dT%H:%M:%S.%f%z")
         influxdb_startdate = sdt.strftime("%Y-%m-%dT%H:%M:%SZ")
         influxdb_enddate = edt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        esh = get_handler()
+        pm = get_project_manager()
         monitor_asset_ids = get_session("td_monitor_ids")
         networks_list = get_session("timedimension-networks-list")
 
@@ -378,7 +372,7 @@ class TimeDimension:
             monitor_asset_data = dict()
             for aid in monitor_asset_ids:
                 try:
-                    asset = esh.get_by_id(active_es_id, aid)
+                    asset = pm.get_by_id(animation_es_id, aid)
                 except:
                     logger.warning("(Monitor) Asset id not found.")
                     continue
@@ -427,7 +421,7 @@ class TimeDimension:
                     try:
                         if not item["assetId"]:
                             continue
-                        current_asset = esh.get_by_id(active_es_id, item["assetId"])
+                        current_asset = pm.get_by_id(animation_es_id, item["assetId"])
                     except:
                         logger.warning("Asset id not found.")
                         continue
@@ -451,9 +445,9 @@ class TimeDimension:
                         )
 
                     if "carrierId" in item:  # for essim
-                        color = colors[active_es_id + item["carrierId"]]["color"]
+                        color = colors[animation_es_id + item["carrierId"]]["color"]
                     else:
-                        color = colors[active_es_id + key[0]]["color"]
+                        color = colors[animation_es_id + key[0]]["color"]
 
                     profile = Profiles.get_profile_of_asset_with_field(current_asset, simulation_parameter)
                     if profile and profile.profileQuantityAndUnit:

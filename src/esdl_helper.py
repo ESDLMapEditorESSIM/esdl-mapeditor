@@ -20,9 +20,10 @@ from pyecore.ecore import EEnum
 from esdl.units.parser import qau_to_string
 from esdl import esdl
 from esdl.processing import ESDLGeometry, ESDLAsset
-from extensions.session_manager import get_handler, get_session, get_session_for_esid
+from extensions.session_manager import get_session, get_session_for_esid, get_project_manager
 from extensions.profiles import Profiles
-from src.incremental_ui import create_asset_port_message
+from esdlproject.ProjectManager import ProjectManager
+from src.incremental_ui.incremental_ui_messages import create_asset_port_message
 
 
 def generate_profile_info(profile_list, only_of_type: str = None):
@@ -61,7 +62,7 @@ def generate_profile_info(profile_list, only_of_type: str = None):
                 p = profiles[pkey]
                 if p['database'] == database and (p.get('measurement') and p['measurement'] == measurement) and p['field'] == field:
                     profile_name = p['profile_uiname']
-            if profile_name == None:
+            if profile_name is None:
                 profile_name = field
             profile_info_list.append({'id': profile_id, 'class': 'InfluxDBProfile', 'multiplier': multiplier, 'type': profile_type, 'uiname': profile_name})
         if profile_class == 'DataTableProfile':
@@ -117,11 +118,10 @@ def get_connected_to_info(asset):
         conn_to = p.connectedTo
         if conn_to:
             for conn_port in conn_to:
-                conn_asset = conn_port.energyasset #small a instead of Asset
+                conn_asset = conn_port.energyasset  #small a instead of Asset
                 ct_list.append({'opid': p.id, 'pid': conn_port.id, 'aid': conn_asset.id, 'atype': type(conn_asset).__name__, 'aname': conn_asset.name})
 
         result.append({'pid': p.id, 'ptype': ptype, 'pname': p.name, 'pcarr': pcarr, 'ct_list': ct_list})
-    #logger.debug(result)
     return result
 
 
@@ -131,7 +131,7 @@ def get_asset_geom_info(asset):
         if isinstance(geom, esdl.Point):
             lat = geom.lat
             lon = geom.lon
-            return (lat, lon)
+            return lat, lon
         if isinstance(geom, esdl.Line):
             points = geom.point
             first = (points[0].lat, points[0].lon)
@@ -143,13 +143,13 @@ def get_asset_geom_info(asset):
     return ()
 
 
-def get_asset_from_port_id(esh, es_id, pid):
-    port = esh.get_by_id(es_id, pid)
+def get_asset_from_port_id(pm: ProjectManager, es_id, pid):
+    port = pm.get_by_id(es_id, pid)
     return port.eContainer()
 
 
-def get_asset_and_coord_from_port_id(esh, es_id, pid):
-    port = esh.get_by_id(es_id, pid)
+def get_asset_and_coord_from_port_id(pm: ProjectManager, es_id, pid):
+    port = pm.get_by_id(es_id, pid)
     asset = port.eContainer()
     if asset.geometry:
         coord = get_asset_geom_info(asset)
@@ -239,14 +239,14 @@ def add_extra_attributes(asset: esdl.Asset, extra_attributes: dict = None) -> di
 
     return extra_attributes
 
-def energy_asset_to_ui(esh, es_id, asset):  # , port_asset_mapping):
+def energy_asset_to_ui(pm: ProjectManager, es_id, asset):  # , port_asset_mapping):
     port_list = []
     conn_list = []
 
     ports = asset.port
     for p in ports:
         # p_asset = port_asset_mapping[p.id]
-        p_asset = get_asset_and_coord_from_port_id(esh, es_id, p.id)
+        p_asset = get_asset_and_coord_from_port_id(pm, es_id, p.id)
         p_asset_coord = p_asset['coord']        # get proper coordinate if asset is line
         conn_to = [cp.id for cp in p.connectedTo]
         # TODO: remove commented code as profile info is never used in the UI as far as Ewoud can tell
@@ -262,7 +262,7 @@ def energy_asset_to_ui(esh, es_id, asset):  # , port_asset_mapping):
             # conn_to_list = conn_to.split(' ')   # connectedTo attribute is list of port ID's separated by a space
             for id in conn_to:
                 # pc_asset = port_asset_mapping[id]
-                pc_asset = get_asset_and_coord_from_port_id(esh, es_id, id)
+                pc_asset = get_asset_and_coord_from_port_id(pm, es_id, id)
                 pc_asset_coord = pc_asset['coord']
 
                 conn_list.append(
@@ -312,7 +312,7 @@ def energy_asset_to_ui(esh, es_id, asset):  # , port_asset_mapping):
 
 
 def update_carrier_conn_list(asset: esdl.ConnectableAsset):
-    esh = get_handler()
+    pm = get_project_manager()
     active_es_id = get_session('active_es_id')
 
     if isinstance(asset.eContainer(), esdl.ExposedPortsAsset):
@@ -328,10 +328,10 @@ def update_carrier_conn_list(asset: esdl.ConnectableAsset):
     emit('clear_connections', {'id': active_es_id})  # clear current active layer connections
     conn_list = get_session_for_esid(active_es_id, 'conn_list')
     for c in conn_list:
-        from_port = esh.get_by_id(active_es_id, c['from-port-id'])
+        from_port = pm.get_by_id(active_es_id, c['from-port-id'])
         if from_port.carrier:
             c['from-port-carrier'] = from_port.carrier.id
-        to_port = esh.get_by_id(active_es_id, c['from-port-id'])
+        to_port = pm.get_by_id(active_es_id, c['from-port-id'])
         if to_port.carrier:
             c['to-port-carrier'] = to_port.carrier.id
     emit("add_connections", {"es_id": active_es_id, "conn_list": conn_list, "add_to_building": False})

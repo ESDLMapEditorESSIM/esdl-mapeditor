@@ -11,25 +11,25 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-import importlib
+import codecs
+import csv
 import json
 from datetime import datetime, timedelta
 from uuid import uuid4
 
 import requests
 from flask import Flask, request
-from flask_executor import Executor
 from flask_socketio import SocketIO, emit
-from pyecore.resources import ResourceSet, URI
+from pyecore.resources import ResourceSet
 
 import esdl
-from esdl.esdl_handler import StringURI
 from esdl.processing import ESDLAsset
-from extensions.session_manager import set_session
+from esdl.processing.string_uri import StringURI
+from extensions.session_manager import set_session, get_project_manager, get_session, get_session_for_esid
 from extensions.settings_storage import SettingsStorage
 from src.edr_client import EDRClient
-
 from src.log import get_logger
+from src.process_es_area_bld import get_area_id_from_mapeditor_id, calc_building_assets_location
 from src.settings import edr_config
 
 logger = get_logger(__name__)
@@ -57,6 +57,7 @@ class ResidentialArea:
         self.settings = self.get_settings()
         self.building_list = list()
         self.building_list_datetime_retrieved = None
+        self.primos_data = None
 
         self.register()
 
@@ -126,19 +127,67 @@ class ResidentialArea:
             else:
                 return "Method not allowed", 500
 
-            return {}
+        @self.socketio.on("residential_area_create", namespace="/esdl")
+        def residential_area_create(params):
+            with self.flask_app.app_context():
+                bld_composition = params["building_composition"]
+                aggr_bld = self.create_aggregated_building(bld_composition)
 
-        @self.flask_app.route("/residential_area/create", methods=["POST"])
-        def create():
-            bld_composition = request.json["building_composition"]
-            return self.create_aggregated_building(bld_composition)
+                print(params)
+                if 'id' in params:
+                    # Request was sent by right-clicking on an Area / map location
+                    area_id = get_area_id_from_mapeditor_id(params['id'])
+                    pm = get_project_manager()
+                    active_es_id = get_session('active_es_id')
+                    area = pm.get_by_id(active_es_id, area_id)
+                    if area:
+                        stack = pm.get_undo_redo_stack(es_id=active_es_id)
+                        with stack.track_changes(label="Add residential area"):
+                            aggr_bld.geometry = esdl.Point(lat=float(params["lat"]), lon=float(params["lon"]))
+                            area.asset.append(aggr_bld)
+                            pm.add_object_to_dict(active_es_id, aggr_bld, recursive=True)
 
-    def get_settings(self):
-        if self.settings_storage.has_system(RESIDENTIAL_AREA_SETTINGS):
+                            buildings_to_be_added_list = list()
+                            extra_attributes = dict()
+                            extra_attributes['assetType'] = aggr_bld.assetType
+                            buildings_to_be_added_list.append(['point', aggr_bld.name, aggr_bld.id, type(aggr_bld).__name__,
+                                                               [aggr_bld.geometry.lat, aggr_bld.geometry.lon],
+                                                               False, {}, extra_attributes])
+                            building_list = get_session_for_esid(active_es_id, 'building_list')
+                            building_list.extend(buildings_to_be_added_list)
+
+                        emit(
+                            'add_building_objects',
+                            {
+                                'es_id': active_es_id,
+                                'building_list': buildings_to_be_added_list,
+                                'zoom': False
+                            },
+                            namespace='/esdl'
+                        )
+                    else:
+                        logger.error("Area to which aggregated building should be added, could not be found")
+                else:
+                    logger.warning("Using ResidentialArea plugin without right-clicking on an area... (the 'unintended' way)")
+                    # Request was sent from the menu, location still needs to be determined by the user
+                    self.store_asset_for_drawing_on_map(aggr_bld)
+
+                return {}
+
+        @self.flask_app.route("/residential_area/get_primos", methods=["POST"])
+        def get_primos():
+            area_id = request.json["id"]
+            # Filter out 'GMxxxx (1 of 4)' to 'GMxxxx'
+            area_id = get_area_id_from_mapeditor_id(area_id)
+            return self.get_primos_data(area_id)
+
+    def get_settings(self, force_reset=False):
+        if self.settings_storage.has_system(RESIDENTIAL_AREA_SETTINGS) and not force_reset:
             settings = self.settings_storage.get_system(RESIDENTIAL_AREA_SETTINGS)
         else:
             settings = {
-                "tags": "residential_area_plugin"
+                "tags": "residential_area_plugin",
+                "primos_file": "data/primos_2019.csv"
             }
             self.settings_storage.set_system(RESIDENTIAL_AREA_SETTINGS, settings)
 
@@ -189,12 +238,16 @@ class ResidentialArea:
                                             "qau": qau.deepcopy()}
                                     }
 
+        buildings_contain_heat_network_demand = False
         for asset_class, asset_info in totals.items():
             for asset_instance, asset_sub_info in asset_info.items():
                 # Create the aggregated version of this asset over all building types
                 asset = esdl.getEClassifier(asset_class)()
                 asset.id = str(uuid4())
                 asset.name = asset_instance
+
+                if isinstance(asset, esdl.HeatingDemand):
+                    buildings_contain_heat_network_demand = True
 
                 if isinstance(asset, esdl.Producer):
                     port = esdl.OutPort(id=str(uuid4()), name="OutPort")
@@ -227,25 +280,52 @@ class ResidentialArea:
         # Connect EConnection to the in-house electricity network
         aggr_bld_econn_outp.connectedTo.append(aggr_bld_elec_netw_inp)
 
+        if buildings_contain_heat_network_demand:
+            # Add HConnection to the AggregatedBuilding
+            aggr_bld_hconn = esdl.HConnection(id=str(uuid4()), name="Heat network connection")
+            aggr_bld_hconn_inp = esdl.InPort(id=str(uuid4()), name="In")
+            aggr_bld_hconn_outp = esdl.OutPort(id=str(uuid4()), name="Out")
+            aggr_bld_hconn.port.extend([aggr_bld_hconn_inp, aggr_bld_hconn_outp])
+            aggr_bld.asset.append(aggr_bld_hconn)
+
         # Connect all assets in the building to the in-house electricity network
         # For now assume all assets relate to electricity
         for bld_asset in aggr_bld.asset:
             if isinstance(bld_asset, esdl.Producer):
                 bld_asset.port[0].connectedTo.append(aggr_bld_elec_netw_inp)
-            elif isinstance(bld_asset, esdl.Consumer):
+            elif isinstance(bld_asset, esdl.Consumer) and not isinstance(bld_asset, esdl.HeatingDemand):
                 bld_asset.port[0].connectedTo.append(aggr_bld_elec_netw_outp)
+            elif isinstance(bld_asset, esdl.HeatingDemand):
+                bld_asset.port[0].connectedTo.append(aggr_bld_hconn_outp)
 
-        # Create string representation of the ESDL of the AggregatedBuilding
+        # Expose the InPort of the EConnection to the outside of the Building
+        aggr_bld.port.append(aggr_bld_econn_inp)
+
+        if buildings_contain_heat_network_demand:
+            # Expose the InPort of the HConnection to the outside of the Building
+            aggr_bld.port.append(aggr_bld_hconn_inp)
+
+        # Indicate all buildings in AggregatedBuilding are residential buildings
+        aggr_bld.buildingTypeDistribution = esdl.BuildingTypeDistribution(
+            bin=[
+                esdl.BuildingTypeBin(buildingType=esdl.BuildingTypeEnum.RESIDENTIAL, percentage=100.0)
+            ]
+        )
+
+        # add locations to building assets (to make building editor work)
+        calc_building_assets_location(aggr_bld)
+        return aggr_bld
+
+    def store_asset_for_drawing_on_map(self, asset):
+        # Create string representation of the ESDL of the Asset
         rset = ResourceSet()
-        resource = rset.create_resource(URI("aggr_bld.esdl"))
-        resource.append(aggr_bld)
-        uri = StringURI("aggr_bld_str.esdl")
+        uri = StringURI("asset_to_be_drawn.esdl")
+        resource = rset.create_resource(uri)
+        resource.append(asset)
         resource.save(uri)
 
         # Put this string in the adding_edr_assets session variable so it can be used after asset placement on the map
         set_session("adding_edr_assets", uri.getvalue())
-
-        return {}
 
     def get_edr_residential_area_buildings(self):
         now = datetime.now()
@@ -260,9 +340,15 @@ class ResidentialArea:
             r = requests.get(url)
             if r.status_code == 200:
                 result = json.loads(r.text)
-                self.building_list = result
-                self.building_list_datetime_retrieved = now
-                return result
+                if isinstance(result, list):
+                    result.sort(key=lambda x: x["title"])
+                    self.building_list = [res for res in result if "ERROR" not in res['id']]
+                    self.building_list_datetime_retrieved = now
+                    return result
+                else:
+                    print('EDR returned unexpected result. Check ResidentialArea settings')
+                    send_alert('EDR returned unexpected result. Check ResidentialArea settings')
+                    return None
             else:
                 print('EDR returned unexpected result. Check ResidentialArea settings')
                 send_alert('EDR returned unexpected result. Check ResidentialArea settings')
@@ -273,3 +359,65 @@ class ResidentialArea:
             send_alert('Error accessing EDR API: ' + str(e))
             return None
 
+    def read_primos_data(self):
+        if "primos_file" not in self.settings:
+            self.settings = self.get_settings(force_reset=True)
+
+        primos_file = self.settings['primos_file']
+
+        self.primos_data = dict()
+        with codecs.open(primos_file, encoding='utf-8-sig') as csv_file:
+            reader = csv.DictReader(csv_file, delimiter=',')
+            for row in reader:
+                self.primos_data[row['gm_code']] = row
+
+        logger.debug(f"Residential_area plugin read {len(self.primos_data)} municipalities from input file")
+
+    def get_primos_data(self, area_id: str):
+        """ Gets the data from the PRIMOS database for this municipality """
+
+        if not self.primos_data:
+            self.read_primos_data()
+
+        if area_id in self.primos_data:
+            mun_info = self.primos_data[area_id]
+
+            return {
+                "gm_naam": mun_info["gm_naam"],
+                "gm_code": mun_info["gm_code"],
+                "info": [
+                    {
+                        "label": '2019-2023',
+                        "additions": "No data",
+                        "removals": "No data",
+                        "cumulative": "No data"
+                    },
+                    {
+                        "label": '2023-2025',
+                        "additions": mun_info['2023-Nieuwbouw (cumulatief komende 2 jaren)'],
+                        "removals": mun_info['2023-Onttrekkingen (cumulatief komende 2 jaren)'],
+                        "cumulative": mun_info['2023-Woningvoorraadontwikkeling (cumulatief komende 2 jaren)']
+                    },
+                    {
+                        "label": '2025-2030',
+                        "additions": mun_info['2025-Nieuwbouw (cumulatief komende 5 jaren)'],
+                        "removals": mun_info['2025-Onttrekkingen (cumulatief komende 5 jaren)'],
+                        "cumulative": mun_info['2025-Woningvoorraadontwikkeling (cumulatief komende 5 jaren)']
+                    },
+                    {
+                        "label": '2030-2035',
+                        "additions": mun_info['2030-Nieuwbouw (cumulatief komende 5 jaren)'],
+                        "removals": mun_info['2030-Onttrekkingen (cumulatief komende 5 jaren)'],
+                        "cumulative": mun_info['2030-Woningvoorraadontwikkeling (cumulatief komende 5 jaren)']
+                    },\
+                    {
+                        "label": '2035-2040',
+                        "additions": mun_info['2035-Nieuwbouw (cumulatief komende 5 jaren)'],
+                        "removals": mun_info['2035-Onttrekkingen (cumulatief komende 5 jaren)'],
+                        "cumulative": mun_info['2035-Woningvoorraadontwikkeling (cumulatief komende 5 jaren)']
+                    },
+
+                ]
+            }
+        else:
+            return {}

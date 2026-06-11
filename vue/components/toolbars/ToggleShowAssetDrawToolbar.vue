@@ -6,7 +6,7 @@
     >
       &nbsp;
     </div>
-    Show/hide asset draw toolbar
+    Show asset draw toolbar
   </a>
 </template>
 

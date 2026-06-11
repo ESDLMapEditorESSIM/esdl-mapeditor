@@ -12,9 +12,10 @@
 #  Manager:
 #      TNO
 
+import math
+
 from esdl import esdl
 from utils.RDWGSConverter import RDWGSConverter
-import math
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -292,7 +293,7 @@ def calculate_polygon_center(polygon):
     :return:
     """
     exterior = polygon.exterior
-    pts = exterior.point
+    pts = list(exterior.point)  # make a copy and not change the ESDL here
 
     first = pts[0]
     last = pts[len(pts) - 1]

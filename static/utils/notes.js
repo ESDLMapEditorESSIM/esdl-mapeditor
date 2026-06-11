@@ -20,7 +20,7 @@ class Notes {
     }
 
     initSocketIO() {
-        console.log("Registering socket io bindings for ESDL Notes extension")
+        console.log("Registering socketio io bindings for ESDL Notes extension")
 
         // ------------------------------------------------------------------------------------------------------------
         //  Add notes on the map
@@ -46,6 +46,7 @@ class Notes {
                     return $(this).attr('title');
                 }
             });
+            window.PubSubManager.broadcast('ADD_NOTES', options);
         });
     }
 

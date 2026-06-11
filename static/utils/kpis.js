@@ -20,7 +20,7 @@ class KPIs {
     }
 
     initSocketIO() {
-        console.log("Registering socket io bindings for KPIs module")
+        console.log("Registering socketio io bindings for KPIs module")
 
         socket.on('kpis', function(data) {
             console.log("KPIs plugin: kpis SocketIO call");

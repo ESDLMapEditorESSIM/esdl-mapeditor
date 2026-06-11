@@ -20,7 +20,7 @@ class LoadDurationCurve {
     }
 
     initSocketIO() {
-        console.log("Registering socket io bindings for LoadDurationCurve")
+        console.log("Registering socketio io bindings for LoadDurationCurve")
 
         socket.on('ldc-data', function(ldc_data) {
             ldc_control = L.control.load_duration_curve('ldccontrol', {position: 'bottomright', data: ldc_data});

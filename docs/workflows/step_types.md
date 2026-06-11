@@ -193,14 +193,11 @@ For more details see the json example below.
 - `external_model`: name of the external model.
 - `model_short_name`: a short name to be displayed in the result visualization.
 - `has_feedback_messages`: boolean flag for feedback messages from a model run.
-- `result_animation`: activates the ESDL animation option with the optional `influxdb_host_override` which can be useful
-  for local development when the profiles in the esdl point to another host, the `filter_on_tag` determines how to
-  extract data from influxdb.
 - `result_external_link`: activates the option of displaying an external link to model run results.
 - `delete_result_url`: optional external model endpoint to also delete data from the external model database when
   deleting a run.
 - `time_series_xlsx_download`: activates the time series download to xlsx option. There are quite some configuration
-  settings, see below for essim format, here is also an optional `influxdb_host_override`.
+  settings, see below for essim format.
 
 #### required input data
 
@@ -221,13 +218,6 @@ Example config:
   "config": {
     "external_model": "essim",
     "model_short_name": "essim",
-    "result_animation": {
-      "filter_on_tag": {
-        "tag_name": "simulationRun",
-        "value_database_key": "model_job_id"
-      },
-      "influxdb_host_override": "localhost"
-    },
     "result_external_link": {
       "description": "Open Dashboard",
       "value_database_key": "model_specific_output.dashboardURL"
@@ -266,8 +256,7 @@ Example config:
             ]
           }
         }
-      ],
-      "influxdb_host_override": "localhost"
+      ]
     }
   },
   "data": {
@@ -723,10 +712,20 @@ A possible next action can be invoked upon completion of the step using the `wor
 The available options:
 
 - `model_run_result_polling`: poll status/result endpoint(s) of an external model to track a model run progress and
-  finally obtain the results. Several things are needed for this:
-    - `response_mapping`: which response keys hold the status and progress.
-    - `model_specific_response_mapping`: which response keys to also save which as model specific.
-    - `status_mapping`: how to map the external model statuses to mapeditor statuses.
+  finally obtain the results:
+    - `query_list`: List of queries to be done which each need:
+        - `url`: url string which can contain a `<MODEL_JOB_ID>` which will be filled in.
+        - `response_mapping`: which response keys hold the status and progress.
+        - `model_specific_response_mapping`: which response keys to also save which as model specific (optional).
+        - `status_mapping`: how to map the external model statuses to mapeditor statuses (either `status_mapping` or
+          `stop_query_on` must be present).
+        - `stop_query_on`: decide on when to stop the query
+            - "key": "output_esdl",
+            - `condition`: one of 
+              `larger_than`,`larger_equal_than`,`not_equal`,`equal`,`not_equal`,`smaller_than`,`smaller_equal_than`
+            - `value`: value for condition, can be `None`.
+            - `new_status`: optional new run status on completion of the query.
+        - `esdl_encoding`: used if an ESDL is received
     - `retry_interval_seconds`: how often to poll.
     - `maximum_wait_seconds`: maximum polling time.
 - `model_run_show_results`: show run results: a list of database item keys to show the value of.
@@ -740,69 +739,97 @@ Example config for two consecutive steps: first follow the progress and on compl
 ```json
 [
   {
-    "id": "retrieve_run_progress_results",
-    "monitor_name": "Running Essim Calculation...",
-    "type": "workflow-engine-monitor",
-    "config": {
-      "model_run_result_polling": {
-        "query_list": [
-          {
-            "url": "http://localhost:8112/essim/simulation/<MODEL_JOB_ID>",
-            "response_mapping": {
-              "status": "status.state",
-              "progress_fraction": "status.description"
-            },
-            "model_specific_response_mapping": {
-              "scenarioID": "scenarioID",
-              "simRunDate": "simRunDate",
-              "dashboardURL": "dashboardURL"
-            },
-            "esdl_encoding": "base64_encoded",
-            "status_mapping": {
-              "SUBMITTED": [
-                "CREATED"
-              ],
-              "RUNNING": [
-                "RUNNING"
-              ],
-              "SUCCEEDED": [
-                "COMPLETE"
-              ],
-              "CANCELLED": [
-                "CANCELLED"
-              ],
-              "ERROR": [
-                "TIMEOUT",
-                "ERROR"
-              ]
-            }
+        "id": "essim_retrieve_run_progress_status",
+        "monitor_name": "Running Essim Calculation...",
+        "type": "workflow-engine-monitor",
+        "config": {
+          "model_run_result_polling": {
+            "query_list": [
+              {
+                "url": "http://essim-engine:8112/essim/simulation/<MODEL_JOB_ID>",
+                "response_mapping": {
+                  "status": "status.state",
+                  "progress_fraction": "status.description"
+                },
+                "model_specific_response_mapping": {
+                  "scenarioID": "scenarioID",
+                  "simRunDate": "simRunDate",
+                  "dashboardURL": "dashboardURL"
+                },
+                "status_mapping": {
+                  "SUBMITTED": [
+                    "CREATED"
+                  ],
+                  "RUNNING": [
+                    "RUNNING"
+                  ],
+                  "SUCCEEDED": [
+                    "COMPLETE"
+                  ],
+                  "CANCELLED": [
+                    "CANCELLED"
+                  ],
+                  "ERROR": [
+                    "TIMEOUT",
+                    "ERROR"
+                  ]
+                }
+              }
+            ],
+            "retry_interval_seconds": 2,
+            "maximum_wait_seconds": 86400
           }
-        ],
-        "retry_interval_seconds": 2,
-        "maximum_wait_seconds": 3600
-      }
-    },
-    "workflow_engine": {
-      "workflow_engine_next_step": "show_run_results"
-    }
-  },
-  {
-    "id": "show_run_results",
-    "monitor_name": "Essim Result",
-    "type": "workflow-engine-monitor",
-    "config": {
-      "model_run_show_results": [
-        {
-          "description": "essim ID",
-          "value_database_key": "model_specific_output.scenarioID"
         },
-        {
-          "value_database_key": "model_specific_output.dashboardURL",
-          "link_text": "Open dashboard"
+        "workflow_engine": {
+          "workflow_engine_next_step": "essim_retrieve_run_results"
         }
-      ]
-    }
-  }
+      },
+      {
+        "id": "essim_retrieve_run_results",
+        "monitor_name": "Getting Essim Results...",
+        "type": "workflow-engine-monitor",
+        "config": {
+          "model_run_result_polling": {
+            "query_list": [
+              {
+                "url": "http://essim-engine:8112/essim/simulation/<MODEL_JOB_ID>/ESDLWithProfiles",
+                "response_mapping": {
+                  "output_esdl": "esdl"
+                },
+                "esdl_encoding": "base64_encoded",
+                "stop_query_on": {
+                  "key": "output_esdl",
+                  "condition": "not_equal",
+                  "value": null,
+                  "new_status": "SUCCEEDED"
+                }
+              }
+            ],
+            "retry_interval_seconds": 2,
+            "maximum_wait_seconds": 600
+          }
+        },
+        "workflow_engine": {
+          "workflow_engine_next_step": "essim_show_run_results"
+        }
+      },
+      {
+        "id": "essim_show_run_results",
+        "monitor_name": "Essim Result",
+        "type": "workflow-engine-monitor",
+        "config": {
+          "model_run_show_results": [
+            {
+              "description": "run name",
+              "value_database_key": "run_name"
+            },
+            {
+              "value_database_key": "model_specific_output.dashboardURL",
+              "link_text": "Open dashboard"
+            }
+          ]
+        }
+      },
 ]
 ```
 

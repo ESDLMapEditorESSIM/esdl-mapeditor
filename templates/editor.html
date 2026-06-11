@@ -61,11 +61,8 @@
     <!--script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.5.0/proj4.js"></script-->
     <script type="text/javascript" src="./plugins/proj4leaflet.js"></script>
 
-    <!--script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.slim.js"></script-->
-    <!-- <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.7.4/socket.io.min.js"></script> -->
     <script type="text/javascript" src="./vendor/cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.4/socket.io.min.js"></script>
 <!--    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>-->
-
 
     <link rel="stylesheet" href="./vendor/code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css" type="text/css">
     <script type="text/javascript" src="./vendor/code.jquery.com/jquery-1.12.4.js"></script>
@@ -88,10 +85,10 @@
     <!-- Edwin: Load JQuery-ui after bootstrap to prevent errors with tooltip -->
     <script type="text/javascript" src="./vendor/code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
 
-    <link rel="stylesheet" href="./vendor/cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/themes/default/style.min.css" />
-    <script src="./vendor/cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/jstree.min.js"></script>
+    <link rel="stylesheet" href="./vendor/cdnjs.cloudflare.com/ajax/libs/jstree/3.3.17/themes/default/style.min.css" />
+    <script src="./vendor/cdnjs.cloudflare.com/ajax/libs/jstree/3.3.17/jstree.min.js"></script>
 
-    <!--script type="text/javascript" src="./plugins/socket.io.min.js"></script-->
+    <!--script type="text/javascript" src="./plugins/socketio.io.min.js"></script-->
     <!--script type="text/javascript" src="./plugins/jquery-1.4.2.min.js"></script-->
 
     <link href="./plugins/leaflet.contextmenu.css" rel="stylesheet" type="text/css" />
@@ -167,7 +164,6 @@
     <script type="text/javascript" src="./utils/time_dimension.js"></script>
     <script type="text/javascript" src="./utils/L.Control.TDAssetsMonitorChart.js"></script>
 
-    <script type="text/javascript" src="./utils/wms_layers.js"></script>
     <script type="text/javascript" src="./utils/shapefiles.js"></script>
     <script type="text/javascript" src="./utils/asset_map_utils.js"></script>
     <script type="text/javascript" src="./utils/building_editor.js"></script>
@@ -215,14 +211,12 @@
     <script type="text/javascript" src="./utils/spatial_buffers.js"></script>
 
     <link rel="stylesheet" href="./vendor/cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta2/css/regular.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <script type="text/javascript" src="./utils/MapEditorDialog.js"></script>
     <link rel="stylesheet" href="./utils/MapEditorDialog.css" type="text/css"/>
-    <script type="text/javascript" src="./utils/table_editor.js"></script>
-    <script type="text/javascript" src="./utils/admin_dialog.js"></script>
+    <script type="module" src="./utils/admin_dialog.js"></script>
 
-    <script type="text/javascript" src="./utils/KPIDashboard.js"></script>
-    <script type="text/javascript" src="./utils/esdl_analytics.js"></script>
-    <script type="text/javascript" src="./utils/ownership.js"></script>
+    <script type="module" src="./utils/KPIDashboard.js"></script>
+    <script type="module" src="./utils/esdl_analytics.js"></script>
+    <script type="module" src="./utils/ownership.js"></script>
 
     <script type="text/javascript" src="./utils/esdl_file_io.js"></script>
     <script type="text/javascript" src="./utils/custom_icons.js"></script>
@@ -247,7 +241,6 @@
         var profile_array;
         var quantity_and_units_info;
         var control_strategy_config;
-        var wms_layer_list;
         var leaflet_layers = {};
         var cap_pot_list;
 
@@ -290,20 +283,45 @@
 
         window.jquery = $;
 
+        const loaders = new Set();
+        loaders.add('es');
+
         // ------------------------------------------------------------------------------------------------------------
         //
         // ------------------------------------------------------------------------------------------------------------
         function update_title(title) {
-            title_div = document.getElementById('es_title');
+            let title_div = document.getElementById('es_title');
             title_div.innerHTML = '<b>' + title + '<b>';
+            let mapeditor = document.title.split("-")[0]
+            document.title = mapeditor + " - " + title;
         }
 
-        function show_loader() {
+        function debug() {
+            socket.emit('command', {cmd: 'debug'});
+        }
+
+        function show_loader(scope) {
+            if (scope === undefined) {
+                scope = 'default';
+            }
+            console.debug("Show loader for scope: " + scope, loaders);
+            loaders.add(scope);
             document.getElementById("loader").style.display = "block";
         }
 
-        function hide_loader() {
-            document.getElementById("loader").style.display = "none";
+        function hide_loader(scope) {
+            if (scope === undefined) {
+                scope = 'default';
+            }
+            console.debug("Hide loader for scope: " + scope, loaders);
+            if (scope === "all") {
+                loaders.clear();
+            } else {
+                loaders.delete(scope);
+            }
+            if (loaders.size === 0) {
+                document.getElementById("loader").style.display = "none";
+            }
         }
 
         function select_area_bld_list(id) {
@@ -552,12 +570,13 @@
             return (user_roles.includes(role))
         }
 
-        var socket;
+        var socketio;
 
         // ------------------------------------------------------------------------------------------------------------
-        //  Document is ready loading --> all functionality to react on incoming socket messages
+        //  Document is ready loading --> all functionality to react on incoming socketio messages
         // ------------------------------------------------------------------------------------------------------------
         $(document).ready(function() {
+
             namespace = '/esdl';
             socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace, {
                 'timeout': 50000,
@@ -585,6 +604,14 @@
 
             // request the list of assets in the EDR
             get_edr_assets('edr_assets');
+            socket.on('results.asset.positioning', function(msg) {
+                console.log(msg);
+                if (!msg.wind_potential) {
+                    window.draw_control._toolbars.draw._modes.marker.handler.setNotAllowed(true);
+                } else {
+                    window.draw_control._toolbars.draw._modes.marker.handler.setNotAllowed(false);
+                }
+            });
 
             // ------------------------------------------------------------------------------------------------------------
             //  Initialization
@@ -593,13 +620,13 @@
                 console.log('connected');
                 socket.emit('mngmnt', {data: 'I\'m connected!'});
                 // let extensions know client is connected
-                // and socket variable is available
+                // and socketio variable is available
                 for (let i=0; i<extensions.length; i++) {
                     updatefun = extensions[i];
                     updatefun({type: 'client_connected'});
                 }
                 window.PubSubManager.broadcast('SOCKET_CONNECTED', socket);
-                auth_status(true); // Check immediately if we have an autorized session
+                auth_status(true); // Check immediately if we have an authorized session
             });
 
             socket.on('hide_loader', function() {
@@ -631,25 +658,6 @@
                 set_esdl_services_information(list);
             });
 
-            socket.on('wms_layer_list', function(wms_layer_lst) {
-                wms_layer_list = wms_layer_lst;
-                // console.log(wms_layer_list);
-
-                for (var key in wms_layer_list['layers']) {
-                    var layer_info = wms_layer_list['layers'][key];
-
-                    layer_info.layer_ref = L.tileLayer.wms(layer_info.url, {
-                        layers: layer_info.layer_name,
-                        format: 'image/png',
-                        transparent: true,
-                        attribution: layer_info.attribution
-                    });
-                    if (layer_info.visible) {
-                        layer_info.layer_ref.addTo(map);
-                        layer_info.layer_ref.bringToFront();
-                    }
-                }
-            });
 
             // populate the asset menu grouped by capability
             socket.on('cap_pot_list', function(obj_list) {
@@ -716,17 +724,27 @@
                 // title_div = document.getElementById('es_title');
                 // title_div.innerHTML = '<b>' + title + '<b>';
                 console.log("ESDL list", esdl_list);
+                window.PubSubManager.broadcast('CREATE_NEW_ESDL_LAYER', message);
             });
 
             socket.on('set_active_layer_id', function(id) {
                 // console.log('add_draw_control');
                 active_layer_id = id;
+
+                // update global variables after layer change
+                areaLegendChoice = get_area_legend_choice(active_layer_id);
+                buildingLegendChoice = get_building_legend_choice(active_layer_id)
+                area_KPIs = get_area_kpi_list(active_layer_id);
+
                 update_area_bld_list_select();            // update the list of areas and buildings to add assets to
                 draw_control = add_draw_control(draw_control, map);                 // couple draw_control to active layer
                 // console.log(draw_control);
 
                 update_title(esdl_list[active_layer_id].title);
                 // set_selected_layer(active_layer_id);
+                update_area_legend();
+                update_building_legend();
+                window.PubSubManager.broadcast('SET_ACTIVE_LAYER_ID', id);
             });
 
             // ------------------------------------------------------------------------------------------------------------
@@ -781,6 +799,7 @@
 
                 // Ewoud: should also work with building editor now...
                 set_leaflet_sizes();
+                window.PubSubManager.broadcast('ADD_ESDL_OBJECTS', options);
             });
 
             // deletes an esdl_object in the active layer
@@ -897,6 +916,7 @@
 
                 add_building_geojson_layer_with_legend(geojson_list);
                 set_leaflet_sizes();
+                window.PubSubManager.broadcast('ADD_BUILDING_OBJECTS', options);
             });
 
             socket.on('area_bld_list', function(areas_buildings) {
@@ -904,6 +924,7 @@
                 area_bld_list = areas_buildings['area_bld_list'];
                 set_area_bld_list(es_id, area_bld_list);
                 update_area_bld_list_select();
+                window.PubSubManager.broadcast('AREA_BLD_LIST', areas_buildings);
             });
 
             socket.on('clear_connections', function(message) {
@@ -1016,6 +1037,7 @@
                     line.to_port_id = con['to-port-id'];
                     add_object_to_layer(es_bld_id, 'connection_layer', line);
                 }
+                window.PubSubManager.broadcast('ADD_CONNECTIONS', connections);
             });
 
             socket.on('remove_single_connection', function(message) {
@@ -1027,7 +1049,7 @@
 
 
             /* not used anymore (Ewoud)
-            socket.on('add_new_conn', function(connection) {
+            socketio.on('add_new_conn', function(connection) {
                 var new_conn = connection['new_conn'];
                 var es_id = connection['es_id'];
                 add_to_building = connection['add_to_building'];
@@ -1049,10 +1071,11 @@
 
             socket.on('carrier_list', function(carr_list) {
                 set_carrier_list(carr_list['es_id'], carr_list['carrier_list']);
+                window.PubSubManager.broadcast('CARRIER_LIST', carr_list);
             });
 
-            socket.on('sector_list', function(list) {
-                set_sector_list(list['es_id'], list['sector_list']);
+            socket.on('sector_list', function(sect_list) {
+                set_sector_list(sect_list['es_id'], sect_list['sector_list']);
             });
 
             // ------------------------------------------------------------------------------------------------------------
@@ -1213,7 +1236,7 @@
             //     sidebar.show();
             // });
 
-			// socket.on('conductor_info', function(asset_info) {
+			// socketio.on('conductor_info', function(asset_info) {
 				// console.log('Conductor info: ')
 				// console.log(asset_info);
 				// asset_id = asset_info['id'];
@@ -1381,6 +1404,27 @@
                 }
             });
 
+            let clickCount = 0;
+            let clickTimer = null;
+
+            $('#loader-hider').on('click', function() {
+                console.debug("Hiding loader: " + clickCount);
+                clickCount++;
+
+                if (clickTimer) {
+                    clearTimeout(clickTimer);
+                }
+
+                clickTimer = setTimeout(function() {
+                    clickCount = 0;
+                }, 1000); // Reset after 1 second
+
+                if (clickCount === 3) {
+                    clickCount = 0;
+                    clearTimeout(clickTimer);
+                    hide_loader('all');
+                }
+            });
         });
     </script>
 
@@ -1558,9 +1602,11 @@
                     <div class="collapse navbar-collapse" id="navbarNavDropdown">
 
                         <!-- Left nav -->
-                        <ul class="nav navbar-nav mr-auto">
+                        <ul class="nav navbar-nav mr-auto" data-sm-options=" {'showTimeout': 400 } ">
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">File</a>
                                 <ul class="dropdown-menu">
+                                    <li id="vue_load_project_file"></li>
+                                    <li class="separator"><span class="dropdown-item menu-separator"></span></li>
                                     <li><a class="dropdown-item" href="#" onclick="new_ESDL();">
                                         <span class="menu-icon ui-icon ui-icon-document"></span>
                                         New ESDL...</a></li>
@@ -1574,6 +1620,7 @@
                                         <div class="menu-icon ui-icon ui-icon-disk"></div>
                                         Save ESDL...</a></li>
 {% if esdl_drive_enabled %}
+                                    <li class="separator"><span class="dropdown-item menu-separator"></span></li>
                                     <li><a class="dropdown-item" href="#" onclick="esdlDrive.file_open_dialog();">
                                         <div class="menu-icon ui-icon ui-icon-folder-open"></div>
                                         Load from ESDL Drive...</a></li>
@@ -1581,6 +1628,7 @@
                                         <div class="menu-icon ui-icon ui-icon-folder-open"></div>
                                         Save to ESDL Drive...</a></li>
 {% endif %}
+                                    <li class="separator"><span class="dropdown-item menu-separator"></span></li>
                                     <li><a class="dropdown-item" href="#" onclick="export_as_shapefiles(this, '.');">
                                         <div class="menu-icon" style="font-size: 12px;"><i class="fa fa-file-export"></i></div>Export as shapefiles</a></li>
                                     <li class="dropdown-item" style="pointer-events: none">
@@ -1597,6 +1645,9 @@
                             </li>
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">Edit</a>
                                 <ul class="dropdown-menu">
+                                    <li id="vue_undo_menu" data-type="undo"/>
+                                    <li id="vue_redo_menu" data-type="redo"/>
+                                    <li class="separator"><span class="dropdown-item menu-separator"></span></li>
                                     <li><a class="dropdown-item" href="#" onclick="table_editor.open()"><div class="menu-icon ui-icon ui-icon-calculator">&nbsp;</div>ESDL table editor...</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="get_es_info();"><div class="menu-icon ui-icon ui-icon-info">&nbsp;</div>ESDL browser...</a></li>
 <!--                                    <li><a class="dropdown-item" href="#" onclick="energy_carrier_info();"><div class="menu-icon">&nbsp;</div>Energy carriers</a></li> -->
@@ -1619,6 +1670,7 @@
                                     <li><a class="dropdown-item" href="#" onclick="boundary_info_window();"><div class="menu-icon" id="menu_areaboundary">&nbsp;</div>Get boundary information...</a></li>
 {% endif %}
 {% if essim_enabled and 'essim' in role %}
+                                    <li class="separator"><span class="dropdown-item menu-separator"></span></li>
                                     <li class="dropdown"><a class="dropdown-item dropdown-toggle" href="#"><div class="menu-icon"></div>ESSIM
                                         simulation</a>
                                         <ul class="dropdown-menu">
@@ -1657,6 +1709,12 @@
                                         </ul>
                                     </li>
 
+                                    <li><a class="dropdown-item" href="#" onclick="etm_interface_window();"><div class="menu-icon" id="menu_etminterface">&nbsp;</div>ETM interface</a></li>
+
+                                    <li class="separator"><span class="dropdown-item menu-separator"></span></li>
+                                    <li><a class="dropdown-item" href="#" onclick="continue_service_workflow();"><div class="menu-icon">&nbsp;</div>Continue active workflow</a></li>
+
+                                    <li class="separator"><span class="dropdown-item menu-separator"></span></li>
                                     <li><a class="dropdown-item" href="#" onclick="compare_esdl_window();"><div class="menu-icon" id="menu_compare">&nbsp;</div>ESDL compare</a></li>
                                     <li><a class="dropdown-item" href="#" onclick="merge_esdl_window();"><div class="menu-icon" id="menu_merge">&nbsp;</div>ESDL merge</a></li>
                                     <li id="vue_test_edr_residential_area"></li>
@@ -1670,27 +1728,36 @@
                                             Refresh view (Ctrl+R)
                                         </a>
                                     </li>
+                                    <li class="separator"><span class="dropdown-item menu-separator"></span></li>
                                     <li><a class="dropdown-item" href="#" onclick="show_layers();"><div class="menu-icon" id="menu_layers">&nbsp;</div>WMS layers</a></li>
                                     <li class="dropdown-divider">&nbsp;</li>
                                     <li>
                                         <a class="dropdown-item" href="#" onclick="time_dimension.toggle_animation_toolbar_visibility();">
                                             <div id="menu_option_animation_bar" class="menu-icon ui-icon ui-icon-check">&nbsp;</div>
-                                            Show/hide animation bar
+                                            Show animation bar
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="#" onclick="toggle_layer_control_visibility();">
+                                            <div id="menu_option_layer_control" class="menu-icon">&nbsp;</div>
+                                            Show layer control
                                         </a>
                                     </li>
                                     <li id="vue_toggle_show_asset_draw_toolbar"></li>
                                     <li id="vue_toggle_show_services_toolbar"></li>
-                                    <li>
-                                        <a class="dropdown-item" href="#" onclick="show_or_hide_kpicharts_bar(this);">
-                                            <div id="menu_option_kpi_window" class="menu-icon">&nbsp;</div>
-                                            Show/hide KPIs
-                                        </a>
-                                    </li>
+                                    <li id="vue_toggle_show_project_view"></li>
+                                    <li id="vue_toggle_show_undo_redo_control"></li>
                                     <li id="vue_toggle_long_process_view"></li>
                                     <li>
                                         <a class="dropdown-item" href="#" onclick="clear_layers(active_layer_id, 'sim_layer');">
                                             <div id="menu_option_clear_sim_layer" class="menu-icon">&nbsp;</div>
                                             Clear simulation results
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="#" onclick="show_or_hide_kpicharts_bar(this);">
+                                            <div id="menu_option_kpi_window" class="menu-icon">&nbsp;</div>
+                                            Show KPIs sidebar
                                         </a>
                                     </li>
                                     <li>
@@ -1727,13 +1794,16 @@
                                     <li><a class="dropdown-item" href="{{ user_feedback_url }}" target="#"><div class="menu-icon ui-icon ui-icon-comment" id="menu_user_feedback">&nbsp;</div>Give feedback or report issues</a></li>
 {% endif %}
                                     <li id="vue_show_release_notes"></li>
+                                    <li class="separator"><span class="dropdown-item menu-separator"></span></li>
                                     <li id="vue_show_about_box"></li>
 <!--                                    <li><a class="dropdown-item" href="#" onclick="show_about_box();"><div class="menu-icon" id="menu_about">&nbsp;</div>About</a></li> -->
+                                    <li><a class="dropdown-item" href="#" onclick="debug()"><div class="menu-icon ui-icon ui-icon-alert" id="debug_menu">&nbsp;</div>Debug</a></li>
                                 </ul>
                             </li>
                             {% if is_mapeditor_admin %}
                             <li class="nav-item dropdown"><a class="nav-link" onclick="admin_dialog.toggle()" href="#">Admin</a></li>
                             {% endif %}
+                            <li id="vue_application_context_selector"></li>
                         </ul>
                     </div>
                 </div>
@@ -1741,8 +1811,8 @@
         </div>
 
         <div id="ctrl" style="float: right; position: relative; padding:3px;">
-            <input class="inputFile" type="file" accept=".esdl,.xml,application/xml" style="display: none;" onchange="load_esdl_files(event);" onclick="this.value=null;" multiple>
-            <input class="inputImportFile" type="file" accept=".esdl,.xml,application/xml" style="display: none;" onchange="import_ESDL(event);" onclick="this.value=null;">
+            <input class="inputFile" type="file" accept=".esdl,.xml,application/xml" style="display: none;" onchange="load_esdl_files(event);" accept=".esdl" onclick="this.value=null;" multiple>
+            <input class="inputImportFile" type="file" accept=".esdl,.xml,application/xml" style="display: none;" onchange="import_esdl_files(event);" accept=".esdl" onclick="this.value=null;" multiple>
 {#            <input class="inputImportInlineFile" type="file" style="display: none;" onchange="import_esdl_with_inline_profiles(event);" onclick="this.value=null;">#}
 
 {% if edr_enabled %}
@@ -1767,13 +1837,18 @@
 
     <div id="sidebar"></div>
     <div id="sidebar_b"></div>
-    <div id="loader"></div>
+    <div id="loader">
+        {# Click 3 times in the top left corner to hide the loader. #}
+        <div id="loader-hider"></div>
+        <div class="spinner"></div>
+    </div>
     <div id="kpicharts"></div>
     <div id="ldccontrol"></div>
     <div id="tdmonitorcontrol"></div>
     <div id="essim_kpis_control"></div>
     <div id="vuemodal"></div>
     <div id="toast_notifications"></div>
+    <div id="prompt_dialog"></div>
 
     <div id="userMessages" class="userMessages userMessages-hidden"><p id="userMessage">There is a message</p></div>
 
@@ -1786,7 +1861,6 @@
 </html>
 
 <script>
-
     var osmUrl = location.protocol + '//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
             osmAttrib = '&copy; <a href="http://openstreetmap.org/copyright">OpenStreetMap</a> contributors',
             osm = L.tileLayer(osmUrl, { maxZoom: 25, maxNativeZoom:19, attribution: osmAttrib });
@@ -1819,7 +1893,7 @@
 
     map.on('zoomend', function() {
         set_leaflet_sizes();                /* Markers, joints, and lines */
-        resize_area_pi_charts();
+        resize_all_area_pie_charts();
     });
 
     // handle contextmenu in some corner cases. See port_handlers.js when right-clicking on a port to show context menu
@@ -1946,8 +2020,6 @@
         anchor: [ 10, 50 ],
         initOpen: false
     };
-    const table_editor = new TableEditorDialog(table_editor_dialog_options);
-    map.addControl(table_editor);
 
     let admin_dialog_options = {
         size: [ 1100, 700 ],
@@ -1956,8 +2028,6 @@
         anchor: [ 10, 50 ],
         initOpen: false
     };
-    const admin_dialog = new AdminDialog(admin_dialog_options);
-    map.addControl(admin_dialog);
 
     let kpi_dashboard_dialog_options = {
         size: [ 1100, 700 ],
@@ -1968,8 +2038,6 @@
         state: 'maximized',
         allowable_states: ['custom', 'maximized', 'minimized']
     };
-    var kpi_dashboard = new KPIDashboard(kpi_dashboard_dialog_options);
-    map.addControl(kpi_dashboard);
 
     const esdl_analytics_dialog_options = {
         size: [ 1100, 700 ],
@@ -1980,8 +2048,6 @@
         state: 'maximized',
         allowable_states: ['custom', 'maximized', 'minimized']
     }
-    const esdl_analytics = new ESDLAnalytics(esdl_analytics_dialog_options);
-    map.addControl(esdl_analytics);
 
     const ownership_dialog_options = {
         size: [ 1100, 700 ],
@@ -1992,20 +2058,45 @@
         state: 'maximized',
         allowable_states: ['custom', 'maximized', 'minimized']
     }
-    const ownership_dialog = new OwnershipDialog(ownership_dialog_options);
-    map.addControl(ownership_dialog);
 
 {% if essim_enabled and 'essim' in role %}
     L.control.essim_control().addTo(map);
 {% endif %}
 
     notesToolbarControl().addTo(map);
-
 </script>
 
+<script type="module">
+    import TableEditorDialog from "./utils/table_editor.js";
+    import KPIDashboard from "./utils/KPIDashboard.js";
+    import AdminDialog from "./utils/admin_dialog.js";
+    import ESDLAnalytics from "./utils/esdl_analytics.js";
+    import OwnershipDialog from "./utils/ownership.js";
+
+    const table_editor = new TableEditorDialog(table_editor_dialog_options);
+    map.addControl(table_editor);
+    window.table_editor = table_editor;
+
+    const kpi_dashboard = new KPIDashboard(kpi_dashboard_dialog_options);
+    map.addControl(kpi_dashboard);
+    window.kpi_dashboard = kpi_dashboard;
+
+    const admin_dialog = new AdminDialog(admin_dialog_options);
+    map.addControl(admin_dialog);
+    window.admin_dialog = admin_dialog;
+
+    const esdl_analytics = new ESDLAnalytics(esdl_analytics_dialog_options);
+    map.addControl(esdl_analytics);
+    window.esdl_analytics = esdl_analytics;
+
+    const ownership_dialog = new OwnershipDialog(ownership_dialog_options);
+    map.addControl(ownership_dialog);
+    window.ownership_dialog = ownership_dialog;
+</script>
+
+<link rel="stylesheet" href="./dist/index.css" type="text/css"/>
 {% if debug %}
 <script type="text/javascript" src="./dist/index.umd.js"></script>
 {% else %}
 <script type="text/javascript" src="./dist/index.umd.min.js"></script>
-<link rel="stylesheet" href="./dist/index.css" type="text/css"/>
 {% endif %}

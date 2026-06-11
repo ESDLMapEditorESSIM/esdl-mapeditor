@@ -8,6 +8,7 @@ from collections import defaultdict
 from contextlib import contextmanager
 from threading import Lock
 
+DEFAULT_TIMEOUT_SEC = 10
 
 class NamedLocker:
     """
@@ -24,10 +25,10 @@ class NamedLocker:
         # Dictionary containing the locks.
         self.locks: dict[str, Lock] = defaultdict(Lock)
 
-    def acquire(self, name: str):
+    def acquire(self, name: str) -> bool:
         with self._lock:
             lock = self.locks[name]
-        lock.acquire()
+        return lock.acquire(timeout=DEFAULT_TIMEOUT_SEC)
 
     def release(self, name: str):
         with self._lock:
@@ -41,7 +42,9 @@ class NamedLocker:
 
         :param name: The name of the lock.
         """
-        self.acquire(name)
+        has_acquired = self.acquire(name)
+        if not has_acquired:
+            raise TimeoutError(f"Could not acquire lock for {name}")
         try:
             yield None
         finally:

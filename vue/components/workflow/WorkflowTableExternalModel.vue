@@ -199,10 +199,16 @@ const getTagColor = (text) => {
   let up = text === null ? "" : text.toUpperCase();
   if (up === "FINISHED" || up === "SUCCESS" || up === "SUCCEEDED" || up === "OK" || up === "READY") {
     return "green";
-  } else if (up === "REGISTERED" || up === "INITIALIZED" || up === "SUBMITTED") {
-    return "blue";
-  } else if (up === "RUNNING" || up === "IN_PROGRESS" || up === "CALCULATING") {
+  } else if (up === "SUCC_PEND") {
+    return "cyan";
+  } else if (up === "SUCC_WARN") {
     return "orange";
+  } else if (up === "NEED_INPUT") {
+    return "purple";
+  } else if (up === "REGISTERED" || up === "INITIALIZED" || up === "SUBMITTED") {
+    return "default";
+  } else if (up === "RUNNING" || up === "IN_PROGRESS" || up === "CALCULATING") {
+    return "blue";
   } else if (up === "ERROR" || up === "FAILED") {
     return "red";
   } else {
@@ -234,9 +240,6 @@ const doAction = (record, action) => {
     if (action.title === LOAD_RESULT) {
       params.service_config.external_model = "output_or_input_esdl";
       params.service_config.result[0].model_short_name = stepParams.value.config.model_short_name;
-      if (stepParams.value.config.result_animation) {
-        params.service_config.result[0].animation = stepParams.value.config.result_animation;
-      }
       if (stepParams.value.config.result_external_link) {
         params.service_config.result[0].external_link = stepParams.value.config.result_external_link;
       }

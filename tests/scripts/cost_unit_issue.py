@@ -11,11 +11,10 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-
+from esdl import esdl
 from extensions.vue_backend.cost_information import _change_cost_unit
 from esdl.esdl_handler import EnergySystemHandler
 from uuid import uuid4
-from esdl import esdl
 import re
 
 cost_unit_string = "EUR/kWh/yr"

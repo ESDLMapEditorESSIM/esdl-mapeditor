@@ -17,10 +17,6 @@
 var port_drawing_connection = false;
 var first_port = null;
 var connecting_line = null;
-var port_drawing_conductor = false;
-
-
-
 
 function set_port_size_and_position(mp) { // map as optional parameter
     let active_map = map;
@@ -320,7 +316,7 @@ function handle_connect(port_marker, e) {
 
             if (L.Browser.touch && handler._poly) {
                 // already added first point due to touchstart event, but we don't want this point
-                // so remove (manually, as deleteVertex in L.Draw does not delete the point if the length of the line
+                // so remove (manually), as deleteVertex in L.Draw does not delete the point if the length of the line
                 // is smaller than one.
                 let lastMarker = handler._markers.pop();
                 let poly = handler._poly;
@@ -514,7 +510,7 @@ function set_line_port_handlers(line) {
 
             for (let p in ports) {
                 if (!drawState.canConnect(ports[p]) || !can_connectTo(ports[p]) ) continue;
-                if (p == '0') coords_index = 0; else coords_index = coords_len - 1;
+                if (p === '0') coords_index = 0; else coords_index = coords_len - 1;
 
                 let class_name = 'Port '+ports[p].type+' LinePort';
                 let port_name = line.name + '.' + ports[p].type + ' - ' + ports[p].name;
@@ -542,7 +538,7 @@ function set_line_port_handlers(line) {
                 let lng = coords[coords_index].lng;
                 let p2x = coords[coords_index].lat
                 let p2y = coords[coords_index].lng
-                if (p != '0') {
+                if (p !== '0') {
                     p1x = coords[coords_index-1].lat
                     p1y = coords[coords_index-1].lng
                 } else {
@@ -625,7 +621,7 @@ function set_line_port_handlers(line) {
 //            weight: 3
 //        });
         if (layer.mouseOverArrowHead !== undefined) {
-            remove_object_from_layer(es_bld_id, 'connection_layer', layer.mouseOverArrowHead);
+            remove_object_from_layer(layer.esid, 'connection_layer', layer.mouseOverArrowHead);
             delete layer.mouseOverArrowHead;
         }
         // from assets.js

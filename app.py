@@ -12,42 +12,44 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+
 import importlib
 import json
 import os
+import traceback
 import urllib
 import uuid
-import traceback
 from datetime import datetime
 from typing import List
 from warnings import warn
 
 import requests
-import structlog.contextvars
-from authlib.integrations.flask_client import FlaskOAuth2App
-from authlib.jose import jwt, JsonWebKey
-from flask import Flask, Response, redirect, render_template, request, send_from_directory, session, url_for, g
-from flask_executor import Executor
+from flask import Response, redirect, render_template, request, send_from_directory, session, url_for
 from flask_oidc import OpenIDConnect
 from flask_oidc.model import User
-from flask_session import Session
-from flask_socketio import SocketIO, emit
-from pyecore.ecore import EDate, EObject
-from werkzeug.middleware.proxy_fix import ProxyFix
+from flask_socketio import emit
+from pyecore.ecore import EDate
+from pyecore.ecore import EObject
+from structlog.contextvars import bind_contextvars, clear_contextvars
 
 import src.esdl_config as esdl_config
 import src.settings as settings
 from esdl import esdl
-from esdl.esdl_handler import EnergySystemHandler, EnergySystemWithSameIdExists
 from esdl.processing import ESDLAsset, ESDLEcore, ESDLEnergySystem, ESDLGeometry, ESDLQuantityAndUnits
 from esdl.processing.ESDLAsset import get_asset_capability_type, update_ids_in_object
+from esdl.processing.string_uri import StringURI
 from esdl.processing.ESDLEcore import instantiate_type
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
+from esdl.undo import UndoRedoCommandStack
+from esdl.undo_wrapper import undo_record_changes
+from esdlproject.ProjectManager import update_energy_system_version
 from extensions.activity_context import ActivityContextExtension
+from extensions.application_context import ApplicationContextExtension
+from extensions.asset_constraint.asset_constraint import AssetConstraint
 from extensions.bag import BAG
 from extensions.boundary_service import BoundaryService
-from extensions.data_manager.data_manager import DataManager
 from extensions.data_manager import db
+from extensions.data_manager.data_manager import DataManager
 from extensions.es_statistics import ESStatisticsService
 from extensions.esdl_api import ESDL_API
 from extensions.esdl_browser import ESDLBrowser
@@ -63,67 +65,75 @@ from extensions.heatnetwork import HeatNetwork
 from extensions.ibis import IBISBedrijventerreinen
 from extensions.mapeditor_settings import MAPEDITOR_UI_SETTINGS, MapEditorSettings
 from extensions.open_id_integration import OpenIDIntegration
+from extensions.ownership.ownership import Ownership
+from extensions.pdtoolsuite_workflow.cost_information import CostInformation
+from extensions.pdtoolsuite_workflow.pdtoolsuite_workflow import PDToolsuiteWorkflow
 from extensions.pico_rooftoppv_potential import PICORooftopPVPotential
 from extensions.port_profile_viewer import PortProfileViewer
-from extensions.toast_notifications import ToastNotifications
-from src.edr_client import EDRClient
 from extensions.profiles import Profiles
-from extensions.session_manager import del_session, delete_sessions_on_disk, get_handler, get_session, \
-    get_session_for_esid, schedule_session_clean_up, set_handler, set_session, set_session_for_esid, valid_session, \
+from extensions.residential_area.residential_area import ResidentialArea
+from extensions.session_manager import del_session, get_session, \
+    get_session_for_esid, schedule_session_clean_up, set_session, set_session_for_esid, valid_session, \
     clear_session_key_for_esid, has_session_key
+from extensions.session_manager import get_project_manager, set_project_manager
 from extensions.settings_storage import SettingsStorage
 from extensions.shapefile_converter import ShapefileConverter
 from extensions.spatial_operations import SpatialOperations
+from extensions.spatial_visualization.spatial_visualization import SpatialVisualization
 from extensions.time_dimension import TimeDimension
+from extensions.toast_notifications import ToastNotifications
 from extensions.tooltip_info import TooltipInfo
-# from extensions.vesta import Vesta
 from extensions.workflow import Workflow
-from extensions.pdtoolsuite_workflow.pdtoolsuite_workflow import PDToolsuiteWorkflow
-from extensions.pdtoolsuite_workflow.cost_information import CostInformation
+from extensions.workflow_engine import WorkflowEngine
+from src.app import create_app, executor, socketio
 from src.asset_draw_toolbar import AssetDrawToolbar
 from src.assets_to_be_added import AssetsToBeAdded
+from src.custom_icons import CustomIcons
 from src.datalayer_api import DataLayerAPI
-from src.esdl2shapefile import ESDL2Shapefile
+from src.edr_client import EDRClient
 from src.esdl2inlineprofile import ESDL2InlineProfile
+from src.esdl2shapefile import ESDL2Shapefile
+from src.esdl_file_import import ESDLFileImport
+from src.esdl_file_io import ESDLFileIO
 from src.esdl_helper import asset_state_to_ui, generate_profile_info, get_asset_and_coord_from_port_id, \
     get_asset_from_port_id, get_connected_to_info, get_port_profile_info, get_tooltip_asset_attrs, \
     update_carrier_conn_list, add_spatial_attributes, add_extra_attributes
 from src.esdl_services import ESDLServices
 from src.essim_kpis import ESSIM_KPIs
 from src.essim_validation import validate_ESSIM
-from extensions.workflow_engine import WorkflowEngine
-from src.incremental_ui import create_update_asset_message, create_port_message, create_asset_port_message, PortMessage
+from src.incremental_ui.incremental_ui_messages import create_update_asset_message, create_port_message, \
+    create_asset_port_message, PortMessage
+from src.incremental_ui.ui_change_handler import change_handler, INCREMENTAL_UI_LISTENER_ID
+from src.kpi_dashboard import KPIDashboard
 from src.log import get_logger
-from src.process_es_area_bld import get_building_information, process_energy_system, get_building_connections, \
+from src.model_contexts import ModelContexts
+from src.process_es_area_bld import call_process_energy_system
+from src.process_es_area_bld import get_building_information, get_building_connections, \
     find_area_location_based, calc_building_assets_location
+from src.release_notes import ReleaseNotes
 from src.roles import is_mapeditor_admin
 from src.shape import Shape
+from src.table_editor import TableEditor
+from src.tno.events_api import EventsAPI
+from src.tno.live_model_interface.api import send_init_new_project_to_lmi, send_project_manager_to_lmi_async
+from src.tno.live_model_interface.lmi_listener import start_live_model_interface_thread, is_lmi_thread_alive
 from src.tno.locking import NamedLocker
+from src.tno.projects.emits import emit_active_esdl_project
+from src.tno.undoredo.types import serialize_command_stack
 from src.user_logging import UserLogging
-from src.version import __long_version__ as mapeditor_long_version
-from src.version import __version__ as mapeditor_version
 from src.version import __git_branch__ as mapeditor_branch
 from src.version import __git_commit__ as mapeditor_commit
-from src.model_contexts import ModelContexts
+from src.version import __long_version__ as mapeditor_long_version
+from src.version import __version__ as mapeditor_version
 from src.wms_layers import WMSLayers
-from src.table_editor import TableEditor
-from src.esdl_file_io import ESDLFileIO
-from src.esdl_file_import import ESDLFileImport
-from src.release_notes import ReleaseNotes
-from src.custom_icons import CustomIcons
-from src.kpi_dashboard import KPIDashboard
+from extensions.prompt_manager import PromptManager
 from utils.datetime_utils import parse_date
-from extensions.residential_area.residential_area import ResidentialArea
-from extensions.ownership.ownership import Ownership
-from extensions.spatial_visualization.spatial_visualization import SpatialVisualization
-from extensions.asset_constraint.asset_constraint import AssetConstraint
 
 print('MapEditor version {}'.format(mapeditor_version))
 print('MapEditor git describe {}'.format(mapeditor_long_version))
 print('MapEditor branch {}'.format(mapeditor_branch))
 print('MapEditor commit {}'.format(mapeditor_commit))
 logger = get_logger(__name__)
-
 
 if settings.USE_GEVENT:
     import gevent.monkey
@@ -161,51 +171,15 @@ def is_running_in_uwsgi():
 # ---------------------------------------------------------------------------------------------------------------------
 #  Application definition, configuration and setup of simple file server
 # ---------------------------------------------------------------------------------------------------------------------
-app = Flask(__name__)
-# Tell Flask we are running behind a proxy
-app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
-app.config['SECRET_KEY'] = b'\xc3g\x19\xbf\x8e\xa0\xe7\xc8\x9a/\xae%\x04g\xbe\x9f\xaex\xb5\x8c\x81f\xaf`' #os.urandom(24)   #'secret!'
-app.config['SESSION_COOKIE_NAME'] = 'ESDL-WebEditor-session'
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-# app.config['SESSION_COOKIE_SECURE'] = True
-app.config['SESSION_PERMANENT'] = True
-app.config['SESSION_TYPE'] = 'filesystem'
-app.config['PERMANENT_SESSION_LIFETIME'] = 60*60*24 # 1 day in seconds
-app.config['SESSION_FILE_DIR'] = '/tmp/flask_session'
-app.config['EXECUTOR_PROPAGATE_EXCEPTIONS'] = True # make sure errors are logged for tasks run in threads
+app = create_app(__name__)
 
 logger.info("Socket.IO Async mode: {}".format(settings.ASYNC_MODE))
 logger.info('Running inside uWSGI: {}'.format(is_running_in_uwsgi()))
 
-socketio = SocketIO(
-    app,
-    async_mode=settings.ASYNC_MODE,
-    manage_session=False,
-    path='/socket.io',
-    logger=settings.FLASK_DEBUG,
-    engineio_logger=settings.FLASK_DEBUG,
-    cors_allowed_origins=settings.ALLOWED_ORIGINS,
-)
-# logging.getLogger('engineio').setLevel(logging.WARNING)  # don't print all the messages
-
-# remove existing sessions when restarting, existing sessions will give errors
-# as associated ESDLs are not stored in the session and the OpenId connect info is wrong
-delete_sessions_on_disk(app.config['SESSION_FILE_DIR'])
-
-# fix sessions with socket.io. see: https://blog.miguelgrinberg.com/post/flask-socketio-and-the-user-session
-Session(app)
-
-
-executor = Executor(app)
-
-@executor.job
-def call_process_energy_system(esh, filename=None, es_title=None, app_context=None, force_update_es_id=None, zoom=True):
-    process_energy_system(esh, filename=filename, es_title=es_title, app_context=app_context, force_update_es_id=force_update_es_id, zoom=zoom)
-
-
-# extensions
+#extensions
 schedule_session_clean_up()
 toast_notifications = ToastNotifications(app, socketio)
+prompt_manager = PromptManager(app, socketio)
 wms_layers = WMSLayers(app, socketio, settings_storage)
 HeatNetwork(app, socketio)
 IBISBedrijventerreinen(app, socketio)
@@ -220,7 +194,7 @@ essim = ESSIM(app, socketio, executor, essim_kpis, settings_storage)
 ESSIMSensitivity(app, socketio, settings_storage, essim)
 # Vesta(app, socketio, settings_storage)
 Workflow(app, socketio, settings_storage, executor)
-PDToolsuiteWorkflow(app, socketio, executor, settings_storage, call_process_energy_system)
+PDToolsuiteWorkflow(app, socketio, executor, settings_storage)
 CostInformation(app)
 ESStatisticsService(app, socketio)
 MapEditorSettings(app, socketio, settings_storage)
@@ -235,6 +209,7 @@ esdl_services = ESDLServices(app, socketio, settings_storage, models_storage)
 PICORooftopPVPotential(app, socketio)
 SpatialOperations(app, socketio)
 DataLayerAPI(app, socketio, esdl_doc)
+EventsAPI(app, socketio, settings_storage)
 ModelContexts(app, socketio, settings_storage)
 AssetsToBeAdded(app, socketio)
 AssetDrawToolbar(app, socketio, settings_storage)
@@ -248,6 +223,7 @@ custom_icons = CustomIcons(app, socketio, settings_storage)
 KPIDashboard(app, socketio, settings_storage)
 TooltipInfo(app, socketio)
 ActivityContextExtension(app, socketio, settings_storage)
+ApplicationContextExtension(app, socketio, settings_storage)
 ResidentialArea(app, socketio, settings_storage)
 Ownership(app)
 SpatialVisualization(app)
@@ -267,7 +243,7 @@ app.config.update({
     'OIDC_OPENID_REALM': 'esdl-mapeditor',
     'OIDC_SCOPES': 'openid email profile microprofile-jwt',
     'OIDC_INTROSPECTION_AUTH_METHOD': 'client_secret_post',
-    'OIDC_CLIENT_SECRETS': settings.OIDC_CLIENT_SECRETS
+    'OIDC_CLIENT_SECRETS': settings.OIDC_CLIENT_SECRETS,
 })
 
 try:
@@ -286,6 +262,7 @@ def add_header(r: Response):
     Add headers to both force latest IE rendering engine or Chrome Frame,
     and also to cache the rendered page for 10 minutes.
     """
+    clear_contextvars()
     if r.content_type == 'image/png': # images are allowed to be cached.
         return r
     if settings.FLASK_DEBUG:    # only prevent caching when debugging
@@ -297,21 +274,34 @@ def add_header(r: Response):
 
 @app.before_request
 def before_request():
-    # store session id
+    if not is_lmi_thread_alive():
+        start_live_model_interface_thread(app)
+
+    # Store session id
     session['client_id'] = request.cookies.get(app.config['SESSION_COOKIE_NAME'])  # get cookie id
 
-    # make access to session variables only available when they are
+    # make access to session variables only available when they are present
     if request.endpoint in ['index', 'oidc_auth.authorize', 'oidc_auth.login']:
-        # don't add user to the structlog request context at all (this is not available)
+        # don't add context vars to the structlog request context at all (this is not available)
         return
-    if request.endpoint in ['serve_static', 'auth_status']:
+    elif request.endpoint in ['serve_static', 'auth_status', 'editor']:
         if not has_session_key('user-email'):
             # only add user to the structlog request context when logged in
             return
 
+    request_id = app.request_counter.increment()
     user_email = get_session("user-email")
-    structlog.contextvars.clear_contextvars()
-    structlog.contextvars.bind_contextvars(user=user_email)
+    # Bind context variables for logging. These are logged for all log statements inside this request.
+    bind_contextvars(
+        user=user_email,
+        request_id=request_id,
+        client_id=session['client_id'],
+    )
+    if has_session_key('user-email'):
+        if request.endpoint != 'serve_static':
+            logger.debug(f"Request: {request.endpoint}", path=request.path)
+    else:
+        logger.warn(f"Request without login information: {request.endpoint}", path=request.path)
 
 @app.route('/')
 def index():
@@ -387,12 +377,6 @@ def editor():
         user_fullname = openid.get_user_profile().get('name')
         set_session('user-fullname', user_fullname)
 
-        # configure logger to use user_email in requests
-        #structlog.contextvars.clear_contextvars()
-        structlog.contextvars.bind_contextvars(
-            user=user_email
-        )
-
         esdl_drive_enabled = not(settings.esdl_drive_config["hostname"] is None or settings.esdl_drive_config["hostname"] == "")
         edr_enabled = not(settings.edr_config["host"] is None or settings.edr_config["host"] == "")
         essim_enabled = not(settings.essim_config["ESSIM_host"] is None or settings.essim_config["ESSIM_host"] == "")
@@ -431,6 +415,23 @@ def editor():
         # return render_template('editor.html', async_mode=socketio.async_mode, role=role)
 
 
+def logout_user():
+    """
+    Logs out the user by removing the session cookie and clearing the project.
+    """
+    oidc.logout()
+    try:
+        pm = get_project_manager()
+        if pm:
+            # can't clear completely, because otherwise set_active_variant does not work anymore
+            logger.info("Clearing project!")
+            pm.clear_project(add_empty_energysystem=True)
+    except KeyError as e:
+        # in case user is not logged in / restarting mapeditor from editor
+        pass
+
+
+
 """
 Checks the OpenID connect session status
 And refreshes if necessary
@@ -451,6 +452,9 @@ def auth_status():
                 set_session('jwt-token', openid.get_access_token())
                 return {'valid': True, 'reason': "Refreshed"}
         else:
+            logger.info("Logout user: Token expired or not available")
+            # logout_user() # this also removes the project!
+            # oidc.logout()  # check if this fixes the session issue
             return {'valid': False,
                     'reason': "Token expired or not available",
                     'redirect_uri': url_for("oidc_auth.logout", next='/editor')}
@@ -479,6 +483,7 @@ def logout():
     id_token_hint = None
     if oidc_auth_token:
         id_token_hint = openid.get_id_token()
+    logout_user()
     # keycloak <17 logout:
     new_keycloak = bool(os.environ.get('KEYCLOAK_VERSION_17_OR_HIGHER', None))
     if not new_keycloak:
@@ -509,27 +514,26 @@ def logout():
 @app.route('/esdl')
 def download_esdl():
     """Sends the current ESDL file to the browser as an attachment"""
-    esh = get_handler()
-    active_es_id = get_session('active_es_id')
+    pm = get_project_manager()
 
     try:
-        #stream = esh.to_bytesio()
-        my_es = esh.get_energy_system(es_id=active_es_id)
-        esh.update_version(es_id=active_es_id)
+        my_es = pm.get_active_energy_system()
+        update_energy_system_version(my_es)
         if my_es.esdlVersion is None or my_es.esdlVersion == '':
-            my_es.esdlVersion = esdl_doc.get_esdl_version()
+             my_es.esdlVersion = esdl_doc.get_esdl_version()
         try:
             name = my_es.name
-        except:
+        except Exception:
             name = my_es.id
+
         if name is None or name == '':
             name = "UntitledEnergySystem"
         name = '{}.esdl'.format(name)
-        logger.info('Sending file %s' % name)
+        logger.info('Sending file', filename=name)
 
         user_email = get_session('user-email')
         user_actions_logging.store_logging(user_email, "download esdl", name, "", "", {})
-        content = esh.to_string(es_id=active_es_id)
+        content = pm.energy_system_to_string(my_es.id)
 
         #wrapped_io = FileWrapper(stream)
         #logger.debug(content)
@@ -814,6 +818,7 @@ def update_asset_connection_locations(asset: esdl.Asset, lat, lon):
     # TODO deal with assets in buildings and assets in compound assets (issue #165)
 
     if isinstance(asset, (esdl.CompoundAsset, esdl.AbstractBuilding)):
+        # Asset that has moved is a compound asset, so check connection list for assets that are inside a building
         internal_asset_ids = [a.id for a in asset.asset] + [asset.id]
         for c in conn_list:
             if c['from-asset-id'] in internal_asset_ids:
@@ -840,18 +845,18 @@ def update_asset_connection_locations(asset: esdl.Asset, lat, lon):
 
 def update_transport_connection_locations(ass_id, asset, coords):
     active_es_id = get_session('active_es_id')
-    esh = get_handler()
+    pm = get_project_manager()
     conn_list = get_session_for_esid(active_es_id, 'conn_list')
 
     # logger.debug('Updating locations')
     for c in conn_list:
         if c['from-asset-id'] == ass_id:
             port_id = c['from-port-id']
-            port_ass_map = get_asset_and_coord_from_port_id(esh, active_es_id, port_id)
+            port_ass_map = get_asset_and_coord_from_port_id(pm, active_es_id, port_id)
             c['from-asset-coord'] = port_ass_map['coord']
         if c['to-asset-id'] == ass_id:
             port_id = c['to-port-id']
-            port_ass_map = get_asset_and_coord_from_port_id(esh, active_es_id, port_id)
+            port_ass_map = get_asset_and_coord_from_port_id(pm, active_es_id, port_id)
             c['to-asset-coord'] = port_ass_map['coord']
 
     emit('clear_connections')   # clear current active layer connections
@@ -883,10 +888,9 @@ def connect_ports(port1, port2):
 def split_conductor(conductor, location, mode, conductor_container):
     active_es_id = get_session('active_es_id')
     conn_list = get_session_for_esid(active_es_id, 'conn_list')
-    esh = get_handler()
+    pm = get_project_manager()
 
     geometry = conductor.geometry
-    conductor_type = type(conductor).__name__
     conductor_id = conductor.id
     middle_point = esdl.Point(lat=location['lat'], lon=location['lng']) #no elevation?
 
@@ -898,7 +902,7 @@ def split_conductor(conductor, location, mode, conductor_container):
         #find piece of line where user clicked
         points = geometry.point
         begin_point = points[0]
-        first_point = points[0] # make an additional copy
+        first_point = points[0]  # make an additional copy
         # Ewoud: this code is not so nice since it manipulates the original geometry.point with points.pop(0) later on
         # this should be fixed, but not now (not time)
 
@@ -916,7 +920,7 @@ def split_conductor(conductor, location, mode, conductor_container):
         for point in points:
             p1 = {'x': begin_point.lat, 'y': begin_point.lon}
             p2 = {'x': point.lat, 'y': point.lon}
-            p =  {'x': location['lat'], 'y': location['lng']}
+            p = {'x': location['lat'], 'y': location['lng']}
             dist = ESDLGeometry.distance_point_to_line(p, p1, p2)
             if dist < min_dist:
                 min_dist = dist
@@ -944,8 +948,8 @@ def split_conductor(conductor, location, mode, conductor_container):
         if len(ports) != 2:
             send_alert('UNSUPPORTED: Conductor doesn\'t have two ports!')
             return
-        port1 = ports[0]        # reuse old conductor's ports; TODO: check what happens after deleting conductor
-        port2 = ports[1]
+        port1 = ports[0].clone()        # reuse old conductor's ports; TODO: check what happens after deleting conductor
+        port2 = ports[1].clone()
 
         new_cond1_id = str(uuid.uuid4())
         new_cond2_id = str(uuid.uuid4())
@@ -971,8 +975,8 @@ def split_conductor(conductor, location, mode, conductor_container):
         for p in list(new_cond2.port):
             p.delete()
         #new_cond2.port.clear()  #  pyEcore bug when clearing connectedTo references are not correctly updated
-        esh.add_object_to_dict(active_es_id, new_cond1)
-        esh.add_object_to_dict(active_es_id, new_cond2)
+        pm.add_object_to_dict(active_es_id, new_cond1)
+        pm.add_object_to_dict(active_es_id, new_cond2)
 
         if type(port1).__name__ == "InPort":
             new_port2 = esdl.OutPort(id=new_port2_id, name='Out')
@@ -992,8 +996,8 @@ def split_conductor(conductor, location, mode, conductor_container):
         new_cond2.port.append(new_port1)
         new_cond2.port.append(port2)
 
-        esh.add_object_to_dict(active_es_id, new_port1)
-        esh.add_object_to_dict(active_es_id, new_port2)
+        pm.add_object_to_dict(active_es_id, new_port1)
+        pm.add_object_to_dict(active_es_id, new_port2)
 
         # calculate line lengths
         start = line1.point[0]
@@ -1018,7 +1022,7 @@ def split_conductor(conductor, location, mode, conductor_container):
         # remove conductor from container (area or building) and add new two conductors
         assets = conductor_container.asset
         assets.remove(conductor)
-        esh.remove_object_from_dict(active_es_id, conductor)
+        pm.remove_object_from_dict(active_es_id, conductor)
         conductor_container.asset.append(new_cond1)
         conductor_container.asset.append(new_cond2)
 
@@ -1099,9 +1103,9 @@ def split_conductor(conductor, location, mode, conductor_container):
             joint.port.append(outp)
             joint.geometry = middle_point
             conductor_container.asset.append(joint)
-            esh.add_object_to_dict(active_es_id, joint)
-            esh.add_object_to_dict(active_es_id, inp)
-            esh.add_object_to_dict(active_es_id, outp)
+            pm.add_object_to_dict(active_es_id, joint)
+            pm.add_object_to_dict(active_es_id, inp)
+            pm.add_object_to_dict(active_es_id, outp)
 
             port_list = []
             for p in joint.port:
@@ -1139,53 +1143,64 @@ def split_conductor(conductor, location, mode, conductor_container):
 def update_coordinates(message):
     # This function can also be called when the geometry of an asset is of type esdl.Polygon, because
     # the asset on the leaflet map is both represented as a Polygon and a Point (to connect, to attach menus)
+    # The UI is updated directly in the front-end, but connections are recalculated in the backend and send to the
+    # front-end
 
     active_es_id = get_session('active_es_id')
-    esh = get_handler()
+    pm = get_project_manager()
+
     obj_id = message['id']
     coords = message['coordinates']
 
-    object = esh.get_by_id(active_es_id, obj_id)
+    object = pm.get_by_id(active_es_id, obj_id)
+    object_container = object.eContainer()
+
     # object can be an EnergyAsset, Building, Potential or Note
     if object:
-        if isinstance(object, esdl.Note):
-            geom = object.mapLocation
-        else:
-            geom = object.geometry
-
-        if isinstance(geom, esdl.Point):
-            point = esdl.Point(lon=float(coords['lng']), lat=float(coords['lat']))
+        undo_redo = pm.get_undo_redo_stack(object)
+        with undo_redo.track_changes(label="Change location of {}".format(object.name or object.eClass.name)):
             if isinstance(object, esdl.Note):
-                object.mapLocation = point
+                geom = object.mapLocation
             else:
-                object.geometry = point
-        # elif isinstance(geom, esdl.Polygon):
+                geom = object.geometry
+
+            if isinstance(geom, esdl.Point):
+                point = esdl.Point(lon=float(coords['lng']), lat=float(coords['lat']))
+                if isinstance(object, esdl.Note):
+                    object.mapLocation = point
+                else:
+                    object.geometry = point
+            # elif isinstance(geom, esdl.Polygon):
             # Do nothing in case of a polygon
             # only update the connection locations and mappings based on the center of the polygon
             # that is given as a parameter.
 
-        # update coordinates in asset_list
-        asset_list = get_session_for_esid(active_es_id, 'asset_list')
-        for a in asset_list:
-            if a[3] == obj_id:
-                a[5] = [coords['lat'], coords['lng']]
-                break # ready searching
+            # update coordinates in asset_list
+            asset_list = get_session_for_esid(active_es_id, 'asset_list')
+            for a in asset_list:
+                if a[3] == obj_id:
+                    a[5] = [coords['lat'], coords['lng']]
+                    break  # ready searching
 
-        building_list = get_session_for_esid(active_es_id, 'building_list')
-        for b in building_list:
-            if b[2] == obj_id:
-                # note: index 4 here for building objects
-                print("Building_list update coords", b)
-                b[4] = [coords['lat'], coords['lng']]
-                break
+            building_list = get_session_for_esid(active_es_id, 'building_list')
+            for b in building_list:
+                if b[2] == obj_id:
+                    # note: index 4 here for building objects
+                    print("Building_list update coords", b)
+                    b[4] = [coords['lat'], coords['lng']]
+                    break
 
-        if isinstance(object, esdl.ConnectableAsset):
-            # Update locations of connections on moving assets
-            update_asset_connection_locations(object, coords['lat'], coords['lng'])
+            if isinstance(object, esdl.ConnectableAsset):
+                # Update locations of connections on moving assets
+                update_asset_connection_locations(object, coords['lat'], coords['lng'])
 
-            # TODO: Check if this is still required: Ewoud: No
-            #if message['asspot'] == 'building':
-            #    send_alert("Assets in building with locations are not updated yet")
+            # Only potentially move an asset to a different Area if it was originally contained in an Area
+            # (to prevent assets moving from inside a Building or CompoundAsset to an Area)
+            if isinstance(object_container, esdl.Area):
+                area_id = find_area_location_based(pm, active_es_id, object)
+                area = pm.get_by_id(active_es_id, area_id)
+                if area and area != object_container:
+                   area.asset.append(object)  # is a move operation: moves this object to another area
 
 
 @socketio.on('update-line-coord', namespace='/esdl')
@@ -1194,33 +1209,34 @@ def update_line_coordinates(message):
     ass_id = message['id']
 
     active_es_id = get_session('active_es_id')
-    esh = get_handler()
-    asset = esh.get_by_id(active_es_id, ass_id)
+    pm = get_project_manager()
+    asset = pm.get_by_id(active_es_id, ass_id)
 
     if asset:
-        ports = asset.port
-        polyline_data = message['polyline']
-        # logger.debug(polyline_data)
-        # logger.debug(type(polyline_data))
-        polyline_length = float(message['length'])
-        asset.length = polyline_length
+        undo_redo = pm.get_undo_redo_stack(asset)
+        with undo_redo.track_changes(combine_commands=True, label="Change geometry of {}".format(asset.name or asset.eClass.name)):
+            polyline_data = message['polyline']
+            # logger.debug(polyline_data)
+            # logger.debug(type(polyline_data))
+            polyline_length = float(message['length'])
+            asset.length = polyline_length
 
-        line = esdl.Line()
-        for i in range(0, len(polyline_data)):
-            coord = polyline_data[i]
-            point = esdl.Point(lon=coord['lng'], lat=coord['lat'])
-            line.point.append(point)
-        asset.geometry = line
+            line = esdl.Line()
+            for i in range(0, len(polyline_data)):
+                coord = polyline_data[i]
+                point = esdl.Point(lon=coord['lng'], lat=coord['lat'])
+                line.point.append(point)
+            asset.geometry = line
 
-        # update coordinates in asset_list
-        asset_list = get_session_for_esid(active_es_id, 'asset_list')
-        for a in asset_list:
-            if a[3] == ass_id:
-                a[5] = [(coord['lat'], coord['lng']) for coord in polyline_data]
-                break  # ready searching
+            # update coordinates in asset_list
+            asset_list = get_session_for_esid(active_es_id, 'asset_list')
+            for a in asset_list:
+                if a[3] == ass_id:
+                    a[5] = [(coord['lat'], coord['lng']) for coord in polyline_data]
+                    break  # ready searching
 
-        update_transport_connection_locations(ass_id, asset, polyline_data)
-
+            update_transport_connection_locations(ass_id, asset, polyline_data)
+        emit('update_undo_redo_stack', serialize_command_stack(undo_redo))
 
 @socketio.on('update-polygon-coord', namespace='/esdl')
 def update_polygon_coordinates(message):
@@ -1228,24 +1244,27 @@ def update_polygon_coordinates(message):
     ass_id = message['id']
 
     active_es_id = get_session('active_es_id')
-    esh = get_handler()
-    asset = esh.get_by_id(active_es_id, ass_id)
+    pm = get_project_manager()
+    asset = pm.get_by_id(active_es_id, ass_id)
 
     if asset:
-        polygon_data = message['polygon']
-        # logger.debug(polygon_data)
-        # logger.debug(type(polygon_data))
-        polygon_area = int(message['polygon_area'])
-        asset.surfaceArea = polygon_area
+        undo_redo = pm.get_undo_redo_stack(asset)
+        with undo_redo.track_changes(label="Change geometry of {}".format(asset.name or asset.eClass.name)):
+            polygon_data = message['polygon']
+            # logger.debug(polygon_data)
+            # logger.debug(type(polygon_data))
+            polygon_area = int(message['polygon_area'])
+            asset.surfaceArea = polygon_area
 
-        polygon_data = ESDLGeometry.remove_duplicates_in_polygon(polygon_data)
-        polygon_data = ESDLGeometry.remove_latlng_annotation_in_array_of_arrays(polygon_data)
-        polygon_data = ESDLGeometry.exchange_polygon_coordinates(polygon_data)  # --> [lon, lat]
-        polygon = ESDLGeometry.convert_pcoordinates_into_polygon(polygon_data)  # expects [lon, lat]
-        asset.geometry = polygon
+            polygon_data = ESDLGeometry.remove_duplicates_in_polygon(polygon_data)
+            polygon_data = ESDLGeometry.remove_latlng_annotation_in_array_of_arrays(polygon_data)
+            polygon_data = ESDLGeometry.exchange_polygon_coordinates(polygon_data)  # --> [lon, lat]
+            polygon = ESDLGeometry.convert_pcoordinates_into_polygon(polygon_data)  # expects [lon, lat]
+            asset.geometry = polygon
 
-        polygon_center = ESDLGeometry.calculate_polygon_center(polygon)
-        update_polygon_asset_connection_locations(ass_id, polygon_center)
+            polygon_center = ESDLGeometry.calculate_polygon_center(polygon)
+            update_polygon_asset_connection_locations(ass_id, polygon_center)
+        emit('update_undo_redo_stack', serialize_command_stack(undo_redo))
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -1264,8 +1283,8 @@ def get_control_strategies(es):
 
 def get_control_strategy_for_asset(asset_id):
     active_es_id = get_session('active_es_id')
-    esh = get_handler()
-    asset = esh.get_by_id(active_es_id, asset_id)
+    pm = get_project_manager()
+    asset = pm.get_by_id(active_es_id, asset_id)
     return asset.controlStrategy
 
     # strategies = get_control_strategies(es)
@@ -1277,9 +1296,8 @@ def get_control_strategy_for_asset(asset_id):
 
 
 def add_control_strategy_for_asset(asset_id, cs):
-    active_es_id = get_session('active_es_id')
-    esh = get_handler()
-    es = esh.get_energy_system(es_id=active_es_id)
+    pm = get_project_manager()
+    es = pm.get_active_energy_system()
 
     services = es.services
     if not services:
@@ -1297,11 +1315,11 @@ def add_control_strategy_for_asset(asset_id, cs):
 
 def add_drivenby_control_strategy_for_asset(asset_id, control_strategy, port_id):
     active_es_id = get_session('active_es_id')
-    esh = get_handler()
-    cs = instantiate_type(control_strategy)
+    pm = get_project_manager()
 
-    asset: esdl.EnergyAsset = esh.get_by_id(active_es_id, asset_id)
-    port: esdl.Port = esh.get_by_id(active_es_id, port_id)
+    cs = instantiate_type(control_strategy)
+    asset: esdl.EnergyAsset = pm.get_by_id(active_es_id, asset_id)
+    port: esdl.Port = pm.get_by_id(active_es_id, port_id)
     asset_name = asset.name
     if not asset_name:
         asset_name = 'unknown'
@@ -1320,8 +1338,8 @@ def add_drivenby_control_strategy_for_asset(asset_id, control_strategy, port_id)
 
 def add_storage_control_strategy_for_asset(asset_id, mcc, mdc):
     active_es_id = get_session('active_es_id')
-    esh = get_handler()
-    asset = esh.get_by_id(active_es_id, asset_id)
+    pm = get_project_manager()
+    asset = pm.get_by_id(active_es_id, asset_id)
     if not asset.name:
         asset.name = 'Unknown Asset'
 
@@ -1341,8 +1359,8 @@ def add_storage_control_strategy_for_asset(asset_id, mcc, mdc):
 
 def add_curtailment_control_strategy_for_asset(asset_id, max_power):
     active_es_id = get_session('active_es_id')
-    esh = get_handler()
-    asset = esh.get_by_id(active_es_id, asset_id)
+    pm = get_project_manager()
+    asset = pm.get_by_id(active_es_id, asset_id)
     if not asset.name:
         asset.name = 'Unknown Asset'
 
@@ -1357,10 +1375,9 @@ def add_curtailment_control_strategy_for_asset(asset_id, max_power):
 
 
 def get_storage_marginal_costs(asset_id):
-    active_es_id = get_session('active_es_id')
-    esh = get_handler()
-    asset = esh.get_by_id(active_es_id, asset_id)
-    es = esh.get_energy_system(es_id=active_es_id)
+    pm = get_project_manager()
+    asset = pm.get_by_id(asset_id)
+    es = pm.get_active_energy_system()
 
     services = es.services
     if services:
@@ -1385,9 +1402,9 @@ def get_storage_marginal_costs(asset_id):
 
 def get_curtailment_max_power(asset_id):
     active_es_id = get_session('active_es_id')
-    esh = get_handler()
-    asset = esh.get_by_id(active_es_id, asset_id)
-    es = esh.get_energy_system(es_id=active_es_id)
+    pm = get_project_manager()
+    asset = pm.get_by_id(active_es_id, asset_id)
+    es = pm.get_active_energy_system()
 
     services = es.services
     if services:
@@ -1402,8 +1419,8 @@ def get_curtailment_max_power(asset_id):
 
 def remove_control_strategy_for_asset(asset_id):
     active_es_id = get_session('active_es_id')
-    esh = get_handler()
-    asset = esh.get_by_id(active_es_id, asset_id)
+    pm = get_project_manager()
+    asset = pm.get_by_id(active_es_id, asset_id)
     cs = asset.controlStrategy
     if cs:
         cs.delete()
@@ -1422,8 +1439,8 @@ def remove_control_strategy_for_asset(asset_id):
 # ---------------------------------------------------------------------------------------------------------------------
 def set_marginal_costs_for_asset(asset_id, marginal_costs):
     active_es_id = get_session('active_es_id')
-    esh = get_handler()
-    asset = esh.get_by_id(active_es_id, asset_id)
+    pm = get_project_manager()
+    asset = pm.get_by_id(active_es_id, asset_id)
     asset_name = asset.name
     if not asset_name:
         asset_name = asset.id
@@ -1445,8 +1462,8 @@ def set_marginal_costs_for_asset(asset_id, marginal_costs):
 
 def remove_marginal_costs_for_asset(asset_id):
     active_es_id = get_session('active_es_id')
-    esh = get_handler()
-    asset = esh.get_by_id(active_es_id, asset_id)
+    pm = get_project_manager()
+    asset = pm.get_by_id(active_es_id, asset_id)
 
     ci = asset.costInformation
     if ci:
@@ -1457,8 +1474,8 @@ def remove_marginal_costs_for_asset(asset_id):
 
 def get_marginal_costs_for_asset(asset_id):
     active_es_id = get_session('active_es_id')
-    esh = get_handler()
-    asset = esh.get_by_id(active_es_id, asset_id)
+    pm = get_project_manager()
+    asset = pm.get_by_id(active_es_id, asset_id)
     ci = asset.costInformation
     if ci:
         mc = ci.marginalCosts
@@ -1468,11 +1485,14 @@ def get_marginal_costs_for_asset(asset_id):
     return None
 
 
-def str2float(string):
+def str2float(string) -> float:
+    """
+    Converts a string into a float. If it fails, returns 0.0 (so always returns).
+    """
     try:
         f = float(string)
         return f
-    except:
+    except ValueError:
         return 0.0
 
 
@@ -1490,19 +1510,12 @@ def get_first_last_of_line(line):
     return first, last
 
 
-@executor.job
-def call_process_energy_system(esh, filename=None, es_title=None, app_context=None,
-                               force_update_es_id=None, zoom=True, result_post_esdl_load=None, load_animation=False):
-    process_energy_system(esh, filename=filename, es_title=es_title, app_context=app_context,
-                          force_update_es_id=force_update_es_id, zoom=zoom, load_animation=load_animation)
-    if result_post_esdl_load:
-        emit('esdl_service_result', result_post_esdl_load)
-
 # ---------------------------------------------------------------------------------------------------------------------
 #  React on commands from the browser (add, remove, ...)
 # ---------------------------------------------------------------------------------------------------------------------
 @socketio.on('command', namespace='/esdl')
-def process_command(message):
+@undo_record_changes(label="User command")
+def process_command(message, stack: UndoRedoCommandStack):
     logger.info('received: ' + message['cmd'])
     if not valid_session():
         send_alert("Session has timed out, please refresh")
@@ -1513,64 +1526,53 @@ def process_command(message):
     user_email = get_session('user-email')
     user_actions_logging.store_logging(user_email, "command", message['cmd'], json.dumps(message), "", {})
 
-    active_es_id = get_session('active_es_id')
-    if active_es_id is None:
-        send_alert('Serious error: no active es id found. Please report')
-        return
+    pm = get_project_manager()
 
-    esh = get_handler()
-    if esh is None:
-        logger.error('ERROR finding EnergySystemHandler, Session issue??')
-    area_bld_list = get_session_for_esid(active_es_id, 'area_bld_list')
+    active_es = pm.get_active_energy_system()
+    active_es_id = active_es.id
+    area_bld_list = get_session_for_esid(active_es.id, 'area_bld_list')
 
-    es_edit = esh.get_energy_system(es_id=active_es_id)
-    # test to see if this should be moved down:
-    #  session.modified = True
-    # logger.debug (get_handler().instance[0].area.name)
+    stack.update_label(message['cmd'])
 
     if message['cmd'] == 'add_object':
         area_bld_id = message['area_bld_id']
         asset_id = message['asset_id']
         object_type = message['object']
         asset_name = message['asset_name']
-        asset = None
 
         shape = message['shape']
         geometry = ESDLGeometry.create_ESDL_geometry(shape)
-
-        if area_bld_id == 'find_area_location_based':
-            area_bld_id = find_area_location_based(esh, active_es_id, geometry)
-            logger.info(f"Find area_location_based found area {area_bld_id}")
 
         if object_type == 'Area':
             if not isinstance(geometry, esdl.Polygon):
                 send_alert('Areas with geometries other than polygons are not supported')
             else:
-                if isinstance(geometry, esdl.Polygon):
-                    new_area = esdl.Area(id=asset_id, name=asset_name)
-                    new_area.geometry = geometry
+                new_area = esdl.Area(id=asset_id, name=asset_name)
+                new_area.geometry = geometry
 
-                    # Update shape dictionary
-                    shape_dictionary = get_session_for_esid(active_es_id, 'shape_dictionary')
-                    shape_dictionary[new_area.id] = Shape.create(geometry)
-                    set_session_for_esid(active_es_id, 'shape_dictionary', shape_dictionary)
+                if area_bld_id == 'find_area_location_based':
+                    # For Areas find the parent based on the location by using the geometry
+                    area_bld_id = find_area_location_based(pm, active_es_id, geometry)
 
-                    # Update drop down list with areas and buildings
-                    add_area_to_area_bld_list(new_area, area_bld_id, area_bld_list)
-                    emit('area_bld_list', {'es_id': active_es_id, 'area_bld_list': area_bld_list})
+                # Update shape dictionary
+                shape_dictionary = get_session_for_esid(active_es_id, 'shape_dictionary')
+                shape_dictionary[new_area.id] = Shape.create(geometry)
+                set_session_for_esid(active_es_id, 'shape_dictionary', shape_dictionary)
 
-                    # Add area to the indicated area
-                    if not ESDLEnergySystem.add_area_to_area(es_edit, new_area, area_bld_id):
-                        send_alert('Can not add area to building')
+                # Update drop down list with areas and buildings
+                add_area_to_area_bld_list(new_area, area_bld_id, area_bld_list)
+                emit('area_bld_list', {'es_id': active_es_id, 'area_bld_list': area_bld_list})
 
-                    # Send new area shapes to the browser
-                    area_list = []
-                    boundary_wgs = ESDLGeometry.create_boundary_from_geometry(geometry)
-                    area_list.append(ESDLGeometry.create_geojson(new_area.id, new_area.name, [], boundary_wgs))
-                    esh.add_object_to_dict(active_es_id, new_area)
-                    emit('geojson', {"layer": "area_layer", "geojson": area_list})
-                else:
-                    send_alert('Can not add an area with another shap than a Polygon')
+                # Add area to the indicated area
+                if not ESDLEnergySystem.add_area_to_area(active_es, new_area, area_bld_id):
+                    send_alert('Can not add area to building')
+
+                # Send new area shapes to the browser
+                area_list = []
+                boundary_wgs = ESDLGeometry.create_boundary_from_geometry(geometry)
+                area_list.append(ESDLGeometry.create_geojson(new_area.id, new_area.name, [], boundary_wgs))
+                # pm.add_object_to_dict(active_es_id, new_area)
+                emit('geojson', {"layer": "area_layer", "geojson": area_list})
         else:
             edr_asset_str = get_session('adding_edr_assets')
             if edr_asset_str:
@@ -1588,9 +1590,9 @@ def process_command(message):
                 asset_drawing_mode = get_session('asset_drawing_mode')
                 if asset_drawing_mode == 'asset_from_measures':
                     asset_from_measure_id = get_session('asset_from_measure_id')
-                    asset = AssetsToBeAdded.get_instance_of_measure_with_asset_id(es_edit, asset_from_measure_id)
+                    asset = AssetsToBeAdded.get_instance_of_measure_with_asset_id(active_es, asset_from_measure_id)
                     atba = AssetsToBeAdded.get_instance()
-                    atba.reduce_ui_asset_count(es_edit, asset_from_measure_id)
+                    atba.reduce_ui_asset_count(active_es, asset_from_measure_id)
                     class_ = type(asset)
                     object_type = class_.__name__
                 else:
@@ -1604,9 +1606,13 @@ def process_command(message):
                 potential.name = asset_name
                 potential.geometry = geometry
 
+                if area_bld_id == 'find_area_location_based':
+                    # For Potentials find the parent based on the location by using the potential
+                    area_bld_id = find_area_location_based(pm, active_es_id, potential)
+
                 add_to_building = False
-                if not ESDLAsset.add_object_to_area(es_edit, potential, area_bld_id):
-                    ESDLAsset.add_object_to_building(es_edit, potential, area_bld_id)
+                if not ESDLAsset.add_object_to_area(active_es, potential, area_bld_id):
+                    ESDLAsset.add_object_to_building(active_es, potential, area_bld_id)
                     add_to_building = True
 
                 potentials_to_be_added = []
@@ -1621,14 +1627,20 @@ def process_command(message):
                         ['polygon', 'potential', potential.name, potential.id, type(potential).__name__, coords])
 
                 if potentials_to_be_added:
-                    emit('add_esdl_objects', {'es_id': es_edit.id, 'add_to_building': add_to_building,
+                    emit('add_esdl_objects', {'es_id': active_es.id, 'add_to_building': add_to_building,
                                               'asset_pot_list': potentials_to_be_added, 'zoom': False})
 
-                esh.add_object_to_dict(active_es_id, potential)
+                pm.add_object_to_dict(active_es_id, potential)
             else:
                 asset.id = asset_id
                 asset.name = asset_name
                 asset.geometry = geometry
+
+                if area_bld_id == 'find_area_location_based':
+                    # For Assets find the parent based on the location by using the asset
+                    # such that the asset type can be used to determine the right Area (DSO service area for Transport
+                    # assets and CBS area for all others)
+                    area_bld_id = find_area_location_based(pm, active_es_id, asset)
 
                 if isinstance(geometry, esdl.Point):
                     port_loc = (shape['coordinates']['lat'], shape['coordinates']['lng'])
@@ -1666,7 +1678,7 @@ def process_command(message):
                         outp = esdl.OutPort(id=str(uuid.uuid4()), name='Out')
                         asset.port.append(outp)
                         asset.length = float(shape['length']) if 'length' in shape else 0.0
-                        print(message)
+                        # print(message)
                         # automatically connect the conductor to the ports that have been clicked
                         if 'connect_ports' in message and message['connect_ports'] != '':
                             connect_ports_msg = message['connect_ports']
@@ -1678,10 +1690,10 @@ def process_command(message):
                             to_port2 = None
                             if 'asset_start_port' in connect_ports_msg:
                                 asset_start_port = connect_ports_msg['asset_start_port']
-                                start_port = esh.get_by_id(active_es_id, asset_start_port)
+                                start_port = pm.get_by_id(active_es_id, asset_start_port)
                             if 'asset_end_port' in connect_ports_msg:
                                 asset_end_port = connect_ports_msg['asset_end_port']
-                                end_port = esh.get_by_id(active_es_id, asset_end_port)
+                                end_port = pm.get_by_id(active_es_id, asset_end_port)
 
                             # cannot connect to same port type
                             if start_port is not None and end_port is not None and \
@@ -1861,9 +1873,9 @@ def process_command(message):
                     emit('area_bld_list', {'es_id': active_es_id, 'area_bld_list': area_bld_list})
 
                 add_to_building = False
-                if not ESDLAsset.add_object_to_area(es_edit, asset, area_bld_id):
+                if not ESDLAsset.add_object_to_area(active_es, asset, area_bld_id):
                     logger.info(f"Cannot add {asset.name} to area_bld_id {area_bld_id}. Setting add_to_building to True")
-                    ESDLAsset.add_object_to_building(es_edit, asset, area_bld_id)
+                    ESDLAsset.add_object_to_building(active_es, asset, area_bld_id)
                     add_to_building = True
 
                 asset_to_be_added_list = []
@@ -1887,9 +1899,9 @@ def process_command(message):
                         boundary = ESDLGeometry.create_boundary_from_geometry(geometry)
                         buildings_to_be_added_list.append(['polygon', asset.name, asset.id, type(asset).__name__,
                                                            boundary["coordinates"], False, {}, extra_attributes, port_list])
-                    emit('add_building_objects', {'es_id': es_edit.id, 'building_list': buildings_to_be_added_list,
+                    emit('add_building_objects', {'es_id': active_es.id, 'building_list': buildings_to_be_added_list,
                                                   'zoom': False})
-                    session_building_list = get_session_for_esid(es_edit.id, 'building_list')
+                    session_building_list = get_session_for_esid(active_es.id, 'building_list')
                     session_building_list.extend(buildings_to_be_added_list)
                 else:
                     capability_type = ESDLAsset.get_asset_capability_type(asset)
@@ -1920,15 +1932,21 @@ def process_command(message):
                                                        coords, tooltip_asset_attrs, state, port_list])
 
                     # logger.debug(asset_to_be_added_list)
-                    emit('add_esdl_objects', {'es_id': es_edit.id, 'add_to_building': add_to_building,
+                    emit('add_esdl_objects', {'es_id': active_es.id, 'add_to_building': add_to_building,
                                               'asset_pot_list': asset_to_be_added_list, 'zoom': False})
 
-                    asset_list = get_session_for_esid(es_edit.id, 'asset_list')
+                    asset_list = get_session_for_esid(active_es.id, 'asset_list')
                     for al_asset in asset_to_be_added_list:
                         asset_list.append(al_asset)
 
-                esh.add_object_to_dict(es_edit.id, asset, recursive=True)
-                set_handler(esh)
+                pm.add_object_to_dict(active_es_id, asset, recursive=True)
+                # if hasattr(asset, 'port'):
+                #     for added_port in asset.port:
+                #         pm.add_object_to_dict(active_es_id, added_port)
+                set_project_manager(pm)
+
+        # update label to human readable
+        stack.update_label("Add {}".format(object_type))
 
     if message['cmd'] == 'remove_object':
         # removes asset or potential from EnergySystem
@@ -1936,7 +1954,8 @@ def process_command(message):
         # here we need to remove the connections from the conn_list and remove them from buildings/CA's
         obj_id = message['id']
         if obj_id:
-            asset = esh.get_by_id(active_es_id, obj_id)
+            asset = pm.get_by_id(active_es_id, obj_id)
+            conn_list = get_session_for_esid(active_es_id, 'conn_list')
             if isinstance(asset, esdl.ExposedPortsAsset):
                 # Update drop down list with areas and buildings
                 remove_ab_from_area_bld_list(asset.id, area_bld_list)
@@ -1951,6 +1970,7 @@ def process_command(message):
             building_list = get_session_for_esid(active_es_id, 'building_list')
             building_list[:] = [a for a in building_list if a[2] != obj_id] # filter list in place
             conn_list = get_session_for_esid(active_es_id, 'conn_list')
+            stack.update_label("Remove {}".format(asset.name or asset.eClass.name))
             if isinstance(asset, esdl.ExposedPortsAsset):
                 # if connections linked to internal buildings/compound assets remove them
                 internal_ids = [a.id for a in asset.asset] + [asset.id]
@@ -1968,8 +1988,8 @@ def process_command(message):
                     {"es_id": active_es_id, "conn_list": conn_list, "add_to_building": False},
                 )
             # now delete the asset
-            ESDLAsset.remove_object_from_energysystem(es_edit, obj_id)
-            esh.remove_object_from_dict(es_edit.id, asset, True)
+            ESDLAsset.remove_object_from_energysystem(active_es, obj_id)
+            pm.remove_object_from_dict(active_es.id, asset, True)
             if parent_container:
                 # update ports of the parent asset (in case it contained exposed ports).
                 emit(
@@ -1992,27 +2012,27 @@ def process_command(message):
             send_alert('Invalid datetime format')
         point = esdl.Point(lat=location['lat'], lon=location['lng'])
         note.mapLocation = point
-        esh.add_object_to_dict(es_edit.id, note)
+        pm.add_object_to_dict(active_es.id, note)
 
-        esi = es_edit.energySystemInformation
+        esi = active_es.energySystemInformation
         if not esi:
             esi = esdl.EnergySystemInformation(id=str(uuid.uuid4()))
-            es_edit.energySystemInformation = esi
-            esh.add_object_to_dict(es_edit.id, esi)
+            active_es.energySystemInformation = esi
+            pm.add_object_to_dict(active_es.id, esi)
 
         notes = esi.notes
         if not notes:
             notes = esdl.Notes(id=str(uuid.uuid4()))
             esi.notes = notes
-            esh.add_object_to_dict(es_edit.id, notes)
+            pm.add_object_to_dict(active_es.id, notes)
 
         notes.note.append(note)
-        esh.add_object_to_dict(es_edit.id, note)
+        pm.add_object_to_dict(active_es.id, note)
 
     if message['cmd'] == 'remove_area':
         area_id = message['id']
         if area_id:
-            top_area = es_edit.instance[0].area
+            top_area = active_es.instance[0].area
             if top_area:
                 if top_area.id == area_id:
                     send_alert('Can not remove top level area')
@@ -2026,13 +2046,13 @@ def process_command(message):
                             del shape_dictionary[area_id]  # delete area from shape dictionary
                         except KeyError:
                             pass
-                        call_process_energy_system.submit(esh, force_update_es_id=es_edit.id, zoom=False)
+                        call_process_energy_system.submit(force_update_es_id=active_es.id, zoom=False)
 
     # TODO: for removal next time we see this, as it is not used anymore...
     # if message['cmd'] == 'get_asset_ports':
     #     asset_id = message['id']
     #     if asset_id:
-    #         asset = ESDLAsset.find_asset(es_edit.instance[0].area, asset_id)
+    #         asset = ESDLAsset.find_asset(active_es.instance[0].area, asset_id)
     #         port_list = create_asset_port_message(asset)
     #         emit('portlist', port_list)
 
@@ -2041,10 +2061,11 @@ def process_command(message):
         port2_id = message['port2id']
 
         # still not optimal, but done to get rid of mapping, optimize later
-        asset_and_coord1 = get_asset_and_coord_from_port_id(esh, active_es_id, port1_id)
-        asset_and_coord2 = get_asset_and_coord_from_port_id(esh, active_es_id, port2_id)
+        asset_and_coord1 = get_asset_and_coord_from_port_id(pm, active_es_id, port1_id)
+        asset_and_coord2 = get_asset_and_coord_from_port_id(pm, active_es_id, port2_id)
         asset1 = asset_and_coord1['asset']
         asset2 = asset_and_coord2['asset']
+        stack.update_label(f"Connect {asset1.name or asset.eClass.name} to {asset2.name or asset.eClass.name}")
         asset1_port_location = asset_and_coord1['coord']
         asset2_port_location = asset_and_coord2['coord']
 
@@ -2094,6 +2115,11 @@ def process_command(message):
                         # both assets not in building
                         add_to_building = False
 
+                # emit('add_new_conn', {'es_id': active_es_id, 'add_to_building': add_to_building,
+                #                       'from-port-id': port1_id, 'to-port-id': port2_id,
+                #                       'new_conn': [[asset1_port_location[0], asset1_port_location[1]],
+                #                                    [asset2_port_location[0], asset2_port_location[1]]]})
+
                 # propagate carrier
                 if not port2.carrier and port1.carrier:
                     if isinstance(port2.energyasset, esdl.Joint):
@@ -2135,13 +2161,12 @@ def process_command(message):
     # if message['cmd'] == 'get_object_info':
     #     object_id = message['id']
     #     asspot = message['asspot']
-    #     area = es_edit.instance[0].area
     #     connected_to_info = []
     #     ctrl_strategy = None
-
+    #
     #     if asspot == 'asset':
     #         # asset = ESDLAsset.find_asset(area, object_id)
-    #         asset = esh.get_by_id(es_edit.id, object_id)
+    #         asset = pm.get_by_id(active_es.id, object_id)
     #         logger.debug('Get info for asset ' + asset.id)
     #         attrs_sorted = ESDLEcore.get_asset_attributes(asset, esdl_doc)
     #         name = asset.name
@@ -2156,13 +2181,14 @@ def process_command(message):
     #             asset_class = 'AbstractBuilding'
     #         asset_doc = asset.__doc__
     #     else:
-    #         pot = esh.get_by_id(es_edit.id, object_id)
+    #         pot = pm.get_by_id(active_es.id, object_id)
     #         logger.debug('Get info for potential ' + pot.id)
     #         attrs_sorted = ESDLEcore.get_asset_attributes(pot, esdl_doc)
     #         name = pot.name
     #         connected_to_info = []
     #         ctrl_strategy = None
     #         asset_doc = pot.__doc__
+    #         asset_class = 'Potential'
 
     #     if name is None: name = ''
     #     emit('asset_info', {'id': object_id, 'name': name, 'class': asset_class, 'attrs': attrs_sorted, 'connected_to_info': connected_to_info, 'ctrl_strategy': ctrl_strategy, 'asset_doc': asset_doc})
@@ -2170,7 +2196,7 @@ def process_command(message):
     if message['cmd'] == 'get_conductor_info':
         asset_id = message['id']
         latlng = message['latlng']
-        area = es_edit.instance[0].area
+        area = active_es.instance[0].area
         asset = ESDLAsset.find_asset(area, asset_id)
         connected_to_info = get_connected_to_info(asset)
         logger.debug('Get info for conductor ' + asset.id)
@@ -2187,7 +2213,7 @@ def process_command(message):
         storage_info_list = []
         conversion_info_list = []
 
-        energy_assets = esh.get_all_instances_of_type(esdl.EnergyAsset, active_es_id)
+        energy_assets = pm.get_all_instances_of_type(esdl.EnergyAsset, active_es_id)
 
         for asset in energy_assets:
             attrs_sorted = ESDLEcore.get_asset_attributes(asset, esdl_doc)
@@ -2255,18 +2281,19 @@ def process_command(message):
         param_value = message['param_value']
 
         if asset_id is None:
-            resource = esh.get_resource(active_es_id)
+            resource = pm.get_energy_system_resource_by_id(active_es_id)
             assets = [resource.resolve(fragment)]
         else:
             if isinstance(asset_id, list):
                 assets = []
                 for ass_id in asset_id:
-                    assets.append(esh.get_by_id(active_es_id, ass_id))
+                    assets.append(pm.get_by_id(active_es_id, ass_id))
             else:
-                assets = [esh.get_by_id(active_es_id, asset_id)]
+                assets = [pm.get_by_id(active_es_id, asset_id)]
 
         for asset in assets:
             logger.debug('Set param "'+ param_name + '" for class ' + asset.eClass.name + ' to value '+ str(param_value))
+            stack.update_label(f"Set {asset.eClass.name}.{param_name} to {str(param_value)}")
 
             try:
                 attribute = asset.eClass.findEStructuralFeature(param_name)
@@ -2275,7 +2302,7 @@ def process_command(message):
                         # length = len(param_value)
                         eCollection = asset.eGet(param_name)
                         eCollection.clear()  # TODO no support for multi-select of enums
-                        print('after clear', eCollection)
+                        # print('after clear', eCollection)
                         if not isinstance(param_value, list):
                             param_value = [param_value]
                         for item in param_value:
@@ -2287,9 +2314,9 @@ def process_command(message):
                         else:
                             parsed_value = attribute.eType.from_string(param_value)
                         if attribute.name == 'id':
-                            esh.remove_object_from_dict(active_es_id, asset)
+                            pm.remove_object_from_dict(active_es_id, asset)
                             asset.eSet(param_name, parsed_value)
-                            esh.add_object_to_dict(active_es_id, asset)
+                            pm.add_object_to_dict(active_es_id, asset)
                         else:
                             asset.eSet(param_name, parsed_value)
 
@@ -2355,7 +2382,7 @@ def process_command(message):
                 prev_lng = coord['lng']
             i += 1
 
-        area = es_edit.instance[0].area
+        area = active_es.instance[0].area
         area_selected = ESDLEnergySystem.find_area(area, area_bld_id)
         if area_selected:
             area_selected.geometry = polygon
@@ -2371,7 +2398,7 @@ def process_command(message):
         mode = message['mode']      # connect, add_joint, no_connect
         location_to_split = message['location']
 
-        area = es_edit.instance[0].area
+        area = active_es.instance[0].area
         conductor, container = ESDLAsset.find_asset_and_container(area, cond_id)
 
         split_conductor(conductor, location_to_split, mode, container)
@@ -2379,7 +2406,7 @@ def process_command(message):
     if message['cmd'] == 'get_port_profile_info':
         port_id = message['port_id']
 
-        asset = get_asset_from_port_id(esh, active_es_id, port_id)
+        asset = get_asset_from_port_id(pm, active_es_id, port_id)
         if asset:
             ports = asset.port
             for p in ports:
@@ -2444,26 +2471,26 @@ def process_command(message):
                             send_alert('Invalid datetime format')
 
         if quap_type == 'predefined_qau':
-            # socket.emit('command', {cmd: 'add_profile_to_port', port_id: port_id, value: profile_mult_value,
+            # socketio.emit('command', {cmd: 'add_profile_to_port', port_id: port_id, value: profile_mult_value,
             #    profile_class: profile_class, quap_type: qaup_type, predefined_qau: predefined_qau});
             predefined_qau = message["predefined_qau"]
             for pqau in esdl_config.esdl_config['predefined_quantity_and_units']:
                 if pqau['id'] == predefined_qau:
                     try:
                         # check if predefined qau is already present in the ESDL
-                        qau = esh.get_by_id(active_es_id, predefined_qau)
+                        qau = pm.get_by_id(active_es_id, predefined_qau)
                     except KeyError:
                         qau = ESDLQuantityAndUnits.build_qau_from_dict(pqau)
-                        esi_qau = ESDLQuantityAndUnits.get_or_create_esi_qau(esh, active_es_id)
+                        esi_qau = ESDLQuantityAndUnits.get_or_create_esi_qau(pm, active_es_id)
                         esi_qau.quantityAndUnit.append(qau)
-                        esh.add_object_to_dict(active_es_id, qau)
+                        pm.add_object_to_dict(active_es_id, qau)
                         # qau.id = str(uuid.uuid4()) # generate new id for predifined qua otherwise double ids appear
                     break
             # make a reference instead of a direct link
             qau_ref = esdl.QuantityAndUnitReference(reference=qau)
             esdl_profile.profileQuantityAndUnit = qau_ref
         elif quap_type == 'custom_qau':
-            # socket.emit('command', {cmd: 'add_profile_to_port', port_id: port_id, value: profile_mult_value,
+            # socketio.emit('command', {cmd: 'add_profile_to_port', port_id: port_id, value: profile_mult_value,
             #    profile_class: profile_class, quap_type: qaup_type, custom_qau: custom_qau});
             custom_qau = message["custom_qau"]
             qau = ESDLQuantityAndUnits.build_qau_from_dict(custom_qau)
@@ -2471,9 +2498,9 @@ def process_command(message):
 
         esdl_profile.id = str(uuid.uuid4())
         esdl_profile.profileType = esdl.ProfileTypeEnum.from_string(profile_type)
-        esh.add_object_to_dict(es_edit.id, esdl_profile)
+        pm.add_object_to_dict(active_es.id, esdl_profile)
 
-        asset = get_asset_from_port_id(esh, active_es_id, port_id)
+        asset = get_asset_from_port_id(pm, active_es_id, port_id)
         if asset:
             ports = asset.port
             for p in ports:
@@ -2485,7 +2512,7 @@ def process_command(message):
         port_id = message['port_id']
         profile_id = message['profile_id']
 
-        asset = get_asset_from_port_id(esh, active_es_id, port_id)
+        asset = get_asset_from_port_id(pm, active_es_id, port_id)
         if asset:
             ports = asset.port
             for p in ports:
@@ -2508,7 +2535,7 @@ def process_command(message):
             direction = message['direction']
             ptype = 'InPort' if direction == 'in' else 'OutPort'
 
-        asset = esh.get_by_id(es_edit.id, asset_id)
+        asset = pm.get_by_id(active_es.id, asset_id)
         if ptype == 'InPort':
             port = esdl.InPort(id=pid, name=pname)
         else:
@@ -2526,13 +2553,13 @@ def process_command(message):
                 asset.port.insert(0, port)  # insert InPort always at beginning as this is the convention
             else:
                 asset.port.append(port)
-            esh.add_object_to_dict(active_es_id, port)
+            pm.add_object_to_dict(active_es_id, port)
             emit('update_asset', create_update_asset_message(asset))
 
     if message['cmd'] == 'remove_port':
         pid = message['port_id']
-        port:esdl.Port = esh.get_by_id(active_es_id, pid)
-        esh.remove_object_from_dict(active_es_id, port, recursive=True)
+        port:esdl.Port = pm.get_by_id(active_es_id, pid)
+        pm.remove_object_from_dict(active_es_id, port, recursive=True)
         port.delete()
         emit('update_asset', create_update_asset_message(port.energyasset))
 
@@ -2555,16 +2582,19 @@ def process_command(message):
     if message['cmd'] == 'remove_connection_portids': # user clicked remove connection by right-clicking on connection
         building_id = message['building_id'] if 'building_id' in message else None
         from_port_id = message['from_port_id']
-        from_port: esdl.Port = esh.get_by_id(es_edit.id, from_port_id)
+        from_port: esdl.Port = pm.get_by_id(active_es.id, from_port_id)
         to_port_id = message['to_port_id']
-        to_port: esdl.Port = esh.get_by_id(es_edit.id, to_port_id)
+        to_port: esdl.Port = pm.get_by_id(active_es.id, to_port_id)
         from_port.connectedTo.remove(to_port)
 
         from_asset_id = from_port.eContainer().id
         to_asset_id = to_port.eContainer().id
 
+        stack.update_label(f"Remove connection from {from_port.eContainer().name or from_port.name} "
+                               f"to {to_port.eContainer().name or to_port.name}")
+
         # refresh connections in gui
-        conn_list = get_session_for_esid(es_edit.id, 'conn_list')
+        conn_list = get_session_for_esid(active_es_id, 'conn_list')
         new_list = []
         for conn in conn_list:
             if (conn['from-port-id'] != from_port_id or conn['from-asset-id'] != from_asset_id or
@@ -2576,14 +2606,14 @@ def process_command(message):
                 new_list.append(conn)  # add connections that we are not interested in
             else:
                 print(' - removed {}'.format(conn))
-        set_session_for_esid(es_edit.id, 'conn_list', new_list)  # set new connection list
+        set_session_for_esid(active_es_id, 'conn_list', new_list)  # set new connection list
         if building_id:
             # building editor is open, so only update building connections.
-            building = esh.get_by_id(es_edit.id, building_id)
+            building = pm.get_by_id(active_es_id, building_id)
             bld_info = get_building_information(building)
             bld_conn_list = bld_info["conn_list"]
             emit('clear_connections', {'id': building_id})   # clear current active layer connections
-            emit('add_connections', {'es_id': es_edit.id, 'conn_list': bld_conn_list, 'add_to_building': True})
+            emit('add_connections', {'es_id': active_es.id, 'conn_list': bld_conn_list, 'add_to_building': True})
         if (not isinstance(from_port.energyasset.eContainer(), esdl.ExposedPortsAsset)
                     or not isinstance(to_port.energyasset.eContainer(), esdl.ExposedPortsAsset)):
             # only clear main map connections if not both assets are in a building
@@ -2592,19 +2622,19 @@ def process_command(message):
 
     # Not used anymore afaik.
     if message['cmd'] == 'remove_connection':
-        # socket.emit('command', {cmd: 'remove_connection', from_asset_id: from_asset_id, from_port_id: from_port_id,
-        #                         to_asset_id: to_asset_id, to_port_id: to_port_id, 'building_id': building_id});
         from_asset_id = message['from_asset_id']
         from_port_id = message['from_port_id']
-        from_port = esh.get_by_id(es_edit.id, from_port_id)
+        from_port = pm.get_by_id(active_es.id, from_port_id)
         to_asset_id = message['to_asset_id']
         to_port_id = message['to_port_id']
+        to_port = pm.get_by_id(active_es.id, to_port_id)
         building_id = message['building_id'] if 'building_id' in message else None
-        to_port = esh.get_by_id(es_edit.id, to_port_id)
         from_port.connectedTo.remove(to_port)
+        stack.update_label(f"Remove connection from {from_port.eContainer().name or from_port.name} "
+                               f"to {to_port.eContainer().name or to_port.name}")
 
         # refresh connections in gui
-        conn_list = get_session_for_esid(es_edit.id, 'conn_list')
+        conn_list = get_session_for_esid(active_es_id, 'conn_list')
         new_list = []
         for conn in conn_list:
             if (conn['from-port-id'] != from_port_id or conn['from-asset-id'] != from_asset_id or \
@@ -2619,33 +2649,33 @@ def process_command(message):
         set_session_for_esid(active_es_id, 'conn_list', new_list)  # set new connection list
         if building_id:
             # building editor is open, so only update building connections.
-            building = esh.get_by_id(es_edit.id, building_id)
+            building = pm.get_by_id(active_es_id, building_id)
             bld_info = get_building_information(building)
             conn_list = bld_info["conn_list"]
             emit('clear_connections', {'id': building_id})   # clear connection of building editor
-            emit('add_connections', {'es_id': es_edit.id, 'conn_list': conn_list, 'add_to_building': True})
+            emit('add_connections', {'es_id': active_es_id, 'conn_list': conn_list, 'add_to_building': True})
 
         # always clear the main layer, as the connection edited can be at two maps at the same time
         # only clear main map if the assets are not part of a abstract building or compound asset
         # if from_port.energyasset.containingBuilding is None or to_port.energyasset.containingBuilding is None:
         if (not isinstance(from_port.energyasset.eContainer(), esdl.ExposedPortsAsset)
                 or not isinstance(to_port.energyasset.eContainer(), esdl.ExposedPortsAsset)):
-            emit('clear_connections', {'id': es_edit.id})   # clear main layer connections
-            emit('add_connections', {'es_id': es_edit.id, 'conn_list': new_list, 'add_to_building': False})
+            emit('clear_connections', {'id': active_es_id})   # clear main layer connections
+            emit('add_connections', {'es_id': active_es_id, 'conn_list': new_list, 'add_to_building': False})
 
     if message['cmd'] == 'set_carrier':
         # one of asset_id or port_id is required to set the carrier
         asset_id = message['asset_id']
         port_id = message['port_id']
         carrier_id = message['carrier_id']
-        carrier: esdl.Carrier = esh.get_by_id(active_es_id, carrier_id)
+        carrier: esdl.Carrier = pm.get_by_id(active_es_id, carrier_id)
 
         print(f"set_carrier {asset_id}, {port_id}, {carrier_id}")
 
         asset = None
 
         if asset_id:
-            asset = esh.get_by_id(active_es_id, asset_id)
+            asset = pm.get_by_id(active_es_id, asset_id)
             num_ports = len(asset.port)
             if isinstance(asset, esdl.Transport) or num_ports == 1:
                 set_carrier_for_connected_transport_assets(asset, carrier)
@@ -2653,7 +2683,7 @@ def process_command(message):
                 send_alert("Error: Can only start setting carriers from transport assets or assets with only one port."
                            "\nUse right-click on the port of an asset to set specific port carriers.")
         elif port_id:
-            port: esdl.InPort | esdl.OutPort = esh.get_by_id(active_es_id, port_id)
+            port: esdl.InPort | esdl.OutPort = pm.get_by_id(active_es_id, port_id)
             set_carrier_for_connected_transport_assets_by_port(port, carrier)
             # as the set_carrier...by_port() returns a port list, do an update
             # of the port to the gui with the new carrier
@@ -2667,11 +2697,11 @@ def process_command(message):
         update_carrier_conn_list(asset)
 
     if message['cmd'] == 'add_carrier':
-        # en_carr: socket.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name, emission: carr_emission, encont: carr_encont, encunit: carr_encunit});
-        # el_comm: socket.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name, voltage: carr_voltage});
-        # g_comm: socket.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name, pressure: carr_pressure});
-        # h_comm: socket.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name, suptemp: carr_suptemp, rettemp: carr_rettemp});
-        # en_comm: socket.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name});
+        # en_carr: socketio.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name, emission: carr_emission, encont: carr_encont, encunit: carr_encunit});
+        # el_comm: socketio.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name, voltage: carr_voltage});
+        # g_comm: socketio.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name, pressure: carr_pressure});
+        # h_comm: socketio.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name, suptemp: carr_suptemp, rettemp: carr_rettemp});
+        # en_comm: socketio.emit('command', {cmd: 'add_carrier', type: carr_type, name: carr_name});
         carr_type = message['type']
         carr_name = message['name']
         carr_id = str(uuid.uuid4())
@@ -2730,35 +2760,35 @@ def process_command(message):
         if carr_type == 'en_comm':
             carrier = esdl.EnergyCarrier(id=carr_id, name=carr_name)
 
-        esh.add_object_to_dict(es_edit.id, carrier) # add carrier to ID list for easy retrieval
+        pm.add_object_to_dict(active_es.id, carrier) # add carrier to ID list for easy retrieval
 
-        esi = es_edit.energySystemInformation
+        esi = active_es.energySystemInformation
         if not esi:
             esi_id = str(uuid.uuid4())
             esi = esdl.EnergySystemInformation()
             esi.id = esi_id
-            es_edit.energySystemInformation = esi
-        esh.add_object_to_dict(es_edit.id, esi)
+            active_es.energySystemInformation = esi
+        pm.add_object_to_dict(active_es.id, esi)
 
         ecs = esi.carriers
         if not ecs:
             ecs_id = str(uuid.uuid4())
             ecs = esdl.Carriers(id=ecs_id)
             esi.carriers = ecs
-        esh.add_object_to_dict(es_edit.id, ecs)
+        pm.add_object_to_dict(active_es.id, ecs)
         ecs.carrier.append(carrier)
 
-        carrier_list = ESDLEnergySystem.get_carrier_list(es_edit)
-        emit('carrier_list', {'es_id': es_edit.id, 'carrier_list': carrier_list})
+        carrier_list = ESDLEnergySystem.get_carrier_list(active_es)
+        emit('carrier_list', {'es_id': active_es.id, 'carrier_list': carrier_list})
         return True
 
     if message['cmd'] == 'remove_carrier':
         carrier_id = message['carrier_id']
 
-        carrier = esh.get_by_id(es_edit.id, carrier_id)
+        carrier = pm.get_by_id(active_es.id, carrier_id)
         carrier.delete()
 
-        conn_list = get_session_for_esid(es_edit.id, 'conn_list')
+        conn_list = get_session_for_esid(active_es.id, 'conn_list')
         for c in conn_list:
             if c['from-port-carrier'] == carrier_id:
                 c['from-port-carrier'] = None
@@ -2766,7 +2796,7 @@ def process_command(message):
                 c['to-port-carrier'] = None
 
         emit('clear_connections')  # clear current active layer connections
-        emit('add_connections', {'es_id': es_edit.id, 'conn_list': conn_list})
+        emit('add_connections', {'es_id': active_es.id, 'conn_list': conn_list})
 
     if message['cmd'] == 'get_storage_strategy_info':
         asset_id = message['asset_id']
@@ -2781,7 +2811,7 @@ def process_command(message):
         emit('curtailment_strategy_window', {'asset_id': asset_id, 'max_power': max_power})
 
     if message['cmd'] == 'set_control_strategy':
-        # socket.emit('command', {'cmd': 'set_control_strategy', 'strategy': control_strategy, 'asset_id': asset_id, 'port_id': port_id});
+        # socketio.emit('command', {'cmd': 'set_control_strategy', 'strategy': control_strategy, 'asset_id': asset_id, 'port_id': port_id});
         strategy = message['strategy']
         asset_id = message['asset_id']
 
@@ -2832,7 +2862,7 @@ def process_command(message):
 
     if message['cmd'] == 'validate_for_ESSIM':
         logger.debug('validation for ESSIM command received')
-        res = validate_ESSIM(es_edit)
+        res = validate_ESSIM(active_es)
         emit('results_validation_for_ESSIM', res)
 
     # if message['cmd'] == 'calculate_ESSIM_KPIs':
@@ -2860,8 +2890,8 @@ def process_command(message):
 
     if message['cmd'] == 'get_es_info':
         attributes = [
-            {"id": 1, "name": "Energysystem name", "value": es_edit.name},
-            {"id": 2, "name": "Energysystem description", "value": es_edit.description}
+            {"id": 1, "name": "Energysystem name", "value": active_es.name},
+            {"id": 2, "name": "Energysystem description", "value": active_es.description}
         ]
         emit('show_es_info', attributes)
 
@@ -2870,35 +2900,34 @@ def process_command(message):
         value = message['value']
 
         if id == "1":
-            es_edit.name = value
+            active_es.name = value
         if id == "2":
-            es_edit.description = value
-            es_edit.description = value
+            active_es.description = value
+            active_es.description = value
 
     if message['cmd'] == 'add_sector':
         name = message['name']
         descr = message['descr']
         code = message['code']
-        ESDLEnergySystem.add_sector(es_edit, name, code, descr)
-        sector_list = ESDLEnergySystem.get_sector_list(es_edit)
-        emit('sector_list', {'es_id': es_edit.id, 'sector_list': sector_list})
+        ESDLEnergySystem.add_sector(active_es, name, code, descr)
+        sector_list = ESDLEnergySystem.get_sector_list(active_es)
+        emit('sector_list', {'es_id': active_es.id, 'sector_list': sector_list})
 
     if message['cmd'] == 'remove_sector':
         id = message['id']
-        esh = get_handler()
-        ESDLEnergySystem.remove_sector(es_edit, id)
-        sector_list = ESDLEnergySystem.get_sector_list(es_edit)
-        emit('sector_list', {'es_id': es_edit.id, 'sector_list': sector_list})
+        ESDLEnergySystem.remove_sector(active_es, id)
+        sector_list = ESDLEnergySystem.get_sector_list(active_es)
+        emit('sector_list', {'es_id': active_es.id, 'sector_list': sector_list})
 
     if message['cmd'] == 'set_sector':
         asset_id = message['asset_id']
         sector_id = message['sector_id']
 
-        instance = es_edit.instance
+        instance = active_es.instance
         area = instance[0].area
         asset = ESDLAsset.find_asset(area, asset_id)
 
-        esi = es_edit.energySystemInformation
+        esi = active_es.energySystemInformation
         sectors = esi.sectors
         sector = sectors.sector
         for s in sector:
@@ -2956,7 +2985,7 @@ def process_command(message):
         edr_asset_str = edr_client.get_object_from_EDR(edr_asset_id)
         if edr_asset_str:
             edr_asset = ESDLAsset.load_asset_from_string(edr_asset_str)
-            asset_to_be_replaced = esh.get_by_id(active_es_id, original_asset_id)
+            asset_to_be_replaced = pm.get_by_id(active_es_id, original_asset_id)
             asset_container: EObject = asset_to_be_replaced.eContainer()
 
             index_in_asset_list = asset_container.asset.index(asset_to_be_replaced)
@@ -2973,7 +3002,7 @@ def process_command(message):
 
             edr_asset.geometry = asset_to_be_replaced.geometry
 
-            esh.add_object_to_dict(active_es_id, edr_asset, recursive=True)
+            pm.add_object_to_dict(active_es_id, edr_asset, recursive=True)
             emit('update_asset', create_update_asset_message(edr_asset))
         else:
             send_alert('Error getting ESDL model from EDR')
@@ -3017,7 +3046,7 @@ def process_command(message):
 
     if message['cmd'] == 'building_editor':
         bld_id = message['id']
-        building = esh.get_by_id(active_es_id, bld_id)
+        building = pm.get_by_id(active_es_id, bld_id)
         bld_info = get_building_information(building)
         emit('building_information', bld_info)
         emit('add_esdl_objects',
@@ -3027,7 +3056,7 @@ def process_command(message):
 
     if message['cmd'] == 'get_building_connections':
         bld_id = message['id']
-        building = esh.get_by_id(active_es_id, bld_id)
+        building = pm.get_by_id(active_es_id, bld_id)
         return get_building_connections(building)
 
     if message['cmd'] == 'accept_received_esdl':
@@ -3036,27 +3065,29 @@ def process_command(message):
         if received_esdls:
             for received_esdl in received_esdls:
                 filename = 'ESDL from '+received_esdl['sender']
-                esh = get_handler()
+                pm = get_project_manager()
 
                 try:
-                    result, parse_info = esh.add_from_string(name=filename, esdl_string=urllib.parse.unquote(received_esdl['esdl']))
+                    variant, parse_info = pm.add_energy_system(StringURI(filename, urllib.parse.unquote(received_esdl['esdl'])))
+                    es = pm.get_energy_system(variant)
                     if len(parse_info) > 0:
                         info = ''
                         for line in parse_info:
                             info += line + "\n"
                         send_alert("Warnings while opening {}:\n\n{}".format(filename, info))
 
-                    call_process_energy_system.submit(esh, filename)  # run in seperate thread
+                    call_process_energy_system.submit(force_update_es_id=es.id)  # run in seperate thread
                     esdl_api.remove_esdls_for_user(user_email)
                 except Exception as e:
-                    logger.error("Error loading {}: {}".format(filename, e))
+                    logger.exception("Error loading {}: {}".format(filename, e))
                     send_alert('Error interpreting ESDL from file - Exception: ' + str(e))
 
     if message['cmd'] == 'rename_energysystem':
+        #TODO PM: handle?
         name = message['name']
         rename_es_id = message['remame_es_id']
 
-        es_rename = esh.get_energy_system(es_id=rename_es_id)
+        es_rename = pm.get_energy_system_by_id(es_id=rename_es_id)
         es_rename.name = name
 
     if message['cmd'] == 'remove_energysystem':
@@ -3069,18 +3100,57 @@ def process_command(message):
         clear_session_key_for_esid(remove_es_id, 'asset_list')
         clear_session_key_for_esid(remove_es_id, 'building_list')
         clear_session_key_for_esid(remove_es_id, 'area_bld_list')
-        esh.remove_energy_system(es_id=remove_es_id)
+        pm.remove_variant_by_energy_system_id(es_id=remove_es_id)
 
     if message['cmd'] == 'refresh_esdl':
-        print('refresh_esdl')
-        esh = get_handler()
-        call_process_energy_system.submit(esh, force_update_es_id=es_edit.id, zoom=False)  # run in separate thread
+        logger.info("Refreshing ESDL")
+        call_process_energy_system.submit(force_update_es_id=active_es.id, zoom=False)  # run in seperate thread
+
+    if message['cmd'] == 'undo':
+        logger.debug(f'Undo stack: {stack.stack}')
+        if stack.can_undo():
+            # stop recording as we don't want to record these redo changes in the ESDL (they are already on the stack)
+            stack.stop_recording()
+            stack.undo()
+            # do start recording, because the wrapper contains stop_recording otherwise issue with the recording lock...
+            stack.start_recording(label="undo")
+            # refresh the changes, now done by reparsing the whole energysystem... could be done smarter
+            call_process_energy_system.submit(force_update_es_id=active_es.id, zoom=False)  # run in seperate thread
+        else:
+            send_alert("Nothing to undo at this time")
+
+    if message['cmd'] == 'redo':
+        logger.debug(f'Redo stack: {stack.stack}')
+        if stack.can_redo():
+            # stop recording as we don't want to record these redo changes in the ESDL (they are already on the stack)
+            stack.stop_recording()
+            stack.redo()
+            # Do a start recording, because in wrapper is stop_recording otherwise issue with the lock...
+            stack.start_recording(label="redo")
+            # refresh the changes, now done by reparsing the whole energysystem... could be done smarter
+            call_process_energy_system.submit(force_update_es_id=active_es.id, zoom=False)  # run in seperate thread
+        else:
+            send_alert("Nothing to redo at this time")
+
+    if message['cmd'] == 'undo_redo_until':
+        target_idx = message['target_idx']
+        stack.stop_recording()
+        diff = stack.stack_index - target_idx
+        while diff > 0 and stack.can_undo():
+            stack.undo()
+            diff -= 1
+        while diff < 0 and stack.can_redo():
+            stack.redo()
+            diff += 1
+        # do a start recording, because undo wrapper contains stop_recording otherwise issue with the lock...
+        stack.start_recording(label="undo")
+        call_process_energy_system.submit(force_update_es_id=active_es.id, zoom=False)  # run in seperate thread
 
     if message['cmd'] == 'expose_port':
         port_id = message['port_id']
         building_id = message['building_id']
-        port: esdl.Port = esh.get_by_id(active_es_id, port_id)
-        exposed_port_asset: esdl.ExposedPortsAsset = esh.get_by_id(active_es_id, building_id)
+        port: esdl.Port = pm.get_by_id(active_es_id, port_id)
+        exposed_port_asset: esdl.ExposedPortsAsset = pm.get_by_id(active_es_id, building_id)
         if port in exposed_port_asset.port:
             exposed_port_asset.port.remove(port)
         else:
@@ -3098,13 +3168,17 @@ def process_command(message):
         # update asset on building map
         emit('update_asset', create_update_asset_message(port.energyasset))
 
-    set_handler(esh)
+    if message['cmd'] == 'debug':
+        pm = get_project_manager()
+        pm.debug(dump_project=True)
+
+    logger.debug("Undo/Redo size={}".format(len(stack.stack)))
+    #set_project_manager(pm)
     session.modified = True
 
 
 @executor.job
 def query_esdl_services(params):
-    esh = get_handler()
     logger.debug('calling service')
     try:
         results = esdl_services.call_esdl_service(params)
@@ -3114,14 +3188,18 @@ def query_esdl_services(params):
         esdl_service_ok = False
         esdl_service_result = str(exc)
         results = [esdl_service_ok, esdl_service_result, None]
+        logger.error("ESDL Services call error: " + esdl_service_result)
 
     for result in results:
         esdl_service_ok, esdl_service_result, backend_action = result
         logger.debug('emitting result to browser')
+        if backend_action and backend_action.get("skip_processing"):
+            continue
         esdl_service_result_post_esdl_load = None
         if esdl_service_ok:
             if esdl_service_result is not None:
-                if backend_action and "run_after_esdl_loaded" in backend_action and backend_action["run_after_esdl_loaded"]:
+                if backend_action and "run_after_esdl_loaded" in backend_action and backend_action[
+                    "run_after_esdl_loaded"]:
                     esdl_service_result_post_esdl_load = esdl_service_result  # emit after ESDL has been loaded
                 else:
                     emit('esdl_service_result', esdl_service_result)
@@ -3131,6 +3209,12 @@ def query_esdl_services(params):
             message = 'Error calling service'
             if isinstance(esdl_service_result, str):
                 message += ': ' + esdl_service_result
+            elif isinstance(esdl_service_result, requests.Response):
+                status_code = esdl_service_result.status_code
+                reason = esdl_service_result.reason
+                message += f': {status_code} - {reason}.'
+                if status_code == 401:
+                    message += " Please refresh the page."
             send_alert(message)
 
         # If call_esdl_service results indicate a certain EnergySystem MUST be (re-)processed, force it here
@@ -3140,8 +3224,7 @@ def query_esdl_services(params):
                 force_update_es_id = backend_action["force_update_es_id"]
 
         # logger.debug('processing energy system')
-        call_process_energy_system.submit(
-        esh, force_update_es_id=force_update_es_id, result_post_esdl_load=esdl_service_result_post_esdl_load
+        call_process_energy_system.submit(force_update_es_id=force_update_es_id, result_post_esdl_load=esdl_service_result_post_esdl_load
     )
 
 
@@ -3167,9 +3250,14 @@ def process_file_command(message):
         if name == '': name = 'New Energy System'
         if instance_name == '': instance_name = 'Untitled instance'
         if top_area_name == '': top_area_name = 'Untitled area'
-        filename = 'Unknown'
-        esh = EnergySystemHandler()
-        es = esh.create_empty_energy_system(name, description, instance_name, top_area_name, esdlVersion=esdl_doc.get_esdl_version())
+        filename = 'Unknown New ESDL file'
+        #esh = EnergySystemHandler()
+        #es = esh.create_empty_energy_system(name, description, instance_name, top_area_name, esdlVersion=esdl_doc.get_esdl_version())
+        pm = get_project_manager()
+        pm.init_empty_project(es_name=name, es_description=description, instance_name=instance_name,
+                              top_area_name=top_area_name)
+        emit_active_esdl_project()
+        es = pm.get_active_energy_system()
         es_info_list = {}
         set_session("es_info_list", es_info_list)
         emit('clear_ui')
@@ -3178,40 +3266,71 @@ def process_file_command(message):
         del_session("conn_list")
         del_session("asset_list")
         del_session("area_bld_list")
-        call_process_energy_system.submit(esh, filename)
+        call_process_energy_system.submit()
 
         del_session('store_item_metadata')
         emit('store_item_metadata', {})
         set_session('active_es_id', es.id)
         set_session('es_filename', filename)
+        send_init_new_project_to_lmi()
 
-    # TODO: remove when import through post is stable
+    # 02-2024: is not used anymore, see esdl_file_io
+    # if message['cmd'] == 'load_esdl_from_file':
+    #     # clears all loaded projects.
+    #     file_content = message['file_content']
+    #     filename = message['filename']
+    #     pm = get_project_manager()
+    #     try:
+    #         uri = StringURI(filename, file_content)
+    #         es_variant, parse_info = pm.add_energy_system(uri)
+    #         if len(parse_info) > 0:
+    #             info = ''
+    #             for line in parse_info:
+    #                 info += line + "\n"
+    #             send_alert("Warnings while opening {}:\n\n{}".format(filename, info))
+    #     except Exception as e:
+    #         logger.exception(f"Error opening {filename}")
+    #         send_alert("Error opening {}. Exception is: {}".format(filename, e))
+    #         emit('clear_ui')
+    #         return
+    #
+    #     es = pm.get_active_energy_system()
+    #     emit_active_esdl_project()
+    #     es_info_list = {}
+    #     set_session("es_info_list", es_info_list)
+    #     emit('clear_ui')
+    #     emit('clear_esdl_layer_list')
+    #     call_process_energy_system.submit(filename) # run in seperate thread
+    #     #thread = threading.Thread(target=process_energy_system, args=(esh, None, None, current_app._get_current_object() ))
+    #     #thread.start()
+    #
+    #     del_session('store_item_metadata')
+    #     emit('store_item_metadata', {})
+    #     set_session('active_es_id', es.id)
+    #     set_session('es_filename', filename)
+
+
+    # 01-2025: is not used anymore, see esdl_file_io
     # if message['cmd'] == 'import_esdl_from_file':
     #     file_content = message['file_content']
     #     filename = message['filename']
-    #     load_animation = False
-    #     if "load_animation" in message:
-    #         load_animation = message['load_animation']
-    #     esh = get_handler()
+    #     pm = get_project_manager()
     #
     #     try:
-    #         try:
-    #             imported_es, parse_info = esh.add_from_string(name=filename, esdl_string=file_content,
-    #                                                           overwrite_existing=False)
-    #
-    #             if len(parse_info) > 0:
-    #                 info = ''
-    #                 for line in parse_info:
-    #                     info += line + "\n"
-    #                 send_alert("Warnings while opening {}:\n\n{}".format(filename, info))
-    #             call_process_energy_system.submit(esh, filename, load_animation=load_animation)  # run in seperate thread
-    #             set_session('active_es_id', imported_es.id)
-    #             set_session('es_filename', filename)
-    #         except EnergySystemWithSameIdExists:
-    #             send_alert('An EnergySystem with the same EnergySystem ID was already loaded. Remove this existing ' +
-    #                        'EnergySystem first and then try to import again')
+    #         uri = StringURI(filename, file_content)
+    #         es_variant, parse_info = pm.add_energy_system(uri)
+    #         if len(parse_info) > 0:
+    #             info = ''
+    #             for line in parse_info:
+    #                 info += line + "\n"
+    #             send_alert("Warnings while opening {}:\n\n{}".format(filename, info))
+    #         emit_active_esdl_project()
+    #         call_process_energy_system.submit()  # run in separate thread
+    #         # TODO: This seems unused.
+    #         set_session('es_filename', filename)
+    #         send_add_variant_and_esdl_message_to_lmi(es_variant)
     #     except Exception as e:
-    #         logger.error("Error loading {}: {}".format(filename, e))
+    #         logger.exception("Error loading {}: {}".format(filename, e))
     #         send_alert('Error interpreting ESDL from file - Exception: ' + str(e))
 
     # Do not store file_content in logging database
@@ -3221,7 +3340,7 @@ def process_file_command(message):
     user_actions_logging.store_logging(user_email, "file-command", message['cmd'], json.dumps(message), "", {})
 
 #    if message['cmd'] == 'save_esdl':
-#        esh = get_handler()
+#        esh = get_project_manager()
 #        try:
 #            write_energysystem_to_file('./static/EnergySystem.esdl', esh)
 #            # TODO: do we need to flush??
@@ -3229,11 +3348,11 @@ def process_file_command(message):
 #        except Exception as e:
 #            send_alert('Error saving ESDL file to filesystem - exception: '+str(e))
 
-#    if message['cmd'] == 'download_esdl':
-#        esh = get_handler()
-#        name = get_session('es_title').replace(' ', '_')
-#
-#        send_ESDL_as_file(esh, name)
+   # if message['cmd'] == 'download_esdl':
+   #     esh = get_project_manager()
+   #     name = get_session('es_title').replace(' ', '_')
+   #
+   #     send_ESDL_as_file(esh, name)
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -3243,50 +3362,45 @@ def process_file_command(message):
 # ---------------------------------------------------------------------------------------------------------------------
 def initialize_app():
     session.permanent = True
-    logger.info('Client connected: {}'.format(request.sid))
+    logger.info('Client connected, socket.io ID: {}'.format(request.sid))
 
-    if 'client_id' in session:
-        logger.info('Energysystem in memory - reloading client data')
-        esh = get_handler()
-    else:
-        logger.info('No energysystem in memory - generating empty energysystem')
-        esh = EnergySystemHandler()
-        esh.create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area',
-                                       esdlVersion=esdl_doc.get_esdl_version())
+    pm = get_project_manager()
+    pm.add_change_listener(INCREMENTAL_UI_LISTENER_ID, change_handler)
 
-    # TODO: discuss how to set active_es_id for the first time after a client connects
-    es_list = esh.get_energy_systems()
-    if es_list:
-        last_es = es_list[-1]
-        set_session('active_es_id', last_es.id)
+    active_es = pm.get_active_energy_system()
+    if active_es:
+        set_session('active_es_id', active_es.id)
     else:
         # This happens when there is an exception in loading an EnergySystem
-        logger.error("No energy systems in esh list - Edwin and Ewoud discuss!!")
-        esh.create_empty_energy_system('Untitled EnergySystem', '', 'Untitled Instance', 'Untitled Area',
-                                       esdlVersion=esdl_doc.get_esdl_version())
+        logger.error("No energy systems in Project Manager - Edwin and Ewoud discuss!!")
 
+    client_id = session['client_id']
+    try:
+        send_project_manager_to_lmi_async(only_send_for_client_id=client_id)
+    except Exception:
+        logger.exception("Exception sending project manager to LMI")
     es_info_list = {}
     set_session("es_info_list", es_info_list)
     emit('clear_ui')
     emit('clear_esdl_layer_list')
-    call_process_energy_system.submit(esh, None, None) # run in a seperate thread
+    call_process_energy_system.submit(only_process_es_id=active_es.id)  # run in a separate thread
 
 
 @socketio.on('connect', namespace='/esdl')
-def connect():
-    logger.info("Websocket connection established")
+def connect(*args):
+    logger.info("Websocket connection established", args=args)
 
     if 'id' in session:
         logger.debug('- Old socketio id={}, new socketio id={}'.format(session['id'], request.sid))
     else:
         logger.debug('- Old socketio id={}, new socketio id={}'.format(None, request.sid))
     session['id'] = request.sid
-    set_session('socketio_sid', request.sid)
 
     # Client ID is used to retrieve session variables in handler_manager
     # So this is a very important session variable!!
     if 'client_id' in session:
         logger.debug('- Client id: {}'.format(session['client_id']))
+        set_session('socketio_sid', request.sid)
     else:
         logger.debug('- No client id in session')
     if not valid_session():
@@ -3318,11 +3432,6 @@ def browser_initialize():
         emit('alert', "Invalid credentials, please reload the page", namespace='/esdl')
         return
 
-    structlog.contextvars.clear_contextvars()
-    structlog.contextvars.bind_contextvars(
-        user=user_email
-    )
-
     role = get_session('user-role')
 
     model_contexts = ModelContexts.get_instance()
@@ -3348,7 +3457,7 @@ def browser_initialize():
 #  Disconnect
 # ---------------------------------------------------------------------------------------------------------------------
 @socketio.on('disconnect', namespace='/esdl')
-def on_disconnect(msg):
+def on_disconnect(msg=None):
     logger.info('SocketIO: Client disconnected', request_sid=request.sid, msg=msg)
 
 
@@ -3356,20 +3465,20 @@ def on_disconnect(msg):
 #  Error logging
 # ---------------------------------------------------------------------------------------------------------------------
 @socketio.on_error_default
-def default_error_handler(e):
-    logger.error('Error in SocketIO handler: '+str(e))
+def default_error_handler(msg):
+    logger.error('Error in SocketIO handler: ' + str(msg))
     import traceback
     logger.error('Socket IO message: {}'.format(request.event["message"]))  # "my error event"
     logger.error('Socket IO arguments: {}'.format(request.event["args"]))
     traceback.print_exc()
 
 
+parse_esdl_config()
+
 # ---------------------------------------------------------------------------------------------------------------------
 #  Start application
 # ---------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
-    parse_esdl_config()
     logger.info("Starting ESDL MapEditor application")
-
     user_actions_logging.store_logging("System", "application start", "", "", "", {})
     socketio.run(app, debug=settings.FLASK_DEBUG, host=settings.FLASK_SERVER_HOST, port=settings.FLASK_SERVER_PORT, use_reloader=False, allow_unsafe_werkzeug=True)

@@ -56,10 +56,11 @@ export default {
   },
   data() {
     return {
+      timeoutId: null,
       assetList: [],
       EDRAssets: [],
       recentEDRAssets: [],
-      isLoading: true
+      isLoading: true,
     };
   },
   mounted() {
@@ -75,6 +76,11 @@ export default {
       });
       window.socket.on('standard_assets_on_toolbar', function(res) {
         this_asset_toolbar.assetList = res;
+      });
+      window.map.on(window.L.Draw.Event.DRAWSTART, function(e) {
+        console.log('Adding mouse position listener through Draw.DRAWSTART');
+        console.log("DrawStart + assetPositioning ON");
+        this_asset_toolbar.assetPositioningFeedback();
       });
     });
   },
@@ -159,6 +165,28 @@ export default {
         imgsrc = window.drawTextImage(window.getAbbrevation(asset.edr_asset_type));
       }
       return imgsrc;
+    },
+    assetPositioningFeedback: function() {
+      // add a listener to the map's 'mousemove' event
+      const mouseMoveListener = function(event) {
+        // get the latitude and longitude from the event object's latlng property
+        if (this.timeoutId) {
+          clearTimeout(this.timeoutId);
+        }
+        const lat = event.latlng.lat;
+        const lng = event.latlng.lng;
+        // Set a new timeout to trigger the function after 300 milliseconds
+        this.timeoutId = setTimeout(() => {
+          const payload = {point: {lat: lat, lng: lng}};
+          window.socket.emit('events.asset.positioning', payload);
+        }, 200);
+      };
+      window.map.on('mousemove', mouseMoveListener);
+
+      window.map.on(window.L.Draw.Event.DRAWSTOP, function(e) {
+        console.log('Removing mouse position listener');
+        window.map.off("mousemove", mouseMoveListener)
+      });
     }
   },
 };

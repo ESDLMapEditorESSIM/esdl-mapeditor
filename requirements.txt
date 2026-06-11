@@ -4,13 +4,15 @@
 #
 #    pip-compile
 #
+amqp==5.2.0
+    # via kombu
 authlib==1.5.1
     # via
     #   -r requirements.in
     #   flask-oidc
 bidict==0.23.1
     # via python-socketio
-blinker==1.8.2
+blinker==1.9.0
     # via
     #   flask
     #   flask-oidc
@@ -18,11 +20,11 @@ build==1.2.1
     # via pip-tools
 cachelib==0.13.0
     # via flask-session
-certifi==2024.8.30
+certifi==2024.2.2
     # via
     #   pyproj
     #   requests
-cffi==1.16.0
+cffi==1.17.1
     # via cryptography
 charset-normalizer==3.3.2
     # via requests
@@ -64,7 +66,7 @@ geojson==3.1.0
     # via -r requirements.in
 geomet==0.2.1.post1
     # via -r requirements.in
-greenlet==3.0.3
+greenlet==3.1.1
     # via
     #   -r requirements.in
     #   sqlalchemy
@@ -76,9 +78,11 @@ influxdb==5.3.1
     # via -r requirements.in
 itsdangerous==2.2.0
     # via flask
-jinja2==3.1.4
+jinja2==3.1.3
     # via flask
-lxml==5.2.2
+kombu==5.3.5
+    # via -r requirements.in
+lxml==5.2.1
     # via
     #   pyecore
     #   xmldiff
@@ -90,9 +94,9 @@ mongomock==3.23.0
     # via -r requirements.in
 msgpack==0.6.1
     # via influxdb
-msgspec==0.18.6
+msgspec==0.19.0
     # via flask-session
-numpy==2.0.0
+numpy==1.26.4
     # via
     #   pandas
     #   shapely
@@ -122,7 +126,7 @@ pyecore==0.15.1
     # via -r requirements.in
 pymongo==3.11.0
     # via -r requirements.in
-pyproj==3.6.0
+pyproj==3.6.1
     # via -r requirements.in
 pyproject-hooks==1.1.0
     # via
@@ -144,16 +148,16 @@ pytz==2024.1
     # via
     #   influxdb
     #   pandas
-requests==2.32.3
+requests==2.31.0
     # via
     #   -r requirements.in
     #   flask-oidc
     #   influxdb
-restrictedpython==7.1
+restrictedpython==7.2a1.dev0
     # via pyecore
 sentinels==1.0.0
     # via mongomock
-shapely==2.0.4
+shapely==2.0.6
     # via -r requirements.in
 si-prefix==1.3.3
     # via -r requirements.in
@@ -167,14 +171,14 @@ six==1.16.0
     #   influxdb
     #   mongomock
     #   python-dateutil
-sqlalchemy==2.0.31
+sqlalchemy==2.0.38
     # via
     #   -r requirements.in
     #   flask-sqlalchemy
     #   sqlalchemy-utils
 sqlalchemy-utils==0.41.2
     # via -r requirements.in
-structlog==24.2.0
+structlog==24.1.0
     # via -r requirements.in
 typing-extensions==4.12.2
     # via
@@ -186,15 +190,19 @@ tzdata==2024.1
     #   psycopg
 urllib3==2.2.2
     # via requests
+vine==5.1.0
+    # via
+    #   amqp
+    #   kombu
 watchdog==5.0.2
     # via -r requirements.in
-werkzeug==3.0.3
+werkzeug==3.1.3
     # via flask
-wheel==0.43.0
+wheel==0.41.2
     # via pip-tools
 wsproto==1.2.0
     # via simple-websocket
-xmldiff==2.7.0
+xmldiff==2.6.3
     # via -r requirements.in
 
 # The following packages are considered to be unsafe in a requirements file:

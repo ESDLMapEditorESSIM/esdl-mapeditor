@@ -130,9 +130,17 @@ const loadEsdl = () => {
       window.hide_loader();
     });
   } else {
-    window.socket.emit("command", {cmd: "query_esdl_service", params: params}, () => {
-      if (stepParams.value.nextStep) {
-        goToStep(stepParams.value.nextStep);
+    window.socket.emit("command", {cmd: "query_esdl_service", params: params},() => {
+      window.socket.once('esdl_service_result', function(res) {
+        // Continue to the next workflow step when the external service call returns a result
+        // TODO: This is only emit when the service finished successfully. We should also handle errors.
+        if (stepParams.value.nextStep) {
+          goToStep(stepParams.value.nextStep);
+        }
+      });
+      // NOTE & TODO: quick and dirty fix; implement a proper loading state handling
+      if (props.workflowStep.id !== "validate_esdl") {
+        window.hide_loader();
       }
     });
   }

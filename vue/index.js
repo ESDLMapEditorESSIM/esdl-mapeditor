@@ -9,14 +9,13 @@ import MarginalCostsEdit from "@/apps/MarginalCostsEdit.vue";
 import ObjectProperties from '@/apps/ObjectProperties.vue';
 import EDRAssets from '@/apps/EDRAssets.vue';
 import EnvironmentalProfiles from '@/apps/EnvironmentalProfiles.vue';
-import AddEditWmsLayer from '@/apps/AddEditWmsLayer.vue';
+import AddEditServiceLayer from '@/apps/AddEditServiceLayer.vue';
 import SpatialVisualization from '@/apps/SpatialVisualization.vue';
 import Carriers from '@/apps/Carriers.vue';
 import Sectors from '@/apps/Sectors.vue';
 import AboutBox from '@/apps/AboutBox.vue';
 import ReleaseNotes from '@/apps/ReleaseNotes.vue';
 import {useReleaseNotes} from "./composables/releaseNotes";
-import ModelContext from "@/apps/ModelContext.vue";
 import SearchAssets from '@/apps/SearchAssets.vue';
 import AssetFeedback from '@/apps/AssetFeedback.vue';
 import AssetTableEditor from '@/apps/AssetTableEditor.vue';
@@ -29,12 +28,18 @@ import PortProfileEditor from "@/apps/PortProfileEditor.vue";
 import PortProfileViewer from '@/apps/PortProfileViewer.vue';
 import {
     createVueLControl,
+    createVueMapEditorDialog,
     mountApp,
     mountSettingsComponent,
     mountSidebarComponent,
     mountSidebarBottomComponent,
     mountTooltipComponent,
 } from "./mounts";
+import UndoRedoControl from "./apps/UndoRedoControl";
+import UndoRedoMenu from "./components/toolbars/UndoRedoMenu";
+import ToggleShowUndoRedoControl from './components/toolbars/ToggleShowUndoRedoControl'
+import ToggleProjectView from './components/projects/ToggleProjectView'
+import LoadProjectFileButton from './components/projects/LoadSaveProjectButtons';
 import AssetsToBeAddedToolbar from '@/components/toolbars/AssetsToBeAddedToolbar.vue'
 import AssetDrawToolbar from '@/components/toolbars/AssetDrawToolbar.vue'
 import AssetDrawToolbarEDRAssetsSettings from '@/components/toolbars/AssetDrawToolbarEDRAssetsSettings.vue'
@@ -46,21 +51,26 @@ import ServicesToolbar from '@/components/toolbars/ServicesToolbar.vue'
 import ToggleShowServicesToolbar from '@/components/toolbars/ToggleShowServicesToolbar.vue'
 import {useObject} from '@/composables/ObjectID';
 import {useAssetFeedbackList} from '@/composables/assetFeedback';
-import {useTooltipInfo} from '@/composables/TooltipInfo';
-import AssetTooltip from '@/apps/AssetTooltip.vue';
 import ActiveLongProcess from '@/components/progress/ActiveProcess.vue'
 import SidePane from "@/apps/SidePane.vue"
 // import ToggleActiveLongProcess from './components/progress/ToggleActiveLongProcess'
+import {useTooltipInfo} from './composables/TooltipInfo';
+import "./composables/toasts.js";
+import AssetTooltip from './apps/AssetTooltip';
 import './bridge.js';
 import Swal from "sweetalert2";
+import {useUndoRedo} from "./composables/undoRedo";
 import ActivityContextSelector from "@/apps/ActivityContextSelector.vue";
 import ActivityContextManagement from "@/apps/admin/AdminDialog.vue";
+import ApplicationContextSelector from "@/apps/application-context/ApplicationContextSelector.vue";
 import ResidentialArea from "@/apps/ResidentialArea.vue";
 import HeatTransition from "@/apps/HeatTransition.vue";
 import './utils/startDrawAsset';
 import ResultVisualizationsToolbar from "@/components/toolbars/ResultVisualizationsToolbar.vue";
+import ETMInterface from "@/apps/ETMInterface.vue";
 import {useReplaceEDRAsset} from "@/composables/replaceEDRAsset";
 import ToastNotifications from "@/apps/ToastNotifications.vue";
+import PromptDialog from "@/apps/PromptDialog.vue";
 
 // Vue.config.productionTip = false
 
@@ -138,6 +148,10 @@ window.edr_asset_window = () => {
     mountSidebarComponent(EDRAssets);
 }
 
+window.etm_interface_window = () => {
+    mountSidebarComponent(ETMInterface);
+}
+
 window.show_tooltip = (object_title, object_id, el_id, es_id) => {
     const { newTooltipObjectID, newTitle, newESid } = useTooltipInfo();
     newTooltipObjectID(object_id);
@@ -182,10 +196,10 @@ window.activate_admin_settings = () => {
     mountApp(ActivityContextManagement, '#admin_dialog_window');
 }
 
-window.add_edit_wms_layer = (object_id) => {
+window.add_edit_web_service_layer = (object_id) => {
     const { newObject } = useObject();
     newObject(object_id);
-    mountSidebarComponent(AddEditWmsLayer)
+    mountSidebarComponent(AddEditServiceLayer)
 }
 
 window.open_spatial_visualization = () => {
@@ -205,20 +219,41 @@ window.show_new_release_notes = () => {
 // mountApp(ModelContext, '#vue_model_context')
 
 createVueLControl(ServicesToolbar, {position: 'topleft'});
-createApp(ToggleShowServicesToolbar).mount('#vue_toggle_show_services_toolbar')
+mountApp(ToggleShowServicesToolbar, '#vue_toggle_show_services_toolbar')
+
+const {undoRedoMapEditorDialog, showUndoRedoControl} = useUndoRedo();
+const mapEditorDialog = createVueMapEditorDialog(UndoRedoControl, {
+    initOpen: false,
+    size: [300, 500],
+    maxSize: [2000, 1200],
+    onClose: () => showUndoRedoControl.value = false,
+});
+mapEditorDialog._handleMinimize();
+undoRedoMapEditorDialog.value = mapEditorDialog;
+mountApp(ToggleShowUndoRedoControl, '#vue_toggle_show_undo_redo_control');
+var mountEl = document.querySelector("#vue_undo_menu");
+createApp(UndoRedoMenu, {...mountEl.dataset}).mount('#vue_undo_menu');
+mountEl = document.querySelector("#vue_redo_menu");
+createApp(UndoRedoMenu, {...mountEl.dataset}).mount('#vue_redo_menu');
 
 createVueLControl(AssetDrawToolbar, {});
-createApp(ToggleShowAssetDrawToolbar).mount('#vue_toggle_show_asset_draw_toolbar')
+mountApp(ToggleShowAssetDrawToolbar, '#vue_toggle_show_asset_draw_toolbar')
 mountApp(SidePane, '#vue_side_pane_root')
 createApp(ActivityContextSelector).mount('#vue_activity_context_selector')
+createApp(ApplicationContextSelector).mount('#vue_application_context_selector')
+
+mountApp(ToggleProjectView, '#vue_toggle_show_project_view')
+mountApp(LoadProjectFileButton, '#vue_load_project_file')
 
 const [,toastNotificationInstance] = mountApp(ToastNotifications, '#toast_notifications');
 import {useToastNotifications} from "@/composables/toastNotifications";
 const {setToastNotificationsInstance } = useToastNotifications();
 setToastNotificationsInstance(toastNotificationInstance);
 
+mountApp(PromptDialog, '#prompt_dialog');
+
 createVueLControl(AssetsToBeAddedToolbar, {
-        position: 'bottomright',
+    position: 'bottomright',
 });
 
 window.activate_table_editor_window = () => {

@@ -3,6 +3,7 @@
 
 stages:
   - build
+  - test
 
 variables:
   TAG: $CI_COMMIT_SHA
@@ -54,3 +55,22 @@ build-mapeditor-gunicorn:
 #    - docker build --build-arg git_commit=$TAG . -f docker/Dockerfile-uwsgi-yarn --cache-from $IMAGE:$BRANCH -t $IMAGE:$TAG -t $IMAGE:$BRANCH
 #    - docker push $IMAGE:$TAG
 #    - docker push $IMAGE:$BRANCH
+
+#.___________. _______     _______.___________.
+#|           ||   ____|   /       |           |
+#`---|  |----`|  |__     |   (----`---|  |----`
+#    |  |     |   __|     \   \       |  |
+#    |  |     |  |____.----)   |      |  |
+#    |__|     |_______|_______/       |__|
+
+test-mapeditor:
+  stage: test
+  variables:
+    IMAGE: $IMAGE_BASE/esdl-mapeditor
+  except:
+    variables:
+      - $SKIP_TESTS == "true"
+  retry: 1
+  allow_failure: true
+  script:
+    - docker run --entrypoint "/bin/sh" $IMAGE:$TAG tests-entrypoint.sh

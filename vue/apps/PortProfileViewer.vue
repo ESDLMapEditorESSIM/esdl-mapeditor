@@ -64,15 +64,15 @@
 </template>
 
 <script setup>
-import { ref, h, onMounted, onUnmounted } from "vue";
-import { LoadingOutlined, InfoCircleOutlined } from "@ant-design/icons-vue";
+import {h, onMounted, onUnmounted, ref} from "vue";
+import {InfoCircleOutlined, LoadingOutlined} from "@ant-design/icons-vue";
 import dayjs from "dayjs";
 
-import { fetchData } from "@/utils/api";
-import { config, normalizePlotlyDateTimeStr } from "@/utils/profileVisualization";
-import { displayNotification } from "@/utils/notification";
-import { useObject } from "@/composables/ObjectID";
-import { useEsdlLayers } from "@/composables/esdlLayers";
+import {fetchData} from "@/utils/api";
+import {config, normalizePlotlyDateTimeStr} from "@/utils/profileVisualization";
+import {displayNotification} from "@/utils/notification";
+import {useObject} from "@/composables/ObjectID";
+import {useEsdlLayers} from "@/composables/esdlLayers";
 import AnalyticsPlot from "@/components/plot/AnalyticsPlot.vue";
 
 const { currentObjectID } = useObject();
@@ -196,17 +196,26 @@ const listProfileOptions = async (esId, selectedAssetIds) => {
           children: port.port_profiles.map((p) => {
             const profileClass = p.profileClass;
             const profileObj = p.profileObj;
-            if (profileClass === "InfluxDBProfile" || profileClass === "DataTableProfile") {
-              const profileDisplayedName = `${profileObj.columnName} [${profileObj.profileQuantityAndUnit?.description?.split(" ").at(-1) ?? "Unknown"}]`;
+            if (profileClass === "InfluxDBProfile" || profileClass === "DataTableProfile" || profileClass === "TimeSeriesProfile") {
+              const profileName = profileClass === "TimeSeriesProfile"
+                ? profileObj.name || profileObj.id
+                : profileObj.columnName || profileObj.name || "Undefined";
+              const profileDisplayedName = `${profileName} [${profileObj.profileQuantityAndUnit?.description?.split(" ").at(-1) ?? "Undefined"}]`;
+
+              if (profileClass === "TimeSeriesProfile") {
+                displayNotification(
+                  "warning",
+                  `Profile downsampling is not supported for ${profileClass} profile ${profileDisplayedName}.`
+                );
+              }
+
               return {
                 title: profileDisplayedName,
                 value: profileObj.id,
                 checkable: true,
               }
-            }
-            // SingleValue profile
-            else {
-              const profileDisplayedName = `${profileObj.name || profileObj.id} [${profileObj.profileQuantityAndUnit?.description?.split(" ").at(-1) ?? "Unknown"}]`;
+            } else {
+              const profileDisplayedName = `${profileObj.name || profileObj.id} [${profileObj.profileQuantityAndUnit?.description?.split(" ").at(-1) ?? "Undefined"}]`;
               displayNotification(
                 "warning",
                 `${profileClass} profile ${profileDisplayedName} is not supported for visualization in Port Profile Viewer.`

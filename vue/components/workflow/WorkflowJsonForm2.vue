@@ -8,16 +8,15 @@
       :renderers="renderers"
       :ajv="ajv"
       @change="onChange"
-      @input="validateEvent"
-      @keyup="validateEvent"
+      @focusout="validateEvent"
     />
     <a-button
-      v-if="stepParams.nextStepTrigger === WorkflowNextStepTriggerOptions.BUTTON_CLICK && stepParams.buttonText"
+      v-if="stepParams.nextStepTrigger === WorkflowNextStepTriggerOptions.BUTTON_CLICK"
       type="primary"
       :disabled="!isAllInputValid()"
       @click="onSubmit"
     >
-      {{ stepParams.buttonText }}
+      {{ stepParams.buttonText || 'Submit' }}
     </a-button>
   </div>
 </template>
@@ -138,6 +137,10 @@ const validateEvent = (event) => {
   let varValue = event.target.value;
   if (["number", "integer"].includes(schema["properties"][varName]["type"]) && varValue !== "") {
     varValue = Number(varValue);
+  }
+
+  if (dataToSubmit[varName] === varValue) {
+    return;
   }
 
   dataToSubmit[varName] = varValue;

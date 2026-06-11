@@ -10204,7 +10204,7 @@ if ( xhrSupported ) {
 						xhr = options.xhr(),
 						id = ++xhrId;
 
-					// Open the socket
+					// Open the socketio
 					xhr.open(
 						options.type,
 						options.url,

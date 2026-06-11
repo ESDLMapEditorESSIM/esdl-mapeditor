@@ -11,27 +11,29 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+import json
 import logging
+import re
+import statistics
 from datetime import datetime
 from enum import Enum
-from typing import Any, TypedDict, List, Dict, Optional, Sequence, Iterable
-import json
+from typing import Any, TypedDict, List, Dict, Optional, Sequence, Iterable, Tuple
 
+import pandas as pd
 from flask import Flask
 from flask_socketio import SocketIO
-from sqlalchemy import select, delete, column
-from sqlalchemy.orm import Session
-from sqlalchemy.sql import text, func
-from sqlalchemy.exc import IntegrityError
-import pandas as pd
 from pandas import DataFrame
+from sqlalchemy import select, delete, column, create_engine
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.orm import Session
+from sqlalchemy.schema import DropTable
+from sqlalchemy.sql import text, func
 
 import esdl
 from esdl.processing.ESDLAsset import get_asset_capability_type
-from esdl.units.parser import unit_to_string
-from extensions.data_manager.db_interaction import create_db_tables, get_db_driver_type, DriverType, create_db, drop_db, \
-    drop_db_tables
-from extensions.profiles import Profiles, ProfileVizOptions, EmptyProfileWarning
+from esdl.units.conversion import convert_to_unit, UnitException
+from esdl.units.parser import unit_to_string, qau_to_string, build_qau_from_unit_string
 from extensions.data_manager import db
 from extensions.data_manager.data_manager_message import (ChartType,
                                                           MetadataUpdateRequestBody,
@@ -42,12 +44,12 @@ from extensions.data_manager.data_manager_message import (ChartType,
                                                           QueryRequestBody,
                                                           ProfileVizType,
                                                           ProfileAggInterval)
+from extensions.data_manager.db_interaction import create_db_tables, get_db_driver_type, DriverType, create_db, drop_db
 from extensions.data_manager.db_model import DataSet, Variable, DataType, Data, BaseModel
-from extensions.session_manager import get_handler, get_session
+from extensions.profiles import Profiles, ProfileVizOptions, EmptyProfileWarning
+from extensions.session_manager import get_session, get_project_manager
 from src import settings
 from src.log import get_logger
-import statistics
-
 from utils.utils import camelCaseToWords
 
 logger = get_logger(__name__)
@@ -73,6 +75,11 @@ class Label(TypedDict):
 
 dt_str_format = '%Y-%m-%d %H:%M:%S'
 
+@compiles(DropTable, "postgresql")
+def _compile_drop_table(element, compiler, **kwargs):
+    return compiler.visit_drop_table(element) + " CASCADE"
+
+
 def physical_q_to_str(qau: esdl.QuantityAndUnitType):
     if qau.physicalQuantity:
         name:str = qau.physicalQuantity.name
@@ -84,6 +91,7 @@ def filter_none(input_list: Sequence) -> List:
     return [x for x in input_list if x is not None]
 
 def update_kpi_metadata(kpi: esdl.KPI, data: Data):
+    # logger.debug('Handle KPI ', kpi_name=kpi.name)
     labels = {}
     kpis_container = kpi.eContainer()
     level_cnt: int = 0
@@ -105,6 +113,7 @@ def update_kpi_metadata(kpi: esdl.KPI, data: Data):
     elif isinstance(container, esdl.Area):
         # area KPI
         data.region = container.name
+        labels['Area type'] = container.scope.name
 
     if len(labels) > 0:
         data.labels = labels
@@ -141,11 +150,11 @@ def check_qau(qau: esdl.AbstractQuantityAndUnit) -> esdl.QuantityAndUnitType:
         qau = esdl.QuantityAndUnitType()  # empty/unknown unit
     return qau
 
-def handle_profile(profile: esdl.InfluxDBProfile | esdl.DataTableProfile, ds: DataSet):
+def handle_profile(profile: esdl.InfluxDBProfile | esdl.DataTableProfile | esdl.TimeSeriesProfile, ds: DataSet):
     """
-    Process an esdl (legacy) InfluxDBProfile or DataTableProfile
+    Process an esdl (legacy) InfluxDBProfile, DataTableProfile, or TimeSeriesProfile
 
-    :param profile: InfluxDBProfile or DataTableProfile to process
+    :param profile: InfluxDBProfile, DataTableProfile or TimeSeriesProfile to process
     :param ds: Data set this data belongs to
     :return: Data point, its unit and variable_name of this data point
     """
@@ -155,6 +164,9 @@ def handle_profile(profile: esdl.InfluxDBProfile | esdl.DataTableProfile, ds: Da
     if isinstance(profile, esdl.InfluxDBProfile):
         profile = Profiles.influxdbprofile_to_datatableprofile(profile)
 
+    if isinstance(profile, esdl.TimeSeriesProfile):
+        profile.columnName = profile.name
+
     d = Data(dataset=ds, value=None) # Default value to None
     qau = check_qau(profile.profileQuantityAndUnit)
     variable_name = f"{profile.columnName} [{unit_to_string(qau)}]"
@@ -162,9 +174,11 @@ def handle_profile(profile: esdl.InfluxDBProfile | esdl.DataTableProfile, ds: Da
     labels = {}
     # Label profile id, so it can be retrieved when the query_profile() method is called.
     labels['profile_id'] = profile.id
-    # TBD: Measurement label is from (legacy) InfluxDBProfile (profile.measurement), keep using it to avoid confusing users?
-    labels['Measurement'] = profile.tableName
     labels['Profile Type'] = profile.profileType.name
+    # TBD: Measurement label is from (legacy) InfluxDBProfile (profile.measurement), keep using it to avoid confusing users?
+    # This tag is not applicable to TimeSeriesProfile
+    if not isinstance(profile, esdl.TimeSeriesProfile):
+        labels['Measurement'] = profile.tableName
 
     if isinstance(container, esdl.Port):
         port: esdl.Port = container
@@ -183,7 +197,7 @@ def handle_profile(profile: esdl.InfluxDBProfile | esdl.DataTableProfile, ds: Da
             d.node = asset.name or asset.id
             d.region = area.name
             d.technology = asset.eClass.name
-        
+
         if isinstance(port, esdl.InPort):
             d.input = port.carrier.name if port.carrier else None
             labels["Flow direction"] = 'In'
@@ -206,17 +220,21 @@ def handle_profile(profile: esdl.InfluxDBProfile | esdl.DataTableProfile, ds: Da
         logger.warn("Profile with ProfileConstraint as a container is not yet supported")
 
     d.labels = labels
-    
+
     return d, qau, variable_name
 
-def handle_static_profile(profile: esdl.StaticProfile, ds: DataSet, variable_name: str = None) -> [Data, esdl.QuantityAndUnitType, str]:
+def handle_static_profile(profile: esdl.StaticProfile, ds: DataSet,
+                          variable_name: str = None,
+                          target_energy_qau: esdl.QuantityAndUnitType = None) -> Tuple[
+    Data, esdl.QuantityAndUnitType, str]:
     """
     Process an esdl StaticProfile
 
     :param profile: Profile to process
     :param ds: Data set this data belongs to
     :param variable_name: variable name of this data point if already known, otherwise it will be created
-    
+    :param target_energy_qau: target energy quantity and unit of this variable. Defaults to None for no conversion
+
     :return: Data point, its unit and variable_name of this data point
     """
     container = profile.eContainer() # save profile container (e.g. asset, also in case it is a reference)
@@ -226,6 +244,9 @@ def handle_static_profile(profile: esdl.StaticProfile, ds: DataSet, variable_nam
         multiplier = multiplier * profile.multiplier
         profile = profile.reference
     qau = check_qau(profile.profileQuantityAndUnit)
+    # convert PJ -> TWh and vice verse if needed.
+    multiplier, qau = convert_to_target_energy_unit(multiplier, qau, target_energy_qau)
+
     d = Data(dataset=ds, value=None) # Default value to None
     # TODO: is this needed?
     if isinstance(profile, esdl.TimeSeriesProfile):
@@ -251,7 +272,8 @@ def handle_static_profile(profile: esdl.StaticProfile, ds: DataSet, variable_nam
             labels['Parent asset'] = container_asset.name
         d.sector = asset.sector.name if asset.sector else None
         d.node = asset.name or asset.id
-        d.region = area.name
+        d.region = area.name or area.id
+        labels['Area type'] = area.scope.name
         d.technology = asset.eClass.name
 
         variable_name = f'{physical_q_to_str(qau)} [{unit_to_string(qau)}]'
@@ -279,7 +301,6 @@ def handle_static_profile(profile: esdl.StaticProfile, ds: DataSet, variable_nam
             labels["Cost type"] = original_profile.name
         if not variable_name:
             variable_name = f'{physical_q_to_str(qau)} [{unit_to_string(qau)}]'
-            # variable_name =
         asset = container.eContainer()
         if isinstance(asset, esdl.EnergyAsset):  # Ignore Measure here as it should not be taken into account
             asset_container = asset.eContainer()
@@ -292,7 +313,7 @@ def handle_static_profile(profile: esdl.StaticProfile, ds: DataSet, variable_nam
                     labels['Parent asset'] = container_asset.name
                 d.sector = asset.sector.name if asset.sector else None
                 d.node = asset.name or asset.id
-                d.region = area.name
+                d.region = area.name or area.id
                 d.technology = asset.eClass.name
             labels["Ownership"] = "Unassigned"
             if asset.isOwnedBy is not None:
@@ -301,7 +322,7 @@ def handle_static_profile(profile: esdl.StaticProfile, ds: DataSet, variable_nam
             labels['Capability'] = capability
         d.labels = labels
     # else:
-    #     # e.g. container is Profiles section, we can ignore these as they are not directy attached to an asset port
+    #     # e.g. container is Profiles section, we can ignore these as they are not directly attached to an asset port
     #     continue
 
     if d.value is None:
@@ -309,6 +330,28 @@ def handle_static_profile(profile: esdl.StaticProfile, ds: DataSet, variable_nam
         # To handle None value if required...
 
     return d, qau, variable_name
+
+def convert_to_target_energy_unit(value: float,
+                                  source_qau: esdl.QuantityAndUnitType,
+                                  target_energy_qau: esdl.QuantityAndUnitType | None) -> Tuple[float, esdl.QuantityAndUnitType]:
+    """
+    Converts a value in e.g. TJ to J if target_energy_qau is in J and source_qau is in TJ only if
+    PhysicalQuantity is Energy.
+    In case of errors it will do nothing.
+    :returns: converted value if successful and new Quantity and unit, otherwise returns the original input
+
+    """
+    if target_energy_qau is not None:
+        if source_qau.physicalQuantity == esdl.PhysicalQuantityEnum.ENERGY:
+            try:
+                # logger.debug(f"Converting {qau_to_string(qau)} to {qau_to_string(target_energy_qau)}")
+                value = convert_to_unit(value, source_unit=source_qau, target_unit=target_energy_qau)
+                source_qau = target_energy_qau  # use target QaU in rest of calculation
+            except UnitException as e:
+                logger.warning(
+                    f"Converting from {qau_to_string(source_qau)} to {qau_to_string(target_energy_qau)} failed: {e}")
+                pass  # don't convert
+    return value, source_qau
 
 def preprocess_column(column_name: str) -> Any:
     if 'sqlite' in settings.SQLALCHEMY_DATABASE_URI:
@@ -350,7 +393,7 @@ def aggregate_profile_data_by_interval(df: DataFrame, interval: str, agg_func: s
         label_format = 'Week-%U-%Y'
     else:
         raise ValueError(f"Unsupported interval: {interval}")
-    
+
     aggregated_data = df.resample(resample_interval).agg({'value': agg_func.lower()})
     aggregated_data.reset_index(inplace=True)
 
@@ -371,7 +414,7 @@ class DataManager:
     def register(self):
         logger.info("Registering DataManager extension")
         sqllogger = logging.getLogger("sqlalchemy.engine")
-        sqllogger.setLevel(logging.WARNING)
+        sqllogger.setLevel(logging.ERROR)
         logger.info(f"Connecting to Data Manager database using: {settings.SQLALCHEMY_DATABASE_URI}")
         self.flask_app.config.update({"SQLALCHEMY_DATABASE_URI": settings.SQLALCHEMY_DATABASE_URI})
         db.init_app(self.flask_app)  # init SQLAlchemy
@@ -385,14 +428,31 @@ class DataManager:
                 create_db(self.flask_app.config["SQLALCHEMY_DATABASE_URI"])
             else:
                 # The sqlite approach doesn't work well with Postgres, so just dropping the tables.
-                drop_db_tables()
+                # drop_db_tables()
+                engine = create_engine(settings.SQLALCHEMY_DATABASE_URI)
+
+                try:
+                    DataSet.__table__.drop(bind=engine)
+                except:
+                    pass
+
+                try:
+                    Variable.__table__.drop(bind=engine)
+                except:
+                    pass
+
+                try:
+                    Data.__table__.drop(bind=engine)
+                except:
+                    pass
+
                 create_db_tables()
 
         @self.socketio.on("datamanager/metadata/add_update", namespace="/esdl")
         def _add_or_update_metadata(params: Dict) -> str:
             req_body = MetadataUpdateRequestBody(**params)
             session_owner = get_session("user-email")
-            resp = self.add_or_update_metadata(db.session, es_id=req_body.es_id, owner=session_owner)
+            resp = self.add_or_update_metadata(db.session, variant_id=req_body.es_id, owner=session_owner, energy_unit=req_body.energyUnit)
             return json.dumps(resp.__dict__)
         
         @self.socketio.on("datamanager/metadata/delete", namespace="/esdl")
@@ -401,6 +461,19 @@ class DataManager:
             session_owner = get_session("user-email")
             resp = self.delete_dataset(db.session, dataset_name=req_body.dataset_name, owner=session_owner)
             return json.dumps(resp.__dict__)
+
+        @self.socketio.on("datamanager/variants", namespace="/esdl")
+        def _get_variants() -> list:
+            pm = get_project_manager()
+            variants = pm.get_variants()
+            response = []
+            for variant in variants:
+                response.append({
+                    'id': variant.id,
+                    'name': variant.name,
+                    'description': variant.description,
+                })
+            return response
 
         @self.socketio.on("datamanager/datasets", namespace="/esdl")
         def _get_datasets() -> list:
@@ -416,7 +489,7 @@ class DataManager:
         def _get_columns(params: Dict) -> dict:
             req_body = GetColumnsRequestBody(**params)
             return self.get_columns(db.session, dataset_ids=req_body.dataset_ids, variable_name=req_body.variable_name)
-                
+
         @self.socketio.on("datamanager/query", namespace="/esdl")
         def _query(params: Dict) -> dict:
             params['chart_type'] = ChartType(params['chart_type'])
@@ -428,16 +501,24 @@ class DataManager:
             else:
                 return self.query(db.session, options=req_body)
 
-    def process_esdl(self, es: esdl.EnergySystem, owner: str) -> List[BaseModel]:
+    def process_esdl(self, es: esdl.EnergySystem, owner: str, energy_unit: str) -> List[BaseModel]:
         """
         Processes the ESDL and returns a list of DataSet, Variable, and Data as database entries.
 
         :param es: ecore EObject  (e.g. EnergySystem)
         :param owner: The owner/email of the dataset that is created
+        :param energy_unit: target energy unit to convert to when input QaU for profiles is different
 
         :return: List of database entries to add to the database (BaseModel subclasses)
         """
         logger.info(f"Processing ESDL {es.name} [{es.id}]")
+
+        if energy_unit is None or energy_unit == '' or energy_unit.lower() == 'none':
+            target_energy_qau = None
+        else:
+            target_energy_qau = build_qau_from_unit_string(energy_unit)
+            target_energy_qau.physicalQuantity = esdl.PhysicalQuantityEnum.ENERGY
+
         data_list: List[BaseModel] = []
         variables: Dict[str, Variable] = {}
 
@@ -447,6 +528,8 @@ class DataManager:
             if isinstance(first_instance.date, esdl.InstanceDate):
                 instance_datetime: datetime = first_instance.date.date
                 year = instance_datetime.year
+            elif isinstance(first_instance.date, esdl.InstanceYear):
+                year = first_instance.date.year
 
         ds = DataSet(name=es.name, energy_system_id=es.id, created_by=owner, description=es.description, model="Unknown")
 
@@ -458,15 +541,18 @@ class DataManager:
             d = None
             variable_name = None
             is_profile_variable = None
+            d = None
+            qau = None
 
-            if isinstance(eobj, esdl.SingleValue) or isinstance(eobj, esdl.TimeSeriesProfile):
+            if isinstance(eobj, esdl.SingleValue):
                 # single value profile
                 # profile: esdl.SingleValue = eobj
-                d, qau, variable_name = handle_static_profile(eobj, ds, variable_name)
+                d, qau, variable_name = handle_static_profile(eobj, ds, variable_name, target_energy_qau)
             elif isinstance(eobj, esdl.ProfileReference):
                 # handle reference too, as we need a reference to the asset
-                d, qau, variable_name = handle_static_profile(eobj, ds, variable_name)
-            elif isinstance(eobj, esdl.InfluxDBProfile) or isinstance(eobj, esdl.DataTableProfile):
+                # TODO: Why is this handled as static profile instead of InfluxDBProfile? Can this be made more generic?
+                d, qau, variable_name = handle_static_profile(eobj, ds, variable_name, target_energy_qau)
+            elif isinstance(eobj, (esdl.InfluxDBProfile, esdl.DataTableProfile, esdl.TimeSeriesProfile)):
                 # skip profileConstraint profiles handling
                 if isinstance(eobj.eContainer(), esdl.ProfileConstraint):
                     continue
@@ -477,17 +563,18 @@ class DataManager:
                 d.labels = d.labels if d.labels is not None else {}
                 update_kpi_metadata(eobj, d)
                 qau = check_qau(eobj.quantityAndUnit)
+                d.value, qau = convert_to_target_energy_unit(eobj.value, qau, target_energy_qau)
                 variable_name = f'KPI - {physical_q_to_str(qau)} [{unit_to_string(qau)}]'
                 d.labels["KPI type"] = eobj.name
-                d.value = eobj.value
+
             elif isinstance(eobj, esdl.IntKPI):
                 d = Data(dataset=ds)
                 d.labels = d.labels if d.labels is not None else {}
                 update_kpi_metadata(eobj, d)
                 qau = check_qau(eobj.quantityAndUnit)
+                d.value, qau = convert_to_target_energy_unit(float(eobj.value), qau, target_energy_qau)
                 variable_name = f'KPI - {physical_q_to_str(qau)} [{unit_to_string(qau)}]'
                 d.labels["KPI type"] = eobj.name
-                d.value = float(eobj.value)
             elif isinstance(eobj, esdl.StringItem):
                 # part of DistributionKPI
                 d = Data(dataset=ds)
@@ -499,6 +586,8 @@ class DataManager:
                 update_kpi_metadata(distribution_kpi, d)
                 d.labels = d.labels if d.labels is not None else {}
                 qau = check_qau(distribution_kpi.quantityAndUnit)
+                original_unit = unit_to_string(qau)
+                d.value, qau = convert_to_target_energy_unit(eobj.value, qau, target_energy_qau)
                 main_kpi = distribution_kpi  # use main kpi (parent KPI) as name, calculate this here
                 # calculate label prefix for sub kpis
                 if 'KPI level' in d.labels:
@@ -506,56 +595,66 @@ class DataManager:
                     while level_num > 0:
                         level_num -= 1
                         main_kpi = distribution_kpi.eContainer()
-                variable_name = f'KPI - {main_kpi.name} - {physical_q_to_str(qau)} [{unit_to_string(qau)}]'
+
+                # manually fix KPIs that have the unit added to the KPI name (Electricity Demand [PJ])
+                kpi_name = main_kpi.name
+                match = re.match(r"(.*)\[" + re.escape(original_unit) + r"\]", kpi_name)
+                if match:
+                    kpi_name = match.group(1)
+
+                variable_name = f'KPI - {kpi_name} - {physical_q_to_str(qau)} [{unit_to_string(qau)}]'
                 d.labels["Label"] = f'{distribution_kpi.name} - {eobj.label}' if distribution_kpi is not main_kpi else eobj.label
-                d.value = eobj.value
             # TODO other distributions
             #elif isinstance(distribution, esdl.FromToDistribution):
             elif isinstance(eobj, esdl.Producer) or isinstance(eobj, esdl.Consumer) or isinstance(eobj, esdl.Conversion):
-                power = eobj.power
-                d = Data(dataset=ds, value=power)
-                d.labels = {'Power': power, 'State': eobj.state.name}
-                d.node = eobj.name or eobj.id
-                d.technology = eobj.eClass.name
-                d.sector = eobj.sector.name if eobj.sector else None
-                if len(eobj.port) > 0:
-                    d.input = eobj.port[0].carrier.name if eobj.port[0].carrier else None
-                variable_name = "Power (W)"
-                qau = esdl.QuantityAndUnitType(physicalQuantity=esdl.PhysicalQuantityEnum.POWER,
-                                               unit=esdl.UnitEnum.WATT, description="Power in W")
-                # Handle compound asset
-                container_asset = eobj.eContainer()
-                if isinstance(container_asset, esdl.ExposedPortsAsset):
-                    area = container_asset.area
-                    if area:
-                        d.region = area.name
-                    d.labels['Parent asset'] = container_asset.name
-                elif isinstance(container_asset, esdl.Area):
-                    d.region = eobj.area.name
+                if eobj.eIsSet('power'): # only add if value is set, not adding for default value of 0.0
+                    power = eobj.power
+                    d = Data(dataset=ds, value=power)
+                    d.labels = {'Power': power, 'State': eobj.state.name}
+                    d.node = eobj.name or eobj.id
+                    d.technology = eobj.eClass.name
+                    d.sector = eobj.sector.name if eobj.sector else None
+                    if len(eobj.port) > 0:
+                        d.input = eobj.port[0].carrier.name if eobj.port[0].carrier else None
+                    variable_name = "Power (W)"
+                    qau = esdl.QuantityAndUnitType(physicalQuantity=esdl.PhysicalQuantityEnum.POWER,
+                                                   unit=esdl.UnitEnum.WATT, description="Power in W")
+                    # Handle compound asset
+                    container_asset = eobj.eContainer()
+                    if isinstance(container_asset, esdl.ExposedPortsAsset):
+                        area = container_asset.area
+                        if area:
+                            d.region = area.name
+                        d.labels['Parent asset'] = container_asset.name
+                    elif isinstance(container_asset, esdl.Area):
+                        d.region = eobj.area.name
 
             elif isinstance(eobj, esdl.Storage) or isinstance(eobj, esdl.Transport):
-                capacity = eobj.capacity
-                d = Data(dataset=ds, value=capacity)
-                d.labels = {'Capacity': capacity, 'State': eobj.state.name}
-                d.node = eobj.name or eobj.id
-                d.technology = eobj.eClass.name
-                d.sector = eobj.sector.name if eobj.sector else None
-                if len(eobj.port) > 0:
-                    d.input = eobj.port[0].carrier.name if eobj.port[0].carrier else None
-                if isinstance(eobj, esdl.Storage):
-                    variable_name = "Capacity (J)"
-                    qau = esdl.QuantityAndUnitType(physicalQuantity=esdl.PhysicalQuantityEnum.ENERGY,
-                                                   unit=esdl.UnitEnum.JOULE, description="Capacity in J")
-                else:
-                    variable_name = "Capacity (W)"
-                    qau = esdl.QuantityAndUnitType(physicalQuantity=esdl.PhysicalQuantityEnum.POWER,
-                                                   unit=esdl.UnitEnum.WATT, description="Capacity in W")
+                if eobj.eIsSet('capacity'):
+                    capacity = eobj.capacity
+                    d = Data(dataset=ds, value=capacity)
+                    d.labels = {'Capacity': capacity, 'State': eobj.state.name}
+                    d.region = self.find_region(eobj, d.labels)
+                    d.node = eobj.name or eobj.id
+                    d.technology = eobj.eClass.name
+                    d.sector = eobj.sector.name if eobj.sector else None
+                    if len(eobj.port) > 0:
+                        d.input = eobj.port[0].carrier.name if eobj.port[0].carrier else None
+                    if isinstance(eobj, esdl.Storage):
+                        variable_name = "Capacity (J)"
+                        qau = esdl.QuantityAndUnitType(physicalQuantity=esdl.PhysicalQuantityEnum.ENERGY,
+                                                       unit=esdl.UnitEnum.JOULE, description="Capacity in J")
+                    else:
+                        variable_name = "Capacity (W)"
+                        qau = esdl.QuantityAndUnitType(physicalQuantity=esdl.PhysicalQuantityEnum.POWER,
+                                                       unit=esdl.UnitEnum.WATT, description="Capacity in W")
 
                 if isinstance(eobj, esdl.Pipe):
                     length = eobj.length
                     diameter = eobj.diameter.name  # e.g. DN250
                     d = Data(dataset=ds, value=length)
                     d.labels = {'Diameter': diameter, 'State': eobj.state.name}
+                    d.region = self.find_region(eobj, d.labels)
                     d.node = eobj.name or eobj.id
                     d.technology = eobj.eClass.name
                     d.sector = eobj.sector.name if eobj.sector else None
@@ -564,6 +663,20 @@ class DataManager:
                     variable_name = "Pipe Length (m)"
                     qau = esdl.QuantityAndUnitType(physicalQuantity=esdl.PhysicalQuantityEnum.LENGTH,
                                                    unit=esdl.UnitEnum.METRE, description="Length in m")
+
+            # variable_name and qau and d should be defined here
+            if not variable_name or d is None or qau is None:
+                #variable_name = eobj.name if hasattr(eobj, 'name') else None
+                #logger.debug(f"Ignoring {eobj.eClass.name}")
+                continue
+
+            # Process asset ownership label
+            if isinstance(eobj, esdl.Asset):
+                d.labels = d.labels if d.labels is not None else {}
+                d.labels["Ownership"] = "Unassigned"
+                if eobj.isOwnedBy is not None:
+                    d.labels["Ownership"] = eobj.isOwnedBy.name
+
                 # Handle compound asset
                 container_asset = eobj.eContainer()
                 if isinstance(container_asset, esdl.ExposedPortsAsset):
@@ -574,27 +687,14 @@ class DataManager:
                 elif isinstance(container_asset, esdl.Area):
                     d.region = eobj.area.name
 
-            # Process asset ownership label
-            if d is not None and isinstance(eobj, esdl.Asset):
-                d.labels = d.labels if d.labels is not None else {}
-                d.labels["Ownership"] = "Unassigned"
-                if eobj.isOwnedBy is not None:
-                    d.labels["Ownership"] = eobj.isOwnedBy.name
-
-            # variable_name and qau and d should be defined here
-            if not variable_name:
-                #variable_name = eobj.name if hasattr(eobj, 'name') else None
-                #logger.debug(f"Ignoring {eobj.eClass.name}")
-                continue
-
-            variable: Variable = variables.get(variable_name, None)
+            # Distinguish variable data type (Profile or Single Value).
+            data_type = DataType.PROFILE if is_profile_variable else DataType.SINGLE_VALUE
+            key = variable_name + data_type.name
+            variable = variables.get(key, None)
             if variable is None:
                 if variable_name is None:
                     logger.warn(f"Variable name is empty for {eobj}, ignoring")
                     continue
-
-                # Distinguish variable data type (Profile or Single Value).
-                data_type = DataType.PROFILE if is_profile_variable else DataType.SINGLE_VALUE
 
                 variable = Variable(
                     name=variable_name,
@@ -602,8 +702,9 @@ class DataManager:
                     quantity=qau.physicalQuantity.name if qau.physicalQuantity else None,
                     datatype=data_type
                 )
-                variables[variable.name] = variable
+                variables[key] = variable
                 data_list.append(variable)
+
             # update input description if necessary
             if d.input is not None and variable.input_description is None:
                 variable.input_description = "Carrier"
@@ -615,6 +716,16 @@ class DataManager:
             data_list.append(d)
         data_list.append(ds)
         return data_list
+
+    def find_region(self, eobj:esdl.Asset, labels: dict):
+        if not eobj.area:  # asset is in a AbstractBuilding or compoundAsset
+            parent = eobj.containingAsset or eobj.containingBuilding
+            region = parent.area.name or parent.area.id
+            labels['Area scope'] = parent.area.scope.name
+        else:
+            region = eobj.area.name or eobj.area.id
+            labels['Area scope'] = eobj.area.scope.name
+        return region
 
     def update_filter_options(self, session:Session, dataset: DataSet):
         # get variables
@@ -650,6 +761,7 @@ class DataManager:
                 keys_list = session.execute(keys_query, {'variable_id': v.id}).scalars().all()
 
             for key in keys_list:
+                #print("-", key)
                 #options_per_label_key = session.scalars(select(literal_column("labels->>'"+key+"'").label("options")).distinct().select_from(Data).where(Data.variable_id == v.id)).all()
                 options_per_label_key = filter_none(session.scalars(select(Data.labels[key].as_string().label("options")).distinct().select_from(Data).where(Data.variable_id == v.id)).all())
                 filter_options[key] = FilterOptions(options=options_per_label_key, column="labels", key=key)
@@ -683,75 +795,80 @@ class DataManager:
             session.add(v)
             session.commit()
 
-    def add_or_update_metadata(self, session: Session, es_id: str, owner: str) -> MetadataOperationResp:
+    def add_or_update_metadata(self, session: Session, variant_id: str, owner: str, energy_unit: str) -> MetadataOperationResp:
         """
         Adds or updates DataManager metadata for a given energy system.
         
         :param session: SQLAlchemy session object for database operations.
-        :param es_id: The ID of the energy system to be added or updated.
+        :param variant_id: The ID of the variant of the energy system to be added or updated.
         :param owner: Session owner (email)
+        :param energy_unit: target energy unit to convert to when input QaU for profiles is different
 
         :return: MetadataOperationResp contains status and message strings
         """
-        logger.info(f"Adding or updating an energy system {es_id} to metadata.")
+        log = logger.bind(variant_id=variant_id, owner=owner)
+        log.info(f"Adding or updating variant to metadata.")
         
-        esh = get_handler()
-        es = esh.get_energy_system(es_id=es_id)
+        pm = get_project_manager()
+        variant = pm.get_variant_by_id(variant_id)
+        log.info("Getting or creating variant snapshot")
+        es = pm.get_or_create_variant_snapshot(variant)
+        log.info("Retrieved variant snapshot", es_id=es.id)
 
-        if es is None:
-            msg = f"Energy system with ID {es_id} not found."
-            logger.error(msg)
+        if variant is None:
+            msg = f"Variant with ID {variant_id} not found."
+            log.error(msg)
             return MetadataOperationResp(MetadataCRUDStatus.ERROR.value, msg)
                 
-        ds_exists = self.same_ds_exists(session, es_id=es_id, dataset_name=es.name, owner=owner)
+        ds_exists = self.same_ds_exists(session, es_id=es.id, dataset_name=es.name, owner=owner)
 
         warning_msg = ""
         to_overwrite = False
         to_append = False # True if the new dataset has the same es_id but with a different name
         if ds_exists:
             # The same dataset is found, overwrites the existing one.
-            warning_msg = f"Dataset {es.name} [{es_id}] created by {owner} already exists. "
+            warning_msg = f"Dataset {es.name} [{variant_id}] created by {owner} already exists. "
             resp = self.delete_dataset(session, dataset_name=es.name, owner=owner)
             if resp.status == MetadataCRUDStatus.SUCCESS.value:
                 to_overwrite = True
             else:
                 error_msg = f"{warning_msg} Failed to delete existing dataset: {resp.message}"
-                logger.error(error_msg)
+                log.error(error_msg)
                 return MetadataOperationResp(MetadataCRUDStatus.ERROR.value, error_msg)
         else:
             # Checks if the new record is unique in 'name' + 'owner' (to fulfill data model unique constraint)
             # If not, aborts the operation and returns an error message.
             if self.ds_name_and_owner_is_not_unique(session, dataset_name=es.name, owner=owner):
-                error_msg = f"Failed to add dataset {es.name} [{es_id}]. The name must be unique. Please rename ESDL and try again."
-                logger.error(error_msg)
+                error_msg = f"Failed to add dataset {es.name} [{variant_id}]. The name must be unique. Please rename ESDL and try again."
+                log.error(error_msg)
                 return MetadataOperationResp(MetadataCRUDStatus.ERROR.value, error_msg)
-            elif self.ds_with_same_id_but_different_name_exists(session, es_id=es_id, dataset_name=es.name, owner=owner):
+            elif self.ds_with_same_id_but_different_name_exists(session, es_id=variant_id, dataset_name=es.name, owner=owner):
                 to_append = True
 
         try:
-            tables = self.process_esdl(es=es, owner=owner)
+            tables = self.process_esdl(es=es, owner=owner, energy_unit=energy_unit)
             session.add_all(tables)
             session.commit()
-            # Extracts the DataSet instance from the tables list for postprocessing. 
+            # Extracts the DataSet instance from the tables list for postprocessing.
             ds = [d for d in tables if isinstance(d, DataSet)][0]
             self.update_filter_options(session, ds)
             
             if to_overwrite:
                 warning_msg += "The dataset is now overwritten with the latest changes."
-                logger.warning(warning_msg)
+                log.warning(warning_msg)
                 return MetadataOperationResp(MetadataCRUDStatus.WARNING.value, warning_msg)
             elif to_append:
-                append_msg = f"Dataset with the same id [{es_id}] already exists. Successfully appended as a new dataset {es.name}."
-                logger.warning(append_msg)
+                append_msg = f"Dataset with the same id [{variant_id}] already exists. Successfully appended as a new dataset {es.name}."
+                log.warning(append_msg)
                 return MetadataOperationResp(MetadataCRUDStatus.WARNING.value, append_msg)
             else:
-                success_msg = f"Dataset {es.name} [{es_id}] has been successfully added."
-                logger.info(success_msg)
+                success_msg = f"Dataset {es.name} [{variant_id}] has been successfully added."
+                log.info(success_msg)
                 return MetadataOperationResp(MetadataCRUDStatus.SUCCESS.value, success_msg)
         except Exception as e:
             session.rollback()
             if isinstance(e, IntegrityError):
-                msg = f"Failed to add dataset {es.name} [{es_id}]. The name must be unique. Please rename ESDL and try again."
+                msg = f"Failed to add dataset {es.name} [{variant_id}]. The name must be unique. Please rename ESDL and try again."
             else:
                 msg = f"An error occurred while adding or updating metadata: {e}"
                 logger.exception(e)
@@ -887,7 +1004,7 @@ class DataManager:
             merged = filter_options[0].filter_options
             for option in filter_options[1:]:
                 filter = option.filter_options
-                for key in merged.keys():
+                for key in list(merged.keys()):
                     if key in filter:
                         merged[key]['options'] = list(set(merged[key]['options'] + filter[key]['options']))
                     else:
@@ -903,7 +1020,7 @@ class DataManager:
             sorted_resp[key] = sorted_value
 
         # Remove profile_id, as it is not used as a filter option in the frontend,
-        # but only as a reference to be used by query_profile() in the backend. 
+        # but only as a reference to be used by query_profile() in the backend.
         if "profile_id" in sorted_resp:
             del sorted_resp["profile_id"]
 
@@ -911,7 +1028,7 @@ class DataManager:
 
     def query_profile(self, session: Session, options: QueryRequestBody) -> dict:
         """
-        Query InfluxDBProfile or DataTableProfile profile data and perform data aggregation if specified. 
+        Query InfluxDBProfile or DataTableProfile profile data and perform data aggregation if specified.
         Return a dict of data traces, data range, warning and error messages.
         """
         dataset_ids = options.dataset_ids
@@ -929,8 +1046,8 @@ class DataManager:
         agg_interval = options.profile.get('agg_interval')
         agg_func = options.profile.get('agg_func')
 
-        logger.info(f"Querying influxdb profile traces with {vars(options)}")
-        
+        logger.info(f"Querying profile traces with {vars(options)}")
+
         resp = { "data_range": [], "traces": [], "warnings": [], "errors": [], "warning_msg": "", "error_msg": "" }
 
         group_by_param = [preprocess_column(group) for group in group_by]
@@ -942,7 +1059,7 @@ class DataManager:
         else:
             query_profile_id = func.jsonb_extract_path_text(Data.labels, 'profile_id').label('profile_id')
 
-        # energy_system_id and profile_id are required to derive the profile using esh.get_by_id()
+        # energy_system_id and profile_id are required to derive the profile using pm.get_by_id()
         query = session.query(Data,
                               Data.node.label('attached_node'),
                               DataSet.name,
@@ -952,12 +1069,12 @@ class DataManager:
             .join(Variable, Variable.id == Data.variable_id).join(DataSet, Data.dataset_id == DataSet.id)\
             .where(Variable.name == variable_name)\
             .where(Variable.dataset_id.in_(dataset_ids))\
-            
+
         for col, values in filters.items():
             values = [x for x in values if x is not None]   # if all options of a filter are selected, values is null
             if len(values) > 0:  # only filter when some of the values are selected, but not all.
                 query = query.where(preprocess_column(col).in_(values))
-        
+
         ds_profile_labels = {}
         profile_data = []
         profile_query = query.all()
@@ -966,7 +1083,7 @@ class DataManager:
             es_id = result.energy_system_id
             profile_id = result.profile_id
             profile_attached_node = result.attached_node
-            
+
             # To avoid duplicated profile label in the same dataset.
             if dataset_name not in ds_profile_labels:
                 ds_profile_labels[dataset_name] = []
@@ -1034,6 +1151,7 @@ class DataManager:
             warning_msg = f"{len(resp['warnings'])} out of {len(profile_query)} requested profiles have no data."
             resp['warning_msg'] = warning_msg
 
+
         if len(profile_data):
             # Cast profile_data into a dataframe and flatten datetime and value list
             df = pd.DataFrame(profile_data).explode(["datetime", "value"])
@@ -1066,7 +1184,7 @@ class DataManager:
         chart_type = options.chart_type
 
         traces = []
-        
+
         logger.info(f"Querying {chart_type.value} traces with {vars(options)}")
                 
         if len(group_by) == 0:
@@ -1111,7 +1229,7 @@ class DataManager:
         """
         Processes profile dataframe by applying aggregation functions across groupby categories
         and optionally aggregation time intervals, returning a list of trace dictionaries for visualization.
-        
+
         :param df: profile data dataframe with columns ["dataset", "groupby", "profile_label", "datetime", "value"].
         :param group_by_enabled: if true, calculate aggregated data and the results will be appended to the input dataframe.
         :param group_by_agg_func: Aggregation function to apply across grouped data points.
@@ -1147,7 +1265,7 @@ class DataManager:
             else:
                 processed_df = group_df.copy()
                 processed_df["label"] = group_df["datetime"].dt.strftime(dt_str_format)
-            
+
             trace = {
                 "name": profile_label,
                 "x": processed_df["label"].tolist(),
@@ -1223,7 +1341,7 @@ class DataManager:
         }]
 
         return trace
-    
+
     @staticmethod
     def process_bar_chart_trace(df: DataFrame, group_by: List[str]) -> list:
         """

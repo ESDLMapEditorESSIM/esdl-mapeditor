@@ -14,24 +14,39 @@
  *     TNO
  */
 
-import { ref } from "vue";
+import {ref, watchEffect} from "vue";
 import {MessageNames, PubSubManager} from "../bridge";
 import {isDebug} from "../utils/utils";
 
+/**
+ * @typedef {import('socket.io-client').Socket} Socket
+ */
+
+/** @type {import('vue').Ref<Socket|null>} */
 export const socket = ref(null);
 
 PubSubManager.subscribe(MessageNames.SOCKET_CONNECTED, (msg, incomingSocket) => {
     socket.value = incomingSocket;
     if (isDebug()) {
         incomingSocket.onAny((event, ...args) => {
-            console.log(`<<< ${event}`);
+            console.debug(`<<< ${event} (args: ${args}`);
         });
     }
 });
 
 
 export function useSocketIO() {
+    function subscribe(event, callback) {
+      watchEffect(() => {
+        if (socket.value) {
+          console.debug("Subscribing to", event);
+          socket.value.on(event, callback);
+        }
+      });
+    }
+
     return {
+        subscribe,
         socket
     };
 }

@@ -12,46 +12,48 @@
 #  Manager:
 #      TNO
 import base64
-from datetime import datetime, timezone
-from typing import Optional, Dict, List, Optional, Any
+import copy
+import csv
+import datetime
+import locale
+import math
+import re
+import threading
+from dataclasses import dataclass
 from enum import Enum
+from io import StringIO
+from typing import Optional, List, Dict, Any
+from urllib.parse import urlparse
+from uuid import uuid4
 
 import psycopg
 import pytz
-import math
-import re
 from flask import Flask
-from flask_socketio import SocketIO, emit
 from flask_executor import Executor
+from flask_socketio import SocketIO, emit
+from influxdb import InfluxDBClient
 from influxdb.exceptions import InfluxDBClientError
 from pyecore.ecore import EDate
 from requests.exceptions import ConnectionError
-from urllib.parse import urlparse
-from dataclasses import dataclass
 
-from esdl import esdl
-from esdl.esdl_handler import EnergySystemHandler
-from esdl.units.parser import qau_to_string
-from esdl.processing import ESDLQuantityAndUnits
-from esdl.profiles.influxdbprofilemanager import ConnectionSettings, InfluxDBProfileManager
-from esdl.profiles.datatableprofilemanager import DataTableProfileManager, Credentials
-from extensions.profile_server import InfluxDBServer, InfluxDBConnectionSettings, PostgreSQLServer, \
-    PostgreSQLConnectionSettings, ProfileServerTypeEnum
-from extensions.settings_storage import SettingType, SettingsStorage
-from extensions.session_manager import get_session, get_handler
-from extensions.panel_service import create_panel, get_panel_service_datasource
-from influxdb import InfluxDBClient
-import copy
 import src.log as log
-import csv
-import locale
-from io import StringIO
-from uuid import uuid4
 import src.settings as settings
+from esdl import esdl
+from esdl.processing.ESDLQuantityAndUnits import build_qau_from_dict, get_or_create_esi_qau
+from esdl.profiles.data_configurations.credentials import Credentials
+from esdl.profiles.datatableprofilemanager import DataTableProfileManager
+from esdl.profiles.influxdbprofilemanager import ConnectionSettings, InfluxDBProfileManager
+from esdl.units.parser import qau_to_string
+from esdlproject.ProjectManager import load_external_string
+from extensions.panel_service import create_panel, get_panel_service_datasource
+from extensions.profile_server import ProfileServerTypeEnum, InfluxDBConnectionSettings, PostgreSQLConnectionSettings, \
+    InfluxDBServer, PostgreSQLServer
+from extensions.session_manager import get_session, get_project_manager
+from extensions.settings_storage import SettingType, SettingsStorage
 from src.edr_client import EDRClient
 from src.roles import is_mapeditor_admin
 from utils.datetime_utils import parse_date
-from utils.utils import str2float
+from utils.utils import str2float, timed
 
 logger = log.get_logger(__name__)
 
@@ -69,9 +71,9 @@ class AssetPortsProfilesRequest:
 @dataclass
 class ProfileVizOptions:
     """The dataclass specifies profile trace visualization overrides options."""
-    start_datetime: Optional[datetime | str] = None
+    start_datetime: Optional[datetime.datetime | str] = None
     """Timezone aware start datetime. If a string is given, it is converted into a timezone aware datetime object."""
-    end_datetime: Optional[datetime | str] = None
+    end_datetime: Optional[datetime.datetime | str] = None
     """Timezone aware end datetime. If a string is given, it is converted into a timezone aware datetime object."""
     multiplier: Optional[float] = None
     """If specified, scale the profile trace based on this value; otherwise, based on ESDL profile instance multiplier attribute."""
@@ -152,7 +154,9 @@ class Profiles:
         self.csv_files = dict()
         self.register()
 
-        self.EDR_profiles_cache = self.generate_EDR_profiles_list()
+        self.EDR_profiles_cache = dict()
+        # Do this in the background cause it takes long.
+        threading.Thread(target=self.update_edr_profiles_cache, daemon=True).start()
 
         if settings.profile_database_config['host'] is None or settings.profile_database_config['host'] == "":
             logger.error("Profile database is not configured. Aborting...")
@@ -171,6 +175,17 @@ class Profiles:
             logger.error("ERROR: Only one Profiles object can be instantiated")
         else:
             profiles = self
+
+    @timed
+    def update_edr_profiles_cache(self):
+        """Generate EDR profiles list."""
+        logger.info("Starting generation of EDR profiles cache")
+        try:
+            edr_profiles = self.generate_EDR_profiles_list()
+            self.EDR_profiles_cache = edr_profiles
+            logger.info("EDR profiles cache generated successfully", num_profiles=len(edr_profiles))
+        except Exception:
+            logger.exception("Error generating EDR profiles cache")
 
     @staticmethod
     def get_instance():
@@ -307,7 +322,7 @@ class Profiles:
         @self.socketio.on('get_profile_settings_as_dtp_objects', namespace='/esdl')
         def _get_profile_settings_as_dtp_objects():
             """
-            Retrieve and return stored profile settings 
+            Retrieve and return stored profile settings
             via converting them into DataTableProfile-like response objects.
             """
             return self.get_profile_settings_as_dtp_objects()
@@ -352,9 +367,9 @@ class Profiles:
                 req = ReplaceProfileRequest(**params)
                 Profiles.replace_esdl_profile(req.es_id, req.profile_container_id, req.existing_profile_id, req.profileClass, req.profileObj)
                 return {"success": True, "message": f"Successfully replaced profile."}
-            except Exception as e: 
+            except Exception as e:
                 return {"success": False, "message": str(e)}
-            
+
         @self.socketio.on('update_esdl_profile', namespace='/esdl')
         def _update_esdl_profile(params: dict) -> dict:
             """Update an existing ESDL profile for a given profile id and updates dict."""
@@ -730,7 +745,6 @@ class Profiles:
         #     'end_datetime': '2015-12-31T22:00:00+0000',
         #     'embedUrl': 'https://panel-service.hesi.energy/grafana/d-solo/12lC8xg7z/project-profiles-for-ces_nzkg-reserve_profiel4?panelId=1&from=1420066800000&to=1451599200000&theme=light'
         # }
-        esh = EnergySystemHandler()
 
         edr_profiles = dict()
         edr_client = EDRClient.get_instance()
@@ -748,6 +762,7 @@ class Profiles:
         return_code, profile_list = edr_client.get_EDR_profiles_list(field_map=field_map, include_esdl=True)
 
         if return_code == 200:
+            logger.info(f"- Retrieved {len(profile_list['item_list'])} profiles from the EDR.")
             for p in profile_list["item_list"]:
                 if not p["id"].startswith("/edr/Public/Profiles"):
                     continue
@@ -764,7 +779,7 @@ class Profiles:
                 esdlstr_bytes = base64.decodebytes(esdlstr_base64_bytes)
                 esdlstr = esdlstr_bytes.decode("utf-8")
 
-                profile, parse_info = esh.load_from_string(esdlstr)
+                profile, parse_info = load_external_string(esdlstr)
                 p.update({
                     "host": profile.host,
                     "port": profile.port,
@@ -917,8 +932,8 @@ class Profiles:
         """Build a list of all profiles of specific asset types in the ESDL file.
         """
         logger.info(es_id)
-        esh = get_handler()
-        energy_system = esh.get_energy_system(es_id=es_id)
+        pm = get_project_manager()
+        energy_system = pm.get_energy_system_by_id(es_id)
 
         instance = energy_system.instance[0]
         profiles = []
@@ -946,33 +961,27 @@ class Profiles:
         return None
 
     @staticmethod
-    def connect_to_animation_profiles_database(
-            es_id: str, database: str = None, influxdb_host: str = None, influxdb_port: str = None
-    ):
-        # get influxdb host and port from first pipe/cable
-        anim_profile_info_from_esdl = Profiles.get_profiles_for_asset_type(es_id, [esdl.ElectricityCable, esdl.Pipe])
-        if not anim_profile_info_from_esdl:  # profile info not in esdl (essim type)
-            if not influxdb_host or not influxdb_port or not database:
-                return None  # No animation data available
-        elif Profiles.check_if_profiles_have_same_host_port_database(anim_profile_info_from_esdl):
-            profile = anim_profile_info_from_esdl[0]
-            if not influxdb_host:
-                influxdb_host = profile.host
-            if not influxdb_port:
-                influxdb_port = profile.port
-            if not database:
-                database = profile.database
-        else:
-            error_message = (
-                "Could not load animation data: "
-                "not all ElectricityCable/Pipe profiles use the same host, port, database"
-            )
+    def connect_to_animation_profiles_database(es_id: str):
+        anim_profiles = Profiles.get_profiles_for_asset_type(es_id, [esdl.ElectricityCable, esdl.Pipe])
+        if not anim_profiles:
+            return None
+
+        # make sure all cable/pipe profiles are in the same database
+        try:
+            Profiles.check_if_profiles_have_same_host_port_database(anim_profiles)
+        except IOError as ioe:
+            error_message = f"Could not load animation data: \n{ioe.message}"
             logger.error(error_message)
             raise ConnectionError(error_message)
 
-        credentials = Profiles.get_instance().determine_database_credentials(
-            influxdb_host, influxdb_port, database
-        )
+        # get influxdb host, port, database from first cable/pipe
+        profile = anim_profiles[0]
+        influxdb_host = profile.host
+        influxdb_port = profile.port
+        database = profile.database
+
+        # get credentials (if available)
+        credentials = Profiles.get_instance().determine_database_credentials(influxdb_host, influxdb_port, database)
         if credentials:
             influxdb_client = InfluxDBClient(
                 host=influxdb_host,
@@ -1023,14 +1032,10 @@ class Profiles:
         return True
 
     @staticmethod
-    def get_animation_fields(
-            esdl_id: str, influxdb_host_override=None, influxdb_port_override=None
-    ) -> Optional[list[str]]:
+    def get_animation_fields(esdl_id: str) -> Optional[list[str]]:
         # Get all fields available for all 'Pipe' and/or 'ElectricityCable' assets.
         try:
-            influxdb_client = Profiles.connect_to_animation_profiles_database(
-                esdl_id, esdl_id, influxdb_host_override, influxdb_port_override
-            )
+            influxdb_client = Profiles.connect_to_animation_profiles_database(esdl_id)
 
             if not influxdb_client:
                 return None
@@ -1038,6 +1043,9 @@ class Profiles:
             query_collections_with_asset_id = 'SHOW TAG VALUES WITH KEY="assetId"'
             collections_with_asset_id = influxdb_client.query(query_collections_with_asset_id)
             carrier_ids = collections_with_asset_id.keys()[0]
+
+            if not carrier_ids:
+                return None
 
             fields = []
             for carrier_id in carrier_ids:
@@ -1094,7 +1102,7 @@ class Profiles:
 
         :return: List of standardized DataTableProfile-like and metadata objects.
         """
-        
+
         profile_settings = []
 
         # Retrieve stored profile groups and profile records
@@ -1159,7 +1167,7 @@ class Profiles:
                     "profileGroupName": group_display_name
                 }
             })
-    
+
         return profile_settings
 
     @staticmethod
@@ -1258,15 +1266,18 @@ class Profiles:
         return dtp
     
     @staticmethod
+
     def get_asset_ports_profiles(es_id: str, asset_id: str) -> dict:
         """
         Retrieve and return all profiles attached to the ports of a given asset in an ESDL.
         """
-        esh = get_handler()
+        pm = get_project_manager()
 
-        asset: esdl.Asset = esh.get_by_id(es_id, asset_id)
+        asset: esdl.Asset = pm.get_by_id(es_id, asset_id)
         if not asset:
             raise AssetNotFoundError(f"Asset (id={asset_id}) from ESDL (id={es_id}) not found.")
+        if not isinstance(asset, esdl.ConnectableAsset):
+            raise AssetNotFoundError(f"Asset (id={asset_id}) from ESDL (id={es_id}) is of unsupported type {asset.eClass.name}.")
       
         ports_profiles = []
         for port in asset.port:
@@ -1289,6 +1300,7 @@ class Profiles:
             "asset_name": asset.name,
             "ports_profiles": ports_profiles
         }
+
 
     @staticmethod
     def get_profile_traces_from_profile_ids(req: ProfileTracesRequest) -> Dict[str, List[Dict[str, Any]]]:
@@ -1314,13 +1326,15 @@ class Profiles:
     @staticmethod
     def get_esdl_profile_trace_from_id(es_id: str, profile_id: str, viz_options: Optional[ProfileVizOptions]) -> dict:
         """Retrieve a single profile trace for a given ESDL profile ID."""
-        esh = get_handler()
+        pm = get_project_manager()
 
-        profile = esh.get_by_id(es_id, profile_id)
+        profile = pm.get_by_id(es_id, profile_id)
         if not profile:
             raise ProfileNotFoundError(f"Profile (id={profile_id}) from ESDL (id={es_id}) not found.")
         
-        if isinstance(profile, esdl.DataTableProfile):
+        if isinstance(profile, esdl.TimeSeriesProfile):
+            return Profiles.get_timeseriesprofile_trace(profile, viz_options)
+        elif isinstance(profile, esdl.DataTableProfile):
             dtp = profile
         elif isinstance(profile, esdl.InfluxDBProfile):
             dtp = Profiles.influxdbprofile_to_datatableprofile(profile)
@@ -1359,6 +1373,42 @@ class Profiles:
             })
         
         return results
+
+    @staticmethod
+    def get_timeseriesprofile_trace(tsp: esdl.TimeSeriesProfile, viz_options: Optional[ProfileVizOptions]) -> dict:
+        """Return a trace dict for a TimeSeriesProfile."""
+        base_start = tsp.startDateTime
+        step = datetime.timedelta(seconds=tsp.timestep)
+
+        if viz_options and viz_options.start_datetime is not None:
+            start_dt = viz_options.start_datetime
+        else:
+            start_dt = base_start
+
+        if viz_options and viz_options.end_datetime is not None:
+            end_dt = viz_options.end_datetime
+        else:
+            end_dt = base_start + step * (len(tsp.values) - 1)
+
+        if start_dt.tzinfo is not None and base_start.tzinfo is None:
+            tz = start_dt.tzinfo
+            base_start = base_start.replace(tzinfo=tz)
+
+        full_datetimes = [base_start + i * step for i in range(len(tsp.values))]
+        sliced_indices = [i for i, dt in enumerate(full_datetimes) if start_dt <= dt <= end_dt]
+
+        if not sliced_indices:
+            return {
+                "name": tsp.name,
+                "x": [],
+                "y": [],
+            }
+
+        return {
+            "name": tsp.name,
+            "x": [full_datetimes[i].strftime(dt_str_format) for i in sliced_indices],
+            "y": [tsp.values[i] for i in sliced_indices],
+        }
 
     @staticmethod
     def get_datatableprofile_trace(dtp: esdl.DataTableProfile, viz_options: Optional[ProfileVizOptions]) -> dict:
@@ -1460,8 +1510,6 @@ class Profiles:
                     password=postgres_settings.password
                 )
 
-                # Deep clone a dtp to avoid mutating attributes on the original dtp instance when calling query method
-                # TODO: avoid this mutation in DataTableProfileManager?
                 dtp_viz = copy.deepcopy(dtp)
                 dtp_viz.configuration = copy.deepcopy(dtp.configuration)
 
@@ -1478,7 +1526,6 @@ class Profiles:
                     end_date=end_dt,
                     additional_filters=query_filters,
                     multiplier=multiplier,
-                    # Apply profile downsampling if groupby_interval_sec is not None
                     downsample_bucket_sec=groupby_interval_sec or None,
                     column_based=True
                 )
@@ -1505,31 +1552,17 @@ class Profiles:
 
     @staticmethod
     def add_esdl_profile(es_id: str, profile_container_id: str, profile_class: ProfileClassEnum, profile_obj: dict) -> None:
-        """
-        Add a new profile to a given profile container (e.g. Port, ProfileConstraint, etc.) in the ESDL.
+        """Add a new profile to a given profile container in an ESDL."""
+        pm = get_project_manager()
 
-        Parameters
-        ----------
-        es_id : str
-            The identifier of the ESDL file (energy system).
-        profile_container_id : str
-            The container id for which the profile will be attached to.
-        profile_class : ProfileClassEnum
-            The class of the profile to be created (e.g., "SingleValue", "DataTableProfile", "InfluxDBProfile").
-        profile_obj : dict
-            Dictionary containing SingleValue or DataTableProfile-like fields and configuration.
-        """
-        esh = get_handler()
-
-        profile_container = esh.get_by_id(es_id, profile_container_id)
+        profile_container = pm.get_by_id(es_id, profile_container_id)
         if not profile_container:
             raise ProfileContainerNotFoundError(f"Unable to attach profile to a given container (id={profile_container_id}) from ESDL (id={es_id}).")
 
         try:
             new_profile = Profiles.construct_esdl_profile_instance(es_id, profile_class, profile_obj)
-            # Append a new profile to the target container.
             profile_container.eGet("profile").append(new_profile)
-            esh.add_object_to_dict(es_id, new_profile)
+            pm.add_object_to_dict(es_id, new_profile)
         except Exception as e:
             raise ProfileCreateError(f"An error occurs while adding profile: {e}") from e
 
@@ -1541,16 +1574,14 @@ class Profiles:
         profile_class: ProfileClassEnum,
         profile_obj: dict
     ) -> None:
-        """
-        Replace an existing profile in a given profile container with a new one.
-        """
-        esh = get_handler()
-        
-        existing_profile = esh.get_by_id(es_id, existing_profile_id)
+        """Replace an existing profile in a given profile container with a new one."""
+        pm = get_project_manager()
+
+        existing_profile = pm.get_by_id(es_id, existing_profile_id)
         if not existing_profile:
             raise ProfileNotFoundError(f"Profile (id={existing_profile_id}) from ESDL (id={es_id}) not found.")
 
-        profile_container = esh.get_by_id(es_id, profile_container_id)
+        profile_container = pm.get_by_id(es_id, profile_container_id)
         if not profile_container:
             raise ProfileContainerNotFoundError(
                 f"Unable to replace profile in container (id={profile_container_id}) from ESDL (id={es_id})."
@@ -1558,30 +1589,27 @@ class Profiles:
 
         try:
             new_profile = Profiles.construct_esdl_profile_instance(es_id, profile_class, profile_obj)
-
             profiles = profile_container.eGet("profile")
-
             index = profiles.index(existing_profile)
             profiles[index] = new_profile
-
-            esh.remove_object_from_dict(es_id, existing_profile)
-            esh.add_object_to_dict(es_id, new_profile)
+            pm.remove_object_from_dict(es_id, existing_profile)
+            pm.add_object_to_dict(es_id, new_profile)
         except Exception as e:
             raise ProfileCreateError(f"An error occurred while replacing profile: {e}") from e
 
     @staticmethod
     def update_esdl_profile(es_id: str, profile_id: str, profile_class: ProfileClassEnum, updates: dict) -> None:
-        """
-        Update attributes of an existing profile in an ESDL.
-        """
-        esh = get_handler()
+        """Update attributes of an existing profile in an ESDL."""
+        pm = get_project_manager()
 
-        profile = esh.get_by_id(es_id, profile_id)
+        profile = pm.get_by_id(es_id, profile_id)
         if not profile:
             raise ProfileNotFoundError(f"Profile (id={profile_id}) from ESDL (id={es_id}) not found.")
-        
+
         try:
-            # Profile class specific attributes
+            if isinstance(profile_class, str):
+                profile_class = ProfileClassEnum(profile_class)
+
             if profile_class == ProfileClassEnum.SINGLEVALUE:
                 if "name" in updates:
                     profile.name = updates["name"]
@@ -1591,7 +1619,6 @@ class Profiles:
                 if "multiplier" in updates:
                     profile.multiplier = float(updates["multiplier"])
 
-            # Attributes or references inherited from GenericProfile
             if "profileType" in updates:
                 profile.profileType = esdl.ProfileTypeEnum.from_string(updates["profileType"])
             if "profileQuantityAndUnit" in updates:
@@ -1602,11 +1629,11 @@ class Profiles:
 
         except Exception as e:
             raise ProfileUpdateError(f"An error occurs while updating profile (id={profile_id}): {e}") from e
-        
+
     @staticmethod
-    def serialize_esdl_profile(profile: esdl.DataTableProfile | esdl.InfluxDBProfile | esdl.SingleValue) -> Dict[str, Any]:
+    def serialize_esdl_profile(profile: esdl.DataTableProfile | esdl.InfluxDBProfile | esdl.TimeSeriesProfile | esdl.SingleValue) -> Dict[str, Any]:
         """
-        An utiltiy function to convert an ESDL profile instance (DataTableProfile, InfluxDBProfile, or SingleValue)
+        An utiltiy function to convert an ESDL profile instance (DataTableProfile, InfluxDBProfile, TimeSeriesProfile, or SingleValue)
         into a dictionary structure suitable for API responses.
 
         :param profile: An ESDL profile instance.
@@ -1622,6 +1649,11 @@ class Profiles:
             dtp = profile
         elif isinstance(profile, esdl.InfluxDBProfile):
             dtp = Profiles.influxdbprofile_to_datatableprofile(profile)
+        elif isinstance(profile, esdl.TimeSeriesProfile):
+            return {
+                "profileClass": profile_class,
+                "profileObj": Profiles.serialize_timeseriesprofile(profile) 
+            }
         elif isinstance(profile, esdl.SingleValue):
             return {
                 "profileClass": profile_class,
@@ -1663,7 +1695,25 @@ class Profiles:
                 "tls": dtp.configuration.tls
             }
         }
-    
+
+    @staticmethod
+    def serialize_timeseriesprofile(tsp: esdl.TimeSeriesProfile) -> dict:
+        """Return a dict representation of `TimeSeriesProfile` for client consumption."""
+
+        qau_dict = Profiles.serialize_qau(getattr(tsp, "profileQuantityAndUnit", None))
+
+        dt_fmt = "%Y-%m-%dT%H:%M:%S%z"
+
+        return {
+            "id": tsp.id,
+            "name": tsp.name,
+            "profileType": _get_enum_name(tsp.profileType),
+            "startDateTime": tsp.startDateTime.strftime(dt_fmt) if tsp.startDateTime else None,
+            "timestep": tsp.timestep,
+            "profileQuantityAndUnit": qau_dict,
+            "values": tsp.values
+        }
+
     @staticmethod
     def serialize_singlevalue(sv: esdl.SingleValue) -> dict:
         """Return a dict representation of `SingleValue` for client consumption."""
@@ -1682,8 +1732,6 @@ class Profiles:
     def serialize_qau(qau: esdl.QuantityAndUnitType | esdl.QuantityAndUnitReference) -> dict | None:
         """
         Return a dict representation for QuantityAndUnit.
-
-        TODO: handle custom QaU; try parsing with get_asset_attributes?
         """
         if not qau:
             return None
@@ -1802,7 +1850,7 @@ def _clone_qau(qau):
 def _get_enum_name(enum_obj):
     """A util function to get the ENUM name string."""
     enum_name = getattr(enum_obj, "name", None)
-    if enum_name == "None":
+    if enum_name == "NONE" or enum_name == "None":
         return None
     return enum_name
 
@@ -1895,34 +1943,30 @@ def _get_or_add_esi_databaseconfiguration(es_id: str, db_config: esdl.DatabaseCo
     Return an existing DatabaseConfiguration from EnergySystemInformation if present.
     Otherwise, add the given DatabaseConfiguration (or reuse a duplicate) and return it.
     """
-    esh = get_handler()
+    pm = get_project_manager()
 
     if not db_config.id:
         db_config.id = str(uuid4())
 
-    # Check if databaseconfiguration is already present in the ESDL
     try:
-        return esh.get_by_id(es_id, db_config.id)
+        return pm.get_by_id(es_id, db_config.id)
     except KeyError:
         pass
-        
-    # Ensure EnergySystemInformation and DataConfigurations exist
-    es: esdl.EnergySystem = esh.get_energy_system(es_id)
+
+    es: esdl.EnergySystem = pm.get_energy_system_by_id(es_id)
     if not es.energySystemInformation:
         esi: esdl.EnergySystemInformation = esdl.EnergySystemInformation(id=str(uuid4()))
         es.energySystemInformation = esi
-        esh.add_object_to_dict(es_id, esi)
+        pm.add_object_to_dict(es_id, esi)
     if not es.energySystemInformation.dataconfigurations:
         dataconfigs = esdl.DataConfigurations(id=str(uuid4()))
         es.energySystemInformation.dataconfigurations = dataconfigs
-        esh.add_object_to_dict(es_id, dataconfigs)
+        pm.add_object_to_dict(es_id, dataconfigs)
 
-    configs = es.energySystemInformation.dataconfigurations.configurations 
-    
-    # Look for an existing duplicate by attributes 
+    configs = es.energySystemInformation.dataconfigurations.configurations
     duplicate = next(
         (
-            cfg for cfg in configs 
+            cfg for cfg in configs
             if isinstance(cfg, esdl.DatabaseConfiguration)
             and cfg.database == db_config.database
             and cfg.type == db_config.type
@@ -1935,38 +1979,42 @@ def _get_or_add_esi_databaseconfiguration(es_id: str, db_config: esdl.DatabaseCo
     if duplicate:
         return duplicate
 
-    # Otherwise, append and register the new config
     configs.append(db_config)
-    esh.add_object_to_dict(es_id, db_config)
+    pm.add_object_to_dict(es_id, db_config)
 
     return db_config
 
 def _convert_qau_obj_into_profile_qau(es_id: str, qau_obj: dict):
-    """
-    Convert a given predefined qau_obj (dict) into an ESDL QuantityAndUnitReference.
+    """Convert a qau dict into an ESDL QuantityAndUnitReference."""
+    pm = get_project_manager()
 
-    TODO: handle custom QaU
-    """
-    esh = get_handler()
-
-    # If id is present, it a predefined qau.
     predefined_qau_id = qau_obj.get("id")
     if predefined_qau_id:
         try:
-            # check if predefined qau is already present in the ESDL
-            qau = esh.get_by_id(es_id, predefined_qau_id)
+            qau = pm.get_by_id(es_id, predefined_qau_id)
         except KeyError:
-            qau = ESDLQuantityAndUnits.build_qau_from_dict(qau_obj)
-            esi_qau = ESDLQuantityAndUnits.get_or_create_esi_qau(esh, es_id)
-            esi_qau.quantityAndUnit.append(qau)
-            esh.add_object_to_dict(es_id, qau)
-
-        qau_ref = esdl.QuantityAndUnitReference(reference=qau)
-        return qau_ref
+            qau = build_qau_from_dict(qau_obj)
     else:
-        return None
+        qau = build_qau_from_dict(qau_obj)
 
-def _dt_str_to_tz_aware_datetime(dt_str: str, default_tz=timezone.utc) -> datetime:
+    if not qau.description:
+        qau.description = qau_to_string(qau)
+
+    applied_qau = None
+    esi_qau_container = get_or_create_esi_qau(pm, es_id)
+    for esi_qau in esi_qau_container.quantityAndUnit:
+        if esi_qau.description == qau.description:
+            applied_qau = esi_qau
+            break
+
+    if applied_qau is None:
+        applied_qau = qau
+        esi_qau_container.quantityAndUnit.append(applied_qau)
+        pm.add_object_to_dict(es_id, applied_qau)
+
+    return esdl.QuantityAndUnitReference(reference=applied_qau)
+
+def _dt_str_to_tz_aware_datetime(dt_str: str, default_tz=datetime.timezone.utc) -> datetime.datetime:
     """
     Parse a datetime string using parse_date() utility,
     and ensure the result is timezone-aware by applying `default_tz`
@@ -1978,17 +2026,11 @@ def _dt_str_to_tz_aware_datetime(dt_str: str, default_tz=timezone.utc) -> dateti
         dt = dt.replace(tzinfo=default_tz)
 
     return dt
-            
-def _parse_profile_filter(filter: Optional[str], as_dict: bool = False) -> List[Dict[str, str]] | Dict[str, str]:
-    """
-    A util function to parse profile filter string into a list of dict.
-    
-    If as_dict=False (default): return list of {"tag": key, "value": value}
-    If as_dict=True: return dict {key: value}
-    """
 
+def _parse_profile_filter(filter: Optional[str], as_dict: bool = False) -> List[Dict[str, str]] | Dict[str, str]:
+    """Parse profile filter string into a list of dicts or a dict."""
     if not filter:
-        return []
+        return {} if as_dict else []
 
     pattern = r'"?(\w+)"?\s*=\s*["\']([^"\']*)["\']'
     matches = re.findall(pattern, filter)
@@ -2000,9 +2042,9 @@ def _parse_profile_filter(filter: Optional[str], as_dict: bool = False) -> List[
     if as_dict:
         return {k: v for k, v in matches}
 
-    return [{"tag": k, "value": v} for k, v in matches]    
-    
-def _calculate_profile_groupby_interval(start: datetime, end: datetime, max_points: Optional[int]) -> Optional[int]:
+    return [{"tag": k, "value": v} for k, v in matches]
+
+def _calculate_profile_groupby_interval(start: datetime.datetime, end: datetime.datetime, max_points: Optional[int]) -> Optional[int]:
     """A util function to determine profile downsampling groupby interval."""
 
     if not max_points:

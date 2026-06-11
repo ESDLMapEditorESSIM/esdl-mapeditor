@@ -15,7 +15,7 @@
 from flask import Flask, jsonify
 from flask_socketio import SocketIO, emit
 from extensions.settings_storage import SettingsStorage
-from extensions.session_manager import get_handler, get_session
+from extensions.session_manager import get_project_manager, get_session
 from src.process_es_area_bld import get_area_id_from_mapeditor_id
 from esdl import esdl
 from esdl.processing import ESDLAsset, ESDLEnergySystem
@@ -63,12 +63,10 @@ class Vesta:
         @self.socketio.on('vesta_area_restrictions', namespace='/esdl')
         def set_area_restrictions(area_id):
             with self.flask_app.app_context():
-                esh = get_handler()
+                pm = get_project_manager()
                 print(area_id)
                 area_id = get_area_id_from_mapeditor_id(area_id)
-
-                active_es_id = get_session('active_es_id')
-                current_es = esh.get_energy_system(active_es_id)
+                current_es = pm.get_active_energy_system()
                 top_area = current_es.instance[0].area
 
                 area = ESDLEnergySystem.find_area(top_area, area_id)
@@ -97,15 +95,14 @@ class Vesta:
             measures = measures_data['selected_measures']
 
             with self.flask_app.app_context():
-                esh = get_handler()
+                pm = get_project_manager()
 
-                active_es_id = get_session('active_es_id')
-                current_es = esh.get_energy_system(active_es_id)
+                current_es = pm.get_active_energy_system()
                 top_area = current_es.instance[0].area
 
-                area = ESDLEnergySystem.find_area(top_area, area_id)
-                print(measures)
-                self.set_area_measures(esh, area_id, measures)
+                #area = ESDLEnergySystem.find_area(top_area, area_id)
+                #print(measures)
+                self.set_area_measures(pm, area_id, measures)
 
         @self.flask_app.route('/vesta_restrictions')
         def get_vesta_restrictions():
@@ -123,9 +120,9 @@ class Vesta:
             else:
                 return jsonify(result), 200
 
-    def set_area_measures(self, esh, area_id, measures_list):
+    def set_area_measures(self, pm, area_id, measures_list):
         active_es_id = get_session('active_es_id')
-        es = esh.get_energy_system(active_es_id)
+        es = pm.get_energy_system_by_id(active_es_id)
         top_area = es.instance[0].area
 
         area_id = get_area_id_from_mapeditor_id(area_id)
@@ -147,7 +144,7 @@ class Vesta:
                             if not area.measures:
                                 area.measures = esdl.Measures()
                             area.measures.measure.append(m_ref)
-                            esh.add_object_to_dict(active_es_id, m_ref)
+                            pm.add_object_to_dict(active_es_id, m_ref)
 
                 if not found_measure:
                     for edr_m in self.selected_measures.measure:
@@ -158,7 +155,7 @@ class Vesta:
                                 es_measures = esdl.Measures()
                                 es.measures = es_measures
                             es_measures.measure.append(this_m)
-                            esh.add_object_to_dict(active_es_id, this_m, True)
+                            pm.add_object_to_dict(active_es_id, this_m, True)
 
                             # Create reference
                             m_ref = esdl.MeasureReference()
@@ -168,7 +165,7 @@ class Vesta:
                             if not area.measures:
                                 area.measures = esdl.Measures()
                             area.measures.measure.append(m_ref)
-                            esh.add_object_to_dict(active_es_id, m_ref)
+                            pm.add_object_to_dict(active_es_id, m_ref)
 
     def get_edr_vesta_measures_list(self):
         url = self.vesta_plugin_settings["edr_url"] + "/store/tagged?tag=" + self.vesta_plugin_settings["edr_measures_tags"]

@@ -16,7 +16,7 @@ from uuid import uuid4
 from pyecore.ecore import EDate
 from esdl import esdl
 from esdl.processing.ESDLEcore import instantiate_type
-from extensions.session_manager import get_handler, get_session
+from extensions.session_manager import get_session, get_project_manager
 from extensions.profiles import Profiles
 from utils.utils import str2float
 from utils.datetime_utils import parse_date
@@ -113,7 +113,9 @@ def set_control_strategy(asset, cs_info):
     print(cs_info)
 
     active_es_id = get_session('active_es_id')
-    esh = get_handler()
+    pm = get_project_manager()
+    undo_redo = pm.get_undo_redo_stack(asset)
+    undo_redo.start_recording(label="Set control strategy of {}".format(asset.name or asset.eClass.name))
     
     control_strategy = asset.controlStrategy
     # If no control strategy yet or change of type
@@ -122,7 +124,7 @@ def set_control_strategy(asset, cs_info):
             # remove current strategy
             services = control_strategy.eContainer()
             services.service.remove(control_strategy)
-            esh.remove_object_from_dict(active_es_id, control_strategy, True)
+            pm.remove_object_from_dict(active_es_id, control_strategy, True)
         # create new control strategy
         if cs_info['type'] != 'None':  # strategy is removed, and a new one is configured
             control_strategy = instantiate_type(cs_info['type'])
@@ -130,20 +132,20 @@ def set_control_strategy(asset, cs_info):
             control_strategy.name = cs_info['type'] + ' for ' + asset.name
             control_strategy.energyAsset = asset
 
-            es = esh.get_energy_system(active_es_id)
+            es = pm.get_active_energy_system()
             services = es.services
             if not services:
                 services = esdl.Services(id=str(uuid4()))
                 es.services = services
-                esh.add_object_to_dict(active_es_id, services)
+                pm.add_object_to_dict(active_es_id, services)
 
             services.service.append(control_strategy)
-            esh.add_object_to_dict(active_es_id, control_strategy)
+            pm.add_object_to_dict(active_es_id, control_strategy)
 
     if isinstance(control_strategy, esdl.DrivenByDemand):
-        control_strategy.outPort = esh.get_by_id(active_es_id, cs_info['port_id']) 
+        control_strategy.outPort = pm.get_by_id(active_es_id, cs_info['port_id'])
     if isinstance(control_strategy, esdl.DrivenBySupply):
-        control_strategy.inPort = esh.get_by_id(active_es_id, cs_info['port_id']) 
+        control_strategy.inPort = pm.get_by_id(active_es_id, cs_info['port_id'])
     if isinstance(control_strategy, esdl.StorageStrategy):
         control_strategy.marginalChargeCosts = esdl.SingleValue(
             id=str(uuid4()),
@@ -155,8 +157,8 @@ def set_control_strategy(asset, cs_info):
             name='marginalChargeCosts for ' + asset.name,
             value=str2float(cs_info['marginal_discharge_costs'])
         )
-        esh.add_object_to_dict(active_es_id, control_strategy.marginalChargeCosts)
-        esh.add_object_to_dict(active_es_id, control_strategy.marginalDischargeCosts)
+        pm.add_object_to_dict(active_es_id, control_strategy.marginalChargeCosts)
+        pm.add_object_to_dict(active_es_id, control_strategy.marginalDischargeCosts)
     if isinstance(control_strategy, esdl.CurtailmentStrategy):
         control_strategy.maxPower = str2float(cs_info['max_power'])
     if isinstance(control_strategy, esdl.PIDController):
@@ -165,15 +167,15 @@ def set_control_strategy(asset, cs_info):
         control_strategy.Kd = str2float(cs_info['kd'])
 
         if cs_info['sensor_id'] != 'Select sensor...':
-            control_strategy.sensor = esh.get_by_id(active_es_id, cs_info['sensor_id'])
+            control_strategy.sensor = pm.get_by_id(active_es_id, cs_info['sensor_id'])
         control_strategy.setPoint = esdl.SingleValue(
             id=str(uuid4()),
             name='PID setPoint for ' + asset.name,
             value=str2float(cs_info['pid_setpoint'])
         )
-        esh.add_object_to_dict(active_es_id, control_strategy.setPoint)
+        pm.add_object_to_dict(active_es_id, control_strategy.setPoint)
     if isinstance(control_strategy, esdl.DrivenByProfile):
-        control_strategy.port = esh.get_by_id(active_es_id, cs_info['port_id']) 
+        control_strategy.port = pm.get_by_id(active_es_id, cs_info['port_id'])
         if cs_info['profile']['type'] == 'database':
             pid = cs_info['profile']['id']
 
@@ -191,7 +193,7 @@ def set_control_strategy(asset, cs_info):
                         field=p['field']
                     )        
                     control_strategy.profile = profile
-                    esh.add_object_to_dict(active_es_id, profile)
+                    pm.add_object_to_dict(active_es_id, profile)
         if cs_info['profile']['type'] == 'datetime':
             list = cs_info['profile']['list']
 
@@ -205,6 +207,8 @@ def set_control_strategy(asset, cs_info):
                     value=str2float(pe['profilevalue'])
                 )
                 control_strategy.profile.element.append(profile_element)
-            esh.add_object_to_dict(active_es_id, control_strategy.profile)
+            pm.add_object_to_dict(active_es_id, control_strategy.profile)
     if isinstance(control_strategy, esdl.PriorityStrategy):
         control_strategy.priority = int(cs_info['priority'])
+
+    undo_redo.stop_recording()

@@ -26,7 +26,10 @@ FLASK_DEBUG = (_flask_debug.upper() == 'TRUE' or _flask_debug == '1')
 
 USER_LOGGING_ENABLED = True
 # ASYNC_MODE = 'gevent_uwsgi'
-ASYNC_MODE = None  # default for non uWGSI deployments
+ASYNC_MODE = os.getenv("ASYNC_MODE", None)
+
+# Use the domain name of the server where the application is running. Example: 'https://mapeditor.esdl.hesi.energy'
+ALLOWED_ORIGINS = os.environ.get('ALLOWED_ORIGINS', '*')
 
 # Use the domain name of the server where the application is running. Example: 'https://mapeditor.esdl.hesi.energy'
 ALLOWED_ORIGINS = os.environ.get('ALLOWED_ORIGINS', '*')
@@ -35,6 +38,8 @@ ALLOWED_ORIGINS = os.environ.get('ALLOWED_ORIGINS', '*')
 OIDC_CLIENT_SECRETS = os.environ.get('OIDC_CLIENT_SECRETS', None) # 'credentials/client_secrets_opensource.json'
 _use_gevent = os.environ.get('MAPEDITOR_USE_GEVENT', '')
 USE_GEVENT = (_use_gevent.upper() == 'TRUE' or _use_gevent == '1')
+_use_rabbitmq = os.environ.get('USE_RABBITMQ', 'true')
+USE_RABBITMQ = (_use_rabbitmq.upper() == 'TRUE' or _use_rabbitmq == '1')
 
 # Database settings
 POSTGRES_HOST = os.environ.get('POSTGRES_HOST', 'localhost')
@@ -69,7 +74,8 @@ boundaries_config = {
     "port": os.environ.get('BOUNDARY_SERVICE_PORT', None),  # "4002",
     "path_names": "/names",
     "path_boundaries": "/boundaries",
-    "path_service_areas": "/service_areas"
+    "path_service_areas": "/service_areas",
+    "timeout": int(os.environ.get('BOUNDARY_SERVICE_TIMEOUT', 10))
 }
 
 profile_database_config = {
@@ -138,3 +144,16 @@ statistics_settings_config = {
 user_feedback_url_config = {
     "url": os.environ.get('USER_FEEDBACK_URL', None)
 }
+
+def is_prod():
+    return os.environ.get('ENVIRONMENT', 'dev') == 'prod'
+
+# Constants for session persistence. You can opt-in to this by setting the PERSIST_SESSIONS environment variable to
+# 'true'. The sessions will then be stored and restored on startup. This is useful for development, but not
+# recommended for production as the projects and ESDLs are not (yet) persisted.
+PERSIST_SESSIONS = os.environ.get('PERSIST_SESSIONS', 'false').upper() == 'TRUE'
+SESSION_PERSISTENCE_PATH = os.environ.get('SESSION_STORAGE_PATH', 'data/sessions')
+SESSION_PERSISTENCE_FILE = 'managed_sessions.pkl'
+
+# ONLY FOR DEVELOPMENT: Loads the default project on startup. This only works in combination with PERSIST_SESSIONS.
+DEFAULT_PROJECT_PATH = os.environ.get('DEFAULT_PROJECT_PATH', None)

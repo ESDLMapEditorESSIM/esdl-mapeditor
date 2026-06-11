@@ -24,9 +24,9 @@ from extensions.asset_constraint.asset_constraint_message import (
     RangedConstraintMsg,
     PipeDiameterConstraintMsg,
 )
-from extensions.session_manager import get_handler
 from extensions.profiles import Profiles
 from esdl.processing.ESDLEcore import get_asset_attributes, get_asset_references
+from extensions.session_manager import get_project_manager
 
 import src.log as log
 
@@ -95,9 +95,12 @@ class AssetConstraint:
             logger.error(err)
             raise ValueError(err)
 
+        if constraint:
+            constraint.id = str(uuid4())
+
         attrs = get_asset_attributes(constraint)
         refs = get_asset_references(constraint)
-        
+
         return {
             "attrs": attrs,
             "refs": refs
@@ -110,8 +113,8 @@ class AssetConstraint:
         Get and return a list of ProfileConstraint or RangedConstraint of the asset.
         """
 
-        esh = get_handler()
-        asset: esdl.Asset = esh.get_by_id(es_id, asset_id)
+        pm = get_project_manager()
+        asset: esdl.Asset = pm.get_by_id(es_id, asset_id)
         asset_constraints: List[ProfileConstraintMsg | RangedConstraintMsg | PipeDiameterConstraintMsg] = []
 
         if asset:
@@ -184,7 +187,7 @@ class AssetConstraint:
         )
 
         return ranged_constraint_msg
-    
+
     def _get_pipediameter_constraint_msg(
         self, constraint: esdl.PipeDiameterConstraint
     ) -> PipeDiameterConstraintMsg:
@@ -210,10 +213,8 @@ class AssetConstraint:
         Set asset constraint from the given list of asset_constraints.
         """
 
-        esh = get_handler()
-        asset: esdl.Asset = esh.get_by_id(es_id, asset_id)
-
-        asset.constraint.clear()
+        pm = get_project_manager()
+        asset: esdl.Asset = pm.get_by_id(es_id, asset_id)
 
         new_constraints: List[esdl.ProfileConstraint | esdl.RangedConstraint | esdl.PipeDiameterConstraint] = []
         for c in asset_constraints:
@@ -227,15 +228,14 @@ class AssetConstraint:
                 raise ValueError(f"Unsupported constraint type: {c['type']}")
             new_constraints.append(esdl_constraint)
 
+        asset.constraint.clear()
         asset.constraint = new_constraints
 
     def _handle_profile_constraint(
         self, es_id: str, constraintMsg: ProfileConstraintMsg
     ) -> esdl.ProfileConstraint:
-        esh = get_handler()
-
         c = esdl.ProfileConstraint(
-            id=str(uuid4()),
+            id=constraintMsg.get("id") or str(uuid4()),
             name=constraintMsg["name"],
             description=constraintMsg.get("description"),
             attributeReference=constraintMsg.get("attributeReference"),
@@ -245,17 +245,13 @@ class AssetConstraint:
         minimum_profile = constraintMsg["minimum"]
 
         if maximum_profile:
-            max_profile = Profiles.construct_esdl_profile_instance(es_id=es_id,
-                                                                   profile_class=maximum_profile["profileClass"],
-                                                                   profile_obj=maximum_profile["profileObj"])
-            c.maximum = max_profile
-            esh.add_object_to_dict(es_id, max_profile)
+            c.maximum = Profiles.construct_esdl_profile_instance(es_id=es_id,
+                                                                 profile_class=maximum_profile["profileClass"],
+                                                                 profile_obj=maximum_profile["profileObj"])
         if minimum_profile:
-            min_profile = Profiles.construct_esdl_profile_instance(es_id=es_id,
-                                                                   profile_class=minimum_profile["profileClass"],
-                                                                   profile_obj=minimum_profile["profileObj"])
-            c.minimum = min_profile
-            esh.add_object_to_dict(es_id, min_profile)
+            c.minimum = Profiles.construct_esdl_profile_instance(es_id=es_id,
+                                                                 profile_class=minimum_profile["profileClass"],
+                                                                 profile_obj=minimum_profile["profileObj"])
 
         return c
 
@@ -263,12 +259,12 @@ class AssetConstraint:
         self, constraintMsg: RangedConstraintMsg
     ) -> esdl.RangedConstraint:
         c = esdl.RangedConstraint(
-            id=str(uuid4()),
+            id=constraintMsg.get("id") or str(uuid4()),
             name=constraintMsg["name"],
             description=constraintMsg.get("description"),
             attributeReference=constraintMsg.get("attributeReference"),
             range=esdl.Range(
-                id=str(uuid4()),
+                id=constraintMsg["range"].get("id") or str(uuid4()),
                 name=constraintMsg["range"]["name"],
             ),
         )
@@ -286,7 +282,7 @@ class AssetConstraint:
         self, constraintMsg: PipeDiameterConstraintMsg
     ) -> esdl.PipeDiameterConstraint:
         c = esdl.PipeDiameterConstraint(
-            id=str(uuid4()),
+            id=constraintMsg.get("id") or str(uuid4()),
             name=constraintMsg["name"],
             description=constraintMsg.get("description"),
             attributeReference=constraintMsg.get("attributeReference"),

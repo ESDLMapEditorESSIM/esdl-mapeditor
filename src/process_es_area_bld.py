@@ -12,11 +12,14 @@
 #  Manager:
 #      TNO
 
-import uuid
+import math
 import random
-
+import re
+import threading
 from sys import getsizeof
-from flask import session
+from threading import Lock
+
+import shapely
 from flask_socketio import emit
 from shapely import MultiPoint
 
@@ -25,21 +28,23 @@ from esdl.units.parser import unit_to_string
 from esdl import esdl
 from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEnergySystem
 from esdl.processing.ESDLEnergySystem import get_notes_list
+from esdl.processing.ESDLGeometry import calculate_polygon_center
+from esdlproject.ProjectManager import ProjectManager
 from extensions.boundary_service import BoundaryService, is_valid_boundary_id
 from extensions.mapeditor_settings import MapEditorSettings
-from extensions.profiles import Profiles
-from extensions.session_manager import set_handler, get_handler, get_session, set_session_for_esid, set_session, \
+from extensions.session_manager import get_project_manager, get_session, set_session_for_esid, set_session, \
     get_session_for_esid
+from src.app import executor
+from src.assets_to_be_added import AssetsToBeAdded
+from extensions.profiles import Profiles
 from src.esdl_helper import get_asset_and_coord_from_port_id, asset_state_to_ui, \
     get_tooltip_asset_attrs, add_spatial_attributes, add_extra_attributes
-from src.incremental_ui import create_asset_port_message
+from src.incremental_ui.incremental_ui_messages import create_asset_port_message
 from src.log import get_logger
-from src.shape import Shape, ShapePoint
-from src.assets_to_be_added import AssetsToBeAdded
+from src.shape import Shape, ShapePoint, ShapeMultiPolygon
+from src.tno.projects.emits import emit_active_esdl_project
 from utils.RDWGSConverter import RDWGSConverter
-import shapely
-import math
-import re
+from utils.utils import timed
 
 logger = get_logger(__name__)
 
@@ -105,11 +110,11 @@ def calc_building_assets_location(building: esdl.AbstractBuilding | esdl.Compoun
             num_conns = num_conns + 1
         elif isinstance(basset, esdl.Transport):
             num_transp = num_transp + 1
-        if isinstance(basset, esdl.Producer):
+        elif isinstance(basset, esdl.Producer):
             num_prod = num_prod + 1
-        if isinstance(basset, esdl.Conversion) or isinstance(basset, esdl.Storage):
+        elif isinstance(basset, esdl.Conversion) or isinstance(basset, esdl.Storage):
             num_conv_stor = num_conv_stor + 1
-        if isinstance(basset, esdl.Consumer):
+        elif isinstance(basset, esdl.Consumer):
             num_cons = num_cons + 1
     if isinstance(building, esdl.AbstractBuilding):
         num_potentials = len(building.potential)
@@ -162,13 +167,13 @@ def calc_building_assets_location(building: esdl.AbstractBuilding | esdl.Compoun
                 elif isinstance(basset, esdl.Transport):
                     basset.geometry = esdl.Point(lon=column_transp_x, lat=row_transp_idx * row_transp_height, CRS="Simple")
                     row_transp_idx = row_transp_idx + 1
-                if isinstance(basset, esdl.Producer):
+                elif isinstance(basset, esdl.Producer):
                     basset.geometry = esdl.Point(lon=column_prod_x, lat=row_prod_idx * row_prod_height, CRS="Simple")
                     row_prod_idx = row_prod_idx + 1
-                if isinstance(basset, esdl.Conversion) or isinstance(basset, esdl.Storage):
+                elif isinstance(basset, esdl.Conversion) or isinstance(basset, esdl.Storage):
                     basset.geometry = esdl.Point(lon=column_cs_x, lat=row_cs_idx * row_cs_height, CRS="Simple")
                     row_cs_idx = row_cs_idx + 1
-                if isinstance(basset, esdl.Consumer):
+                elif isinstance(basset, esdl.Consumer):
                     basset.geometry = esdl.Point(lon=column_cons_x, lat=row_cons_idx * row_cons_height, CRS="Simple")
                     row_cons_idx = row_cons_idx + 1
 
@@ -195,6 +200,8 @@ def calc_possible_locations_in_area(shape, num_assets_in_area):
     bbox = shape.shape.bounds   # returns (minx, miny, maxx, maxy)
     rect_pol = shapely.geometry.box(bbox[0], bbox[1], bbox[2], bbox[3])
     shape_area = shape.shape.area
+    if shape_area == 0.0:
+        return []
     bbox_area = rect_pol.area
     # Use 2 as a scaling factor (for the fact that the polygon will not align with the chosen grid
     bbox_num_points = 2 * round(num_assets_in_area * bbox_area / shape_area)
@@ -232,7 +239,7 @@ def update_asset_geometries_shape(area, shape, show_assets_without_location=Fals
     possible_locations = None
     if shape:
         num_assets_in_area = len(area.asset)
-        if num_assets_in_area > 0:
+        if num_assets_in_area > 0 and show_assets_without_location:
             possible_locations = calc_possible_locations_in_area(shape, num_assets_in_area)
 
     # TODO: An area with a building, with buildingunits (!) with assets is not supported yet
@@ -292,20 +299,19 @@ def create_building_KPIs(building):
     return KPIs
 
 
-def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, show_assets_without_location=True):
-    area_id = this_area.id
-    area_name = this_area.name
-    if not area_name: area_name = ""
-    area_scope = this_area.scope
-    area_geometry = this_area.geometry
+def process_area_KPI_information(area_KPIs, area_geometry):
+    """
+    This function processes all information related to area KPIs (categories, units, values) such that it can
+    be sent to the front end for displaying it
 
-    user = get_session('user-email')
-    user_settings = BoundaryService.get_instance().get_user_settings(user)
-    boundaries_year = user_settings['boundaries_year']
+    :param area_KPIs: the esdl.KPIs of the area
+    :param area_geometry: the geometry of the area
+    :return: two dictionaries, one with the regular KPI information (for coloring the area itself), and one with the
+    distribution KPI information (for showing as pie charts)
+    """
+    regular_KPIs = {}
+    distribution_kpis = {}
 
-    geojson_KPIs = {}
-    geojson_dist_kpis = {}
-    area_KPIs = this_area.KPIs
     if area_KPIs:
         for kpi in area_KPIs.kpi:
             kpi_qau = kpi.quantityAndUnit
@@ -321,23 +327,107 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, sho
                 unit = ''
 
             if not isinstance(kpi, esdl.DistributionKPI):
-                geojson_KPIs[kpi.name] = {
+                regular_KPIs[kpi.name] = {
                     'value': kpi.value,
                     'unit': unit
                 }
             else:
-                geojson_dist_kpis[kpi.name] = {"type": "distributionKPI",
+                distribution_kpis[kpi.name] = {"type": "distributionKPI",
                                                "value": [],
                                                "unit": unit}
                 for str_val in kpi.distribution.stringItem:
-                    geojson_dist_kpis[kpi.name]["value"].append({"name": str_val.label,
-                                              "value": str_val.value})
+                    distribution_kpis[kpi.name]["value"].append({"name": str_val.label,
+                                                                 "value": str_val.value})
 
                 if area_geometry:
                     shape = Shape.create(area_geometry)
-                    geojson_dist_kpis[kpi.name]["location"] = [shape.shape.centroid.coords.xy[1][0], shape.shape.centroid.coords.xy[0][0]]
+                    distribution_kpis[kpi.name]["location"] = [shape.shape.centroid.coords.xy[1][0],
+                                                               shape.shape.centroid.coords.xy[0][0]]
                 else:
-                    geojson_dist_kpis[kpi.name]["location"] = None
+                    distribution_kpis[kpi.name]["location"] = None
+
+    return regular_KPIs, distribution_kpis
+
+
+def find_area_info_KPIs(area_list, this_area):
+    """
+    This is a limited version of find_area_info_geojson that only collects information about the (updated) KPIs
+    for all areas in the energy system. This function is called recursively on the sub areas of this area
+
+    :param area_list: list that holds the result for the area-KPI information
+    :param this_area: the area to collect KPI information for.
+    """
+    area_id = this_area.id
+    area_name = this_area.name
+    if not area_name: area_name = ""
+    area_scope = this_area.scope
+    area_geometry = this_area.geometry
+
+    area_KPIs = this_area.KPIs
+    geojson_KPIs, geojson_dist_kpis = process_area_KPI_information(area_KPIs, area_geometry)
+
+    area_properties = {
+        "id": area_id,
+        "name": area_name,
+        "KPIs": geojson_KPIs,
+        "dist_KPIs": geojson_dist_kpis
+    }
+
+    if this_area.scope == esdl.AreaScopeEnum.SERVICE_AREA:
+        area_properties["type"] = "SERVICE_AREA"
+
+    area_list.append({"properties": area_properties})
+
+    # Check if all sub areas have attribute logicalGroup set to true (must be clustered in UI)
+    logical_group = True
+    for area in this_area.area:
+        if not area.logicalGroup:
+            logical_group = False
+
+    if not logical_group:
+        for area in this_area.area:
+            find_area_info_KPIs(area_list, area)
+    else:
+        for area in this_area.area:
+            grouped_area_info = {
+                "name": area.name,
+                "type": "group",
+                "area_list": list()
+            }
+            find_area_info_KPIs(grouped_area_info["area_list"], area)
+            area_list.append(grouped_area_info)
+
+
+def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, show_assets_without_location=True, parent_area=None):
+    """
+    This function collects information about the areas, potentials and KPIs belonging to those and results in a geojson
+    data structure
+
+    The function does some more things:
+    - get the shape of areas with a proper scope and ID from the boundary service
+    - potentially assigns random locations to assets without a location (but within the boundaries of the area shape)
+    - calculate locations of assets within buildings
+
+    :param area_list: resulting geojson data structure for the area
+    :param pot_list: resulting geojson data structure for the energy potentials
+    :param this_area: the area to start collecting the information from. Function is called recursively on sub areas
+    :param shape_dictionary: a dictionary (cache) for storing shapes of areas
+    :param show_assets_without_location: a boolean specifying whether to show assets without location
+    :param parent_area: the parent area of this area (if any)
+    :return:
+    """
+    area_id = this_area.id
+    area_name = this_area.name
+    if not area_name: area_name = ""
+    area_scope = this_area.scope
+    area_geometry = this_area.geometry
+
+    user = get_session('user-email')
+    user_settings = BoundaryService.get_instance().get_user_settings(user)
+    boundaries_year = user_settings['boundaries_year']
+
+    area_KPIs = this_area.KPIs
+    geojson_KPIs, geojson_dist_kpis = process_area_KPI_information(area_KPIs, area_geometry)
 
     area_shape = None
 
@@ -346,7 +436,8 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, sho
             "id": area_id,
             "name": area_name,
             "KPIs": geojson_KPIs,
-            "dist_KPIs": geojson_dist_kpis
+            "dist_KPIs": geojson_dist_kpis,
+            "parent_area_id": parent_area.id if parent_area else None,
         }
 
         if this_area.scope == esdl.AreaScopeEnum.SERVICE_AREA:
@@ -379,8 +470,14 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, sho
         boundary_wgs = BoundaryService.get_instance().get_boundary_from_service(boundaries_year, area_scope, str.upper(area_id))
         if boundary_wgs:
             sh = Shape.parse_geojson_geometry(boundary_wgs['geom'])
-            num_sub_polygons = len(sh.shape.geoms)
-            for i, pol in enumerate(sh.shape.geoms):
+            if isinstance(sh, ShapeMultiPolygon):
+                num_sub_polygons = len(sh.shape.geoms)
+                polygons = sh.shape.geoms
+            else:
+                # shape is a Polygon, and Polygon instances don't have a 'geoms' field
+                num_sub_polygons = 1
+                polygons = [sh.shape]
+            for i, pol in enumerate(polygons):
                 if num_sub_polygons > 1:
                     area_id_number = " ({} of {})".format(i + 1, num_sub_polygons)
                 else:
@@ -398,16 +495,18 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, sho
                     "id": area_id + area_id_number,
                     "name": boundary_wgs['name'],
                     "KPIs": geojson_KPIs,
-                    "dist_KPIs": geojson_dist_kpis
+                    "dist_KPIs": geojson_dist_kpis,
                 }))
 
             area_shape = sh
 
     if area_shape is None:
-        area_shape = calculate_area_shape(this_area)
-
-    if area_shape:
+        # If some assets in the Area do have a geometry, calculate an imaginary area shape around these assets,
+        # that can be used to position the assets without a location
+        area_shape = calculate_imaginary_area_shape(this_area)
+    else:
         shape_dictionary[area_id] = area_shape
+
     # assign random coordinates if boundary is given and area contains assets without coordinates
     # and gives assets within buildings a proper coordinate
     # call this function even with area_shape == None, to position building assets inside a building
@@ -434,23 +533,24 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, sho
         if not area.logicalGroup:
             logical_group = False
 
-    if not logical_group:
-        for area in this_area.area:
-            find_area_info_geojson(area_list, pot_list, area, shape_dictionary, show_assets_without_location)
-    else:
+    if logical_group:
         for area in this_area.area:
             grouped_area_info = {
                 "name": area.name,
                 "type": "group",
-                "area_list": list()
+                "area_list": list(),
             }
-            find_area_info_geojson(grouped_area_info["area_list"], pot_list, area, shape_dictionary, show_assets_without_location)
+            find_area_info_geojson(grouped_area_info["area_list"], pot_list, area, shape_dictionary,
+                                   show_assets_without_location, this_area)
             area_list.append(grouped_area_info)
+    else:
+        for area in this_area.area:
+            find_area_info_geojson(area_list, pot_list, area, shape_dictionary, show_assets_without_location, this_area)
 
 
-def calculate_area_shape(this_area: esdl.Area) -> Shape | None:
+def calculate_imaginary_area_shape(this_area: esdl.Area) -> Shape | None:
     """
-    Calculate the shape of an area based on the assets in the area.
+    Calculate the (imaginary) shape of an area based on the assets in the area.
 
     :param this_area:
     :return: Shape object
@@ -458,11 +558,16 @@ def calculate_area_shape(this_area: esdl.Area) -> Shape | None:
     points = []
     for child in this_area.eAllContents():
         if isinstance(child, esdl.Polygon) and child.CRS != "Simple":
-            child_shape = Shape.create(child.exterior.point[0])
-            points.append(child_shape.shape)
+            for point in child.exterior.point:
+                child_shape = Shape.create(point)
+                points.append(child_shape.shape)
         elif isinstance(child, esdl.Point) and child.CRS != "Simple":
             child_shape = Shape.create(child)
             points.append(child_shape.shape)
+        elif isinstance(child, esdl.Line) and child.CRS != "Simple":
+            for point in child.point:
+                child_shape = Shape.create(point)
+                points.append(child_shape.shape)
     if len(points) <= 2:
         return None
     multipoint = MultiPoint(points)
@@ -474,8 +579,6 @@ def create_area_info_geojson(area):
     area_list = []
     pot_list = []
 
-
-    #active_es_id = get_session('active_es_id')
     es_id = area.eRoot().id  # root XML object == EnergySystem
     shape_dictionary = get_session_for_esid(es_id, 'shape_dictionary')
     if not shape_dictionary:
@@ -488,27 +591,34 @@ def create_area_info_geojson(area):
     except:
         show_assets_without_location = True
 
-    print("- Finding ESDL boundaries...")
+    logger.info("- Finding ESDL boundaries...")
     BoundaryService.get_instance().preload_area_subboundaries_in_cache(area)
     find_area_info_geojson(area_list, pot_list, area, shape_dictionary, show_assets_without_location)
-    print("- Done")
+    logger.info("- Done")
 
     set_session_for_esid(es_id, 'shape_dictionary', shape_dictionary)
     return area_list, pot_list
 
 
-def find_boundaries_in_ESDL(top_area):
-    print("Finding area and potential boundaries in ESDL")
+def find_boundaries_in_ESDL(top_area, es_id: str = None):
+    logger.info("Finding area and potential boundaries in ESDL")
     area_list, pot_list = create_area_info_geojson(top_area)
 
     # Sending an empty list triggers removing the legend at client side
-    print('- Sending area information to client, size={}'.format(getsizeof(area_list)))
-    emit('geojson', {"layer": "area_layer", "geojson": area_list})
+    logger.info('- Sending area information to client, size={}'.format(getsizeof(area_list)))
+    emit('geojson', {"layer": "area_layer", "geojson": area_list, "es_id": es_id})
     # Buildings are now taken care of in process_building
     # print('- Sending building information to client, size={}'.format(getsizeof(building_list)))
     # emit('geojson', {"layer": "bld_layer", "geojson": building_list})
-    print('- Sending potential information to client, size={}'.format(getsizeof(pot_list)))
-    emit('geojson', {"layer": "pot_layer", "geojson": pot_list})
+    logger.info('- Sending potential information to client, size={}'.format(getsizeof(pot_list)))
+    emit('geojson', {"layer": "pot_layer", "geojson": pot_list, "es_id": es_id})
+
+
+def find_and_send_KPI_information_in_ESDL(top_area: esdl.Area):
+    area_kpi_list = list()
+    find_area_info_KPIs(area_kpi_list, top_area)
+    #print(area_kpi_list)
+    emit('update_area_kpis', area_kpi_list)
 
 
 def add_missing_coordinates(area):
@@ -543,7 +653,7 @@ def add_missing_coordinates(area):
         if (isinstance(child, esdl.EnergyAsset) and not isinstance(child.eContainer(), esdl.AbstractBuilding)) or \
                 isinstance(child, esdl.AggregatedBuilding) or isinstance(child, esdl.Building):
             if not child.geometry:
-                print("add missing coordinates for asset {}".format(child.name))
+                logger.info("add missing coordinates for asset {}".format(child.name))
                 child.geometry = calc_random_location_around_center(center, delta_x / 4, delta_y / 4, RD_coords)
 
 
@@ -595,7 +705,7 @@ def add_asset_to_asset_list(asset_list, asset):
 # ---------------------------------------------------------------------------------------------------------------------
 #  Process building and process area
 # ---------------------------------------------------------------------------------------------------------------------
-def process_building(esh, es_id, asset_list, building_list, area_bld_list, conn_list, building, bld_editor, level):
+def process_building(pm: ProjectManager, es_id, asset_list, building_list, area_bld_list, conn_list, building, bld_editor, level):
     # Add building to list that is shown in a dropdown at the top
     area_bld_list.append(['Building', building.id, building.name, level])
 
@@ -616,6 +726,7 @@ def process_building(esh, es_id, asset_list, building_list, area_bld_list, conn_
     if (isinstance(building, esdl.Building) or isinstance(building, esdl.AggregatedBuilding)
             or isinstance(building, esdl.CompoundAsset)):  # but not BuildingUnit
         geometry = building.geometry
+        # TODO: this function call doesn't work for a CompoundAsset
         bld_KPIs = create_building_KPIs(building)
 
         # Collect extra attributes that might be required to draw specific icons, ...
@@ -640,16 +751,20 @@ def process_building(esh, es_id, asset_list, building_list, area_bld_list, conn_
             elif isinstance(bld_geom, esdl.Polygon):
                 bld_coord = ESDLGeometry.calculate_polygon_center(bld_geom)
 
+    #  don't calculate building asset locations, as it changes the ESDL which should not be done
+    #  when processing an ES (generates new changes)
+    #calc_building_assets_location(building)
+
     # Iterate over all assets in building to gather all required information
     for basset in building.asset:
         if isinstance(basset, esdl.AbstractBuilding):
-            process_building(esh, es_id, asset_list, building_list, area_bld_list, conn_list, basset, bld_editor, level + 1)
+            process_building(pm, es_id, asset_list, building_list, area_bld_list, conn_list, basset, bld_editor, level + 1)
         else:
             # Create a list of ports for this asset
             port_list = create_asset_port_message(basset)
 
             geom = basset.geometry
-            coord = ()
+            coord = (-10, -10)  # dummy value to make the code more robust.
             if geom:    # Individual asset in Building has its own geometry information
                 if isinstance(geom, esdl.Point):
                     lat = geom.lat
@@ -679,7 +794,7 @@ def process_building(esh, es_id, asset_list, building_list, area_bld_list, conn_
                 if conn_to:
                     for pc in conn_to:
                         in_different_buildings = False
-                        pc_asset = get_asset_and_coord_from_port_id(esh, es_id, pc.id)
+                        pc_asset = get_asset_and_coord_from_port_id(pm, es_id, pc.id)
 
                         # If the asset the current asset connects to, is in a building...
                         if pc_asset['asset'].containingBuilding or pc_asset['asset'].containingAsset:
@@ -721,7 +836,7 @@ def process_building(esh, es_id, asset_list, building_list, area_bld_list, conn_
                         # Add connections if we're editing a building or if the connection is between two different buildings
                         # ( The case of an asset in an area that is connected with an asset in a building is handled
                         #   in process_area (now all connections are added twice, from both sides) )
-                        if bld_editor or in_different_buildings:
+                        if (bld_editor or in_different_buildings) and coord and pc_asset_coord:
                             conn_list.append({'from-port-id': p.id, 'from-port-carrier': p_carr_id,
                                               'from-asset-id': basset.id, 'from-asset-coord': coord,
                                               'to-port-id': pc.id, 'to-port-carrier': pc_carr_id,
@@ -739,17 +854,17 @@ def process_building(esh, es_id, asset_list, building_list, area_bld_list, conn_
                         ['point', 'potential', potential.name, potential.id, type(potential).__name__, [lat, lon]])
 
 
-def process_area(esh, es_id, asset_list, building_list, area_bld_list, conn_list, area, level):
+def process_area(pm: ProjectManager, es_id, asset_list, building_list, area_bld_list, conn_list, area, level):
     area_bld_list.append(['Area', area.id, area.name, level])
 
     # process subareas
     for ar in area.area:
-        process_area(esh, es_id, asset_list, building_list, area_bld_list, conn_list, ar, level+1)
+        process_area(pm, es_id, asset_list, building_list, area_bld_list, conn_list, ar, level + 1)
 
     # process assets in area
     for asset in area.asset:
         if isinstance(asset, esdl.ExposedPortsAsset): # buildings or CompoundAssets
-            process_building(esh, es_id, asset_list, building_list, area_bld_list, conn_list, asset, False, level+1)
+            process_building(pm, es_id, asset_list, building_list, area_bld_list, conn_list, asset, False, level + 1)
         if isinstance(asset, esdl.EnergyAsset):
             add_asset_to_asset_list(asset_list, asset)
 
@@ -758,7 +873,7 @@ def process_area(esh, es_id, asset_list, building_list, area_bld_list, conn_list
                 continue
 
             for p in asset.port:
-                p_asset = get_asset_and_coord_from_port_id(esh, es_id, p.id)
+                p_asset = get_asset_and_coord_from_port_id(pm, es_id, p.id)
                 p_asset_coord = p_asset['coord']        # get proper coordinate if asset is line
                 conn_to_ids = [cp.id for cp in p.connectedTo]
                 p_carr_id = None
@@ -766,7 +881,7 @@ def process_area(esh, es_id, asset_list, building_list, area_bld_list, conn_list
                     p_carr_id = p.carrier.id
                 if conn_to_ids:
                     for pc in p.connectedTo:
-                        pc_asset = get_asset_and_coord_from_port_id(esh, es_id, pc.id)
+                        pc_asset = get_asset_and_coord_from_port_id(pm, es_id, pc.id)
                         pc_asset_coord = None
                         if pc_asset['asset'].containingBuilding or pc_asset['asset'].containingAsset:
                             bld_pc_asset = pc_asset['asset'].containingBuilding or pc_asset['asset'].containingAsset
@@ -822,14 +937,34 @@ def recalculate_area_bld_list_area(area, area_bld_list, level):
         recalculate_area_bld_list_area(subarea, area_bld_list, level+1)
 
 
-def find_area_location_based(esh, active_es_id, geometry):
+def find_area_location_based(pm: ProjectManager, active_es_id, object):
+    """
+    Finds the area (parent) of an object, based on the location of the object and the geometries (polygon shapes) of the
+    ESDL areas
+
+    :param pm: ProjectManager
+    :param active_es_id: ID of the current active EnergySystem
+    :param object: Can be a reference to an ESDL object with a geometry attribute, or a reference to an esdl.Geometry itself
+    :return: area ID
+    """
     shape_dictionary = get_session_for_esid(active_es_id, 'shape_dictionary')
     logger.info(f"active_es_id = {active_es_id}, shape_dictionary contains {len(shape_dictionary.keys())} elements")
 
-    obj_geometry_shape = Shape.create(geometry)
+    if isinstance(object, esdl.Geometry):
+        obj_geom = object
+    else:
+        obj_geom = object.geometry
+
+    if isinstance(obj_geom, esdl.Polygon):
+        # For Polygon shaped objects, use the center of the polygon to determine in which Area the object must be placed
+        center_lat, center_lon = calculate_polygon_center(obj_geom)
+        obj_geom = esdl.Point(lat=center_lat, lon=center_lon)
+
+    obj_geometry_shape = Shape.create(obj_geom)
+
     areas_that_contain_obj = list()
 
-    es = esh.get_energy_system(es_id=active_es_id)
+    es = pm.get_active_energy_system()
     for key in shape_dictionary.keys():
         area_shp = shape_dictionary[key]
         # Check if this area_shp is part of the currently active ESDL.
@@ -843,7 +978,7 @@ def find_area_location_based(esh, active_es_id, geometry):
 
     if len(areas_that_contain_obj) == 0:
         logger.info("No shapes found, returning ID of top level area {es.instance[0].area.id}")
-        es = esh.get_energy_system(es_id=active_es_id)
+        es = pm.get_active_energy_system()
         return es.instance[0].area.id   # If no area is found, return the id of the top level area
     elif len(areas_that_contain_obj) == 1:
         logger.info(f"One shape found, returning ID of area that contains object {areas_that_contain_obj[0]}")
@@ -853,14 +988,41 @@ def find_area_location_based(esh, active_es_id, geometry):
         lowest_level = 0
         lowest_area_id = None
         for ar_id in areas_that_contain_obj:
-            area = esh.get_by_id(active_es_id, ar_id)
+            area = pm.get_by_id(active_es_id, ar_id)
+            area_scope = None
             area_level = 1
             while isinstance(area.eContainer(), esdl.Area):
                 area_level += 1
+                if isinstance(area.eContainer(), esdl.Area) and area.eContainer().logicalGroup:
+                    # The parent area has logicalGroup set to True, so the area itself has a scope of a certain type
+                    # (either a DSO service area or a CBS area)
+                    area_scope = area.scope
                 area = area.eContainer()
-            if area_level > lowest_level:
-                lowest_level = area_level
-                lowest_area_id = ar_id
+
+            if area_scope and not isinstance(object, esdl.Geometry):
+                # If the area was in a "logicalGroup" (DSO service are or CBS area) and the function was called with
+                # an ESDL asset as object (and not a geometry), move transport assets to other DSO service areas and
+                # other assets to CBS areas
+                if isinstance(object, esdl.Transport):
+                    if area_scope == esdl.AreaScopeEnum.SERVICE_AREA:
+                        if area_level > lowest_level:
+                            lowest_level = area_level
+                            lowest_area_id = ar_id
+                elif isinstance(object, esdl.Asset):
+                    # Can be Buildings or EnergyAssets (but not Transport)
+                    if area_scope != esdl.AreaScopeEnum.SERVICE_AREA:
+                        if area_level > lowest_level:
+                            lowest_level = area_level
+                            lowest_area_id = ar_id
+                else:
+                    logger.error(f"Unhandled case! Function 'find_area_location_based' was called with object of type {type(object)}")
+            else:
+                # if there is no area_scope OR the object is of type esdl.Geometry (in cases of drawing a new asset)
+                # just find the lowest level area and don't look at the area scope (as we cannot judge if it's a
+                # Transport asset or not)
+                if area_level > lowest_level:
+                    lowest_level = area_level
+                    lowest_area_id = ar_id
 
         logger.info(f"Multiple shapes found, returning ID of 'lowest' area {lowest_area_id}")
         return lowest_area_id
@@ -876,9 +1038,9 @@ def get_building_information(building):
     conn_list = []
 
     active_es_id = get_session('active_es_id')
-    esh = get_handler()
+    pm = get_project_manager()
 
-    process_building(esh, active_es_id, asset_list, building_list, bld_list, conn_list, building, True, 0)
+    process_building(pm, active_es_id, asset_list, building_list, bld_list, conn_list, building, True, 0)
     return {
         "id": building.id,
         "asset_list": asset_list,
@@ -893,7 +1055,7 @@ def get_building_information(building):
 # ---------------------------------------------------------------------------------------------------------------------
 def get_building_connections(building):
     active_es_id = get_session('active_es_id')
-    esh = get_handler()
+    pm = get_project_manager()
 
     conn_list = []
 
@@ -903,7 +1065,7 @@ def get_building_connections(building):
                 conn_to = p.connectedTo
                 if conn_to:
                     for pc in conn_to:
-                        pc_asset = get_asset_and_coord_from_port_id(esh, active_es_id, pc.id)
+                        pc_asset = get_asset_and_coord_from_port_id(pm, active_es_id, pc.id)
 
                         # If the asset the current asset connects to, is in a building...
                         if pc_asset['asset'].containingBuilding or pc_asset['asset'].containingAsset:
@@ -923,154 +1085,129 @@ def get_building_connections(building):
 #  Initialization after new or load energy system
 #  If this function is run through process_energy_system.submit(filename, es_title) it is executed
 #  in a separate thread.
+#  TODO: We also call process_energy_system asynchronously through executor.submit(process_energy_system). We should probably make that approach consistent.
 # ---------------------------------------------------------------------------------------------------------------------
-def process_energy_system(
-    esh,
-    filename=None,
-    es_title=None,
-    app_context=None,
-    force_update_es_id=None,
-    zoom=True,
-    load_animation=False,
-):
+@executor.job
+def call_process_energy_system(force_update_es_id=None, zoom=True, only_process_es_id=None, result_post_esdl_load=None):
+    # emit('clear_ui')
+    logger.info("Processing energysystems contained in Project manager")
+    logger.info("active_es_id at start: {}".format(get_session('active_es_id')))
+
     try:
-        # NOTE: filename, es_title and app_context are currently not used.
-        # emit('clear_ui')
-        print("Processing energysystems in esh")
-        print("active_es_id at start: {}".format(get_session('active_es_id')))
+        process_energy_system(force_update_es_id, zoom, only_process_es_id)
+    except Exception as e:
+        # Exceptions get swallowed by the executor. Log it here.
+        logger.exception(str(e))
 
-        # 4 June 2020 - Edwin: uncommented following line, we need to check if this is now handled properly
-        # set_session('active_es_id', main_es.id)     # TODO: check if required here?
-        es_list = esh.get_energy_systems()
-        es_info_list = get_session("es_info_list")
+    if result_post_esdl_load:
+        emit('esdl_service_result', result_post_esdl_load)
 
-        if force_update_es_id == "all":
-            emit('clear_esdl_layer_list')
+@timed
+def process_energy_system(force_update_es_id=None, zoom=True, only_process_es_id=None):
+    """
+    Initialization after an update to the energy system.
 
-        # If an energy system is processed, the loader is hidden by the frontend code that receives the info about
-        # the ESDL. If no energy system is processed, we need to hide the loader.
-        at_least_one_energy_system_processed = False
+    If this function is run through process_energy_system.submit(filename, es_title) it is executed
+    in a separate thread.
 
-        for es in es_list:
-            asset_list = []
-            building_list = []
-            area_bld_list = []
-            conn_list = []
+    TODO: Properly handle with force_update_es_id that does not match the active ES ID. Not sure yet how to handle it though.
+    """
 
-            if not isinstance(es, esdl.EnergySystem):
-                print("- Detected ESDL without an EnergySystem, is of type {}. Ignoring.".format(es.eClass.name))
-                continue
+    lock = get_session("process_energysystem_lock")
+    if lock is None:
+        lock = Lock()
+        set_session("process_energysystem_lock", lock)
 
-            if es.id is None:
-                es.id = str(uuid.uuid4())
+    #with lock:
+    try:  # (with lock)
+        logger.info(f"Acquiring lock {threading.current_thread()}, locked={lock.locked()}")
+        acquired = lock.acquire(timeout=60)
+        if not acquired:
+            raise TimeoutError("Timeout while acquiring lock for process energy system")
+        logger.info(f"Lock acquired, processing {threading.current_thread()}" )
+        try:
+            logger.info("Processing active energy system")
 
-            if es.id not in es_info_list or es.id == force_update_es_id or force_update_es_id == "all":
-                at_least_one_energy_system_processed = True
-                print("- Processing energysystem with id {}".format(es.id))
-                name = es.name
-                if not name:
-                    title = 'Untitled Energysystem'
-                else:
-                    title = name
+            pm = get_project_manager()
+            active_es = pm.get_active_energy_system()
+            set_session('active_es_id', active_es.id)
+            es_info_list = get_session("es_info_list")
 
-                emit('create_new_esdl_layer', {'es_id': es.id, 'title': title}) # removes old layer if exists
-                emit('set_active_layer_id', es.id)
+            energy_systems = pm.get_energy_systems()
+            if only_process_es_id:
+                energy_systems = [es for es in energy_systems if es.id == only_process_es_id]
 
-                es_instance: esdl.Instance = es.instance[0]
-                top_area: esdl.Area = es_instance.area
-                find_boundaries_in_ESDL(top_area)       # also adds coordinates to assets if possible
-                carrier_list = ESDLEnergySystem.get_carrier_list(es)
-                emit('carrier_list', {'es_id': es.id, 'carrier_list': carrier_list})
-                sector_list = ESDLEnergySystem.get_sector_list(es)
-                if sector_list:
-                    emit('sector_list', {'es_id': es.id, 'sector_list': sector_list})
+            if not energy_systems:
+                logger.error("No energy systems found in project manager!")
+                return
 
-                # Collecting area KPIs
-                print('- Processing KPIs')
-                es_area_kpis = {}
-                for content in es_instance.eAllContents():
-                    if isinstance(content, esdl.Area):
-                        area = content
-                        if area.KPIs:
-                            area_kpis = ESDLEnergySystem.process_area_KPIs(area)
-                            # Only updating es_area_kpis object if list of kpi_list is not empty.
-                            if len(area_kpis['kpi_list']):
-                                area_key = area.name if area.name else area.id
-                                es_area_kpis[area_key] = area_kpis
+            for es in energy_systems:
+                asset_list = []
+                building_list = []
+                area_bld_list = []
+                conn_list = []
+                if not isinstance(es, esdl.EnergySystem):
+                    raise RuntimeError(f"Energy system is not of type esdl.EnergySystem! es={es}")
 
-                displayed_area_name = top_area.name if top_area.name else title
-                # Only emit KPI info when there are area KPIs available
-                if len(es_area_kpis) > 0:
-                    emit('kpis', {'es_id': es.id, 'scope': displayed_area_name, 'kpi_info': es_area_kpis})
-                    emit('kpis_present', {'es_id': es.id, "message": es.name})
+                if force_update_es_id == es.id or es.id not in es_info_list:
+                    logger.info(f"- Processing energysystem with id {es.id}")
+                    name = es.name
+                    if not name:
+                        title = 'Untitled Energysystem'
+                    else:
+                        title = name
 
-                # measures can contain assets that still need to be added to the energysystem
-                assets_to_be_added = AssetsToBeAdded.get_assets_from_measures(es)
-                if assets_to_be_added:
-                    emit('ATBA_assets_to_be_added', {'ed_id': es.id, 'assets_to_be_added': assets_to_be_added})
+                    emit('create_new_esdl_layer', {'es_id': es.id, 'title': title})  # removes old layer if exists
+                    if es.id == active_es.id:
+                        emit('set_active_layer_id', es.id)
 
-                # Probably the following call is not required anymore, everything is handled by find_boundaries_in_ESDL
-                # add_missing_coordinates(area)
-                print('- Processing area')
-                process_area(esh, es.id, asset_list, building_list, area_bld_list, conn_list, top_area, 0)
-                print(f'#assets: {len(asset_list)}, #buildings: {len(building_list)}, #area_bld: {len(area_bld_list)}, #conn: {len(conn_list)}')
-                notes_list = get_notes_list(es)
+                    es_instance: esdl.Instance = es.instance[0]
+                    top_area: esdl.Area = es_instance.area
+                    find_boundaries_in_ESDL(top_area, es.id)  # also adds coordinates to assets if possible
+                    carrier_list = ESDLEnergySystem.get_carrier_list(es)
+                    emit('carrier_list', {'es_id': es.id, 'carrier_list': carrier_list})
+                    sector_list = ESDLEnergySystem.get_sector_list(es)
+                    if sector_list:
+                        emit('sector_list', {'es_id': es.id, 'sector_list': sector_list})
 
-                emit('add_building_objects', {'es_id': es.id, 'building_list': building_list, 'zoom': zoom})
-                emit('add_esdl_objects', {'es_id': es.id, 'asset_pot_list': asset_list, 'zoom': zoom})
-                emit('area_bld_list', {'es_id': es.id,  'area_bld_list': area_bld_list})
-                emit('add_connections', {'es_id': es.id, 'add_to_building': False, 'conn_list': conn_list})
-                emit('add_notes', {'es_id': es.id,  'notes_list': notes_list})
+                    # measures can contain assets that still need to be added to the energysystem
+                    assets_to_be_added = AssetsToBeAdded.get_assets_from_measures(es)
+                    if assets_to_be_added:
+                        emit('ATBA_assets_to_be_added', {'ed_id': es.id, 'assets_to_be_added': assets_to_be_added})
 
-                set_session_for_esid(es.id, 'conn_list', conn_list)
-                set_session_for_esid(es.id, 'asset_list', asset_list)
-                set_session_for_esid(es.id, 'building_list', building_list)
-                set_session_for_esid(es.id, 'area_bld_list', area_bld_list)
+                    # Probably the following call is not required anymore, everything is handled by find_boundaries_in_ESDL
+                    # add_missing_coordinates(area)
+                    logger.info(f'- Processing area, zoom={zoom}')
+                    process_area(pm, es.id, asset_list, building_list, area_bld_list, conn_list, top_area, 0)
+                    logger.info(
+                        f'#assets: {len(asset_list)}, #buildings: {len(building_list)}, #area_bld: {len(area_bld_list)}, #conn: {len(conn_list)}')
+                    notes_list = get_notes_list(es)
 
-                # Display animation if time series data for 'Pipe' or 'ElectricityCable' available
-                if load_animation:
-                    animation_fields = Profiles.get_animation_fields(es.id)
-                    if animation_fields:
-                        emit(
-                            "animation_esdl_data",
-                            {
-                                "es_id": es.id,
-                                "fields": animation_fields,
-                                "message": es.name,
-                                "filter_tag_name": None,
-                                "filter_tag_value": None,
-                                "influxdb_host_override": None,
-                            },
-                        )
+                    emit('add_building_objects', {'es_id': es.id, 'building_list': building_list, 'zoom': zoom})
+                    emit('add_esdl_objects', {'es_id': es.id, 'asset_pot_list': asset_list, 'zoom': zoom})
+                    emit('area_bld_list', {'es_id': es.id, 'area_bld_list': area_bld_list})
+                    emit('add_connections', {'es_id': es.id, 'add_to_building': False, 'conn_list': conn_list})
+                    emit('add_notes', {'es_id': es.id,  'notes_list': notes_list})
+                    emit('bring_kpis_to_front', es.id)
 
-                    # TODO: update asset_list???
+                    set_session_for_esid(es.id, 'conn_list', conn_list)
+                    set_session_for_esid(es.id, 'asset_list', asset_list)
+                    set_session_for_esid(es.id, 'building_list', building_list)
+                    set_session_for_esid(es.id, 'area_bld_list', area_bld_list)
+
                     es_info_list[es.id] = {
                         "processed": True
                     }
+                else:
+                    logger.info("- Energysystem with id {} already processed".format(es.id))
 
-                # If one energysystem is added (by calling an external service or via the API) the active_es_id (backend) and
-                # active_layer_id (frontend) are not synchronized. As a temporary fix the following lines are added.
-                # Be aware: process_energy_system is called in a seperate thread, active_es_id is also changed in the functions
-                # calling process_energy_system!
-                if get_session('active_es_id') != es.id:
-                    set_session('active_es_id', es.id)
-            else:
-                print("- Energysystem with id {} already processed".format(es.id))
+            emit('set_active_layer_id', pm.get_active_energy_system().id)
+            emit_active_esdl_project()
 
-        if not at_least_one_energy_system_processed:
-            logger.debug("No energysystem was processed at all. Hiding the loader")
-            emit('hide_loader')
-
-        set_handler(esh)
-        # emit('set_active_layer_id', main_es.id)
-
-        print("active_es_id at end: {}".format(get_session('active_es_id')))
-
-        #session.modified = True
-        print('session variables set', session)
-        # print('es_id: ', get_session('es_id'))
-    except Exception:
-        logger.exception("Exception while processing energy system")
-
-
-
+            #logger.info('session variables set', session=session)
+        except Exception:
+            logger.exception("Exception while processing energy system")
+    finally:
+        logger.info(f"Releasing lock {threading.current_thread()}")
+        lock.release()
+        logger.info(f"Lock released {threading.current_thread()}")

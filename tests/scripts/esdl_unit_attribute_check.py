@@ -13,11 +13,10 @@
 #      TNO
 
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
-from esdl import GenericProducer, GenericConsumer
-from pyecore.ecore import EClass, EAttribute
+from esdl import GenericProducer
 
 if __name__ == '__main__':
-    doc = EcoreDocumentation(esdlEcoreFile='c:\data\git\esdl\esdl\model\esdl.ecore')
+    doc = EcoreDocumentation(esdlEcoreFile='..\esdl\esdl.ecore')
     p = GenericProducer()
     attribute = 'power'
     #powerAttribute: EAttribute = p.eClass.findEStructuralFeature('power2')

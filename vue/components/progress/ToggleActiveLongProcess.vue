@@ -6,7 +6,7 @@
     >
       &nbsp;
     </div>
-    Show/hide active processes
+    Show active processes
   </a>
 </template>
 

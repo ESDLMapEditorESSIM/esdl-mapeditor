@@ -228,8 +228,15 @@ L.Control.Dialog = L.Control.extend({
     ));
     var resizeIcon = L.DomUtil.create("i", "fa fa-arrows-h fa-rotate-45");
     resizerNode.appendChild(resizeIcon);
-
     L.DomEvent.on(resizerNode, "mousedown", this._handleResizeStart, this);
+
+    var bottomResizer = L.DomUtil.create("div", className + "-bottom-resizer");
+    L.DomEvent.on(bottomResizer, "mousedown", this._handleResizeStart, this);
+    var rightResizer = L.DomUtil.create("div", className + "-right-resizer");
+    L.DomEvent.on(rightResizer, "mousedown", this._handleResizeStart, this);
+    var leftResizer = L.DomUtil.create("div", className + "-left-resizer");
+    L.DomEvent.on(leftResizer, "mousedown", this._handleMoveStart, this);
+
 
     var contentNode = (this._contentNode = L.DomUtil.create(
       "div",
@@ -255,6 +262,9 @@ L.Control.Dialog = L.Control.extend({
     innerContainer.appendChild(grabberNode);
     innerContainer.appendChild(closeNode);
     innerContainer.appendChild(resizerNode);
+    innerContainer.appendChild(bottomResizer);
+    innerContainer.appendChild(rightResizer);
+    innerContainer.appendChild(leftResizer);
 
     titleNode.appendChild(titleTextNode);
 
@@ -354,6 +364,32 @@ L.Control.Dialog = L.Control.extend({
       this._container.style.height = this.options.size[1] + "px";
       this._oldMousePos.y += diffY;
     }
+
+    this._map.fire("dialog:resizing", this);
+  },
+
+  _resize_left: function(diffX, diffY) {
+    var newX = this.options.size[0] + diffX;
+    var newY = this.options.size[1] + diffY;
+
+    this.options.anchor[0] = newY;
+    this.options.anchor[1] = newX;
+
+    //this._container.style.top = this.options.anchor[0] + "px";
+    this._container.style.left = this.options.anchor[1] + "px";
+
+    // if (newX <= this.options.maxSize[0] && newX >= this.options.minSize[0]) {
+    //   this.options.size[0] = newX;
+    //   this._container.style.width = this.options.size[0] + "px";
+    //   this._oldMousePos.x += diffX;
+    // }
+    //
+    // if (newY <= this.options.maxSize[1] && newY >= this.options.minSize[1]) {
+    //   this.options.size[1] = newY;
+    //   this._container.style.height = this.options.size[1] + "px";
+    //   this._oldMousePos.y += diffY;
+    this._oldMousePos.y += diffY;
+    this._oldMousePos.x += diffX;
 
     this._map.fire("dialog:resizing", this);
   },

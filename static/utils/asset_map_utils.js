@@ -54,8 +54,8 @@ function build_asset_menu(asset_menu_id, add_nea, cap_pot_list) {
              if (!assets_for_icons.includes(cap_list[key][i])){
                 //console.log("Generating marker for" + cap_list[key][i] + ", abbr = " + getAbbrevation(cap_list[key][i]));
                 genIconDataURL = drawTextImage(getAbbrevation(cap_list[key][i]));
-                window[cap_list[key][i] +'Marker'] = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12),
-                    iconSize: new L.Point(30, 30), iconUrl: genIconDataURL}});
+                window[cap_list[key][i] +'Marker'] = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(15, 15),
+                    iconSize: new L.Point(30, 30), iconUrl: genIconDataURL, className: 'leaflet-no-mouse-cursor'}});
              }
         }
         $asset_menu.append(optgroup);
@@ -74,8 +74,8 @@ function build_asset_menu(asset_menu_id, add_nea, cap_pot_list) {
          if (!assets_for_icons.includes(pot_list[i])){
             //console.log("Generating marker for" + cap_list[key][i] + ", abbr = " + getAbbrevation(cap_list[key][i]));
             genIconDataURL = drawTextImage(getAbbrevation(pot_list[i]));
-            window[pot_list[i] +'Marker'] = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(12, 12),
-                iconSize: new L.Point(30, 30), iconUrl: genIconDataURL}});
+            window[pot_list[i] +'Marker'] = L.Icon.extend({options: {shadowUrl: null, iconAnchor: new L.Point(15, 15),
+                iconSize: new L.Point(30, 30), iconUrl: genIconDataURL, className: 'leaflet-no-mouse-cursor'}});
          }
     }
     $asset_menu.append(optgroup);

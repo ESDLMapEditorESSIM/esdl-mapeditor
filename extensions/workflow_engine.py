@@ -127,12 +127,20 @@ class WorkflowStep:
         # run query(ies) until SUCCEEDED or maximum wait time reached
         nr_of_retries = 0
         nr_of_query_errors = 0
+        queries_finished = []
+
         while True:
-            updated_values = dict(model_specific_output=dict())
+            updated_run_values = dict()
             queries_error_message = ""
             for query_config in config["query_list"]:
                 # update values with query response
-                queries_error_message += self.do_query_and_update_values(updated_values, query_config)
+                if query_config["url"] not in queries_finished:
+                    query_error_message, query_finished = self.update_values_from_query(
+                        updated_run_values, query_config
+                    )
+                    queries_error_message += query_error_message
+                    if query_finished and query_config["url"] not in queries_finished:
+                        queries_finished.append(query_config["url"])
 
             if queries_error_message:  # allow a number of errors (temporarily unavailable api)
                 nr_of_query_errors += 1
@@ -140,24 +148,34 @@ class WorkflowStep:
                     time.sleep(retry_interval_seconds)
                     continue
                 else:
-                    updated_values[STATUS] = RunStatus.ERROR.value
+                    updated_run_values[STATUS] = RunStatus.ERROR.value
                     current_model_run_data = self.models_storage.get_model_run(self.sequence_data.run_id)
-                    updated_values[LOGS] = f"{current_model_run_data.get(LOGS, '')}\n{queries_error_message}"
-            elif STATUS not in updated_values or updated_values[STATUS] is None:
+                    updated_run_values[LOGS] = f"{current_model_run_data.get(LOGS, '')}\n{queries_error_message}"
+            elif STATUS not in updated_run_values or updated_run_values[STATUS] is None:
                 logger.error(
                     f"Workflow engine sequence for user '{self.sequence_data.user_email}' terminated:"
                     f" no status was returned/configured (model run '{self.sequence_data.run_id}')."
                 )
                 return False
-            updated_values[LAST_UPDATED_TO_EXTERNAL_MODEL_AT] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            # update run status SUCCEEDED to SUCC_PEND when not all queries finished
+            step_status = updated_run_values[STATUS]
+            if (
+                STATUS in updated_run_values
+                and updated_run_values[STATUS] == RunStatus.SUCCEEDED.value
+                and len(queries_finished) < len(config["query_list"])
+            ):
+                updated_run_values[STATUS] = RunStatus.SUCC_PEND.value
+
+            updated_run_values[LAST_UPDATED_TO_EXTERNAL_MODEL_AT] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
             # update mongodb
-            updated_model_run = self.models_storage.update_model_run(self.sequence_data.run_id, updated_values)
+            updated_model_run = self.models_storage.update_model_run(self.sequence_data.run_id, updated_run_values)
             updated_model_run["is_owner"] = updated_model_run["user"] == self.sequence_data.user_email
 
             if updated_model_run:
                 # emit to frontend
-                step_progress.status = updated_model_run[STATUS]
+                step_progress.status = step_status
                 step_progress.progress_fraction = updated_model_run[PROGRESS_FRACTION]
                 connected_user_client_ids = get_all_session_ids_for_user(self.sequence_data.user_email)
                 if len(connected_user_client_ids) > 0:
@@ -180,18 +198,39 @@ class WorkflowStep:
                         )
 
                 # check if workflow step finished
-                if updated_values[STATUS] == RunStatus.SUCCEEDED.value:
-                    logger.info(
-                        f"Workflow engine sequence for user '{self.sequence_data.user_email}' succeeded:"
-                        f" sequence '{self.sequence_data.run_id}'."
-                    )
-                    return True
-                elif updated_values[STATUS] in [RunStatus.CANCELLED.value, RunStatus.ERROR.value]:
-                    logger.info(
+                if STATUS in updated_run_values and updated_run_values[STATUS] in [
+                    RunStatus.CANCELLED.value,
+                    RunStatus.ERROR.value,
+                ]:  # on error abort workflow step
+                    logger.warning(
                         f"Workflow engine sequence for user '{self.sequence_data.user_email}' terminated"
-                        f" with status '{updated_values[STATUS]}': sequence '{self.sequence_data.run_id}'."
+                        f" with status '{updated_run_values[STATUS]}': sequence '{self.sequence_data.run_id}'."
                     )
                     return False
+                elif len(queries_finished) == len(config["query_list"]):  # all queries finished
+                    if STATUS in updated_run_values and updated_run_values[STATUS] in [
+                        RunStatus.SUCCEEDED.value,
+                        RunStatus.SUCC_PEND.value,
+                        RunStatus.SUCC_WARN.value,
+                        RunStatus.NEED_INPUT.value,
+                    ]:
+                        logger.info(
+                            f"Workflow engine sequence for user '{self.sequence_data.user_email}' finished"
+                            f" with status '{updated_run_values[STATUS]}': sequence '{self.sequence_data.run_id}'."
+                        )
+                        return True
+                    elif STATUS not in updated_run_values:
+                        logger.warning(
+                            f"Workflow engine sequence for user '{self.sequence_data.user_email}' finished"
+                            f" without status: sequence '{self.sequence_data.run_id}' aborted."
+                        )
+                        return False
+                    else:
+                        logger.warning(
+                            f"Workflow engine sequence for user '{self.sequence_data.user_email}' finished with status"
+                            f" '{updated_run_values[STATUS]}': sequence '{self.sequence_data.run_id}' aborted."
+                        )
+                        return False
                 elif nr_of_retries * retry_interval_seconds > maximum_wait_seconds:
                     logger.error(
                         f"Workflow engine sequence for user '{self.sequence_data.user_email}' terminated: maximum wait"
@@ -239,9 +278,10 @@ class WorkflowStep:
                 )
         return True
 
-    def do_query_and_update_values(self, updated_values: dict, query_config: dict) -> str:
+    def update_values_from_query(self, updated_values: dict, query_config: dict) -> tuple[str, bool]:
         url = parse_string_with_parameters(query_config["url"], self.sequence_data.as_dict())
         error_message = ""
+        query_finished = False
         try:
             logger.info(url)
             resp = requests.get(url)
@@ -252,32 +292,68 @@ class WorkflowStep:
                     resp_value = get_nested_dict_value(resp_json, model_key)
                     if resp_value:
                         updated_values[key] = self.parse_response_key(key, resp_value, query_config)
-                for key, model_key in query_config["model_specific_response_mapping"].items():
-                    resp_value = get_nested_dict_value(resp_json, model_key)
-                    if resp_value:
-                        updated_values[MODEL_SPECIFIC_OUTPUT][key] = self.parse_response_key(
-                            key, resp_value, query_config
+                if "model_specific_response_mapping" in query_config:
+                    for key, model_key in query_config["model_specific_response_mapping"].items():
+                        resp_value = get_nested_dict_value(resp_json, model_key)
+                        if resp_value:
+                            # nested dot notation for mongo db update
+                            updated_values[f"{MODEL_SPECIFIC_OUTPUT}.{key}"] = self.parse_response_key(
+                                key, resp_value, query_config
+                            )
+                if "status_mapping" in query_config:
+                    if updated_values[STATUS] not in [RunStatus.SUBMITTED.value, RunStatus.RUNNING.value]:
+                        query_finished = True
+                elif "stop_query_on" in query_config:
+                    key = query_config["stop_query_on"]["key"]
+                    key_value = updated_values[key] if key in updated_values else None
+                    condition = query_config["stop_query_on"]["condition"]
+                    value = query_config["stop_query_on"]["value"]
+                    if condition == "larger_than":
+                        query_finished = key_value > value
+                    elif condition == "larger_equal_than":
+                        query_finished = key_value >= value
+                    elif condition == "equal":
+                        query_finished = key_value == value
+                    elif condition == "not_equal":
+                        query_finished = key_value != value
+                    elif condition == "smaller_than":
+                        query_finished = key_value < value
+                    elif condition == "smaller_equal_than":
+                        query_finished = key_value <= value
+                    else:
+                        error_message = (
+                            f"Condition '{condition}' for external model query with url '{url}':" f" does not exist."
                         )
+                        logger.warning(error_message)
+                    if query_finished and "new_status" in query_config["stop_query_on"]:
+                        updated_values[STATUS] = RunStatus(query_config["stop_query_on"]["new_status"]).value
+                else:
+                    error_message = (
+                        f"Missing config for external model query with url '{url}':"
+                        f" 'status_mapping' or 'stop_query_on' required to determine when to stop query."
+                    )
+                    logger.warning(error_message)
             else:
                 error_message = f"Unexpected query status code '{resp.status_code}' from url '{url}'."
                 logger.warning(error_message)
         except Exception as e:
             error_message = f"Error while getting external model run results: {str(e)}"
             logger.warning(error_message)
-        return error_message
+        return error_message, query_finished
 
     @staticmethod
-    def parse_response_key(key, value, query_config) -> any:
+    def parse_response_key(key, value, query_config) -> str | float | None:
         if key == STATUS:
             for status, model_status_values in query_config["status_mapping"].items():
                 if value in model_status_values:
-                    return status
+                    return RunStatus(status).value
             logger.error(f"Status '{value}' not found in status mapping '{query_config['status_mapping']}'")
             return None
         elif key == OUTPUT_ESDL:
-            if query_config["esdl_encoding"] == "utf_8":
+            esdl_encoding = "base64_encoded" if "esdl_encoding" not in query_config else query_config["esdl_encoding"]
+            if esdl_encoding == "utf_8":
                 return value
-            elif query_config["esdl_encoding"] == "base64_encoded":
+            elif esdl_encoding == "base64_encoded":
                 esdlstr_bytes = value.encode("utf-8")
                 esdlstr_base64_bytes = base64.b64decode(esdlstr_bytes)
                 return esdlstr_base64_bytes.decode("utf-8")
@@ -450,7 +526,7 @@ class WorkflowEngine:
 
         # finish workflow sequence
         logger.info(
-            f"Workflow engine sequence finished for run '{sequence_data.run_name}' with status '{run_succeeded}'"
+            f"Workflow engine sequence finished for run '{sequence_data.run_name}' successfully: '{run_succeeded}'"
         )
         if run_succeeded:
             title = f"Run '{sequence_data.run_name}' succeeded."

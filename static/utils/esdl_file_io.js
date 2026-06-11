@@ -35,40 +35,108 @@ function read_esdl_file_as_array_buffer(file) {
 }
 
 function load_esdl_files(event) {
-    var file = event.target.files[0];
-
-    let files = [];
+    const files = [];
     for (let file_nr=0; file_nr<event.target.files.length; file_nr++) {
-        let file = event.target.files[file_nr];
-        if (file) files.push(file);
+        const file = event.target.files[file_nr];
+        if (file) {
+            files.push(file);
+        }
     }
 
-    if (!files.length) return;
+    if (!files.length) {
+        return;
+    }
 
-    let readers = [];
+    const readers = [];
     for (let i=0; i<files.length; i++) {
-        readers.push(this.read_esdl_file_as_array_buffer(files[i]));
+        readers.push(read_esdl_file_as_array_buffer(files[i]));
     }
 
+    const load_esdl_url = window.resource_uri + '/esdl_file_io';
     Promise.all(readers).then((array_with_file_info) => {
-        let load_esdl_url = resource_uri + '/esdl_file_io';
-
-        show_loader();
+        window.show_loader();
         $.ajax({
             url: load_esdl_url,
             type: 'POST',
-            data: {file_info: array_with_file_info},
-            success: function (data) {
-               // don't hide loader yet ???   but who should?
-               hide_loader();
-               // console.log(data);
-
-               socket.emit('process_loaded_energysystems');
+            data: { file_info: array_with_file_info, is_import: false },
+            success: function (response) {
+                window.hide_loader();
+                if (response && (response.status === 'pending_prompt' || response.status === 'error_prompt_sent')) {
+                    return;
+                }
+                socket.emit('process_loaded_energysystems');
             },
-            error: function(xhr, ajaxOptions, thrownError) {
-               hide_loader();
-               alert('Error occurred in load_esdl_files: ' + xhr.status + ' - ' + thrownError);
-            }
+            error: handle_esdl_file_upload_error,
         });
+    }).catch((error) => {
+        console.error('Error reading files:', error);
+        alert('Error reading files: ' + error);
     });
+}
+
+
+function import_esdl_helper(event) {
+    const files = [];
+    for (let file_nr=0; file_nr<event.target.files.length; file_nr++) {
+        const file = event.target.files[file_nr];
+        if (file) {
+            files.push(file);
+        }
+    }
+
+    if (!files.length) {
+        return;
+    }
+
+    const readers = [];
+    for (let i=0; i<files.length; i++) {
+        readers.push(read_esdl_file_as_array_buffer(files[i]));
+    }
+
+    const import_esdl_url = window.resource_uri + '/esdl_file_io';
+    Promise.all(readers).then((array_with_file_info) => {
+        // here we tell the reader what to do when it's done reading...
+        window.show_loader();
+        $.ajax({
+            url: import_esdl_url,
+            type: 'POST',
+            // data: {file_content: content, filename: file.name, import: true},
+            data: { file_info: array_with_file_info, is_import: true },
+            success: function (response) {
+                window.hide_loader();
+                if (response && (response.status === 'pending_prompt' || response.status === 'error_prompt_sent')) {
+                    return;
+                }
+                window.socket.emit('process_loaded_energysystems');
+            },
+            error: handle_esdl_file_upload_error,
+        });
+    }).catch((error) => {
+        console.error('Error reading files:', error);
+        alert('Error reading files: ' + error);
+    });
+}
+
+function import_esdl_files(event) {
+    import_esdl_helper(event, false);
+}
+
+
+/**
+ * Function to handle errors in the AJAX request for loading or importing ESDL files.
+ * @param xhr
+ * @param textStatus
+ * @param thrownError
+ */
+function handle_esdl_file_upload_error(xhr, textStatus, thrownError) {
+    window.hide_loader();
+    console.error('AJAX request failed:', xhr);
+    console.error('Status:', xhr.status);
+    console.error('Error:', thrownError);
+    console.error('Error message:', xhr.responseJSON);
+    let response_msg = "";
+    if (xhr.responseJSON && xhr.responseJSON.message) {
+        response_msg = '\n\nError message: ' +  xhr.responseJSON.message;
+    }
+    alert('Error occurred during loading or importing of ESDL file(s): ' + xhr.status + ' - ' + thrownError + response_msg);
 }

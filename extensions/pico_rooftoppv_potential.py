@@ -12,17 +12,21 @@
 #  Manager:
 #      TNO
 
+import uuid
+
+import requests
 from flask import Flask
 from flask_socketio import SocketIO, emit
-from extensions.session_manager import get_handler, get_session, get_session_for_esid
-from extensions.boundary_service import is_valid_boundary_id
+
+import src.log as log
 from esdl import esdl
 from esdl.processing import ESDLAsset
+from esdl.undo_wrapper import undo_record_changes
+from esdlproject.ProjectManager import load_external_string
+from extensions.boundary_service import is_valid_boundary_id
+from extensions.session_manager import get_project_manager, get_session, get_session_for_esid
 from src.esdl_helper import get_tooltip_asset_attrs, add_extra_attributes
 from src.process_es_area_bld import calc_building_assets_location, recalculate_area_bld_list, get_area_id_from_mapeditor_id
-import uuid
-import requests
-import src.log as log
 
 logger = log.get_logger(__name__)
 
@@ -61,6 +65,7 @@ class PICORooftopPVPotential:
         logger.info("Registering PICORooftopPVPotential extension")
 
         @self.socketio.on('use_part_of_potential', namespace='/esdl')
+        @undo_record_changes(label="Use (part of) solar potential")
         def use_part_of_potential(pot_id, percentage, all_potentials):
             """
             Use part of a SolarPotential to install a PVInstallation
@@ -72,23 +77,23 @@ class PICORooftopPVPotential:
             :return: None
             """
             with self.flask_app.app_context():
-                esh = get_handler()
+                pm = get_project_manager()
                 active_es_id = get_session('active_es_id')
 
                 asset_list = []
                 add_to_building = False
 
-                pot = esh.get_by_id(active_es_id, pot_id)
+                pot = pm.get_by_id(active_es_id, pot_id)
                 if pot.solarPotentialType != esdl.PVInstallationTypeEnum.ROOFTOP_PV:
                     send_alert('SolarPotential is not of type ROOFTOP_PV')
                 else:
-                    self.convert_potential(esh, active_es_id, pot, add_to_building, percentage, asset_list)
+                    self.convert_potential(pm, active_es_id, pot, add_to_building, percentage, asset_list)
                     emit('add_esdl_objects',
                          {'es_id': active_es_id, 'add_to_building': add_to_building, 'asset_pot_list': asset_list,
                           'zoom': False})
 
                     if all_potentials:
-                        es = esh.get_energy_system(active_es_id)
+                        es = pm.get_active_energy_system()
                         area = es.instance[0].area
 
                         for obj in area.eAllContents():
@@ -98,7 +103,7 @@ class PICORooftopPVPotential:
                                     asset_list = []
                                     add_to_building = False
 
-                                    pvi = self.convert_potential(esh, active_es_id, obj, add_to_building, percentage, asset_list)
+                                    pvi = self.convert_potential(pm, active_es_id, obj, add_to_building, percentage, asset_list)
                                     if add_to_building:
                                         # if the PVInstalliation is in the same building as the selected potential
                                         if pot.eContainer() == pvi.eContainer():
@@ -115,33 +120,34 @@ class PICORooftopPVPotential:
                                                                   'zoom': False})
 
         @self.socketio.on('use_part_of_potential_area', namespace='/esdl')
-        def use_part_of_potential_area(area_id, percentage, all_areas):
+        @undo_record_changes(label="Use (part of) solar potential area")
+        def use_part_of_potential_area(area_info, percentage, all_areas):
             """
             Use part of all SolarPotentials in an Area to install a PVInstallation
 
-            :param area_id: id of the Area where the SolarPotentials are part of
+            :param area_info: dict with id, lat, lon of the Area where the SolarPotentials are part of
             :param percentage: percentage (0-100) of the SolarPotential that should be installed as a PVInstallation
             :param all_areas: boolean specifying if this action should be applied to all Areas in the energy system
             :return: None
             """
             with self.flask_app.app_context():
-                esh = get_handler()
+                pm = get_project_manager()
                 active_es_id = get_session('active_es_id')
 
                 asset_list = []
                 if all_areas:
-                    es = esh.get_energy_system(active_es_id)
+                    es = pm.get_active_energy_system()
                     area = es.instance[0].area
                 else:
-                    area_id = get_area_id_from_mapeditor_id(area_id)
-                    area = esh.get_by_id(active_es_id, area_id)
+                    area_id = get_area_id_from_mapeditor_id(area_info['id'])
+                    area = pm.get_by_id(active_es_id, area_id)
                 if area:
                     for obj in area.eAllContents():
                         if isinstance(obj, esdl.SolarPotential):
                             if obj.solarPotentialType == esdl.PVInstallationTypeEnum.ROOFTOP_PV:
                                 asset_info = []
                                 add_to_building_list = [False]  # Put into list, to pass by reference
-                                self.convert_potential(esh, active_es_id, obj, add_to_building_list, percentage, asset_info)
+                                self.convert_potential(pm, active_es_id, obj, add_to_building_list, percentage, asset_info)
                                 if not add_to_building_list[0]:
                                     asset_list = asset_list + asset_info
 
@@ -155,28 +161,29 @@ class PICORooftopPVPotential:
                     send_alert("Serious error, area not found")
 
         @self.socketio.on('query_solar_potentials', namespace='/esdl')
-        def query_solar_potentials(area_id, all_areas):
+        @undo_record_changes(label="Query solar potential")
+        def query_solar_potentials(area_info, all_areas):
             """
             Query SolarPotentials information for a specific Area or all areas in the energysystem
 
-            :param area_id: id of the Area where the SolarPotentials should be queried for
+            :param area_info: dict with id, lat, lon coordinates of the Area where the SolarPotentials should be queried for
             :param all_areas: boolean specifying if this action should be applied to all Areas in the energy system
             :return: None
             """
             with self.flask_app.app_context():
-                esh = get_handler()
+                pm = get_project_manager()
                 active_es_id = get_session('active_es_id')
 
                 shape_dictionary = get_session_for_esid(active_es_id, 'shape_dictionary')
                 if not shape_dictionary:
                     shape_dictionary = {}
 
-                es = esh.get_energy_system(active_es_id)
+                es = pm.get_active_energy_system()
                 if all_areas:
                     area = es.instance[0].area
                 else:
-                    area_id = get_area_id_from_mapeditor_id(area_id)
-                    area = esh.get_by_id(active_es_id, area_id)
+                    area_id = get_area_id_from_mapeditor_id(area_info['id'])
+                    area = pm.get_by_id(active_es_id, area_id)
 
                 if area:
                     building_list = []
@@ -194,7 +201,7 @@ class PICORooftopPVPotential:
                                     building.geometry = esdl.Point(lat=center.y, lon=center.x)
                                 found_a_building = True
                                 subarea.asset.append(building)
-                                esh.add_object_to_dict(active_es_id, building, True)
+                                pm.add_object_to_dict(active_es_id, building, True)
                                 building_list.append(self.get_building_info_for_emit_list(building))
                             else:
                                 logger.warning('No correct information returned for area with ID {}'.format(subarea_id))
@@ -212,7 +219,7 @@ class PICORooftopPVPotential:
                                     center = shape.shape.centroid
                                     building.geometry = esdl.Point(lat=center.y, lon=center.x)
                                 area.asset.append(building)
-                                esh.add_object_to_dict(active_es_id, building, True)
+                                pm.add_object_to_dict(active_es_id, building, True)
                                 building_list.append(self.get_building_info_for_emit_list(building))
 
                     if building_list:
@@ -232,7 +239,7 @@ class PICORooftopPVPotential:
 
     @staticmethod
     def query_pico_rooftoppv_api(area):
-        esh = get_handler()
+        pm = get_project_manager()
 
         asset_copy = None
         for code in PICO_ID_TO_URL_MAPPING:
@@ -248,7 +255,7 @@ class PICORooftopPVPotential:
 
                     if r.status_code == 200:
                         # print(r.text)
-                        pzod_es, parse_info = esh.load_external_string(r.text, "pico_zon_op_dak")
+                        pzod_es, parse_info = load_external_string(r.text, "pico_zon_op_dak")
 
                         asset = pzod_es.instance[0].area.asset[0]
                         if asset:
@@ -268,7 +275,7 @@ class PICORooftopPVPotential:
                         [building.geometry.lat, building.geometry.lon], True, {}, extra_attributes]
 
     @staticmethod
-    def convert_potential(esh, active_es_id, pot, add_to_building, percentage, asset_list):
+    def convert_potential(pm, active_es_id, pot, add_to_building, percentage, asset_list):
         pot_container = pot.eContainer()
 
         # Determine orientation from potential information
@@ -306,7 +313,7 @@ class PICORooftopPVPotential:
 
         # Add the PVInstallation to the same container as the SolarPotential (Area or Building)
         pot_container.asset.append(pv_installation)
-        esh.add_object_to_dict(active_es_id, pv_installation, recursive=True)
+        pm.add_object_to_dict(active_es_id, pv_installation, recursive=True)
         if isinstance(pot_container, esdl.AbstractBuilding):
             calc_building_assets_location(pot_container, True)
 

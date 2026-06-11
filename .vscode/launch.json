@@ -1,0 +1,57 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "main.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/app.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "name": "load_wms_layers.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/wms_layers/load_wms_layers.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/scripts/wms_layers/",
+            "justMyCode": true,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "envFile": "${workspaceFolder}/scripts/wms_layers/.env"
+        },
+        {
+            "name": "prepare_wms_layers.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/wms_layers/prepare_wms_layers.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/scripts/wms_layers/",
+            "justMyCode": true,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "envFile": "${workspaceFolder}/scripts/wms_layers/.env"
+        },
+        {
+            "name": "geo_layers_convert_format.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/wms_layers/geo_layers_convert_format.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/scripts/wms_layers/",
+            "justMyCode": true,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "envFile": "${workspaceFolder}/scripts/wms_layers/.env"
+        }
+    ]
+}

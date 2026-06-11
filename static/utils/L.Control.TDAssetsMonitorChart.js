@@ -217,7 +217,7 @@ class LControlTDAssetsMonitorChart {
     }
 
     initSocketIO() {
-        console.log("Registering socket io bindings for LControlTDAssetsMonitorChart");
+        console.log("Registering socketio bindings for LControlTDAssetsMonitorChart");
         socket.on('td_monitor_asset_data', function (td_monitor_asset_data) {
             if (tdAssetsMonitorChart.chart) {
                 tdAssetsMonitorChart.chart.update_data(td_monitor_asset_data);

@@ -12,7 +12,6 @@
 #  Manager:
 #      TNO
 import json
-from uuid import uuid4
 
 import cgi
 from collections import defaultdict
@@ -20,14 +19,13 @@ from collections import defaultdict
 import base64
 from flask import Flask, jsonify, request
 from flask_executor import Executor
-from flask_executor.executor import ExecutorJob
 from flask_socketio import SocketIO
 import os
 import requests
 from typing import Dict, List, Tuple, Union, cast, Type
 
 from esdl import esdl
-from extensions.session_manager import get_handler, get_session
+from extensions.session_manager import get_project_manager
 from extensions.settings_storage import SettingsStorage
 from src.esdl_config import ESDL_UPLOAD_PROFILES_HOST
 from src.log import get_logger
@@ -51,13 +49,11 @@ class PDToolsuiteWorkflow:
         socket: SocketIO,
         executor: Executor,
         settings_storage: SettingsStorage,
-        call_process_energy_system: ExecutorJob,
     ):
         self.flask_app = flask_app
         self.socketio = socket
         self.executor = executor
         self.settings_storage = settings_storage
-        self.call_process_energy_system = call_process_energy_system
         self.register()
 
     def register(self):
@@ -120,10 +116,10 @@ class PDToolsuiteWorkflow:
         @self.flask_app.route("/pdtoolsuite_workflow/profiles/template", methods=["POST"])
         def generate_profile_template():
             url = f"{ESDL_UPLOAD_PROFILES_HOST}/process/template"
-            active_es_id = get_session("active_es_id")
-            esh = get_handler()
+            pm = get_project_manager()
+            esdlstr = pm.energy_system_to_string(pm.get_active_energy_system().id)
 
-            base64_es = base64.b64encode(esh.to_string(active_es_id).encode("utf-8")).decode()
+            base64_es = base64.b64encode(esdlstr.encode("utf-8")).decode()
             payload = dict(
                 energysystem=base64_es,
             )
@@ -159,9 +155,9 @@ class PDToolsuiteWorkflow:
             base64_file = request.json["base64_file"]
             profiles_upload_file = base64.b64decode(base64_file, b"-_")
             url = f"{ESDL_UPLOAD_PROFILES_HOST}/process/profile"
-            active_es_id = get_session("active_es_id")
-            esh = get_handler()
-            base64_es = base64.b64encode(esh.to_string(active_es_id).encode("utf-8")).decode()
+            pm = get_project_manager()
+            esdlstr = pm.energy_system_to_string(pm.get_active_energy_system().id)
+            base64_es = base64.b64encode(esdlstr.encode("utf-8")).decode()
             files = dict(energysystem=base64_es, profile_excel=profiles_upload_file)
 
             r = requests.post(url, files=files, timeout=DEFAULT_TIMEOUT)
@@ -180,8 +176,8 @@ class PDToolsuiteWorkflow:
                 )
 
             content, filename = _download_profiles_result(process_id)
-            esh = get_handler()
-            esh.add_from_string(filename, content.decode("utf-8"))
+            pm = get_project_manager()
+            pm.add_from_string(filename, content.decode("utf-8"))
             return (
                 jsonify(
                     dict(
@@ -197,9 +193,8 @@ def _get_assets_of_type_in_active_es(asset_type: Type[esdl.Asset]) -> List[esdl.
     """
     Retrieve all buildings in the active energy system and returns it sorted by name.
     """
-    active_es_id = get_session("active_es_id")
-    esh = get_handler()
-    es = esh.get_energy_system(es_id=active_es_id)
+    pm = get_project_manager()
+    es = pm.get_active_energy_system()
     area = es.instance[0].area
     assets: List[asset_type] = []
     for asset in area.asset:
@@ -213,9 +208,8 @@ def _get_buildings_in_active_es() -> List[esdl.GenericBuilding]:
     """
     Retrieve all buildings in the active energy system and returns it sorted by name.
     """
-    active_es_id = get_session("active_es_id")
-    esh = get_handler()
-    es = esh.get_energy_system(es_id=active_es_id)
+    pm = get_project_manager()
+    es = pm.get_active_energy_system()
     area = es.instance[0].area
     buildings: List[esdl.GenericBuilding] = []
     for asset in area.asset:

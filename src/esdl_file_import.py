@@ -1,4 +1,5 @@
 import base64
+import traceback
 import uuid
 from typing import Dict
 
@@ -10,13 +11,62 @@ from pyecore.resources import ResourceSet
 import esdl
 import src.log as log
 from esdl import EnergySystem, TimeSeriesProfile, InfluxDBProfile
-from esdl.esdl_handler import EnergySystemWithSameIdExists, StringURI
+from esdl.processing.string_uri import StringURI
 from esdl.profiles.influxdbprofilemanager import InfluxDBProfileManager, ConnectionSettings
+from esdlproject.ProjectManager import load_external_string
 from extensions.profiles import Profiles
-from extensions.session_manager import get_handler, set_session
-from src.process_es_area_bld import process_energy_system
+from extensions.prompt_manager import PromptManager
+from extensions.session_manager import set_session, get_project_manager, get_session
+from src.process_es_area_bld import process_energy_system, call_process_energy_system
+from src.tno.projects.duplicate_detection import (
+    DuplicateChoice,
+    DuplicatePrompt,
+    find_duplicate_variant_collection,
+    generate_renamed_esdl_string,
+    next_available_name,
+)
 
 logger = log.get_logger(__name__)
+
+ESDL_DUPLICATE_INLINE_IMPORT = "esdl_duplicate_inline_import"
+
+
+def handle_esdl_duplicate_inline_import(choice_key: str, context: dict):
+    """Apply user choice for duplicate inline-import prompts."""
+    pm = get_project_manager()
+    filename = context.get("filename")
+    file_content = context.get("file_content")
+    if not filename or not file_content:
+        logger.warning("Missing context for inline import prompt")
+        return
+
+    if choice_key == DuplicateChoice.CANCEL:
+        return
+
+    temp_es, _ = load_external_string(name=filename, esdl_string=file_content)
+
+    if choice_key == DuplicateChoice.OVERWRITE:
+        duplicate_vc, _, _, _ = find_duplicate_variant_collection(pm, temp_es.id, temp_es.name)
+        if duplicate_vc:
+            pm.delete_variant(duplicate_vc)
+    elif choice_key == DuplicateChoice.RENAME:
+        new_name = next_available_name(pm, temp_es.name)
+        file_content = generate_renamed_esdl_string(file_content, filename, new_name=new_name)
+
+    variant, parse_info = pm.add_energy_system(StringURI(filename, file_content))
+    pm.set_active_variant(variant)
+    imported_es = pm.get_energy_system(variant)
+    if len(parse_info) > 0:
+        info = ""
+        for line in parse_info:
+            info += line + "\n"
+        logger.warning("Warnings while importing {}:\n\n{}".format(filename, info))
+    set_session('active_es_id', imported_es.id)
+    set_session('es_filename', filename)
+    call_process_energy_system.submit(force_update_es_id=imported_es.id)
+
+
+PromptManager.register_handler(ESDL_DUPLICATE_INLINE_IMPORT, handle_esdl_duplicate_inline_import)
 
 
 class ESDLFileImport:
@@ -32,7 +82,7 @@ class ESDLFileImport:
         @self.flask_app.route("/esdl_file_import", methods=['POST'])
         def esdl_file_import():
             with self.flask_app.app_context():
-                esh = get_handler()
+                pm = get_project_manager()
 
                 filename = request.values.get('filename')
 
@@ -48,7 +98,7 @@ class ESDLFileImport:
                     if inline == 'true':  # silly js to python conversion
                         logger.info("Importing inline ESDL")
                         # inline_esh = EnergySystemHandler()  # TODO: or use esh.load_external_string()?
-                        inline_es, parse_info = esh.load_external_string(name=filename, esdl_string=file_content)
+                        inline_es, parse_info = load_external_string(name=filename, esdl_string=file_content)
                         inline_es = self.convert_inline_to_influx(inline_es)
                         inline_es.name = inline_es.name.replace(" - In-line Profiles", "")
 
@@ -59,9 +109,30 @@ class ESDLFileImport:
                         file_content = uri.getvalue()
                         logger.debug("Inline ESDL converted to InfluxDB profiles")
 
-                    imported_es, parse_info = esh.add_from_string(
-                        name=filename, esdl_string=file_content, overwrite_existing=False
+                    temp_es, parse_info = load_external_string(name=filename, esdl_string=file_content)
+                    duplicate_vc, match_id, match_name, matched_es = find_duplicate_variant_collection(
+                        pm, temp_es.id, temp_es.name
                     )
+                    if duplicate_vc:
+                        user_email = get_session("user-email")
+                        details = "\n".join(parse_info) if parse_info else None
+                        PromptManager.get_instance().send(DuplicatePrompt(
+                            user_email=user_email,
+                            continuation_id=ESDL_DUPLICATE_INLINE_IMPORT,
+                            match_id=match_id,
+                            match_name=match_name,
+                            matched_es=matched_es,
+                            context={
+                                "filename": filename,
+                                "file_content": file_content,
+                            },
+                            details=details,
+                        ))
+                        return {'status': 'pending_prompt'}, 202
+
+                    variant, parse_info = pm.add_energy_system(StringURI(filename, file_content))
+                    pm.set_active_variant(variant)
+                    imported_es = pm.get_energy_system(variant)
 
                     if len(parse_info) > 0:
                         info = ''
@@ -71,27 +142,20 @@ class ESDLFileImport:
                     set_session('es_filename', filename)
 
                     return {'message': 'ESDL imported'}, 201
-                except EnergySystemWithSameIdExists:
-                    logger.error("An EnergySystem with the same EnergySystem ID was already loaded")
-                    # send_alert(
-                    #     'An EnergySystem with the same EnergySystem ID was already loaded. Remove this existing ' +
-                    #     'EnergySystem first and then try to import again')
                 except Exception as e:
                     logger.error("Error importing {}: {}".format(filename, e))
-                    # send_alert('Error interpreting ESDL from file - Exception: ' + str(e))
-
-                return {'message': 'Error importing ESDL'}, 500
+                    PromptManager.get_instance().send_error(
+                        user_email=get_session("user-email"),
+                        title=f"Error importing {filename}",
+                        exception=e,
+                        details=traceback.format_exc(),
+                    )
+                    return {'status': 'error_prompt_sent'}, 200
 
 
         @self.socketio.on("process_imported_energysystem", namespace='/esdl')
         def process_imported_energysystem():
-            with self.flask_app.app_context():
-                esh = get_handler()
-                self.executor.submit(self.call_process_energy_system, esh)  # run in separate thread
-
-    @staticmethod
-    def call_process_energy_system(esh):
-        process_energy_system(esh, filename=None, es_title=None, app_context=None, force_update_es_id=None, zoom=True)
+            call_process_energy_system.submit()
 
     @staticmethod
     def convert_inline_to_influx(inline_es: EnergySystem) -> EnergySystem:

@@ -16,10 +16,10 @@ import uuid
 from esdl import esdl
 from pyecore.ecore import EClass, EObject
 from pyecore.resources import ResourceSet
-from esdl.esdl_handler import StringURI
+from esdl.processing.string_uri import StringURI
 from esdl.processing import ESDLEnergySystem
+from extensions.session_manager import get_session, get_project_manager
 from esdl.resources.xmlresource import XMLResource
-from extensions.session_manager import get_handler, get_session
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -170,9 +170,9 @@ def add_object_to_building(es, obj, building_id):
 
 # todo: move to EnergySystemHandler
 def remove_object_from_energysystem(es, object_id):
-    esh = get_handler()
+    pm = get_project_manager()
     active_es_id = get_session('active_es_id')
-    obj = esh.get_by_id(active_es_id, object_id)
+    obj = pm.get_by_id(active_es_id, object_id)
     obj.delete(recursive=True)
 
 
@@ -226,7 +226,7 @@ def get_potentials_list():
 
 
 def load_asset_from_string(esdl_string):
-    uri = StringURI('from_string.esdl', esdl_string)
+    uri = StringURI('load_asset_from_string.esdl', esdl_string)
     # self._new_resource_set()
     rset = ResourceSet()
     resource = rset.create_resource(uri)
@@ -249,7 +249,7 @@ def add_profile_to_port(port, profile):
 
 
 def remove_profile_from_port(port, profile_id):
-    esh = get_handler()
+    pm = get_project_manager()
     active_es_id = get_session('active_es_id')
 
     profile_list = port.profile
@@ -257,7 +257,7 @@ def remove_profile_from_port(port, profile_id):
     for profile in set(profile_list):
         if profile.id == profile_id:
             profile_list.remove(profile)
-            esh.remove_object_from_dict(active_es_id, profile, True)
+            pm.remove_object_from_dict(active_es_id, profile, True)
 
 def update_ids_in_object(obj: EObject):
     for el in obj.eAllContents():

@@ -31,6 +31,9 @@ from esdl.profiles.profilemanager import (
     NoProfileLoadedExecption,
 )
 
+# For mapeditor: commented out as no ExcelProfileManager is available
+# from esdl.profiles.excelprofilemanager import ExcelProfileManager
+
 global_credentials: Dict[str, Credentials] = {}
 
 # add a default credential based on hostname based on environmental variables
@@ -184,8 +187,8 @@ class DataTableProfileManager(ProfileManager):
     ) -> "DataTableProfileManager":
         """
         Static method to create an instance of DataTableProfileManager using an esdl.DataTableProfile. The data
-        referenced to in the profile is loaded from the associated DataConfiguration
-        (e.g. DatabaseConfiguration or FileConfiguration)
+        referenced in the profile is loaded from the associated DataConfiguration, such as a DatabaseConfiguration
+        or FileConfiguration.
 
         :param data_table_profile: esdl.DataTableProfile that is used as an input profile
         :param credentials_dict: dictionary of credentials to use for authentication with ['id' -> Credentials] mapping,
@@ -307,7 +310,7 @@ class DataTableProfileManager(ProfileManager):
                     downsample_bucket_sec=downsample_bucket_sec,
                     column_based=column_based,
                 )
-                qaus = [m.qau for m in metadata]
+                qaus = [m.qau if m else None for m in metadata]
                 postgres.disconnect()
                 return profile_data_list, profile_header, qaus
             elif configuration.type == esdl.DatabaseTypeEnum.INFLUXDB:

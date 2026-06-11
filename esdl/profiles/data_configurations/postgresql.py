@@ -1,4 +1,5 @@
 import logging
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from logging import warning, error
@@ -13,6 +14,7 @@ from esdl.units.parser import unit_to_string, build_qau_from_unit_string
 
 # table name used for storing metadata that is not in the table
 META_DATA_TABLE_NAME = "datatable_metadata"
+FILTER_DICT_COLUMN_NAME = "tags"
 META_DATA_TABLE_COLUMNS = [
     "table_name",
     "column_name",
@@ -21,7 +23,7 @@ META_DATA_TABLE_COLUMNS = [
     "profile_name",
 ]
 META_DATA_TABLE_COLUMN_LENGTH = [64, 64, 32, 32, 255]  # VARCHAR lengths
-META_DATA_TABLE_NOT_NULL = [True, True, True, False, False]
+META_DATA_TABLE_NOT_NULL = [True, True, False, False, False]
 
 # set to True to enable debugging of SQL statements
 DEBUG_SQL = False
@@ -112,6 +114,8 @@ class PostgresqlConfiguration:
         if not self.connection:
             raise Exception("PostgreSQL connection not established")
 
+        direct_filters, downsample_bucket_sec = self._parse_profile_filter(self.datatable_profile.filter)
+
         with self.connection.cursor() as cursor:
             if self.datatable_profile.schema:
                 table_ident = sql.Identifier(
@@ -133,9 +137,25 @@ class PostgresqlConfiguration:
                 self.datatable_profile.startDate,
                 self.datatable_profile.endDate,
                 additional_filters,
+                direct_filters,
             )
 
-            if self.datatable_profile.columnName:
+            if self.datatable_profile.columnName and downsample_bucket_sec:
+                query = sql.SQL(
+                    """
+                    SELECT
+                        to_timestamp(
+                            floor(extract(epoch from {dt}) / %s) * %s
+                        )::timestamp AS {dt},
+                        AVG({col}) AS {col}
+                    FROM {tbl}
+                    {where}
+                    GROUP BY 1
+                    ORDER BY 1
+                """
+                ).format(dt=dt_ident, col=col_ident, tbl=table_ident, where=where_sql)
+                params = [downsample_bucket_sec, downsample_bucket_sec, *params]
+            elif self.datatable_profile.columnName:
                 query = sql.SQL("SELECT {dt}, {col} FROM {tbl} {where}").format(
                     dt=dt_ident, col=col_ident, tbl=table_ident, where=where_sql
                 )
@@ -259,11 +279,40 @@ class PostgresqlConfiguration:
             return profile_values, header, metadata
 
     @staticmethod
+    def _parse_profile_filter(filter_string: Optional[str]) -> Tuple[Dict[str, Any], Optional[int]]:
+        """
+        Parse a DataTableProfile filter string into direct column filters and a
+        downsample bucket size. Supports simple equality clauses joined by AND.
+        """
+        direct_filters: Dict[str, Any] = {}
+        downsample_bucket_sec = None
+
+        if not filter_string:
+            return direct_filters, downsample_bucket_sec
+
+        pattern = r'"?(\w+)"?\s*=\s*(?:\'([^\']*)\'|(\d+))'
+        matches = re.findall(pattern, filter_string)
+
+        if not matches:
+            logging.error(f"Failed to parse filter string: {filter_string}")
+            return direct_filters, downsample_bucket_sec
+
+        for column, str_value, num_value in matches:
+            value = str_value if str_value else float(num_value)
+            if column == "groupby_interval_sec":
+                downsample_bucket_sec = int(value)
+            else:
+                direct_filters[column] = value
+
+        return direct_filters, downsample_bucket_sec
+
+    @staticmethod
     def _build_where_clause(
         dt_ident,
         start_date: Optional[datetime],
         end_date: Optional[datetime],
         additional_filters: Dict[str, Any] = None,
+        direct_filters: Dict[str, Any] = None,
     ) -> Tuple[Any, List]:
         """
         A utility function to build a SQL WHERE clause for datetime range and simple equality filters.
@@ -271,11 +320,14 @@ class PostgresqlConfiguration:
         :param dt_ident: psycopg2 SQL identifier for the datetime column.
         :param start_date: Optional start datetime for filtering.
         :param end_date: Optional end datetime for filtering.
-        :param additional_filters: Optional dict of column=value filters.
+        :param additional_filters: Optional dict of key=value filters for the tags column.
+        :param direct_filters: Optional dict of column=value filters applied to direct table columns.
         :return: A tuple of (where_sql, params_list).
         """
         if additional_filters is not None and not isinstance(additional_filters, dict):
             raise TypeError("additional_filters must be a dict or None")
+        if direct_filters is not None and not isinstance(direct_filters, dict):
+            raise TypeError("direct_filters must be a dict or None")
 
         where_clauses = []
         params = []
@@ -292,17 +344,16 @@ class PostgresqlConfiguration:
 
         # NOTE: 'OR' or more complex filtering is not supported yet.
         if additional_filters:
-            for col, val in additional_filters.items():
-                where_clauses.append(
-                    sql.SQL("{col} = %s").format(col=sql.Identifier(col))
-                )
+            for key, val in additional_filters.items():
+                where_clauses.append(sql.SQL("{tags} ->> %s = %s").format(tags=sql.Identifier(FILTER_DICT_COLUMN_NAME)))
+                params.extend([key, val])
+
+        if direct_filters:
+            for key, val in direct_filters.items():
+                where_clauses.append(sql.SQL("{col} = %s").format(col=sql.Identifier(key)))
                 params.append(val)
 
-        where_sql = (
-            sql.SQL(" WHERE ") + sql.SQL(" AND ").join(where_clauses)
-            if where_clauses
-            else sql.SQL("")
-        )
+        where_sql = sql.SQL(" WHERE ") + sql.SQL(" AND ").join(where_clauses) if where_clauses else sql.SQL("")
 
         return where_sql, params
 
@@ -370,6 +421,7 @@ class PostgresqlConfiguration:
                 result = cursor.fetchone()
                 if result:
                     result_dict = dict(zip(META_DATA_TABLE_COLUMNS, result))
+                    qau = None
                     if result_dict["unit"] or result_dict["physical_quantity"]:
                         qau = build_qau_from_unit_string(
                             result_dict["unit"], result_dict["physical_quantity"]
@@ -503,7 +555,13 @@ class PostgresqlConfiguration:
         :return: None
         """
         qau = datatable_profile.profileQuantityAndUnit
-        if qau is None or qau.unit is None or qau.physicalQuantity is None:
+        if (
+            qau is None
+            or qau.unit is None
+            or qau.unit == esdl.UnitEnum.NONE
+            or qau.physicalQuantity is None
+            or qau.physicalQuantity is esdl.PhysicalQuantityEnum.UNDEFINED
+        ):
             raise InvalidDataTableProfile(
                 f"Missing Quantity and unit information for DataTableProfile with id={datatable_profile.id}"
             )

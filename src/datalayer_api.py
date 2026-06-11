@@ -12,12 +12,11 @@
 #  Manager:
 #      TNO
 
-from flask import Flask, jsonify
-from flask_socketio import SocketIO, emit
+from flask import Flask
+from flask_socketio import SocketIO
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
-from esdl.processing.ESDLEcore import instantiate_type
 from esdl.processing.ESDLDataLayer import ESDLDataLayer
-from extensions.session_manager import get_session
+from esdl.undo_wrapper import undo_record_changes
 from extensions.vue_backend.control_strategy import get_control_strategy_info, set_control_strategy
 from extensions.vue_backend.cost_information import set_cost_information
 from dataclasses import asdict
@@ -56,6 +55,7 @@ class DataLayerAPI:
         #     return self.datalayer.set_object_parameters_by_identifier(identifier, properties)       
 
         @self.socketio.on('DLA_set_cost_information', namespace='/esdl')
+        @undo_record_changes("Set cost information")
         def DLA_set_cost_information(identifier, cost_information):
             if isinstance(identifier['id'], list):
                 esdl_objects = list()
@@ -111,6 +111,7 @@ class DataLayerAPI:
             return result
 
         @self.socketio.on('DLA_set_cs', namespace='/esdl')
+        @undo_record_changes(label="Set control strategy")
         def DLA_set_cs(identifier, cs_info):
             """
             Sets or changes the control strategy for an EnergyAsset. 
@@ -121,6 +122,7 @@ class DataLayerAPI:
             set_control_strategy(object, cs_info)
 
         @self.socketio.on('DLA_remove_cs', namespace='/esdl')
+        @undo_record_changes(label="Remove control strategy")
         def DLA_remove_cs(identifier):
             """
             Removes a control strategy from an EnergyAsset. Also removes the control strategy from the list of Services. 
@@ -141,12 +143,14 @@ class DataLayerAPI:
             return asdict(response)
 
         @self.socketio.on('DLA_set_table_data', namespace='/esdl')
+        @undo_record_changes(label="Set table data")
         def DLA_set_table_data(message):
             new_table_data = DLA_set_table_data_request(**message)
             print('DLA_set_table_data_request', new_table_data)
             self.datalayer.set_table(new_table_data)
 
         @self.socketio.on('DLA_delete_ref', namespace='/esdl')
+        @undo_record_changes(label="Delete reference")
         def DLA_delete_ref(message):
             delete_ref_message = DeleteRefMessage(**message)
             return self.datalayer.delete_ref(delete_ref_message)
@@ -197,6 +201,7 @@ class DataLayerAPI:
             return result
 
         @self.socketio.on('DLA_update_environmental_profiles_info', namespace='/esdl')
+        @undo_record_changes(label="Update environmental profiles")
         def DLA_update_environmental_profiles_info(info):
             """
             Updates information about the Environmental profiles configured in the ESDL.
@@ -216,6 +221,7 @@ class DataLayerAPI:
             return asdict(self.datalayer.get_carrier(message['id']))
 
         @self.socketio.on('DLA_update_carrier_info', namespace='/esdl')
+        @undo_record_changes(label="Update carrier information")
         def DLA_update_carrier_info(message):
             """
             Updates information about a carrier configured in the ESDL.

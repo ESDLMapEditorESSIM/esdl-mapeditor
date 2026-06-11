@@ -25,6 +25,7 @@ const props = defineProps({
   treeId: String,
   data: Object,
   plugins: Array,
+  checkbox: Object, // checkbox config for checkbox plugin
   treeTypeSpecs: Array,
   // Tree-level events.
   events: Object,
@@ -155,7 +156,7 @@ onMounted(() => {
       expand_selected_onload : false,
     },
     plugins: props.plugins,
-    checkbox: {
+    checkbox: props.checkbox || {
       "three_state": true,
       "whole_node": false,
       // uncouple selecting and checking
@@ -170,7 +171,7 @@ onMounted(() => {
         }
         return {};
       },
-      select_node: false,
+      select_node: true,
     },
     dnd: {
       inside_pos: "first",
@@ -184,7 +185,8 @@ watchEffect(() => {
   // Refresh tree with new data.
   if (props.data && getTree() && getTree().refresh) {
     getTree().settings.core.data = props.data;
-    getTree().refresh(false, true);
+    console.log("Refreshing tree with new data");
+    getTree().refresh(true, true);
   }
 });
 

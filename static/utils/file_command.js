@@ -36,12 +36,12 @@ function new_ESDL() {
 }
 
 function click_new_ESDL_button(obj) {
-    new_name = document.getElementById('new_name').value;
-    new_description = document.getElementById('new_description').value;
-    new_instance_name = document.getElementById('new_instance_name').value;
-    new_top_area_name = document.getElementById('new_area_name').value;
+    const new_name = document.getElementById('new_name').value;
+    const new_description = document.getElementById('new_description').value;
+    const new_instance_name = document.getElementById('new_instance_name').value;
+    const new_top_area_name = document.getElementById('new_area_name').value;
 
-    socket.emit('file_command', {cmd: 'new_esdl', name: new_name, description: new_description,
+    window.socket.emit('file_command', {cmd: 'new_esdl', name: new_name, description: new_description,
         instance_name: new_instance_name, top_area_name: new_top_area_name});
 }
 
@@ -57,7 +57,6 @@ function import_esdl_helper(event, inline=false) {
     // here we tell the reader what to do when it's done reading...
     reader.onload = readerEvent => {
         var content = readerEvent.target.result; // this is the content!
-        // socket.emit('file_command', {cmd: 'import_esdl_from_file', filename: file.name, file_content: content, load_animation: true});
         show_loader();
         $.ajax({
             url: resource_uri + '/esdl_file_import',
@@ -65,8 +64,10 @@ function import_esdl_helper(event, inline=false) {
             data: {file_content: content, filename: file.name, inline: inline},
             success: function (data) {
                 hide_loader();
-
-                socket.emit('process_imported_energysystem');
+                if (data && (data.status === 'pending_prompt' || data.status === 'error_prompt_sent')) {
+                    return;
+                }
+                window.socket.emit('process_imported_energysystem');
             },
             error: function (data) {
                 hide_loader();
@@ -74,6 +75,7 @@ function import_esdl_helper(event, inline=false) {
             }
         });
     }
+    window.PubSubManager.broadcast('NEW_ESDL', {});
 }
 
 function import_ESDL(event) {
@@ -156,7 +158,7 @@ function download_file(e, url) {
 }
 
 function send_cmd_store_ESDL() {
-    // socket.emit('file_command', {cmd: 'store_esdl'});
+    // socketio.emit('file_command', {cmd: 'store_esdl'});
     esdl_store_save_window();
 }
 

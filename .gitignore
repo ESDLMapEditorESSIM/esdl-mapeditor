@@ -72,12 +72,14 @@ data_manager.db
 
 # Editors
 .idea/
+.vscode/
+%LOCALAPPDATA%
 
 *.xmi
 *.esdl
 !tests/esdl/*.esdl
 download/
-projects/
+/projects/
 html/
 flask_session/
 node_modules
@@ -91,6 +93,8 @@ credentials/
 environments/
 venv_old/
 node_modules/
+data/sessions
+data/local
 
 credentials/client_secrets_remote*.json
 package-lock.json
@@ -104,3 +108,5 @@ package-lock.json
 !static/vendor/cdn.jsdelivr.net/npm/leaflet-toolbar@0.4.0-alpha.2/dist
 
 .DS_Store
+
+%LOCALAPPDATA%

@@ -16,7 +16,7 @@ from flask import Flask
 from flask_socketio import SocketIO
 
 import esdl
-from extensions.session_manager import get_handler, get_session
+from extensions.session_manager import get_session, get_project_manager
 import src.log as log
 
 
@@ -36,8 +36,8 @@ class TooltipInfo:
         def get_tooltip_info(es_id, object_id):
             if es_id is None:
                 es_id = get_session('active_es_id')
-            esh = get_handler()
-            es_edit = esh.get_energy_system(es_id=es_id)
+            pm = get_project_manager()
+            es_edit = pm.get_energy_system_by_id(es_id)
             active_es_id = es_edit.id
 
             results = {
@@ -45,7 +45,7 @@ class TooltipInfo:
                 "profiles": False,
             }
             try:
-                object = esh.get_by_id(active_es_id, object_id)
+                object = pm.get_by_id(active_es_id, object_id)
             except KeyError:
                 # if object_id cannot be found, we return 'empty' results
                 return results

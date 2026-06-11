@@ -14,8 +14,8 @@ body {
 .footer {
     background-color: grey;
     color: white;
-    float:
-        padding: 4px;
+    /*float:
+        padding: 4px;*/
     height: 30px;
 }
 
@@ -86,10 +86,12 @@ h6 {
     display: flex;
 }
 
+
 .flexbox-item-grow {
     flex: 1;
     /* same as flex: 1 1 auto; */
 }
+
 
 /*
     ESDL Asset styles
@@ -447,10 +449,21 @@ h6 {
     Loader
 */
 #loader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(200, 200, 200, 0.5);
+    z-index: 100000;
+    pointer-events: all;
+    cursor: not-allowed;
+}
+
+#loader .spinner {
     position: absolute;
     left: 50%;
     top: 50%;
-    z-index: 10000;
     width: 100px;
     height: 100px;
     margin: -50px 0 0 -50px;
@@ -459,6 +472,21 @@ h6 {
     border-top: 12px solid #3498db;
     -webkit-animation: spin 2s linear infinite;
     animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+#loader-hider {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 50px;
+    height: 50px;
+    z-index: 100001;
+    cursor: default;
 }
 
 @-webkit-keyframes spin {
@@ -548,7 +576,7 @@ h6 {
 
 .jstree-contextmenu {
     font-family: sans-serif;
-    font-size: 10px;
+    font-size: 11px;
 }
 
 .group_es_layers_anchor {
@@ -562,11 +590,7 @@ h6 {
 .jstree-anchor:hover,
 .jstree-anchor:active {
     font-size: 12px;
-    padding: 0 0px 0 0px;
-}
-
-.jstree-default .jstree-node {
-    margin-left: 12px
+    padding: 1px 3px 0px 0px;
 }
 
 /* Minimizing height of lines */
@@ -578,19 +602,52 @@ h6 {
 .jstree-default .jstree-node {
     min-height: 18px;
     line-height: 18px;
-    margin-left: 24px;
+    margin-left: 14px;
     min-width: 24px;
 }
 
 /* Smaller icons */
+/*
 .jstree-default .jstree-icon {
     background-image: url(../icons/32px.png);
+}
+*/
+
+/* following definitions are created to make sure a dense set of icons are possible */
+.jstree-default .jstree-checkbox
+{
+  background-position: -168px -5px;
+}
+
+.jstree-default .jstree-checkbox:hover
+{
+  background-position: -168px -37px;
+}
+
+.jstree-default.jstree-checkbox-selection .jstree-clicked > .jstree-checkbox, .jstree-default .jstree-checked > .jstree-checkbox
+{
+  background-position: -232px -5px;
+}
+
+.jstree-default.jstree-checkbox-selection .jstree-clicked > .jstree-checkbox:hover, .jstree-default .jstree-checked > .jstree-checkbox:hover
+{
+  background-position: -232px -37px;
+}
+
+.jstree-default .jstree-anchor > .jstree-undetermined
+{
+  background-position: -200px -5px;
+}
+
+.jstree-default .jstree-anchor > .jstree-undetermined:hover
+{
+  background-position: -200px -37px;
 }
 
 .jstree-default .jstree-icon:empty {
     width: 18px;
     height: 18px;
-    line-height: 18px;
+    line-height: 21px;
 }
 
 /*
@@ -641,6 +698,7 @@ z-index for jstree context menu, sidebar has 2000
 }
 
 .topmenu {
+    padding: 0;
     background-color: #343a40;
 }
 
@@ -672,11 +730,29 @@ z-index for jstree context menu, sidebar has 2000
 }
 
 .dropdown-menu>li>a {
-    padding: 3px 0px;
+    padding: 2px 0px;
+    margin-top: 1px;
     /*    display: inline-block; */
     position: relative;
     left: 20px;
     float: left;
+}
+
+.dropdown-menu>li.separator {
+    margin-left: 5px;
+    margin-right: -15px;
+    height: 6px;
+}
+
+.menu-separator {
+    
+    padding-right: 0px;
+    border-top: 1px solid lightgray;
+}
+
+.fa-smaller {
+    font-size: 10px;
+    margin-left:3px;
 }
 
 /*
@@ -699,26 +775,26 @@ z-index for jstree context menu, sidebar has 2000
 
 .menu-icon#menu_compare {
     background-image: url(/icons/Compare.png);
-    width: 16;
-    height: 16;
+    width: 16px;
+    height: 16px;
 }
 
 .menu-icon#menu_layers {
     background-image: url(/icons/Layers.png);
-    width: 16;
-    height: 16;
+    width: 16px;
+    height: 16px;
 }
 
 .menu-icon#menu_import {
     background-image: url(/icons/Import.png);
-    width: 16;
-    height: 16;
+    width: 16px;
+    height: 16px;
 }
 
 .menu-icon#menu_areageometry {
     background-image: url(/icons/AreaGeometry.png);
-    width: 16;
-    height: 16;
+    width: 16px;
+    height: 16px;
 }
 
 .simulations .btn {
