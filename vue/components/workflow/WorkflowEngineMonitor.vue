@@ -80,5 +80,10 @@ const init = () => {
       stepsProgress.value = data["steps_progress"];
     }
   });
+
+  window.socket.off('wfe_sequence_continue_frontend');
+  window.socket.on('wfe_sequence_continue_frontend', (data) => {
+    goToStep(data.next_step);
+  });
 };
 </script>
