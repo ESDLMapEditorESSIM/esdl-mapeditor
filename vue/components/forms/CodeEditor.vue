@@ -2,16 +2,18 @@
   <div class="code-editor-wrapper">
     <div
       ref="editorContainer"
-      class="code-editor"
+      class="code-editor" 
       :class="{ 'code-editor--error': error }"
       :style="{ height: (2 + nrOfRows * 1.4) + 'em' }"
     />
 
-    <div v-if="error" class="error">
-      {{ language }}: {{ error }}
-    </div>
-    <div v-else class="valid">
-      {{ language }}
+    <div class="code-editor-status">
+      <div v-if="error" class="error">{{ language }}: {{ error }}</div>
+      <div v-else class="valid">{{ language }}</div>
+      <div v-if="props.language === 'json' && props.showFoldControls" class="code-editor-actions">
+        <a-button type="primary" size="small" @click="collapseAll">Collapse</a-button>
+        <a-button type="primary" size="small" @click="expandAll">Expand</a-button>
+      </div>
     </div>
   </div>
 </template>
@@ -21,6 +23,7 @@ import {ref, onUnmounted, watch, computed} from 'vue';
 import {EditorState} from '@codemirror/state';
 import {EditorView, keymap, lineNumbers} from '@codemirror/view';
 import {defaultKeymap, history} from '@codemirror/commands';
+import {codeFolding, foldGutter, foldKeymap, foldAll, unfoldAll} from '@codemirror/language';
 import {oneDark} from '@codemirror/theme-one-dark';
 
 import {json} from '@codemirror/lang-json';
@@ -39,6 +42,7 @@ import {XMLParser} from 'fast-xml-parser';
 const props = defineProps({
   modelValue: {type: [String, Object], default: ''},
   language: {type: String, default: 'json'},
+  showFoldControls: {type: Boolean, default: true},
   nrOfRows: {type: Number, default: 20},
   updateOnInput: {type: Boolean, default: false},
   formatOnBlur: {type: Boolean, default: true},
@@ -82,6 +86,16 @@ const LANGUAGES = {
 };
 
 const currentLang = computed(() => LANGUAGES[props.language] || LANGUAGES.json);
+
+const collapseAll = () => {
+  if (!editorView || props.language !== 'json') return;
+  foldAll(editorView);
+};
+
+const expandAll = () => {
+  if (!editorView || props.language !== 'json') return;
+  unfoldAll(editorView);
+};
 
 // on update emit validate and optionally update v-model
 const onUpdate = (value) => {
@@ -137,7 +151,24 @@ const createEditor = (initialValue) => {
       doc: initialValue,
       extensions: [
         lineNumbers(),
-        keymap.of(defaultKeymap),
+        foldGutter({
+          markerDOM: (open) => {
+            const marker = document.createElement('span');
+            marker.textContent = open ? '⌄' : '›';
+            marker.setAttribute('aria-hidden', 'true');
+            return marker;
+          },
+        }),
+        codeFolding({
+          placeholderDOM: (view, onclick) => {
+            const el = document.createElement('span');
+            el.className = 'cm-foldPlaceholder';
+            el.textContent = '…';
+            el.addEventListener('mousedown', onclick);
+            return el;
+          },
+        }),
+        keymap.of([...defaultKeymap, ...foldKeymap]),
         history(),
         currentLang.value.extension,
         oneDark,
@@ -193,10 +224,25 @@ defineExpose({
       editorView.dispatch({
         changes: {from: 0, to: editorView.state.doc.length, insert: val},
       }),
+
+  collapseAll,
+  expandAll,
 });
 </script>
 
 <style scoped>
+.code-editor-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+.code-editor-actions {
+  display: flex;
+  gap: 6px;
+}
+
 .code-editor {
   font-family: monospace;
   border: 1px solid #4caf50;
