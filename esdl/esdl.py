@@ -132,9 +132,6 @@ CoolingDeviceType = EEnum('CoolingDeviceType', literals=[
 RoomHeaterTypeEnum = EEnum('RoomHeaterTypeEnum', literals=[
                            'UNDEFINED', 'GAS_STOVE', 'WOOD_STOVE', 'ELECTRIC', 'INFRARED_PANEL'])
 
-BiomassHeaterTypeEnum = EEnum('BiomassHeaterTypeEnum', literals=[
-                              'UNDEFINED', 'FULLY_AUTOMATED', 'SEMI_AUTOMATED', 'PELLET_FIRED', 'CHP'])
-
 UTESPotentialTypeEnum = EEnum('UTESPotentialTypeEnum', literals=[
                               'UNDEFINED', 'HEAT_OPEN', 'HEAT_CLOSED', 'COLD_OPEN', 'COLD_CLOSED'])
 
@@ -919,8 +916,9 @@ class Carrier(EObject, metaclass=MetaEClass):
     id = EAttribute(eType=EString, unique=True, derived=False, changeable=True, iD=True)
     cost = EReference(ordered=True, unique=True, containment=True, derived=False)
     dataSource = EReference(ordered=True, unique=True, containment=True, derived=False)
+    profile = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
 
-    def __init__(self, *, name=None, id=None, cost=None, dataSource=None):
+    def __init__(self, *, name=None, id=None, cost=None, dataSource=None, profile=None):
         # if kwargs:
         #    raise AttributeError('unexpected arguments: {}'.format(kwargs))
 
@@ -937,6 +935,9 @@ class Carrier(EObject, metaclass=MetaEClass):
 
         if dataSource is not None:
             self.dataSource = dataSource
+
+        if profile:
+            self.profile.extend(profile)
 
 
 class Duration(EObject, metaclass=MetaEClass):
@@ -2118,8 +2119,9 @@ class Asset(Item):
                                 containment=True, derived=False, upper=-1)
     constraint = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
     containingAsset = EReference(ordered=True, unique=True, containment=False, derived=False)
+    measures = EReference(ordered=True, unique=True, containment=True, derived=False)
 
-    def __init__(self, *, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, area=None, containingBuilding=None, geometry=None, costInformation=None, technicalLifetime=None, aggregated=None, aggregationCount=None, installationDuration=None, KPIs=None, assetType=None, state=None, material=None, manufacturer=None, bufferDistance=None, constraint=None, containingAsset=None, **kwargs):
+    def __init__(self, *, surfaceArea=None, commissioningDate=None, decommissioningDate=None, owner=None, area=None, containingBuilding=None, geometry=None, costInformation=None, technicalLifetime=None, aggregated=None, aggregationCount=None, installationDuration=None, KPIs=None, assetType=None, state=None, material=None, manufacturer=None, bufferDistance=None, constraint=None, containingAsset=None, measures=None, **kwargs):
 
         super().__init__(**kwargs)
 
@@ -2182,6 +2184,9 @@ class Asset(Item):
 
         if containingAsset is not None:
             self.containingAsset = containingAsset
+
+        if measures is not None:
+            self.measures = measures
 
 
 class Point(Geometry):
@@ -3862,6 +3867,34 @@ class PipeDiameterConstraint(Constraint):
             self.maximum = maximum
 
 
+class MeasureGroup(AbstractMeasure):
+    """A grouping of measures. Can be used to represent a catalogue of certain assets"""
+    measureGroup = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
+    measure = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
+
+    def __init__(self, *, measureGroup=None, measure=None, **kwargs):
+
+        super().__init__(**kwargs)
+
+        if measureGroup:
+            self.measureGroup.extend(measureGroup)
+
+        if measure:
+            self.measure.extend(measure)
+
+
+class MeasureGroupReference(AbstractMeasure):
+    """A reference to a MeasureGroup. Can be used to refer to a specific MeasureGroup from an asset. For example an optional Pipe with a reference to the pipe catalogue from which the pipe can be chosen."""
+    reference = EReference(ordered=True, unique=True, containment=False, derived=False)
+
+    def __init__(self, *, reference=None, **kwargs):
+
+        super().__init__(**kwargs)
+
+        if reference is not None:
+            self.reference = reference
+
+
 @abstract
 class EnergyAsset(ConnectableAsset):
     """An abstract class that describes a connectable Asset using ports. EnergyAssets main subclasses contain the 5 capability type: Producer, Consumer, Storage, Conversion and Transport """
@@ -4228,9 +4261,8 @@ class AbstractBuilding(ExposedPortsAsset):
     asset = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
     buildingUsage = EReference(ordered=True, unique=True, containment=True, derived=False)
     potential = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
-    measures = EReference(ordered=True, unique=True, containment=True, derived=False)
 
-    def __init__(self, *, asset=None, buildingUsage=None, potential=None, measures=None, **kwargs):
+    def __init__(self, *, asset=None, buildingUsage=None, potential=None, **kwargs):
 
         super().__init__(**kwargs)
 
@@ -4242,9 +4274,6 @@ class AbstractBuilding(ExposedPortsAsset):
 
         if potential:
             self.potential.extend(potential)
-
-        if measures is not None:
-            self.measures = measures
 
 
 class DrivenByDemand(ControlStrategy):
@@ -4944,6 +4973,15 @@ class CAES(Storage):
         super().__init__(**kwargs)
 
 
+class ProductionPlant(Conversion):
+    """Industrial plant that produces one or more products (like steel, glass, chemicals, paper, food, fuels, metals, minerals, ...) by performing a series of specific processes (like refining, cracking, pyrolysis, melting, drying, cleaning, ...)
+"""
+
+    def __init__(self, **kwargs):
+
+        super().__init__(**kwargs)
+
+
 class WindTurbine(ElectricityProducer):
     """Describes an individual wind turbine. A wind turbine is a producer capability"""
     rotorDiameter = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
@@ -5506,14 +5544,6 @@ class RoomHeater(AbstractBasicConversion):
             self.type = type
 
 
-class BiomassHeater(AbstractBasicConversion):
-    """Converts biomass into heat and/or electricity"""
-
-    def __init__(self, **kwargs):
-
-        super().__init__(**kwargs)
-
-
 class UTES(HeatStorage):
     """Underground Thermal Energy Storage"""
     type = EAttribute(eType=UTESTypeEnum, unique=True, derived=False,
@@ -5687,6 +5717,33 @@ class ATES(HeatStorage):
 
 
 class ElectricBoiler(AbstractBasicConversion):
+
+    def __init__(self, **kwargs):
+
+        super().__init__(**kwargs)
+
+
+class Heater(AbstractBasicConversion):
+    """Industrial production of heat through fuel combustion or electric heating, typically generating moderate temperature increases for heating up liquids or materials.
+"""
+
+    def __init__(self, **kwargs):
+
+        super().__init__(**kwargs)
+
+
+class Furnace(AbstractBasicConversion):
+    """Industrial production of heat through fuel combustion or electric heating, typically generating very high temperatures (>400 degrees C).
+"""
+
+    def __init__(self, **kwargs):
+
+        super().__init__(**kwargs)
+
+
+class Boiler(AbstractBasicConversion):
+    """Industrial production of steam by addition of thermal energy through fuel combustion or electric heating.
+"""
 
     def __init__(self, **kwargs):
 
