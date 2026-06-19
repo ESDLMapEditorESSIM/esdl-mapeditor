@@ -23,7 +23,7 @@ from esdl import esdl
 from esdl.units.parser import qau_to_string, unit_to_string
 # TODO: phase out panel service
 from extensions.panel_service import get_panel_service_datasource, create_panel_multiple
-from extensions.profiles import Profiles, ProfileTracesRequest, ProfileVizOptions, EmptyProfileWarning
+from extensions.profiles import ChartType, Profiles, ProfileTracesRequest, ProfileVizOptions, EmptyProfileWarning
 from extensions.session_manager import get_project_manager, get_session
 from extensions.settings_storage import SettingsStorage
 
@@ -369,6 +369,13 @@ class PortProfileViewer:
                 trace["subplotgroup"] = profile_metadata.get("profile_qau")
                 # Replace trace name with displayed name
                 trace["name"] = profile_metadata.get("displayed_name")
+
+                # Processes profile trace and formats it into a Load Duration Curve visualization structure.
+                if req.chart_type is not None and ChartType(req.chart_type) == ChartType.LDC:
+                    sorted_values = sorted(trace['y'], reverse=True)
+                    duration = list(range(1, len(sorted_values) + 1))
+                    trace["y"] = sorted_values
+                    trace["x"] = duration
 
                 results["traces"].append({
                     "profile_id": profile_id,

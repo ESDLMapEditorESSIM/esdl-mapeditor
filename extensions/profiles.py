@@ -92,10 +92,16 @@ class ProfileVizOptions:
             value = _dt_str_to_tz_aware_datetime(value)
         super().__setattr__(key, value)
 
+class ChartType(Enum):
+    CHART = "chart"
+    LDC = "ldc"
+    HIST = "hist"
+
 @dataclass
 class ProfileTracesRequest:
     es_id: str
     profile_ids: List[str]
+    chart_type: Optional[ChartType]
     viz_options: Optional[ProfileVizOptions]
 
 @dataclass
