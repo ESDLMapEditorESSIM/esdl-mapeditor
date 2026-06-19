@@ -174,6 +174,7 @@ const listProfileOptions = async (esId, selectedAssetIds) => {
     selectedAssetIds
   );
 
+  let profileIds = [];
   if (assetsPortsProfiles) {
     const optionGroup = assetsPortsProfiles.map((asset) => {   
       if (asset.ports_profiles.length === 0) {
@@ -197,6 +198,8 @@ const listProfileOptions = async (esId, selectedAssetIds) => {
             const profileClass = p.profileClass;
             const profileObj = p.profileObj;
             if (profileClass === "InfluxDBProfile" || profileClass === "DataTableProfile" || profileClass === "TimeSeriesProfile") {
+              profileIds.push(profileObj.id);
+
               const profileName = profileClass === "TimeSeriesProfile"
                 ? profileObj.name || profileObj.id
                 : profileObj.columnName || profileObj.name || "Undefined";
@@ -244,6 +247,11 @@ const listProfileOptions = async (esId, selectedAssetIds) => {
   }
 
   isLoadingData.value = false;
+
+  if (profileIds.length) {
+    selectedProfiles.value = [...profileIds];
+    updateTrace();
+  }
 };
 
 /**
