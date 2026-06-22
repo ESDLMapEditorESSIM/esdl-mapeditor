@@ -283,6 +283,7 @@ class WorkflowStep:
         error_message = ""
         query_finished = False
         try:
+            logger.info(url)
             resp = requests.get(url)
 
             if resp.status_code == 200:
@@ -485,7 +486,7 @@ class WorkflowEngine:
         run_succeeded = False
         while next_step:
             step_config = self.get_workflow_step_config(sequence_data.main_service_config, next_step)
-            logger.info(f"Running workflow engine step '{step_config['id']}' for run '{sequence_data.run_name}")
+            logger.info(f"Running workflow engine step '{step_config['id']}' for run '{sequence_data.run_name}'")
             step = WorkflowStep(
                 socketio=self.socketio,
                 sequence_data=sequence_data,
@@ -493,7 +494,7 @@ class WorkflowEngine:
                 models_storage=self.external_models_storage,
             )
             run_succeeded = step.run()
-            logger.info(f"Workflow engine step '{next_step}' finished for run '{sequence_data.run_name}")
+            logger.info(f"Workflow engine step '{next_step}' finished for run '{sequence_data.run_name}'")
             if (
                 run_succeeded
                 and "workflow_engine" in step_config
@@ -502,6 +503,26 @@ class WorkflowEngine:
                 next_step = step_config["workflow_engine"]["workflow_engine_next_step"]
             else:
                 next_step = None  # stop workflow sequence
+
+            if (
+                run_succeeded
+                and "workflow_engine" in step_config
+                and "frontend_next_step" in step_config["workflow_engine"]
+            ):
+                connected_user_client_ids = get_all_session_ids_for_user(sequence_data.user_email)
+                if len(connected_user_client_ids) > 0:
+                    for client_id in connected_user_client_ids:
+                        self.socketio.emit(
+                            "wfe_sequence_continue_frontend",
+                            {
+                                "wfe_sequence_id": sequence_data.id,
+                                "run_name": sequence_data.run_name,
+                                "next_step": step_config["workflow_engine"]["frontend_next_step"]
+                            },
+                            namespace="/esdl",
+                            room=client_id,
+                        )
+                    return
 
         # finish workflow sequence
         logger.info(

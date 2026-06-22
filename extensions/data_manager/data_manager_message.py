@@ -29,6 +29,8 @@ class GetColumnsRequestBody:
 class ChartType(Enum):
     CHART = "chart"
     TABLE = "table"
+    LDC = "ldc"
+    HIST = "hist"
 
 class ProfileVizType(Enum):
     PROFILE = "Profile"

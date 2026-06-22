@@ -286,7 +286,7 @@ function process_service_results(results) {
             }
         }
     }
-    if ('message' in results) {
+    if (('message' in results) && (service_results_div != null)) {
         if ($("#service_message").length) { // check if service_message exists already
             $("#service_message").remove();
         }
@@ -729,9 +729,18 @@ function update_esdl_services(event) {
                 if (esdl_services_information[i]['type'] == "asset_context_menu" || esdl_services_information[i]['location'] == "asset_context_menu") {
                     add_service_to_contextmenu(layer, esdl_services_information[i], function (e) {
                         const service = esdl_services_information[i];
+
+                        let asset_wkt = "";
+                        if (layer.polygon) {
+                            asset_wkt = toWKT(layer.polygon);     // Assume the polygon shape of the asset needs to be sent
+                        } else {
+                            asset_wkt = toWKT(layer);
+                        }
+
                         const state = {
                             asset_id: id,
                             asset_name: layer.name,
+                            wkt: asset_wkt
                         }
                         if ("options" in service && "send_esdl" in service["options"] && service["options"]["send_esdl"]) {
                             $.ajax({

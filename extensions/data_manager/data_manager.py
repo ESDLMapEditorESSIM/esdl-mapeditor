@@ -1162,6 +1162,8 @@ class DataManager:
 
             if chart_type == ChartType.TABLE:
                 resp['traces'] = self.process_profile_table_trace(traces)
+            elif chart_type == ChartType.LDC:
+                resp['traces'] = self.process_profile_into_ldc_trace(traces)
             else:
                 resp['traces'] = traces
 
@@ -1307,6 +1309,26 @@ class DataManager:
 
         return trace
     
+    @staticmethod
+    def process_profile_into_ldc_trace(traces: list[dict]) -> list:
+        """
+        Processes profile traces and formats them into a Load Duration Curve visualization structure.
+        """
+        ldc_traces = []
+
+        for trace in traces:
+            sorted_values = sorted(trace['y'], reverse=True)
+            duration = list(range(1, len(sorted_values) + 1))
+
+            ldc_trace = {
+                **trace,
+                "x": duration,
+                "y": sorted_values,
+            }
+            ldc_traces.append(ldc_trace)
+
+        return ldc_traces
+
     @staticmethod
     def process_table_trace(df: DataFrame) -> list:
         """
