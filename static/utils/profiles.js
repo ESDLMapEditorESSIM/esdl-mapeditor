@@ -164,14 +164,8 @@ function port_profile_info_window(port_profile_info) {
                 '\');">Del</button></td><td><p title="'+profile_class+'">'+profile_name+'</p></td><td>'+profile_value_or_multiplier+'</td><td>' +
                 profile_type +'</td></tr>';
 
-            if (profile_class == 'InfluxDBProfile') {
-                let profiles_info = Object.entries(profiles_plugin.profiles_list['profiles']);
-                for (let pr=0; pr<profiles_info.length; pr++) {
-                    let pi = profiles_info[pr][1];
-                    if (pi['profile_uiname'] == profile_name && pi['embedUrl'] !== '') {
-                        table += '<tr><td colspan="4"><iframe width="100%" height="200px" src="'+pi['embedUrl']+'"></iframme></td></tr>';
-                    }
-                }
+            if (profile_class == 'InfluxDBProfile' && profile_info['embedUrl']) {
+                table += '<tr><td colspan="4"><iframe width="100%" height="200px" src="'+profile_info['embedUrl']+'"></iframme></td></tr>';
             }
         }
         table += '</table>';

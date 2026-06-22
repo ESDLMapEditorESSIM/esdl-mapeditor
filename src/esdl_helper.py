@@ -57,14 +57,16 @@ def generate_profile_info(profile_list, only_of_type: str = None):
             multiplier = profile.multiplier
             measurement = profile.measurement
             field = profile.field
+            embed_url = None
 
             for pkey in profiles:
                 p = profiles[pkey]
                 if p['database'] == database and (p.get('measurement') and p['measurement'] == measurement) and p['field'] == field:
                     profile_name = p['profile_uiname']
+                    embed_url = p.get('embedUrl')
             if profile_name is None:
                 profile_name = field
-            profile_info_list.append({'id': profile_id, 'class': 'InfluxDBProfile', 'multiplier': multiplier, 'type': profile_type, 'uiname': profile_name})
+            profile_info_list.append({'id': profile_id, 'class': 'InfluxDBProfile', 'multiplier': multiplier, 'type': profile_type, 'uiname': profile_name, 'embedUrl': embed_url})
         if profile_class == 'DataTableProfile':
             multiplier = profile.multiplier
             profile_name = profile.columnName
