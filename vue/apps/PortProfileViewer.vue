@@ -358,7 +358,7 @@ const onPlotRelayout = (newLayoutRanges) => {
 const updateTrace = async () => {
   isLoadingData.value = true;
   try {
-    const profileTracesRequest = {
+    const portProfileTracesRequest = {
       es_id: activeEsdlId.value,
       profile_ids: selectedProfiles.value,
       chart_type: chartType.value,
@@ -367,10 +367,10 @@ const updateTrace = async () => {
       }
     };
     if (profileDateTimeRange.value) {
-      profileTracesRequest.viz_options["start_datetime"] = profileDateTimeRange.value[0];
-      profileTracesRequest.viz_options["end_datetime"] = profileDateTimeRange.value[1];
+      portProfileTracesRequest.viz_options["start_datetime"] = profileDateTimeRange.value[0];
+      portProfileTracesRequest.viz_options["end_datetime"] = profileDateTimeRange.value[1];
     }
-    const results = await fetchData("port_profile_viewer/profile_traces", profileTracesRequest);
+    const results = await fetchData("port_profile_viewer/profile_traces", portProfileTracesRequest);
 
 
     // Handle warning per profile

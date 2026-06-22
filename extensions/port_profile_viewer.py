@@ -14,6 +14,7 @@
 
 from dataclasses import dataclass
 from typing import List
+from enum import Enum
 
 from flask import Flask
 from flask_socketio import SocketIO, emit
@@ -23,7 +24,7 @@ from esdl import esdl
 from esdl.units.parser import qau_to_string, unit_to_string
 # TODO: phase out panel service
 from extensions.panel_service import get_panel_service_datasource, create_panel_multiple
-from extensions.profiles import ChartType, Profiles, ProfileTracesRequest, ProfileVizOptions, EmptyProfileWarning
+from extensions.profiles import Profiles, ProfileTracesRequest, ProfileVizOptions, EmptyProfileWarning
 from extensions.session_manager import get_project_manager, get_session
 from extensions.settings_storage import SettingsStorage
 
@@ -41,6 +42,15 @@ def send_alert(message):
 class AssetsPortsProfilesRequest:
     es_id: str
     asset_ids: List[str]
+
+class ChartType(Enum):
+    CHART = "chart"
+    LDC = "ldc"
+    HIST = "hist"
+
+@dataclass
+class PortProfileTracesRequest(ProfileTracesRequest):
+    chart_type: ChartType
 
 
 class PortProfileViewer:
@@ -62,7 +72,7 @@ class PortProfileViewer:
 
         @self.socketio.on("port_profile_viewer/profile_traces", namespace="/esdl")
         def _get_port_profile_traces_from_profile_ids(params: dict):
-            req = ProfileTracesRequest(**params)
+            req = PortProfileTracesRequest(**params)
             req.viz_options = ProfileVizOptions(**req.viz_options)
             return PortProfileViewer.get_port_profile_traces_from_profile_ids(req)
 
@@ -352,7 +362,7 @@ class PortProfileViewer:
         return assets_ports_profiles
 
     @staticmethod
-    def get_port_profile_traces_from_profile_ids(req: ProfileTracesRequest) -> dict[str, list]:
+    def get_port_profile_traces_from_profile_ids(req: PortProfileTracesRequest) -> dict[str, list]:
         """Return a dictionary with profile traces for plotly visualization or warning/error messages."""
 
         results = {"traces": [], "warnings": [], "errors": []}
@@ -371,7 +381,7 @@ class PortProfileViewer:
                 trace["name"] = profile_metadata.get("displayed_name")
 
                 # Processes profile trace and formats it into a Load Duration Curve visualization structure.
-                if req.chart_type is not None and ChartType(req.chart_type) == ChartType.LDC:
+                if ChartType(req.chart_type) == ChartType.LDC:
                     sorted_values = sorted(trace['y'], reverse=True)
                     duration = list(range(1, len(sorted_values) + 1))
                     trace["y"] = sorted_values
