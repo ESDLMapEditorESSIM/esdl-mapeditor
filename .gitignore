@@ -72,6 +72,7 @@ data_manager.db
 
 # Editors
 .idea/
+.run/
 .vscode/
 %LOCALAPPDATA%
 
