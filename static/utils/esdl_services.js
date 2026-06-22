@@ -724,7 +724,7 @@ function update_esdl_services(event) {
             }
         }
 
-        if (event.layer_type === 'marker') {
+        if (event.layer_type === 'marker' || event.layer_type === 'building') {
             for (let i = 0; i < esdl_services_information.length; i++) {
                 if (esdl_services_information[i]['type'] == "asset_context_menu" || esdl_services_information[i]['location'] == "asset_context_menu") {
                     add_service_to_contextmenu(layer, esdl_services_information[i], function (e) {

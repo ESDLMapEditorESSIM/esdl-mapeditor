@@ -1054,14 +1054,24 @@ function bring_KPI_layer_to_front(es_id) {
 //  Add geojson data contained in building_data to the building map layer
 // ------------------------------------------------------------------------------------------------------------
 function set_building_contextmenu(layer, id) {
+    layer.id = id;
+    if (!layer.name && layer.feature && layer.feature.properties && layer.feature.properties.name) {
+        layer.name = layer.feature.properties.name;
+    }
     layer.bindContextMenu({
         contextmenu: true,
         contextmenuWidth: 140,
         contextmenuItems: [],
         contextmenuInheritItems: false
     });
+    let open_contents_label = 'Open contents';
+    if (layer.type) {
+        open_contents_label = 'Open ' + layer.type + ' contents';
+    } else if (layer.feature && layer.feature.properties && layer.feature.properties.type) {
+        open_contents_label = 'Open ' + layer.feature.properties.type + ' contents';
+    }
     layer.options.contextmenuItems.push({
-        text: 'Open ' + layer.type + ' contents',
+        text: open_contents_label,
         icon: resource_uri + 'icons/BuildingContents.png',
         callback: function(e) { edit_building_contents(e, id); }
     });
@@ -1076,6 +1086,13 @@ function set_building_contextmenu(layer, id) {
         icon: resource_uri + 'icons/Edit.png',
         callback: function(e) { esdl_browser.open_browser_with_event(e, id); }
     });
+
+    select_assets.add_asset_handler(layer);
+
+    for (let i=0; i<extensions.length; i++) {
+        updatefun = extensions[i];
+        updatefun({type: 'add_contextmenu', layer: layer, layer_type: 'building'});
+    }
 }
 
 /**

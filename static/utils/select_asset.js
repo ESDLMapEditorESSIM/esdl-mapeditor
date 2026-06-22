@@ -21,11 +21,26 @@ class SelectAssets {
         this.selected_assets = [];
     }
 
+    /**
+     * Find the Leaflet layer for a selected asset or building.
+     * @param {string} asset_id
+     * @returns {L.Layer|undefined}
+     */
+    find_selected_layer(asset_id) {
+        let asset_leaflet_obj = find_layer_by_id(active_layer_id, 'esdl_layer', asset_id, 'marker');
+        if (asset_leaflet_obj === undefined) {
+            asset_leaflet_obj = find_layer_by_id(active_layer_id, 'esdl_layer', asset_id);
+        }
+        if (asset_leaflet_obj === undefined) {
+            asset_leaflet_obj = find_layer_by_id(active_layer_id, 'bld_layer', asset_id);
+        }
+        return asset_leaflet_obj;
+    }
+
     deselect_all_assets() {
         while (this.selected_assets.length) {
             let asset_id = this.selected_assets[0];
-            // find marker layers only
-            let asset_leaflet_obj = find_layer_by_id(active_layer_id, 'esdl_layer', asset_id, 'marker');
+            let asset_leaflet_obj = this.find_selected_layer(asset_id);
             if (asset_leaflet_obj === undefined) {
                 // make sure we don't end up in an endless loop...
                 this.selected_assets.splice(this.selected_assets.indexOf(asset_id), 1);
@@ -67,7 +82,10 @@ class SelectAssets {
         // only disable context menu when more than 1 is selected
         if (this.selected_assets.length == 2) {
             // when the second is selected also disable the context menus of the first selected asset
-            this.disable_context_menu_items(find_layer_by_id(active_layer_id, 'esdl_layer', this.selected_assets[0], 'marker'))
+            let first_selected_asset = this.find_selected_layer(this.selected_assets[0]);
+            if (first_selected_asset !== undefined) {
+                this.disable_context_menu_items(first_selected_asset);
+            }
             // disable context menus for second asset
             this.disable_context_menu_items(asset_leaflet_obj);
         } else if (this.selected_assets.length > 2) {
@@ -94,11 +112,28 @@ class SelectAssets {
             this.remove_from_selected_list(asset_leaflet_obj);
         }
         // console.log("asset is now selected: ", asset_leaflet_obj.selected);
-        if (asset_leaflet_obj instanceof L.Marker && asset_leaflet_obj.getElement() != null) {
+        if (asset_leaflet_obj.feature && asset_leaflet_obj.setStyle) {
+            if (asset_leaflet_obj.selected) {
+                asset_leaflet_obj.selectedStyle = {
+                    weight: asset_leaflet_obj.options.weight,
+                    color: asset_leaflet_obj.options.color,
+                    dashArray: asset_leaflet_obj.options.dashArray,
+                    fillOpacity: asset_leaflet_obj.options.fillOpacity
+                };
+                asset_leaflet_obj.setStyle({
+                    weight: 3,
+                    color: 'white',
+                    dashArray: '',
+                    fillOpacity: 0.5
+                });
+            } else if (asset_leaflet_obj.selectedStyle) {
+                asset_leaflet_obj.setStyle(asset_leaflet_obj.selectedStyle);
+                delete asset_leaflet_obj.selectedStyle;
+            }
+        } else if (asset_leaflet_obj instanceof L.Marker && asset_leaflet_obj.getElement() != null) {
             let cll = asset_leaflet_obj.getElement().classList;
             cll.toggle('Selected');
-        }
-        if (asset_leaflet_obj instanceof L.Polyline) {
+        } else if (asset_leaflet_obj instanceof L.Polyline) {
             update_line_color(asset_leaflet_obj); // from assets.js
 //            if (asset_leaflet_obj.selected) {
 //                //asset_leaflet_obj.options.orig_color = asset_leaflet_obj.options.color;
@@ -209,6 +244,23 @@ L.Map.BoxSelectAssets = L.Map.BoxZoom.extend({
                         }
                     }
                 }
+            }
+        }
+
+        let building_objects = get_layers(active_layer_id, 'bld_layer').getLayers();
+        for (let i=0; i<building_objects.length; i++) {
+            if (building_objects[i] instanceof L.GeoJSON) {
+                building_objects[i].eachLayer(function(building_object) {
+                    if (contains) {
+                        if (bounds.contains(building_object.getLatLngs())) {
+                            select_assets.toggle_selected(building_object);
+                        }
+                    } else {
+                        if (bounds.intersects(building_object.getLatLngs())) {
+                            select_assets.toggle_selected(building_object);
+                        }
+                    }
+                });
             }
         }
     }
