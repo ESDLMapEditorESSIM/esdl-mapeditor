@@ -3,6 +3,7 @@ import uuid
 
 from esdl import EnergySystem, Transformer
 from esdlproject.ProjectManager import ProjectManager
+from src.tno.undoredo.types import serialize_command_stack
 
 
 class TestUndo(unittest.TestCase):
@@ -28,6 +29,21 @@ class TestUndo(unittest.TestCase):
         self.assertIsNotNone(stack.top)
         self.assertIs(stack.can_undo(), True)
         self.assertIs(stack.can_redo(), False)
+
+    def test_undo_stack_serializes_attribute_owner(self):
+        es: EnergySystem = self.pm.get_active_energy_system()
+        area = es.instance[0].area
+        stack = self.pm.get_undo_redo_stack()
+        transformer = Transformer(name="Transformer", id=str(uuid.uuid4()))
+        area.asset.append(transformer)
+
+        stack.start_recording()
+        transformer.name = "Renamed transformer"
+        stack.stop_recording()
+
+        serialized_stack = serialize_command_stack(stack)
+        command = serialized_stack["stack"][0]["commands"][0]
+        self.assertEqual(command["id"], transformer.id)
 
     def test_undo_stack_pausing(self):
         """

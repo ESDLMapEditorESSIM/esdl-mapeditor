@@ -32,7 +32,19 @@ class SelectAssets {
             asset_leaflet_obj = find_layer_by_id(active_layer_id, 'esdl_layer', asset_id);
         }
         if (asset_leaflet_obj === undefined) {
+            asset_leaflet_obj = find_layer_by_id(active_layer_id, 'pot_layer', asset_id, 'marker');
+        }
+        if (asset_leaflet_obj === undefined) {
+            asset_leaflet_obj = find_layer_by_id(active_layer_id, 'pot_layer', asset_id);
+        }
+        if (asset_leaflet_obj === undefined) {
+            asset_leaflet_obj = find_layer_by_id(active_layer_id, 'area_layer', asset_id);
+        }
+        if (asset_leaflet_obj === undefined) {
             asset_leaflet_obj = find_layer_by_id(active_layer_id, 'bld_layer', asset_id);
+        }
+        if (Array.isArray(asset_leaflet_obj)) {
+            asset_leaflet_obj = asset_leaflet_obj[1];
         }
         return asset_leaflet_obj;
     }
