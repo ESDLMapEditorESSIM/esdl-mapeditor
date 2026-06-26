@@ -403,6 +403,7 @@ def editor():
             bag_service_enabled=bag_service_enabled,
             ibis_service_enabled=ibis_service_enabled,
             user_feedback_url=user_feedback_url,
+            frontend_dev_server_url=settings.FRONTEND_DEV_SERVER_URL if settings.FLASK_DEBUG else "",
             debug=settings.FLASK_DEBUG,
             version=mapeditor_version
         )
