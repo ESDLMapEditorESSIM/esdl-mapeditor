@@ -146,6 +146,21 @@ class TableEditor:
                     new_cost_information.append(ci)
             asset['cost_information'] = new_cost_information
 
+    def get_constraint_types(self, asset_info_list):
+        """
+        Collect the ordered list of unique constraint type names that appear
+        in at least one asset, preserving first-seen order.
+
+        :param asset_info_list: list with all attribute information of all assets
+        :return: ordered list of unique constraint type name strings
+        """
+        seen_types = []
+        for asset in asset_info_list:
+            for c in asset.get('constraint_information', []):
+                if c['type'] not in seen_types:
+                    seen_types.append(c['type'])
+        return seen_types
+
     def set_cost_attr(self, asset: Asset, attr_name, value):
         # print(f"request semaphore {asset.id}:{attr_name}-{value}")
         with self.bounded_semaphore:
@@ -230,6 +245,15 @@ class TableEditor:
                 column['ref'] = 'costInformation.' + ci['name'] + '_unit'
                 column_info.append(column)
 
+            # Asset constraint is for display only, and not support for editing yet.
+            for ct in self.get_constraint_types(asset_info_list):
+                column = dict()
+                column['name'] = ct + '.name'
+                column['prop'] = 'constraint.' + ct
+                column['readonly'] = True
+                column['autoSize'] = True
+                column_info.append(column)
+
         return column_info
 
     def _find_id_in_attr_info(self, asset_attr_info):
@@ -268,6 +292,13 @@ class TableEditor:
                 else:
                     row[ca['name']] = ''
                     row[ca['name'] + '_unit'] = ''
+
+            constraint_by_type = {}
+            for c in asset_attr_info.get('constraint_information', []):
+                constraint_by_type.setdefault(c['type'], []).append(c['name'])
+            for ct, names in constraint_by_type.items():
+                row['constraint.' + ct] = ', '.join(names)
+
             row_info.append(row)
 
         return row_info
