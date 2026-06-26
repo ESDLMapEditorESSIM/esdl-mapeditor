@@ -1176,6 +1176,25 @@ def process_energy_system(force_update_es_id=None, zoom=True, only_process_es_id
                     if sector_list:
                         emit('sector_list', {'es_id': es.id, 'sector_list': sector_list})
 
+                    # Collecting area KPIs
+                    print('- Processing KPIs')
+                    es_area_kpis = {}
+                    for content in es_instance.eAllContents():
+                        if isinstance(content, esdl.Area):
+                            area = content
+                            area_name = area.name
+                            if area.KPIs:
+                                area_kpis = ESDLEnergySystem.process_area_KPIs(area)
+                                # Only updating es_area_kpis object if list of kpi_list is not empty.
+                                if len(area_kpis['kpi_list']):
+                                    es_area_kpis[area_name] = area_kpis
+
+                    displayed_area_name = top_area.name if top_area.name else title
+                    # Only emit KPI info when there are area KPIs available
+                    if len(es_area_kpis) > 0:
+                        emit('kpis', {'es_id': es.id, 'scope': displayed_area_name, 'kpi_info': es_area_kpis})
+                        emit('kpis_present', {'es_id': es.id})
+
                     # measures can contain assets that still need to be added to the energysystem
                     assets_to_be_added = AssetsToBeAdded.get_assets_from_measures(es)
                     if assets_to_be_added:
