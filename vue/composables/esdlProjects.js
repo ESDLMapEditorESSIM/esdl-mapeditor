@@ -26,7 +26,6 @@ import {MessageNames, PubSubManager} from "@/bridge";
 
 /** @type {import('vue').Ref<ESDLProject|null>} */
 const esdlProject = ref(null);
-const showProjectView = ref(true);
 
 const {socket, subscribe} = useSocketIO();
 
@@ -87,8 +86,6 @@ export function useESDLProjects() {
 
     const active_es_id = computed(() => esdlProject.value.active_es_id);
 
-    const toggleProjectView = () => showProjectView.value = !showProjectView.value;
-
     function setActiveVariant(variantId) {
         console.debug("Setting active variant to ID " + variantId);
         const loaderScope = "set_active_variant"
@@ -122,8 +119,6 @@ export function useESDLProjects() {
         activeVariant,
         setActiveVariant,
         active_es_id,
-        toggleProjectView,
-        showProjectView,
         getESDLProject,
         esdlProject,
         setEsdlProject,

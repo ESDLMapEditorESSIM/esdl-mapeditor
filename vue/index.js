@@ -38,7 +38,6 @@ import {
 import UndoRedoControl from "./apps/UndoRedoControl";
 import UndoRedoMenu from "./components/toolbars/UndoRedoMenu";
 import ToggleShowUndoRedoControl from './components/toolbars/ToggleShowUndoRedoControl'
-import ToggleProjectView from './components/projects/ToggleProjectView'
 import LoadProjectFileButton from './components/projects/LoadSaveProjectButtons';
 import AssetsToBeAddedToolbar from '@/components/toolbars/AssetsToBeAddedToolbar.vue'
 import AssetDrawToolbar from '@/components/toolbars/AssetDrawToolbar.vue'
@@ -242,7 +241,6 @@ mountApp(SidePane, '#vue_side_pane_root')
 createApp(ActivityContextSelector).mount('#vue_activity_context_selector')
 createApp(ApplicationContextSelector).mount('#vue_application_context_selector')
 
-mountApp(ToggleProjectView, '#vue_toggle_show_project_view')
 mountApp(LoadProjectFileButton, '#vue_load_project_file')
 
 const [,toastNotificationInstance] = mountApp(ToastNotifications, '#toast_notifications');

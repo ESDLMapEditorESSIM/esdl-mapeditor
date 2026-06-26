@@ -259,6 +259,10 @@ def update_asset_geometries_shape(area, shape, show_assets_without_location=Fals
 # ---------------------------------------------------------------------------------------------------------------------
 #  Boundary information processing
 # ---------------------------------------------------------------------------------------------------------------------
+def is_valid_kpi_value(value):
+    return not isinstance(value, float) or math.isfinite(value)
+
+
 def create_building_KPIs(building):
     KPIs = {}
 
@@ -294,7 +298,8 @@ def create_building_KPIs(building):
 
     if building.KPIs:
         for kpi in building.KPIs.kpi:
-            KPIs[kpi.name] = kpi.value
+            if is_valid_kpi_value(kpi.value):
+                KPIs[kpi.name] = kpi.value
 
     return KPIs
 
@@ -327,10 +332,11 @@ def process_area_KPI_information(area_KPIs, area_geometry):
                 unit = ''
 
             if not isinstance(kpi, esdl.DistributionKPI):
-                regular_KPIs[kpi.name] = {
-                    'value': kpi.value,
-                    'unit': unit
-                }
+                if is_valid_kpi_value(kpi.value):
+                    regular_KPIs[kpi.name] = {
+                        'value': kpi.value,
+                        'unit': unit
+                    }
             else:
                 distribution_kpis[kpi.name] = {"type": "distributionKPI",
                                                "value": [],
