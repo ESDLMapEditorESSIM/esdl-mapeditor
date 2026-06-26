@@ -124,12 +124,12 @@
     <script type="text/javascript" src="./utils/carriers.js"></script>
     <script type="text/javascript" src="./utils/profiles.js"></script>
     <script type="text/javascript" src="./utils/asset_from_edr.js"></script>
+    <script type="text/javascript" src="./utils/esdl_browser.js"></script>
     <script type="text/javascript" src="./utils/esdl_services.js"></script>
     <script type="text/javascript" src="./utils/wkt_rd2wgs.js"></script>
     <script type="text/javascript" src="./utils/esdl_store.js"></script>
     <script type="text/javascript" src="./utils/esdl_compare.js"></script>
     <script type="text/javascript" src="./utils/esdl_merge.js"></script>
-    <script type="text/javascript" src="./utils/esdl_browser.js"></script>
     <script type="text/javascript" src="./utils/esdl_drive.js"></script>
     <script type="text/javascript" src="./utils/check_status.js"></script>
     <link rel="stylesheet" href="./utils/esdl_drive.css" type="text/css"/>
@@ -794,7 +794,7 @@
                     bounds.extend(get_layers(active_layer_id, 'esdl_layer').getBounds());
                     bounds.extend(get_layers(active_layer_id, 'bld_layer').getBounds());
                     bounds.extend(get_layers(active_layer_id, 'pot_layer').getBounds());
-                    map.flyToBounds(bounds, {padding: [50,50], animate: false});  // true});
+                    map.flyToBounds(bounds, {padding: [50,50], animate: false, maxZoom: 15});  // true});
                 }
 
                 // Ewoud: should also work with building editor now...
@@ -1746,7 +1746,6 @@
                                     </li>
                                     <li id="vue_toggle_show_asset_draw_toolbar"></li>
                                     <li id="vue_toggle_show_services_toolbar"></li>
-                                    <li id="vue_toggle_show_project_view"></li>
                                     <li id="vue_toggle_show_undo_redo_control"></li>
                                     <li id="vue_toggle_long_process_view"></li>
                                     <li>

@@ -158,6 +158,10 @@ function remove_building(bld) {
 // ------------------------------------------------------------------------------------------------------------
 //  Deletes an asset (Marker, Polyline or Polygon) and its connections
 // ------------------------------------------------------------------------------------------------------------
+function get_asset_layer_name(asspot) {
+    return asspot == 'potential' ? 'pot_layer' : 'esdl_layer';
+}
+
 function delete_asset(clicked_asset) {
     $(".ui-tooltip-content").parents('div').remove();
 
@@ -171,15 +175,16 @@ function delete_asset(clicked_asset) {
     }
 
     // asset_list now contains a list of all IDs of the selected assets
-    all_layers = get_layers(active_layer_id, 'esdl_layer').getLayers();
+    let layer_name = get_asset_layer_name(clicked_asset.asspot);
+    all_layers = get_layers(active_layer_id, layer_name).getLayers();
     for (let idx=0; idx<asset_list.length; idx++) {
         asset_id = asset_list[idx];
-        let asset = find_layer_by_id(active_layer_id, 'esdl_layer', asset_id);
+        let asset = find_layer_by_id(active_layer_id, layer_name, asset_id);
 
         if (asset instanceof L.Polygon) {
             // Remove maker that belongs to polygon
             if (asset.marker) {
-                remove_object_from_layer(active_layer_id, 'esdl_layer', asset.marker)
+                remove_object_from_layer(active_layer_id, layer_name, asset.marker)
             }
         } else if (asset instanceof L.Polyline) {
             if (asset.mouseOverArrowHead !== undefined) {
@@ -194,15 +199,17 @@ function delete_asset(clicked_asset) {
         }
 
         // remove connections manually
-        for (let i in asset.ports) {
-            let from_id = asset.ports[i].id;
-            for (let j in asset.ports[i].conn_to) {
-                remove_single_connection(from_id, asset.ports[i].conn_to[j].id, asset.ep_id || asset.esid)
+        if (asset.ports) {
+            for (let i in asset.ports) {
+                let from_id = asset.ports[i].id;
+                for (let j in asset.ports[i].conn_to) {
+                    remove_single_connection(from_id, asset.ports[i].conn_to[j].id, asset.ep_id || asset.esid)
+                }
             }
         }
 
         // remove the asset itself
-        remove_object_from_layer(asset.ep_id || asset.esid, 'esdl_layer', asset);
+        remove_object_from_layer(asset.ep_id || asset.esid, layer_name, asset);
         socket.emit('command', {cmd: 'remove_object', id: asset.id, asspot: asset.asspot});
     }
     if (select_assets.is_select_mode()) {
@@ -353,6 +360,17 @@ function set_marker_handlers(marker) {
         }
     });
     // TODO: decide on seperators
+    if (marker.asspot == 'asset' && marker.polygon) {
+        add_geometry_edit_contextmenu_item(marker, marker.polygon, 'icons/Edit.png');
+    }
+
+    // let extensions know they can update this layer.
+    // e.g. add a context menu item
+    for (let i=0; i<extensions.length; i++) {
+        updatefun = extensions[i];
+        updatefun({type: 'add_contextmenu', layer: marker, layer_type: 'marker'});  // or should layer_type be split into asset/potential
+    }
+
     marker.options.contextmenuItems.push('-');
     marker.options.contextmenuItems.push({
         icon: 'icons/Delete.png',
@@ -393,12 +411,13 @@ function set_marker_handlers(marker) {
             // Remove polygon that belongs to marker, if one is present
             if (marker.polygon) {
                // all_layers = esdl_layer.getLayers();
-               all_layers = get_layers(active_layer_id, 'esdl_layer').getLayers();
+               let layer_name = get_asset_layer_name(marker.asspot);
+               all_layers = get_layers(active_layer_id, layer_name).getLayers();
                for (let i=0; i<all_layers.length; i++) {
                     let layer = all_layers[i];
                     if (layer.id == asset_id && layer instanceof L.Polygon) {
                         // esdl_layer.removeLayer(layer);
-                        remove_object_from_layer(active_layer_id, 'esdl_layer', layer);
+                        remove_object_from_layer(active_layer_id, layer_name, layer);
                     }
                }
             }
@@ -453,13 +472,6 @@ function set_marker_handlers(marker) {
     set_marker_port_handlers(marker);
     select_assets.add_asset_handler(marker);
     set_marker_tooltip_handlers(marker);
-
-    // let extensions know they can update this layer.
-    // e.g. add a context menu item
-    for (let i=0; i<extensions.length; i++) {
-        updatefun = extensions[i];
-        updatefun({type: 'add_contextmenu', layer: marker, layer_type: 'marker'});  // or should layer_type be split into asset/potential
-    }
 }
 
 // ------------------------------------------------------------------------------------------------------------
@@ -500,6 +512,14 @@ function set_line_handlers(line) {
         }
     });
 
+    // let extensions know they can update this layer.
+    // e.g. add a context menu item
+    for (let i=0; i<extensions.length; i++) {
+        updatefun = extensions[i];
+        updatefun({type: 'add_contextmenu', layer: line, layer_type: 'line'});
+    }
+
+    line.options.contextmenuItems.push('-');
     line.options.contextmenuItems.push({
         icon: 'icons/Delete.png',
         text: 'Delete',
@@ -581,13 +601,6 @@ function set_line_handlers(line) {
     set_line_port_handlers(line);
     select_assets.add_asset_handler(line);
 
-    // let extensions know they can update this layer.
-    // e.g. add a context menu item
-    for (let i=0; i<extensions.length; i++) {
-        updatefun = extensions[i];
-        updatefun({type: 'add_contextmenu', layer: line, layer_type: 'line'});
-    }
-
 }
 
 
@@ -601,6 +614,8 @@ function add_asset(es_bld_id, asset_info, exposed_port_asset_id, carrier_info_ma
     // 'point'   potential  name  id  class_name  [lat,lon]
     // 'polygon' potential  name  id  class_name  [...]
     let classname = '';
+    let layer_name = get_asset_layer_name(asset_info[1]);
+    let layer_id = exposed_port_asset_id || es_bld_id;
     let extra_attrs = null;
     if ((asset_info[0] === 'point' && asset_info[1] === 'asset' && asset_info[4] !== 'Joint') ||
         (asset_info[0] === 'polygon' && asset_info[1] === 'asset' )) {
@@ -682,12 +697,7 @@ function add_asset(es_bld_id, asset_info, exposed_port_asset_id, carrier_info_ma
         }
   
         set_marker_handlers(marker);
-        if (exposed_port_asset_id) {
-            // add to building editor layer
-            add_object_to_layer(exposed_port_asset_id, 'esdl_layer', marker);
-        } else {
-            add_object_to_layer(es_bld_id, 'esdl_layer', marker);
-        }
+        add_object_to_layer(layer_id, layer_name, marker);
 
         if (asset_info[1] === 'asset') {
             if (spatial_buffers_plugin.show_spatial_buffers())
@@ -728,8 +738,23 @@ function add_asset(es_bld_id, asset_info, exposed_port_asset_id, carrier_info_ma
         polygon.off('remove');
         polygon.on('remove', delete_polygon_by_tool);
 
+        if (polygon.asspot == 'asset') {
+            bind_geometry_edit_contextmenu(polygon, 'icons/Edit.png');
+        } else if (polygon.asspot == 'potential') {
+            bind_geometry_edit_contextmenu(polygon, 'icons/Edit.png');
+            for (let i=0; i<extensions.length; i++) {
+                updatefun = extensions[i];
+                updatefun({type: 'add_contextmenu', layer: polygon, layer_type: 'potential'});
+            }
+            polygon.options.contextmenuItems.push('-');
+            polygon.options.contextmenuItems.push({
+                icon: 'icons/Delete.png',
+                text: 'Delete',
+                callback: function(e) { delete_asset(polygon); }
+            });
+        }
 
-        add_object_to_layer(es_bld_id, 'esdl_layer', polygon);
+        add_object_to_layer(layer_id, layer_name, polygon);
         if (spatial_buffers_plugin.show_spatial_buffers())
             spatial_buffers_plugin.add_spatial_buffers(polygon);
   
@@ -755,7 +780,7 @@ function add_asset(es_bld_id, asset_info, exposed_port_asset_id, carrier_info_ma
         }
   
         set_marker_handlers(marker);
-        add_object_to_layer(es_bld_id, 'esdl_layer', marker);
+        add_object_to_layer(layer_id, layer_name, marker);
   
         if (user_settings.ui_settings.tooltips.show_asset_information_on_map && asset_info[1] === 'asset')
             marker.bindTooltip(get_tooltip_text(tt_format['marker'], marker.name, marker.attrs),
@@ -816,12 +841,13 @@ function delete_polygon_by_tool(event) {
     if (deleting_objects == true) {
         if (marker.id) {
            // all_layers = esdl_layer.getLayers();
-           all_layers = get_layers(active_layer_id, 'esdl_layer').getLayers();
+           let layer_name = get_asset_layer_name(marker.asspot);
+           all_layers = get_layers(active_layer_id, layer_name).getLayers();
            for (let i=0; i<all_layers.length; i++) {
                 let layer = all_layers[i];
                 if (layer.id == marker.id) {
                     // this will trigger the deletion of the asset itself (leaflet delete event on the asset)
-                    remove_object_from_layer(active_layer_id, 'esdl_layer', layer);
+                    remove_object_from_layer(active_layer_id, layer_name, layer);
                 }
            }
         }

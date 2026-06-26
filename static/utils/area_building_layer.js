@@ -25,6 +25,7 @@ var building_color_method = 'building type';
 
 var areaLegend;             // the leaflet control
 var buildingLegend;         // the leaflet control
+var show_building_legend = true;
 
 var areaLegendChoice;                // will be initialized with the first KPI
 var areaLegendChoiceBackup = null;   // to save setting while redrawing KPIs
@@ -535,6 +536,139 @@ function resetHighlightBuilding(e) {
     layer.closePopup();
 }
 
+var geometry_edit_control = null;
+var geometry_edit_layer = null;
+var geometry_edit_target_layer = null;
+
+function is_multipolygon_area_id(id) {
+    return id && id.match(/ \(\d+ of \d+\)$/);
+}
+
+function can_edit_polygon_geometry(layer) {
+    if (!(layer instanceof L.Polygon) || !layer.id) {
+        return false;
+    }
+    if (is_multipolygon_area_id(layer.id)) {
+        return false;
+    }
+    if (layer.feature && layer.feature.properties && layer.feature.properties.geometry_type == 'MultiPolygon') {
+        return false;
+    }
+    return true;
+}
+
+function set_geometry_edit_contextmenu_text(layer, editing) {
+    if (!layer.geometry_edit_contextmenu_items) {
+        return;
+    }
+
+    for (let i=0; i<layer.geometry_edit_contextmenu_items.length; i++) {
+        let item = layer.geometry_edit_contextmenu_items[i];
+        item.text = editing ? 'Save geometry' : 'Edit geometry';
+        item.callback = editing ? function() { save_geometry_edit(); } : function() { start_geometry_edit(layer); };
+    }
+}
+
+function add_geometry_edit_contextmenu_item(menu_layer, edit_layer, icon) {
+    if (!can_edit_polygon_geometry(edit_layer)) {
+        return;
+    }
+
+    let item = {
+        icon: icon,
+        text: 'Edit geometry',
+        callback: function() { start_geometry_edit(edit_layer); }
+    };
+    menu_layer.options.contextmenuItems.push(item);
+    if (!edit_layer.geometry_edit_contextmenu_items) {
+        edit_layer.geometry_edit_contextmenu_items = [];
+    }
+    edit_layer.geometry_edit_contextmenu_items.push(item);
+}
+
+function bind_geometry_edit_contextmenu(layer, icon) {
+    if (!can_edit_polygon_geometry(layer)) {
+        return;
+    }
+
+    layer.bindContextMenu({
+        contextmenu: true,
+        contextmenuWidth: 140,
+        contextmenuItems: [],
+        contextmenuInheritItems: false
+    });
+    add_geometry_edit_contextmenu_item(layer, layer, icon);
+}
+
+function geometry_editing_active() {
+    return geometry_edit_control != null;
+}
+
+function stop_geometry_edit() {
+    if (geometry_edit_control) {
+        if (geometry_edit_target_layer) {
+            set_geometry_edit_contextmenu_text(geometry_edit_target_layer, false);
+        }
+        map.removeControl(geometry_edit_control);
+        geometry_edit_control = null;
+        geometry_edit_layer = null;
+        geometry_edit_target_layer = null;
+        draw_control = add_draw_control(draw_control, map);
+    }
+}
+
+function save_geometry_edit() {
+    if (geometry_edit_control) {
+        geometry_edit_control._toolbars.edit._save();
+    }
+}
+
+function cancel_geometry_edit() {
+    if (geometry_edit_control) {
+        geometry_edit_control._toolbars.edit.disable();
+    }
+}
+
+function start_geometry_edit(layer) {
+    if (!can_edit_polygon_geometry(layer)) {
+        alert('Editing MultiPolygon geometries is not supported');
+        return;
+    }
+
+    if (geometry_edit_control) {
+        cancel_geometry_edit();
+    }
+
+    if (draw_control) {
+        draw_control._toolbars.draw.disable();
+        draw_control._toolbars.edit.disable();
+        map.removeControl(draw_control);
+    }
+
+    geometry_edit_target_layer = layer;
+    set_geometry_edit_contextmenu_text(layer, true);
+
+    geometry_edit_layer = L.featureGroup();
+    geometry_edit_layer.addLayer(layer);
+    geometry_edit_control = new L.Control.Draw({
+        edit: {
+            featureGroup: geometry_edit_layer,
+            poly: {
+                allowIntersection: true
+            },
+            edit: {
+                movable: true
+            },
+            remove: false
+        },
+        draw: false
+    });
+
+    map.addControl(geometry_edit_control);
+    map.once(L.Draw.Event.EDITSTOP, stop_geometry_edit);
+    geometry_edit_control._toolbars.edit._modes.edit.handler.enable();
+}
+
 function delete_area(e, area_id) {
     // Currently the area id can have (x of y) appended to it (in case of a multipolygon)
     let a_id = area_id.replace(/ \(\d+ of \d+\)/, '');
@@ -559,11 +693,7 @@ function set_area_handlers(area) {
         contextmenuInheritItems: false
     });
 
-   area.options.contextmenuItems.push({
-       icon: resource_uri + '/icons/Delete.png',
-       text: 'Delete area',
-       callback: function(e) { delete_area(e, area_id); }
-   });
+    add_geometry_edit_contextmenu_item(area, area, resource_uri + '/icons/Edit.png');
 
     if (services_enabled['bag_service']) {
         area.options.contextmenuItems.push({
@@ -571,8 +701,21 @@ function set_area_handlers(area) {
             text: 'request BAG building',
             callback: function(e) { request_bag_info(area); }
         });
-        area.options.contextmenuItems.push('-');
     }
+
+    // let extensions know they can update this layer.
+    // For example, add a context menu item.
+    for (let i=0; i<extensions.length; i++) {
+        updatefun = extensions[i];
+        updatefun({type: 'add_contextmenu', layer: area, layer_type: 'area'});
+    }
+
+    area.options.contextmenuItems.push('-');
+    area.options.contextmenuItems.push({
+        icon: resource_uri + '/icons/Delete.png',
+        text: 'Delete area',
+        callback: function(e) { delete_area(e, area_id); }
+    });
 
     area.on('dragend', function(e) {
         var area = e.target;
@@ -595,12 +738,6 @@ function set_area_handlers(area) {
         }
     });
 
-    // let extensions know they can update this layer.
-    // For example, add a context menu item.
-    for (let i=0; i<extensions.length; i++) {
-        updatefun = extensions[i];
-        updatefun({type: 'add_contextmenu', layer: area, layer_type: 'area'});
-    }
 }
 
 // TODO: find a better place for this
@@ -947,6 +1084,7 @@ function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
                 layer.parent_area_id = feature.properties.parent_area_id;
             }
             if (feature.properties && feature.properties.id) {
+                layer.mapeditor_layer_type = 'area';
                 window.PubSubManager.broadcast('ADD_AREA_TO_LAYER', { id: feature.properties.id, feature: feature, layer: layer });
                 layer.id = feature.properties.id;
 
@@ -1075,24 +1213,21 @@ function set_building_contextmenu(layer, id) {
         icon: resource_uri + 'icons/BuildingContents.png',
         callback: function(e) { edit_building_contents(e, id); }
     });
+    add_geometry_edit_contextmenu_item(layer, layer, resource_uri + 'icons/Edit.png');
+
+    for (let i=0; i<extensions.length; i++) {
+        updatefun = extensions[i];
+        updatefun({type: 'add_contextmenu', layer: layer, layer_type: 'building'});
+    }
+
     layer.options.contextmenuItems.push('-');
     layer.options.contextmenuItems.push({
         text: 'Delete',
         icon: resource_uri + 'icons/Delete.png',
         callback: function(e) { remove_building(layer); }
     });
-    layer.options.contextmenuItems.push({
-        text: 'Edit ESDL properties',
-        icon: resource_uri + 'icons/Edit.png',
-        callback: function(e) { esdl_browser.open_browser_with_event(e, id); }
-    });
 
     select_assets.add_asset_handler(layer);
-
-    for (let i=0; i<extensions.length; i++) {
-        updatefun = extensions[i];
-        updatefun({type: 'add_contextmenu', layer: layer, layer_type: 'building'});
-    }
 }
 
 /**
@@ -1127,6 +1262,7 @@ function add_building_layer(building_data) {
                 layer.on('mouseout', resetHighlightBuilding);
             }
             if (feature.properties && feature.properties.id) {
+                layer.mapeditor_layer_type = 'building';
                 window.PubSubManager.broadcast('ADD_BUILDING_TO_LAYER', { id: feature.properties.id, feature: feature, layer: layer });
                 set_building_contextmenu(layer, feature.properties.id);
             }
@@ -1443,6 +1579,18 @@ function removeBuildingLegend() {
     }
 }
 
+function toggle_building_legend_visibility() {
+    if (show_building_legend) {
+        $('#menu_option_building_legend').removeClass("ui-icon-check ui-icon");
+        show_building_legend = false;
+        removeBuildingLegend();
+    } else {
+        $('#menu_option_building_legend').addClass("ui-icon-check ui-icon");
+        show_building_legend = true;
+        update_building_legend();
+    }
+}
+
 function removeAreaLegend() {
     if (areaLegend) {
         map.removeControl(areaLegend);
@@ -1503,11 +1651,15 @@ function update_building_legend() {
 
         removeBuildingLegend();
         if (!jQuery.isEmptyObject(building_KPIs)) {
-            buildingLegend = L.control({position: 'bottomright'});
-            buildingLegend.onAdd = function (map) {
-                return createBuildingLegendDiv(building_legend_choice);
-            };
-            buildingLegend.addTo(map);
+            if (show_building_legend) {
+                buildingLegend = L.control({position: 'bottomright'});
+                buildingLegend.onAdd = function (map) {
+                    return createBuildingLegendDiv(building_legend_choice);
+                };
+                buildingLegend.addTo(map);
+            } else {
+                create_building_legendClassesDiv(building_legend_choice);
+            }
         }
     }
 }

@@ -459,6 +459,8 @@ class ESDLServices:
                     ):
                         kwargs = {"json": body}
                     else:
+                        if isinstance(body, str):
+                            body = body.encode("utf-8")
                         kwargs = {"data": body}
                     url_response = requests.post(url, headers=headers, **kwargs)
                 else:
