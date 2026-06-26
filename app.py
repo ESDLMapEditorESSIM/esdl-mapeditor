@@ -132,17 +132,11 @@ logger.info('Running inside uWSGI: {}'.format(is_running_in_uwsgi()))
 #extensions
 schedule_session_clean_up()
 registered_extensions = register_extensions(app, socketio, executor, settings_storage, models_storage, esdl_doc)
-toast_notifications = registered_extensions.toast_notifications
-prompt_manager = registered_extensions.prompt_manager
 wms_layers = registered_extensions.wms_layers
 esdl_api = registered_extensions.esdl_api
-essim_kpis = registered_extensions.essim_kpis
 essim = registered_extensions.essim
 edr_client = registered_extensions.edr_client
-profiles = registered_extensions.profiles
-time_dimension = registered_extensions.time_dimension
 esdl_services = registered_extensions.esdl_services
-custom_icons = registered_extensions.custom_icons
 data_manager = registered_extensions.data_manager
 
 

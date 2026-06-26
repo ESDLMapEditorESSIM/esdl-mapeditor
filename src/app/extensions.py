@@ -1,6 +1,7 @@
 """
 Application extension registration.
 """
+
 from dataclasses import dataclass
 
 from flask import Flask
@@ -69,17 +70,12 @@ class RegisteredExtensions:
     """
     Shared extension instances used by app.py after registration.
     """
-    toast_notifications: ToastNotifications
-    prompt_manager: PromptManager
+
     wms_layers: WMSLayers
     esdl_api: ESDL_API
-    essim_kpis: ESSIM_KPIs
     essim: ESSIM
     edr_client: EDRClient
-    profiles: Profiles
-    time_dimension: TimeDimension
     esdl_services: ESDLServices
-    custom_icons: CustomIcons
     data_manager: DataManager
 
 
@@ -95,7 +91,7 @@ def register_extensions(
     Register the MapEditor extension classes and return shared instances.
     """
     toast_notifications = ToastNotifications(app, socketio)
-    prompt_manager = PromptManager(app, socketio)
+    PromptManager(app, socketio)
     wms_layers = WMSLayers(app, socketio, settings_storage)
     HeatNetwork(app, socketio)
     IBISBedrijventerreinen(app, socketio)
@@ -114,10 +110,10 @@ def register_extensions(
     ESStatisticsService(app, socketio)
     MapEditorSettings(app, socketio, settings_storage)
     edr_client = EDRClient(app, socketio, settings_storage)
-    profiles = Profiles(app, socketio, executor, settings_storage)
+    Profiles(app, socketio, executor, settings_storage)
     ESDLDrive(app, socketio, executor)
     ShapefileConverter(app, socketio, executor)
-    time_dimension = TimeDimension(app, socketio, executor, settings_storage)
+    TimeDimension(app, socketio, executor, settings_storage)
     ETMInterface(app, socketio, settings_storage)
     PortProfileViewer(app, socketio, settings_storage)
     esdl_services = ESDLServices(app, socketio, settings_storage, models_storage)
@@ -134,7 +130,7 @@ def register_extensions(
     ReleaseNotes(app, socketio, settings_storage)
     ESDL2Shapefile(app)
     ESDL2InlineProfile(app)
-    custom_icons = CustomIcons(app, socketio, settings_storage)
+    CustomIcons(app, socketio, settings_storage)
     KPIDashboard(app, socketio, settings_storage)
     TooltipInfo(app, socketio)
     ActivityContextExtension(app, socketio, settings_storage)
@@ -148,16 +144,10 @@ def register_extensions(
     WorkflowEngine(app, socketio, models_storage, esdl_services, toast_notifications)
 
     return RegisteredExtensions(
-        toast_notifications=toast_notifications,
-        prompt_manager=prompt_manager,
         wms_layers=wms_layers,
         esdl_api=esdl_api,
-        essim_kpis=essim_kpis,
         essim=essim,
         edr_client=edr_client,
-        profiles=profiles,
-        time_dimension=time_dimension,
         esdl_services=esdl_services,
-        custom_icons=custom_icons,
         data_manager=data_manager,
     )
