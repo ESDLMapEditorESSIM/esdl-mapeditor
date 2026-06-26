@@ -122,21 +122,33 @@ function add_area_map_handlers(socket, map) {
                 update_line_ports(layer);
             }
             if (layer instanceof L.Polygon) {
+                if (layer.mapeditor_layer_type == 'area') {
+                    socket.emit('update-polygon-coord', {id: layer.id, polygon: layer.getLatLngs()});
+                    return;
+                }
+
                 // Find marker belonging to Polygon and recalculate center
                 // esdl_objects = esdl_layer.getLayers();
                 console.log('new coords', layer.getLatLngs());
-                esdl_objects = get_layers(active_layer_id, 'esdl_layer').getLayers();
+                esdl_objects = get_layers(active_layer_id, get_asset_layer_name(layer.asspot)).getLayers();
                 for (let i=0; i<esdl_objects.length; i++) {
                     esdl_object = esdl_objects[i];
                     if (esdl_object.id == layer.id && esdl_object instanceof L.Marker) {
                         polygon_center = calculate_leaflet_polygon_center(layer.getLatLngs()[0]);
                         var newLatLng = new L.LatLng(polygon_center[0], polygon_center[1]);
                         esdl_object.setLatLng(newLatLng);   // update the location of the marker itself
-                        update_marker_ports(esdl_object);   // update the location of the port markers of this marker
+                        if (esdl_object.ports) {
+                            update_marker_ports(esdl_object);   // update the location of the port markers of this marker
+                        }
 
                         // send updated coordinates to backend to update connections
                         socket.emit('update-coord', {id: layer.id, coordinates: esdl_object.getLatLng(), asspot: layer.asspot});
                     }
+                }
+
+                if (layer.mapeditor_layer_type == 'building') {
+                    socket.emit('update-polygon-coord', {id: layer.id, polygon: layer.getLatLngs()});
+                    return;
                 }
 
                 // recalculate area
@@ -201,7 +213,11 @@ function add_area_map_handlers(socket, map) {
         var event = e.originalEvent
         if (event.keyCode === 27) { // Esc key
             if (editing_objects) {
-                window.draw_control._toolbars.edit.disable();
+                if (typeof geometry_editing_active == 'function' && geometry_editing_active()) {
+                    cancel_geometry_edit();
+                } else {
+                    window.draw_control._toolbars.edit.disable();
+                }
           	} else if (deleting_objects) {
                 window.draw_control._toolbars.edit.disable();
           	} else {
@@ -210,7 +226,11 @@ function add_area_map_handlers(socket, map) {
           	}
         } else if (event.key === 's') {
             if (editing_objects) {
-                window.draw_control._toolbars.edit._save();
+                if (typeof geometry_editing_active == 'function' && geometry_editing_active()) {
+                    save_geometry_edit();
+                } else {
+                    window.draw_control._toolbars.edit._save();
+                }
           	} else if (deleting_objects) {
                 window.draw_control._toolbars.edit._save();
           	}

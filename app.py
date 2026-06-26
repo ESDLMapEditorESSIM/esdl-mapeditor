@@ -20,7 +20,7 @@ import traceback
 import urllib
 import uuid
 from datetime import datetime
-from typing import List
+from typing import Any, NotRequired, TypedDict
 from warnings import warn
 
 import requests
@@ -505,7 +505,7 @@ def send_alert(message):
 
 
 def _set_carrier_for_connected_transport_assets(asset: esdl.EnergyAsset | esdl.ExposedPortsAsset, carrier: esdl.Carrier,
-                                                processed_assets: List[str]):
+                                                processed_assets: list[str]):
     """
     Set carrier on all ports of a single asset as starting point, recursively
     :param asset: Asset to set carrier on
@@ -533,7 +533,7 @@ def set_carrier_for_connected_transport_assets(asset: esdl.EnergyAsset | esdl.Ex
 def set_carrier_for_connected_transport_assets_by_port(
         port: esdl.InPort | esdl.OutPort,
         carrier: esdl.Carrier,
-        processed_assets: List[str] = None) -> PortMessage:
+        processed_assets: list[str] = None) -> PortMessage:
     """
     Set port carrier recursively. Similar to set_carrier_for_connected_transport_assets() but starts at a
     single port instead of an asset. This allows you to also set carriers on HeatExchangers and other multi-port
@@ -579,7 +579,7 @@ def set_carrier_for_connected_transport_assets_by_port(
     return create_port_message(port)
     #port_list.append(create_port_message(port))
 
-def handle_exposed_port_container(asset: esdl.ConnectableAsset, processed_assets: List[str]):
+def handle_exposed_port_container(asset: esdl.ConnectableAsset, processed_assets: list[str]):
     possible_container = asset.containingBuilding or asset.containingAsset
     if possible_container and possible_container.id not in processed_assets:
         processed_assets.append(possible_container.id)
@@ -1145,33 +1145,67 @@ def update_line_coordinates(message):
             update_transport_connection_locations(ass_id, asset, polyline_data)
         emit('update_undo_redo_stack', serialize_command_stack(undo_redo))
 
+
+def create_polygon_from_leaflet_data(polygon_data, crs):
+    polygon_data = ESDLGeometry.remove_duplicates_in_polygon(polygon_data)
+    polygon_data = ESDLGeometry.remove_latlng_annotation_in_array_of_arrays(polygon_data)
+    polygon_data = ESDLGeometry.exchange_polygon_coordinates(polygon_data)  # --> [lon, lat]
+    polygon = ESDLGeometry.convert_pcoordinates_into_polygon(polygon_data)  # expects [lon, lat]
+    polygon.CRS = crs
+    return polygon
+
+
+class UpdatePolygonCoordinatesMessage(TypedDict):
+    id: str
+    polygon: list[Any]
+    polygon_area: NotRequired[float]
+
+
 @socketio.on('update-polygon-coord', namespace='/esdl')
-def update_polygon_coordinates(message):
+def update_polygon_coordinates(message: UpdatePolygonCoordinatesMessage):
     # logger.debug ('received polygon: ' + str(message['id']) + ':' + str(message['polygon']))
-    ass_id = message['id']
+    obj_id = message['id']
 
     active_es_id = get_session('active_es_id')
     pm = get_project_manager()
-    asset = pm.get_by_id(active_es_id, ass_id)
+    obj = pm.get_by_id(active_es_id, obj_id)
 
-    if asset:
-        undo_redo = pm.get_undo_redo_stack(asset)
-        with undo_redo.track_changes(label="Change geometry of {}".format(asset.name or asset.eClass.name)):
-            polygon_data = message['polygon']
-            # logger.debug(polygon_data)
-            # logger.debug(type(polygon_data))
+    if not obj:
+        send_alert('Could not update polygon geometry')
+        return
+
+    if isinstance(obj.geometry, esdl.MultiPolygon):
+        send_alert('Editing MultiPolygon geometries is not supported')
+        return
+
+    try:
+        polygon = create_polygon_from_leaflet_data(message['polygon'], getattr(obj.geometry, 'CRS', None) or 'WGS84')
+    except (KeyError, TypeError, ValueError, IndexError):
+        logger.exception('Could not update polygon geometry')
+        send_alert('Could not update polygon geometry')
+        return
+
+    polygon_area = None
+    if not isinstance(obj, (esdl.Area, esdl.AbstractBuilding, esdl.Potential)):
+        try:
             polygon_area = int(message['polygon_area'])
-            asset.surfaceArea = polygon_area
+        except (KeyError, TypeError, ValueError):
+            logger.exception('Could not update polygon area')
+            send_alert('Could not update polygon geometry')
+            return
 
-            polygon_data = ESDLGeometry.remove_duplicates_in_polygon(polygon_data)
-            polygon_data = ESDLGeometry.remove_latlng_annotation_in_array_of_arrays(polygon_data)
-            polygon_data = ESDLGeometry.exchange_polygon_coordinates(polygon_data)  # --> [lon, lat]
-            polygon = ESDLGeometry.convert_pcoordinates_into_polygon(polygon_data)  # expects [lon, lat]
-            asset.geometry = polygon
-
+    undo_redo = pm.get_undo_redo_stack(obj)
+    with undo_redo.track_changes(label="Change geometry of {}".format(obj.name or obj.eClass.name)):
+        obj.geometry = polygon
+        if isinstance(obj, esdl.Area):
+            shape_dictionary = get_session_for_esid(active_es_id, 'shape_dictionary') or {}
+            shape_dictionary[obj.id] = Shape.create(polygon)
+            set_session_for_esid(active_es_id, 'shape_dictionary', shape_dictionary)
+        elif not isinstance(obj, (esdl.AbstractBuilding, esdl.Potential)):
+            obj.surfaceArea = polygon_area
             polygon_center = ESDLGeometry.calculate_polygon_center(polygon)
-            update_polygon_asset_connection_locations(ass_id, polygon_center)
-        emit('update_undo_redo_stack', serialize_command_stack(undo_redo))
+            update_polygon_asset_connection_locations(obj_id, polygon_center)
+    emit('update_undo_redo_stack', serialize_command_stack(undo_redo))
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -1477,7 +1511,10 @@ def process_command(message, stack: UndoRedoCommandStack):
                 # Send new area shapes to the browser
                 area_list = []
                 boundary_wgs = ESDLGeometry.create_boundary_from_geometry(geometry)
-                area_list.append(ESDLGeometry.create_geojson(new_area.id, new_area.name, [], boundary_wgs))
+                area_geojson = ESDLGeometry.create_geojson(new_area.id, new_area.name, [], boundary_wgs)
+                area_geojson['properties']['dist_KPIs'] = {}
+                area_geojson['properties']['geometry_type'] = type(geometry).__name__
+                area_list.append(area_geojson)
                 # pm.add_object_to_dict(active_es_id, new_area)
                 emit('geojson', {"layer": "area_layer", "geojson": area_list})
         else:

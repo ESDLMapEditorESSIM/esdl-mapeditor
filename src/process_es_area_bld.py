@@ -444,6 +444,7 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, sho
             "KPIs": geojson_KPIs,
             "dist_KPIs": geojson_dist_kpis,
             "parent_area_id": parent_area.id if parent_area else None,
+            "geometry_type": type(area_geometry).__name__,
         }
 
         if this_area.scope == esdl.AreaScopeEnum.SERVICE_AREA:
@@ -502,6 +503,7 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, sho
                     "name": boundary_wgs['name'],
                     "KPIs": geojson_KPIs,
                     "dist_KPIs": geojson_dist_kpis,
+                    "geometry_type": boundary_wgs['geom']['type'],
                 }))
 
             area_shape = sh
