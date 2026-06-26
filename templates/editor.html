@@ -794,7 +794,7 @@
                     bounds.extend(get_layers(active_layer_id, 'esdl_layer').getBounds());
                     bounds.extend(get_layers(active_layer_id, 'bld_layer').getBounds());
                     bounds.extend(get_layers(active_layer_id, 'pot_layer').getBounds());
-                    map.flyToBounds(bounds, {padding: [50,50], animate: false});  // true});
+                    map.flyToBounds(bounds, {padding: [50,50], animate: false, maxZoom: 15});  // true});
                 }
 
                 // Ewoud: should also work with building editor now...
