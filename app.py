@@ -20,7 +20,13 @@ import traceback
 import urllib
 import uuid
 from datetime import datetime
-from typing import Any, NotRequired, TypedDict
+from typing import Any, TypedDict
+import sys
+if sys.version_info < (3, 11):
+    from typing_extensions import NotRequired
+else:
+    from typing import NotRequired
+
 from warnings import warn
 
 import requests
