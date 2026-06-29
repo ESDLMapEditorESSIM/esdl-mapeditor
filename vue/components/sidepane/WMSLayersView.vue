@@ -62,14 +62,12 @@
 <script setup>
 import {computed, ref, watch} from 'vue';
 import {CaretDownFilled} from '@ant-design/icons-vue';
-import {useBaseLayers} from "@/composables/baseLayers";
 import {useWmsLayers, showLayer, hideLayer} from "@/composables/wmsLayers";
 import {useVisibleLayers} from "@/composables/visibleLayers";
 import {notification} from 'ant-design-vue';
 import {useSocketIO} from "@/composables/socketio";
 
 const {socket} = useSocketIO();
-const {showBaseLayer, baseLayerDefinitions, getBaseLayerByLabel, hideBaseLayer} = useBaseLayers();
 const {layerExists} = useVisibleLayers(window.map, socket);
 const {
   getWmsLayerList,
@@ -82,9 +80,6 @@ const {
 } = useWmsLayers();
 
 const expandedKeys = ref([]);
-const checkedBaseLayers = ref(baseLayerDefinitions
-  .filter((baseLayer) => baseLayer.enabled)
-  .map((baseLayer) => baseLayer.label));
 const contextMenu = ref({node: null});
 
 const MaxLayerOpenCount = 10;
@@ -96,10 +91,7 @@ const treeData = computed(() => {
       addTreeItem(wmsGroupsTreeData, rootGroup, key, "wms_layer_folder", rootGroup.children, null);
     }
 
-    return [
-      getBaseLayersControlTreeData(),
-      ...wmsGroupsTreeData,
-    ];
+    return wmsGroupsTreeData.length ? wmsGroupsTreeData : null;
   } else {
     return null;
   }
@@ -107,10 +99,6 @@ const treeData = computed(() => {
 
 const checkedKeys = computed(() => {
   const checked = [];
-
-  for (const baseLayer of checkedBaseLayers.value) {
-    checked.push(baseLayer);
-  }
 
   const layerList = getWmsLayerList();
   if (!layerList) {
@@ -220,31 +208,10 @@ function addTreeItem(items, item, itemId, type, children, parentId) {
   });
 }
 
-function getBaseLayersControlTreeData() {
-  return {
-    title: "Base layers",
-    key: "group_base_layers",
-    dataType: "root_layer_folder",
-    readonly: true,
-    checkable: false,
-    selectable: false,
-    iconClass: 'fas fa-layer-group',
-    children: baseLayerDefinitions.map((baseLayer) => ({
-      title: baseLayer.label,
-      key: baseLayer.label,
-      dataType: "base_layer",
-      iconClass: 'far fa-map',
-      selectable: false,
-      isLeaf: true,
-      children: [],
-    })),
-  };
-}
-
 function getInitiallyExpandedKeys(nodes) {
   const keys = [];
   for (const node of nodes) {
-    if (node.key === 'group_base_layers' || node.isRoot || node.opened) {
+    if (node.isRoot || node.opened) {
       keys.push(node.key);
     }
     if (node.children?.length) {
@@ -312,14 +279,11 @@ function onExpand(keys, info) {
   }
 }
 
-async function onCheck(_, info) {
+function onCheck(_, info) {
   const node = info.node.dataRef;
   const isChecked = info.checked;
-  const ctrlPressed = info.nativeEvent?.ctrlKey;
 
-  if (node.dataType === 'base_layer') {
-    setBaseLayerVisibility(node.key, isChecked, ctrlPressed);
-  } else if (node.dataType === 'service_layer_tree') {
+  if (node.dataType === 'service_layer_tree') {
     if (isChecked) {
       showLayer(node.key);
     } else {
@@ -327,25 +291,6 @@ async function onCheck(_, info) {
     }
   } else if (node.dataType === 'wms_layer_folder') {
     setGroupVisibility(node.key, isChecked);
-  }
-}
-
-function setBaseLayerVisibility(layerKey, isChecked, ctrlPressed) {
-  const layer = getBaseLayerByLabel(layerKey);
-  if (isChecked) {
-    if (!ctrlPressed) {
-      for (const baseLayer of baseLayerDefinitions) {
-        hideBaseLayer(baseLayer);
-      }
-      checkedBaseLayers.value = [];
-    }
-    showBaseLayer(layer);
-    if (!checkedBaseLayers.value.includes(layerKey)) {
-      checkedBaseLayers.value.push(layerKey);
-    }
-  } else {
-    hideBaseLayer(layer);
-    checkedBaseLayers.value = checkedBaseLayers.value.filter((key) => key !== layerKey);
   }
 }
 

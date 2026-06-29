@@ -17,6 +17,7 @@ EPS_WEB_HOST = os.getenv("EPS_WEB_HOST", "http://epsweb:3401")
 ESDL_AGGREGATOR_HOST = os.getenv("ESDL_AGGREGATOR_HOST", "http://esdl-aggregator:3490")
 ESDL_UPLOAD_PROFILES_HOST = os.getenv("ESDL_UPLOAD_PROFILES_HOST", "http://mapeditor-upload-profiles:4003")
 ESDL_COST_SERVICE_HOST = os.getenv("ESDL_COST_SERVICE_HOST", "http://mapeditor-cost-service:4004")
+ESDL_VALIDATOR_URL = os.getenv("ESDL_VALIDATOR_URL", "http://esdl-validator:5000")
 FLEX_BACKEND_HOST = os.getenv("FLEX_BACKEND_HOST", "http://localhost:7200")
 FLEX_FRONTEND_HOST = os.getenv("FLEX_FRONTEND_HOST", "http://localhost:7201")
 ESSIM_URL = os.getenv("ESSIM_URL", "http://essim-engine:8112")
@@ -716,7 +717,7 @@ esdl_config = {
                     "type": "select",
                     "config": {"multiple": False, "label_fields": ["name"], "value_field": "id"},
                     "data": {
-                        "from_url": {"url": "http://esdl-validator:5000/schema"},
+                        "from_url": {"url": f"{ESDL_VALIDATOR_URL}/schema"},
                         "to_state": {},
                         "output_wrapper_variable": "schema",
                     },
@@ -736,7 +737,7 @@ esdl_config = {
                             "User-Agent": "ESDL Mapeditor/0.1",
                             "Content-Type": "application/xml;charset=UTF-8",
                         },
-                        "url": "http://esdl-validator:5000/validationToMessages/",
+                        "url": f"{ESDL_VALIDATOR_URL}/validationToMessages",
                         "http_method": "post",
                         "type": "send_esdl",
                         "query_parameters": [
