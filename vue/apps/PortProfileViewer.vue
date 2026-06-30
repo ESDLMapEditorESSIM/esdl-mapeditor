@@ -614,11 +614,11 @@ const formatAsDateTimeStr = (dtString, datetimeFormat) => {
   align-items: center;
 }
 
-:v-deep(.with-data) {
+:deep(.with-data) {
   overflow-y: scroll;
 }
 
-:v-deep(.plotly-plot) {
+:deep(.plotly-plot) {
   height: 100%;
 }
 </style>
