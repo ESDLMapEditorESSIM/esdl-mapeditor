@@ -16,12 +16,18 @@
 import importlib
 import json
 import os
+import sys
 import traceback
 import urllib
 import uuid
 from datetime import datetime
-from typing import Any, NotRequired, TypedDict
+from typing import Any
 from warnings import warn
+
+if sys.version_info < (3, 11):
+    from typing_extensions import NotRequired, TypedDict
+else:
+    from typing import NotRequired, TypedDict
 
 import requests
 from flask import Response, redirect, render_template, request, send_from_directory, session, url_for
