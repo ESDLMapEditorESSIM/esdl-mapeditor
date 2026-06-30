@@ -130,10 +130,21 @@ class ESDLDataLayer:
             cat_attrs = model_context.categorize_object_attributes_and_references(asset, attrs, refs)
 
             cost_information = get_cost_information(asset)
+            # Collects partial constraint information of an ESDL asset to be displayed in the Table Editor
+            constraint_information = [
+                {
+                    'type': c.eClass.name,
+                    'name': c.name or '',
+                    'description': c.description or '',
+                    'attributeReference': c.attributeReference or '',
+                }
+                for c in asset.constraint
+            ] if hasattr(asset, 'constraint') else []
 
             attrs_per_asset_list.append({
                 "attributes": cat_attrs,
                 "cost_information": cost_information,
+                "constraint_information": constraint_information,
             })
 
         return attrs_per_asset_list
