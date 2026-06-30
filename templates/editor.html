@@ -1603,7 +1603,7 @@
                     <div class="collapse navbar-collapse" id="navbarNavDropdown">
 
                         <!-- Left nav -->
-                        <ul class="nav navbar-nav mr-auto" data-sm-options=" {'showTimeout': 400 } ">
+                        <ul class="nav navbar-nav mr-auto" data-sm-options=" {'showTimeout': 400, 'collapsibleBehavior': 'accordion-toggle' } ">
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">File</a>
                                 <ul class="dropdown-menu">
                                     <li id="vue_load_project_file"></li>
@@ -1742,6 +1742,12 @@
                                         <a class="dropdown-item" href="#" onclick="toggle_layer_control_visibility();">
                                             <div id="menu_option_layer_control" class="menu-icon">&nbsp;</div>
                                             Show layer control
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="#" onclick="toggle_building_legend_visibility();">
+                                            <div id="menu_option_building_legend" class="menu-icon ui-icon ui-icon-check">&nbsp;</div>
+                                            Show building legend
                                         </a>
                                     </li>
                                     <li id="vue_toggle_show_asset_draw_toolbar"></li>
@@ -2094,9 +2100,14 @@
     window.ownership_dialog = ownership_dialog;
 </script>
 
+{% if frontend_dev_server_url %}
+<script type="module" src="{{ frontend_dev_server_url }}/@vite/client"></script>
+<script type="module" src="{{ frontend_dev_server_url }}/vue/index.js"></script>
+{% else %}
 <link rel="stylesheet" href="./dist/index.css" type="text/css"/>
 {% if debug %}
 <script type="text/javascript" src="./dist/index.umd.js"></script>
 {% else %}
 <script type="text/javascript" src="./dist/index.umd.min.js"></script>
+{% endif %}
 {% endif %}

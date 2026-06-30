@@ -70,74 +70,6 @@ function add_layer_control() {
     layer_control.onAdd = function (map) {
         var div = L.DomUtil.create('div', 'info legend');
 
-        $base_layer_control_tree = $('<div>').attr('id', 'blct');
-        $(div).append($base_layer_control_tree);
-
-        $base_layer_control_tree
-            .on('ready.jstree', function() {
-                let tree = $('#blct').jstree(true);
-                // console.log(baseTree.children[0].label);
-                tree.select_node([baseTree.children[0].label]);
-            })
-            .on('select_node.jstree', function(e, data) {
-                let node = data.node;
-                base_layer_group = $("#blct").jstree("get_node", 'group_es_layers');
-                // console.log(base_layer_group);
-                if (base_layer_group)
-                    for (let bl=0; bl<base_layer_group.children.length; bl++) {
-                        base_layer = base_layer_group.children[bl];
-                        // console.log(base_layer);
-                        bl_node = $("#blct").jstree("get_node", base_layer);
-                        if ($("#blct").jstree(true).is_selected(bl_node)) {
-                            if (!map.hasLayer(baseTree.children[bl_node.data.baseTreeIndex].layer)) {
-                                map.addLayer(baseTree.children[bl_node.data.baseTreeIndex].layer);
-                            }
-                        } else {
-                            if (map.hasLayer(baseTree.children[bl_node.data.baseTreeIndex].layer)) {
-                                map.removeLayer(baseTree.children[bl_node.data.baseTreeIndex].layer);
-                            }
-                        }
-                    }
-            })
-            // These two events do only work if tie_selection is set to false
-            // .on('check_node.jstree', function(e, data) {
-            //     let node = data.node;
-            //     if (!map.hasLayer(baseTree.children[node.data.baseTreeIndex].layer))
-            //         map.addLayer(baseTree.children[node.data.baseTreeIndex].layer);
-            // })
-            // .on('uncheck_node.jstree', function(e, data) {
-            //     let node = data.node;
-            //     if (map.hasLayer(baseTree.children[node.data.baseTreeIndex].layer))
-            //         map.removeLayer(baseTree.children[node.data.baseTreeIndex].layer);
-            // })
-            .jstree({
-                "core" : {
-                    "data": get_base_layers_control_tree_data(),
-                    // so that create works for contextmenu plugin
-                    "check_callback" : true,
-                    "multiple": false
-                },
-                "plugins": ["checkbox", "types", "contextmenu"], // , "state"], // , "ui", "crrm", "dnd"],
-                "checkbox": {
-                    "three_state": false,
-                    "whole_node": false
-                },
-                "contextmenu": {
-                    "items": {}
-                    // "select_node": false
-                },
-                "types" : {
-                    "group" : {
-                        "a_attr": {
-                            "class": "no_checkbox"
-                        }
-                    },
-                    "base-layer" : {
-                        "icon" : "fas fa-layer-group layer-node"
-                    }
-                }
-            });
-
         $esdl_layer_control_tree = $('<div>').attr('id', 'esdl_lct');
         $(div).append($esdl_layer_control_tree);
 
@@ -331,48 +263,6 @@ function add_layer_control() {
 //    tree.select_node(layer_id);
 //}
 
-
-function get_base_layers_control_tree_data() {
-    let children = [];
-
-    for (let i=0; i<baseTree['children'].length; i++) {
-        let state = {};
-        if (i==0)
-            state = {"checked": true};
-
-        let child = {
-            id : baseTree['children'][i].label,
-            text: baseTree['children'][i].label,
-            icon: "",
-            type: "base-layer",
-            data: {
-                baseTreeIndex: i
-            },
-            state: state,
-            children: [],
-            li_attr: {},
-            a_attr: {}
-        }
-        children.push(child);
-    }
-
-    let group = {
-        id : "group_base_layers",
-        text: "Base layers",
-        icon: "",
-        type: "group",
-        state: {
-            opened : true
-        },
-        children: children,
-        li_attr: {},
-        "a_attr": {
-            "class": "no_checkbox"
-        }
-    }
-
-    return [group];
-}
 
 function get_esdl_layer_control_tree_data() {
     let children = [];

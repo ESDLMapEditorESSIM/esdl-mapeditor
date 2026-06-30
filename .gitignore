@@ -12,6 +12,7 @@ env/
 build/
 develop-eggs/
 dist/
+static/dist-vite/
 downloads/
 eggs/
 .eggs/

@@ -16,18 +16,18 @@
 import importlib
 import json
 import os
+import sys
 import traceback
 import urllib
 import uuid
 from datetime import datetime
-from typing import Any, TypedDict
-import sys
-if sys.version_info < (3, 11):
-    from typing_extensions import NotRequired
-else:
-    from typing import NotRequired
-
+from typing import Any
 from warnings import warn
+
+if sys.version_info < (3, 11):
+    from typing_extensions import NotRequired, TypedDict
+else:
+    from typing import NotRequired, TypedDict
 
 import requests
 from flask import Response, redirect, render_template, request, send_from_directory, session, url_for
@@ -316,6 +316,7 @@ def editor():
             bag_service_enabled=bag_service_enabled,
             ibis_service_enabled=ibis_service_enabled,
             user_feedback_url=user_feedback_url,
+            frontend_dev_server_url=settings.FRONTEND_DEV_SERVER_URL if settings.FLASK_DEBUG else "",
             debug=settings.FLASK_DEBUG,
             version=mapeditor_version
         )
