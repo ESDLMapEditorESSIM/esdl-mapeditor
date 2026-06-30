@@ -97,7 +97,7 @@ Perform the following steps to run the mapeditor directly on your own machine.
 
 4. Install all vue dependencies: `yarn`
 
-5. Run the Vue code compiler in dev mode: `yarn run dev:vite` (note that hot reloading only works for the Vue code)
+5. Run the Vue code compiler in dev mode: `yarn dev` (note that hot reloading only works for the Vue code)
 
 6. Run the application: `python app.py`
 
@@ -105,7 +105,7 @@ Perform the following steps to run the mapeditor directly on your own machine.
 
 ### Legacy yarn watch fallback
 
-If you can't use vite, replace step 5 with `yarn run watch` and make sure the FRONTEND_DEV_URL is not set in the mapeditor.
+If you can't use vite, replace step 5 with `yarn watch` and make sure the FRONTEND_DEV_URL is not set in the mapeditor.
 
 If you get an 'ERR_OSSL_EVP_UNSUPPORTED' error, set the NODE_OPTIONS environment variable to '--openssl-legacy-provider' (without the quotes).
 
