@@ -15,6 +15,7 @@
 from esdl import esdl
 import uuid
 
+from esdl.units.parser import qau_to_string
 from extensions.profiles import Profiles
 
 
@@ -183,6 +184,12 @@ def process_area_KPIs(area):
                             'value': string_item.value
                         })
                 sub_kpi['distribution'] = parts
+
+                qau = area_kpi.quantityAndUnit
+                if qau and isinstance(qau, esdl.QuantityAndUnitReference):
+                    qau = qau.reference
+                if qau:
+                    sub_kpi['unit'] = qau_to_string(qau)
             else:
                 sub_kpi['value'] = area_kpi.value
                 # TODO: Support for QuantityAndUnits

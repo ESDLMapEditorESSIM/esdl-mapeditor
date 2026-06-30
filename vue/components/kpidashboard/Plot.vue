@@ -18,6 +18,12 @@ const props = defineProps({
       return [];
     }
   },
+  layout: {
+    type: Object,
+    default: function () {
+      return {};
+    }
+  },
   onResize: {
     type: Number,
     default: 0
@@ -29,7 +35,7 @@ const plotIsMounted = ref(false);
 
 const plotId = `plot-${props.title}`;
 
-const layout = {
+const defaultLayout = {
   responsive: true,
   autosize: true,
   margin: {l: 25, t: 20, r: 25, b: 25},
@@ -39,6 +45,19 @@ const layout = {
   xaxis: {
     automargin: true
   }
+};
+
+const getMergedLayout = (height) => {
+  const merged = {
+    ...defaultLayout,
+    ...props.layout,
+    yaxis: { ...defaultLayout.yaxis, ...(props.layout.yaxis || {}) },
+    xaxis: { ...defaultLayout.xaxis, ...(props.layout.xaxis || {}) },
+  };
+  if (height !== undefined) {
+    merged.height = height;
+  }
+  return merged;
 };
 
 const config = { 
@@ -55,7 +74,7 @@ const config = {
  * Creates a new plot in the plotDiv container.
  */
 const createPlot = () => {
-  Plotly.newPlot(plotDiv.value, props.trace, layout, config);
+  Plotly.newPlot(plotDiv.value, props.trace, getMergedLayout(), config);
 };
 
 /**
@@ -85,8 +104,7 @@ watch(
  const resizePlot = () => {
   if (plotIsMounted.value) {
     const newPlotContainerHeight = document.getElementById(plotId).parentElement.offsetHeight;
-    layout.height = newPlotContainerHeight;
-    Plotly.react(plotDiv.value, props.trace, layout, config);
+    Plotly.react(plotDiv.value, props.trace, getMergedLayout(newPlotContainerHeight), config);
   }
 };
 

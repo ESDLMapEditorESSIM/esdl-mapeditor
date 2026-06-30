@@ -148,6 +148,7 @@ function createChartOptions(kpi_info) {
             datasets.push(dataset)
         }
 
+        let unit = (kpi_info[0].unit && kpi_info[0].unit !== 'N/A') ? kpi_info[0].unit : null;
         type = 'bar'
         options = {
             legend: {
@@ -160,6 +161,10 @@ function createChartOptions(kpi_info) {
             },
             scales: {
                 y: {
+                    title: {
+                        display: unit !== null,
+                        text: unit || '',
+                    },
                     ticks: {
                         beginAtZero: true,
                         callback: function(value) {

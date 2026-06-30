@@ -9,7 +9,6 @@
   >
     <a-row>
       <a-col :span="24">
-<!--        <button @click="showCostInformation()">-->
         <span>
           <i
             :class="'fa fa-eur small-icon' + (tooltip_info.costInformation?' icon-info-present':' icon-info-not-present')"
@@ -17,7 +16,13 @@
             :title="(tooltip_info.costInformation?'costInformation is present':'No costInformation available')"
           />
         </span>
-<!--        </button>-->
+        <span v-if="tooltip_info.hasConstraints">
+          <img
+            src="/static/icons/Chain.png"
+            title="Constraint(s) defined"
+            style="padding-left: 4px; padding-right: 8px; height: 10px; width: auto;"
+          >
+        </span>
         <button
           v-for="port_profile_info in tooltip_info.profiles"
           :key="port_profile_info.port_id"
