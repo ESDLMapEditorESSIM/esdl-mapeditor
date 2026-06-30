@@ -2100,9 +2100,14 @@
     window.ownership_dialog = ownership_dialog;
 </script>
 
+{% if frontend_dev_server_url %}
+<script type="module" src="{{ frontend_dev_server_url }}/@vite/client"></script>
+<script type="module" src="{{ frontend_dev_server_url }}/vue/index.js"></script>
+{% else %}
 <link rel="stylesheet" href="./dist/index.css" type="text/css"/>
 {% if debug %}
 <script type="text/javascript" src="./dist/index.umd.js"></script>
 {% else %}
 <script type="text/javascript" src="./dist/index.umd.min.js"></script>
+{% endif %}
 {% endif %}

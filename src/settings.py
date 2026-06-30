@@ -23,6 +23,7 @@ FLASK_SERVER_HOST = '0.0.0.0'
 FLASK_SERVER_PORT = 8111
 _flask_debug = os.environ.get('FLASK_DEBUG', '')        # Do not use debug mode in production
 FLASK_DEBUG = (_flask_debug.upper() == 'TRUE' or _flask_debug == '1')
+FRONTEND_DEV_SERVER_URL = os.environ.get('FRONTEND_DEV_SERVER_URL', '').rstrip('/')
 
 USER_LOGGING_ENABLED = True
 # ASYNC_MODE = 'gevent_uwsgi'
