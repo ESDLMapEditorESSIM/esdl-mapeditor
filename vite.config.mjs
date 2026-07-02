@@ -20,14 +20,23 @@ export default defineConfig({
     strictPort: true,
   },
   build: {
-    outDir: 'static/dist-vite',
+    outDir: 'static/dist',
     emptyOutDir: true,
+    lib: {
+      entry: path.resolve(__dirname, 'vue/index.js'),
+      name: 'MapEditorVue',
+      formats: ['umd'],
+      fileName: () => 'index.umd.min.js',
+      cssFileName: 'index',
+    },
     rollupOptions: {
-      input: path.resolve(__dirname, 'vue/index.js'),
       output: {
-        entryFileNames: 'index.js',
-        chunkFileNames: 'assets/[name]-[hash].js',
-        assetFileNames: 'assets/[name]-[hash][extname]',
+        assetFileNames: (assetInfo) => {
+          if (assetInfo.name && assetInfo.name.endsWith('.css')) {
+            return 'index.css';
+          }
+          return 'assets/[name]-[hash][extname]';
+        },
       },
     },
   },
