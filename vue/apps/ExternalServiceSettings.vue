@@ -12,12 +12,12 @@
         ></a-menu>
       </a-layout-sider>
       <a-layout>
-        <a-layout-content :style="contentStyle">
+        <a-layout-content>
           <a-space direction="vertical" style="width: 100%;">
-            <a-button click="handle_save">Save</a-button>
+            <a-button @click="handle_save">Save</a-button>
             <CodeEditor
                 ref="editor"
-                v-model:value="selected_service_config"
+                v-model="selected_service_config"
                 :language="language"
                 :rows="25"
                 :update-on-input="true"
