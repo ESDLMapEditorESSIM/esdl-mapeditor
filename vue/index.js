@@ -20,6 +20,7 @@ import SearchAssets from '@/apps/SearchAssets.vue';
 import AssetFeedback from '@/apps/AssetFeedback.vue';
 import AssetTableEditor from '@/apps/AssetTableEditor.vue';
 import CustomIconsSettings from "@/apps/CustomIconsSettings.vue";
+import ExternalServiceSettings from "@/apps/ExternalServiceSettings.vue";
 import KPIDashboard from '@/apps/KPIDashboard.vue';
 import ESDLAnalytics from '@/apps/ESDLAnalytics.vue';
 import OwnershipDialog from '@/apps/OwnershipDialog.vue';
@@ -186,6 +187,10 @@ window.activate_asset_draw_toolbar_standard_assets_settings = () => {
 
 window.activate_custom_icons_settings = () => {
     mountSettingsComponent(CustomIconsSettings);
+}
+
+window.activate_external_service_management_settings = () => {
+    mountSettingsComponent(ExternalServiceSettings);
 }
 
 window.environmental_profiles = () => {
