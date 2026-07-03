@@ -16,12 +16,18 @@
 import importlib
 import json
 import os
+import sys
 import traceback
 import urllib
 import uuid
 from datetime import datetime
-from typing import List
+from typing import Any
 from warnings import warn
+
+if sys.version_info < (3, 11):
+    from typing_extensions import NotRequired, TypedDict
+else:
+    from typing import NotRequired, TypedDict
 
 import requests
 from flask import Response, redirect, render_template, request, send_from_directory, session, url_for
@@ -43,78 +49,33 @@ from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from esdl.undo import UndoRedoCommandStack
 from esdl.undo_wrapper import undo_record_changes
 from esdlproject.ProjectManager import update_energy_system_version
-from extensions.activity_context import ActivityContextExtension
-from extensions.application_context import ApplicationContextExtension
-from extensions.asset_constraint.asset_constraint import AssetConstraint
-from extensions.bag import BAG
-from extensions.boundary_service import BoundaryService
 from extensions.data_manager import db
-from extensions.data_manager.data_manager import DataManager
-from extensions.es_statistics import ESStatisticsService
-from extensions.esdl_api import ESDL_API
-from extensions.esdl_browser import ESDLBrowser
-from extensions.esdl_compare import ESDLCompare
-from extensions.esdl_drive.esdl_drive import ESDLDrive
-from extensions.esdl_merge import ESDLMerge
-from extensions.essim import ESSIM
-from extensions.essim_sensitivity import ESSIMSensitivity
-from extensions.etm_interface import ETMInterface
-from extensions.external_models.external_models import ExternalModels
 from extensions.external_models.external_models_storage import ExternalModelsStorage
-from extensions.heatnetwork import HeatNetwork
-from extensions.ibis import IBISBedrijventerreinen
 from extensions.mapeditor_settings import MAPEDITOR_UI_SETTINGS, MapEditorSettings
 from extensions.open_id_integration import OpenIDIntegration
-from extensions.ownership.ownership import Ownership
-from extensions.pdtoolsuite_workflow.cost_information import CostInformation
-from extensions.pdtoolsuite_workflow.pdtoolsuite_workflow import PDToolsuiteWorkflow
-from extensions.pico_rooftoppv_potential import PICORooftopPVPotential
-from extensions.port_profile_viewer import PortProfileViewer
 from extensions.profiles import Profiles
-from extensions.residential_area.residential_area import ResidentialArea
 from extensions.session_manager import del_session, get_session, \
     get_session_for_esid, schedule_session_clean_up, set_session, set_session_for_esid, valid_session, \
     clear_session_key_for_esid, has_session_key
 from extensions.session_manager import get_project_manager, set_project_manager
 from extensions.settings_storage import SettingsStorage
-from extensions.shapefile_converter import ShapefileConverter
-from extensions.spatial_operations import SpatialOperations
-from extensions.spatial_visualization.spatial_visualization import SpatialVisualization
-from extensions.time_dimension import TimeDimension
-from extensions.toast_notifications import ToastNotifications
-from extensions.tooltip_info import TooltipInfo
-from extensions.workflow import Workflow
-from extensions.workflow_engine import WorkflowEngine
 from src.app import create_app, executor, socketio
-from src.asset_draw_toolbar import AssetDrawToolbar
+from src.app.extensions import register_extensions
 from src.assets_to_be_added import AssetsToBeAdded
-from src.custom_icons import CustomIcons
-from src.datalayer_api import DataLayerAPI
-from src.edr_client import EDRClient
-from src.esdl2inlineprofile import ESDL2InlineProfile
-from src.esdl2shapefile import ESDL2Shapefile
-from src.esdl_file_import import ESDLFileImport
-from src.esdl_file_io import ESDLFileIO
 from src.esdl_helper import asset_state_to_ui, generate_profile_info, get_asset_and_coord_from_port_id, \
     get_asset_from_port_id, get_connected_to_info, get_port_profile_info, get_tooltip_asset_attrs, \
     update_carrier_conn_list, add_spatial_attributes, add_extra_attributes
-from src.esdl_services import ESDLServices
-from src.essim_kpis import ESSIM_KPIs
 from src.essim_validation import validate_ESSIM
 from src.incremental_ui.incremental_ui_messages import create_update_asset_message, create_port_message, \
     create_asset_port_message, PortMessage
 from src.incremental_ui.ui_change_handler import change_handler, INCREMENTAL_UI_LISTENER_ID
-from src.kpi_dashboard import KPIDashboard
 from src.log import get_logger
 from src.model_contexts import ModelContexts
 from src.process_es_area_bld import call_process_energy_system
 from src.process_es_area_bld import get_building_information, get_building_connections, \
     find_area_location_based, calc_building_assets_location
-from src.release_notes import ReleaseNotes
 from src.roles import is_mapeditor_admin
 from src.shape import Shape
-from src.table_editor import TableEditor
-from src.tno.events_api import EventsAPI
 from src.tno.live_model_interface.api import send_init_new_project_to_lmi, send_project_manager_to_lmi_async
 from src.tno.live_model_interface.lmi_listener import start_live_model_interface_thread, is_lmi_thread_alive
 from src.tno.locking import NamedLocker
@@ -125,8 +86,6 @@ from src.version import __git_branch__ as mapeditor_branch
 from src.version import __git_commit__ as mapeditor_commit
 from src.version import __long_version__ as mapeditor_long_version
 from src.version import __version__ as mapeditor_version
-from src.wms_layers import WMSLayers
-from extensions.prompt_manager import PromptManager
 from utils.datetime_utils import parse_date
 
 print('MapEditor version {}'.format(mapeditor_version))
@@ -178,59 +137,13 @@ logger.info('Running inside uWSGI: {}'.format(is_running_in_uwsgi()))
 
 #extensions
 schedule_session_clean_up()
-toast_notifications = ToastNotifications(app, socketio)
-prompt_manager = PromptManager(app, socketio)
-wms_layers = WMSLayers(app, socketio, settings_storage)
-HeatNetwork(app, socketio)
-IBISBedrijventerreinen(app, socketio)
-ESDLBrowser(app, socketio, esdl_doc)
-BAG(app, socketio)
-BoundaryService(app, socketio, settings_storage)
-esdl_api = ESDL_API(app, socketio)
-ESDLCompare(app, socketio)
-ESDLMerge(app, socketio, executor)
-essim_kpis = ESSIM_KPIs(app, socketio)
-essim = ESSIM(app, socketio, executor, essim_kpis, settings_storage)
-ESSIMSensitivity(app, socketio, settings_storage, essim)
-# Vesta(app, socketio, settings_storage)
-Workflow(app, socketio, settings_storage, executor)
-PDToolsuiteWorkflow(app, socketio, executor, settings_storage)
-CostInformation(app)
-ESStatisticsService(app, socketio)
-MapEditorSettings(app, socketio, settings_storage)
-edr_client = EDRClient(app, socketio, settings_storage)
-profiles = Profiles(app, socketio, executor, settings_storage)
-ESDLDrive(app, socketio, executor)
-ShapefileConverter(app, socketio, executor)
-time_dimension = TimeDimension(app, socketio, executor, settings_storage)
-ETMInterface(app, socketio, settings_storage)
-PortProfileViewer(app, socketio, settings_storage)
-esdl_services = ESDLServices(app, socketio, settings_storage, models_storage)
-PICORooftopPVPotential(app, socketio)
-SpatialOperations(app, socketio)
-DataLayerAPI(app, socketio, esdl_doc)
-EventsAPI(app, socketio, settings_storage)
-ModelContexts(app, socketio, settings_storage)
-AssetsToBeAdded(app, socketio)
-AssetDrawToolbar(app, socketio, settings_storage)
-TableEditor(app, socketio, esdl_doc, settings_storage)
-ESDLFileIO(app, socketio, executor)
-ESDLFileImport(app, socketio, executor)
-ReleaseNotes(app, socketio, settings_storage)
-ESDL2Shapefile(app)
-ESDL2InlineProfile(app)
-custom_icons = CustomIcons(app, socketio, settings_storage)
-KPIDashboard(app, socketio, settings_storage)
-TooltipInfo(app, socketio)
-ActivityContextExtension(app, socketio, settings_storage)
-ApplicationContextExtension(app, socketio, settings_storage)
-ResidentialArea(app, socketio, settings_storage)
-Ownership(app)
-SpatialVisualization(app)
-AssetConstraint(app)
-data_manager = DataManager(app, socketio)
-ExternalModels(app, socketio, models_storage, toast_notifications)
-WorkflowEngine(app, socketio, models_storage, esdl_services, toast_notifications)
+registered_extensions = register_extensions(app, socketio, executor, settings_storage, models_storage, esdl_doc)
+wms_layers = registered_extensions.wms_layers
+esdl_api = registered_extensions.esdl_api
+essim = registered_extensions.essim
+edr_client = registered_extensions.edr_client
+esdl_services = registered_extensions.esdl_services
+data_manager = registered_extensions.data_manager
 
 
 # TODO: check secret key with itsdangerous error and testing and debug here
@@ -403,6 +316,7 @@ def editor():
             bag_service_enabled=bag_service_enabled,
             ibis_service_enabled=ibis_service_enabled,
             user_feedback_url=user_feedback_url,
+            frontend_dev_server_url=settings.FRONTEND_DEV_SERVER_URL if settings.FLASK_DEBUG else "",
             debug=settings.FLASK_DEBUG,
             version=mapeditor_version
         )
@@ -598,7 +512,7 @@ def send_alert(message):
 
 
 def _set_carrier_for_connected_transport_assets(asset: esdl.EnergyAsset | esdl.ExposedPortsAsset, carrier: esdl.Carrier,
-                                                processed_assets: List[str]):
+                                                processed_assets: list[str]):
     """
     Set carrier on all ports of a single asset as starting point, recursively
     :param asset: Asset to set carrier on
@@ -626,7 +540,7 @@ def set_carrier_for_connected_transport_assets(asset: esdl.EnergyAsset | esdl.Ex
 def set_carrier_for_connected_transport_assets_by_port(
         port: esdl.InPort | esdl.OutPort,
         carrier: esdl.Carrier,
-        processed_assets: List[str] = None) -> PortMessage:
+        processed_assets: list[str] = None) -> PortMessage:
     """
     Set port carrier recursively. Similar to set_carrier_for_connected_transport_assets() but starts at a
     single port instead of an asset. This allows you to also set carriers on HeatExchangers and other multi-port
@@ -672,7 +586,7 @@ def set_carrier_for_connected_transport_assets_by_port(
     return create_port_message(port)
     #port_list.append(create_port_message(port))
 
-def handle_exposed_port_container(asset: esdl.ConnectableAsset, processed_assets: List[str]):
+def handle_exposed_port_container(asset: esdl.ConnectableAsset, processed_assets: list[str]):
     possible_container = asset.containingBuilding or asset.containingAsset
     if possible_container and possible_container.id not in processed_assets:
         processed_assets.append(possible_container.id)
@@ -1238,33 +1152,67 @@ def update_line_coordinates(message):
             update_transport_connection_locations(ass_id, asset, polyline_data)
         emit('update_undo_redo_stack', serialize_command_stack(undo_redo))
 
+
+def create_polygon_from_leaflet_data(polygon_data, crs):
+    polygon_data = ESDLGeometry.remove_duplicates_in_polygon(polygon_data)
+    polygon_data = ESDLGeometry.remove_latlng_annotation_in_array_of_arrays(polygon_data)
+    polygon_data = ESDLGeometry.exchange_polygon_coordinates(polygon_data)  # --> [lon, lat]
+    polygon = ESDLGeometry.convert_pcoordinates_into_polygon(polygon_data)  # expects [lon, lat]
+    polygon.CRS = crs
+    return polygon
+
+
+class UpdatePolygonCoordinatesMessage(TypedDict):
+    id: str
+    polygon: list[Any]
+    polygon_area: NotRequired[float]
+
+
 @socketio.on('update-polygon-coord', namespace='/esdl')
-def update_polygon_coordinates(message):
+def update_polygon_coordinates(message: UpdatePolygonCoordinatesMessage):
     # logger.debug ('received polygon: ' + str(message['id']) + ':' + str(message['polygon']))
-    ass_id = message['id']
+    obj_id = message['id']
 
     active_es_id = get_session('active_es_id')
     pm = get_project_manager()
-    asset = pm.get_by_id(active_es_id, ass_id)
+    obj = pm.get_by_id(active_es_id, obj_id)
 
-    if asset:
-        undo_redo = pm.get_undo_redo_stack(asset)
-        with undo_redo.track_changes(label="Change geometry of {}".format(asset.name or asset.eClass.name)):
-            polygon_data = message['polygon']
-            # logger.debug(polygon_data)
-            # logger.debug(type(polygon_data))
+    if not obj:
+        send_alert('Could not update polygon geometry')
+        return
+
+    if isinstance(obj.geometry, esdl.MultiPolygon):
+        send_alert('Editing MultiPolygon geometries is not supported')
+        return
+
+    try:
+        polygon = create_polygon_from_leaflet_data(message['polygon'], getattr(obj.geometry, 'CRS', None) or 'WGS84')
+    except (KeyError, TypeError, ValueError, IndexError):
+        logger.exception('Could not update polygon geometry')
+        send_alert('Could not update polygon geometry')
+        return
+
+    polygon_area = None
+    if not isinstance(obj, (esdl.Area, esdl.AbstractBuilding, esdl.Potential)):
+        try:
             polygon_area = int(message['polygon_area'])
-            asset.surfaceArea = polygon_area
+        except (KeyError, TypeError, ValueError):
+            logger.exception('Could not update polygon area')
+            send_alert('Could not update polygon geometry')
+            return
 
-            polygon_data = ESDLGeometry.remove_duplicates_in_polygon(polygon_data)
-            polygon_data = ESDLGeometry.remove_latlng_annotation_in_array_of_arrays(polygon_data)
-            polygon_data = ESDLGeometry.exchange_polygon_coordinates(polygon_data)  # --> [lon, lat]
-            polygon = ESDLGeometry.convert_pcoordinates_into_polygon(polygon_data)  # expects [lon, lat]
-            asset.geometry = polygon
-
+    undo_redo = pm.get_undo_redo_stack(obj)
+    with undo_redo.track_changes(label="Change geometry of {}".format(obj.name or obj.eClass.name)):
+        obj.geometry = polygon
+        if isinstance(obj, esdl.Area):
+            shape_dictionary = get_session_for_esid(active_es_id, 'shape_dictionary') or {}
+            shape_dictionary[obj.id] = Shape.create(polygon)
+            set_session_for_esid(active_es_id, 'shape_dictionary', shape_dictionary)
+        elif not isinstance(obj, (esdl.AbstractBuilding, esdl.Potential)):
+            obj.surfaceArea = polygon_area
             polygon_center = ESDLGeometry.calculate_polygon_center(polygon)
-            update_polygon_asset_connection_locations(ass_id, polygon_center)
-        emit('update_undo_redo_stack', serialize_command_stack(undo_redo))
+            update_polygon_asset_connection_locations(obj_id, polygon_center)
+    emit('update_undo_redo_stack', serialize_command_stack(undo_redo))
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -1570,7 +1518,10 @@ def process_command(message, stack: UndoRedoCommandStack):
                 # Send new area shapes to the browser
                 area_list = []
                 boundary_wgs = ESDLGeometry.create_boundary_from_geometry(geometry)
-                area_list.append(ESDLGeometry.create_geojson(new_area.id, new_area.name, [], boundary_wgs))
+                area_geojson = ESDLGeometry.create_geojson(new_area.id, new_area.name, [], boundary_wgs)
+                area_geojson['properties']['dist_KPIs'] = {}
+                area_geojson['properties']['geometry_type'] = type(geometry).__name__
+                area_list.append(area_geojson)
                 # pm.add_object_to_dict(active_es_id, new_area)
                 emit('geojson', {"layer": "area_layer", "geojson": area_list})
         else:

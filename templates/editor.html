@@ -124,12 +124,12 @@
     <script type="text/javascript" src="./utils/carriers.js"></script>
     <script type="text/javascript" src="./utils/profiles.js"></script>
     <script type="text/javascript" src="./utils/asset_from_edr.js"></script>
+    <script type="text/javascript" src="./utils/esdl_browser.js"></script>
     <script type="text/javascript" src="./utils/esdl_services.js"></script>
     <script type="text/javascript" src="./utils/wkt_rd2wgs.js"></script>
     <script type="text/javascript" src="./utils/esdl_store.js"></script>
     <script type="text/javascript" src="./utils/esdl_compare.js"></script>
     <script type="text/javascript" src="./utils/esdl_merge.js"></script>
-    <script type="text/javascript" src="./utils/esdl_browser.js"></script>
     <script type="text/javascript" src="./utils/esdl_drive.js"></script>
     <script type="text/javascript" src="./utils/check_status.js"></script>
     <link rel="stylesheet" href="./utils/esdl_drive.css" type="text/css"/>
@@ -794,7 +794,7 @@
                     bounds.extend(get_layers(active_layer_id, 'esdl_layer').getBounds());
                     bounds.extend(get_layers(active_layer_id, 'bld_layer').getBounds());
                     bounds.extend(get_layers(active_layer_id, 'pot_layer').getBounds());
-                    map.flyToBounds(bounds, {padding: [50,50], animate: false});  // true});
+                    map.flyToBounds(bounds, {padding: [50,50], animate: false, maxZoom: 15});  // true});
                 }
 
                 // Ewoud: should also work with building editor now...
@@ -887,6 +887,7 @@
                             "properties": {
                                 "id": list[i][2],
                                 "name": list[i][1],
+                                "type": list[i][3],
                                 "KPIs": KPIs
                             }
                         });
@@ -1602,7 +1603,7 @@
                     <div class="collapse navbar-collapse" id="navbarNavDropdown">
 
                         <!-- Left nav -->
-                        <ul class="nav navbar-nav mr-auto" data-sm-options=" {'showTimeout': 400 } ">
+                        <ul class="nav navbar-nav mr-auto" data-sm-options=" {'showTimeout': 400, 'collapsibleBehavior': 'accordion-toggle' } ">
                             <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#">File</a>
                                 <ul class="dropdown-menu">
                                     <li id="vue_load_project_file"></li>
@@ -1743,9 +1744,14 @@
                                             Show layer control
                                         </a>
                                     </li>
+                                    <li>
+                                        <a class="dropdown-item" href="#" onclick="toggle_building_legend_visibility();">
+                                            <div id="menu_option_building_legend" class="menu-icon ui-icon ui-icon-check">&nbsp;</div>
+                                            Show building legend
+                                        </a>
+                                    </li>
                                     <li id="vue_toggle_show_asset_draw_toolbar"></li>
                                     <li id="vue_toggle_show_services_toolbar"></li>
-                                    <li id="vue_toggle_show_project_view"></li>
                                     <li id="vue_toggle_show_undo_redo_control"></li>
                                     <li id="vue_toggle_long_process_view"></li>
                                     <li>
@@ -2094,9 +2100,14 @@
     window.ownership_dialog = ownership_dialog;
 </script>
 
+{% if frontend_dev_server_url %}
+<script type="module" src="{{ frontend_dev_server_url }}/@vite/client"></script>
+<script type="module" src="{{ frontend_dev_server_url }}/vue/index.js"></script>
+{% else %}
 <link rel="stylesheet" href="./dist/index.css" type="text/css"/>
 {% if debug %}
 <script type="text/javascript" src="./dist/index.umd.js"></script>
 {% else %}
 <script type="text/javascript" src="./dist/index.umd.min.js"></script>
+{% endif %}
 {% endif %}

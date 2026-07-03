@@ -42,6 +42,7 @@ class TooltipInfo:
 
             results = {
                 "costInformation": False,
+                "hasConstraints": False,
                 "profiles": False,
             }
             try:
@@ -57,6 +58,10 @@ class TooltipInfo:
                         if isinstance(ci, esdl.GenericProfile):
                             results["costInformation"] = True
                             break
+
+                # Check for constraints
+                if hasattr(object, 'constraint') and len(object.constraint) > 0:
+                    results["hasConstraints"] = True
 
             if isinstance(object, esdl.ConnectableAsset):
                 # check for port profiles

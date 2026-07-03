@@ -8,6 +8,7 @@
         :placeholder="placeholder"
         :status="selectStatus"
         :mode="mode"
+        :allow-clear="allowClear"
         @change="onSelectValue"
       />
     </a-form-item>
@@ -45,6 +46,7 @@ const options = ref([]);
 const placeholder = ref("Select");
 const form = ref([]);
 const mode = ref("");
+const allowClear = ref(false);
 let subscriptionId = null;
 
 const selectStatus = ref("error");
@@ -84,12 +86,12 @@ onUnmounted(() => {
 
 const onSubmit = async () => {
   const value = form.value[stepParams.value.data.output_wrapper_variable];
-  if (!value) {
+  if (isRequired() && !value) {
     alert("Please select a valid option.");
     return;
   }
 
-  const output = mode.value === "multiple" ? value.map(item => choicesByValue.get(item)) : choicesByValue.get(value);
+  const output = !value ? null : mode.value === "multiple" ? value.map(item => choicesByValue.get(item)) : choicesByValue.get(value);
   await sendOutputData(
       stepParams.value.data, output, () => goToStep(stepParams.value.nextStep)
   );
@@ -103,8 +105,12 @@ const onSelectValue = (value) => {
   }
 };
 
+const isRequired = () => {
+  return stepParams.value.config.required !== false;
+};
+
 const updateInputState = () => {
-  const isValid = mode.value === "multiple" || form.value[stepParams.value.data.output_wrapper_variable] !== "";
+  const isValid = mode.value === "multiple" || !isRequired() || form.value[stepParams.value.data.output_wrapper_variable] !== "";
   selectStatus.value = isValid ? "" : "error";
   setWorkflowStepInputValid(stepParams.value.id, isValid);
 };
@@ -190,6 +196,7 @@ const init = async () => {
   if ("multiple" in stepParams.value.config) {
     mode.value = stepParams.value.config.multiple ? "multiple" : "";
   }
+  allowClear.value = stepParams.value.config.required === false;
 
   await getInputData(stepParams.value.data, updateData);
 };

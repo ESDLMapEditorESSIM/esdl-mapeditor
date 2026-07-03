@@ -2,11 +2,12 @@
   "version": "25.10.0",
   "scripts": {
     "lint": "vue-cli-service lint",
-    "clean": "rm -rf static/dist",
+    "clean": "rm -rf static/dist static/dist-vite",
     "watch": "npx vue-cli-service build --inline-vue --mode development --dest static/dist --target lib --watch vue/index.js",
-    "dev": "npx vue-cli-service build --inline-vue --mode development --dest static/dist --target lib --watch vue/index.js",
+    "dev": "vite",
     "build": "npx vue-cli-service build --inline-vue --mode development --dest static/dist --target lib vue/index.js --report",
     "build-prod": "npx vue-cli-service build --inline-vue --mode production --dest static/dist --target lib vue/index.js",
+    "build:vite": "vite build",
     "version": "update_version.sh && git add src/version.py"
   },
   "dependencies": {
@@ -50,14 +51,16 @@
   },
   "devDependencies": {
     "@babel/eslint-parser": "^7.23.10",
+    "@vitejs/plugin-vue": "^6.0.7",
     "@vue/cli-plugin-babel": "5.0.8",
     "@vue/cli-plugin-eslint": "5.0.8",
     "@vue/cli-service": "5.0.8",
-    "@vue/compiler-sfc": "3.0.4",
+    "@vue/compiler-sfc": "3.4.14",
     "babel-plugin-import": "1.13.8",
     "eslint": "8.56.0",
     "eslint-plugin-vue": "9.20.1",
-    "sass": "1.69.7"
+    "sass": "^1.101.0",
+    "vite": "^8.1.0"
   },
   "browserslist": [
     "> 1%",

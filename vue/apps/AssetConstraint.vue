@@ -5,7 +5,7 @@
     style="width: 100%; padding: 8px; height: 100%"
   >
     <!-- Header -->
-    <a-row>
+    <a-row v-if="!props.embeddedView">
       <a-typography-title :level="3">
         <img
           src="/static/icons/Chain.png"
@@ -22,7 +22,7 @@
     <a-col style="height: 100%">
       <a-segmented
         v-model:value="activeSegment"
-        :options="Object.values(SegmentOptions)"
+        :options="segmentedOptions"
         style="width: 100%"
         block
         @change="onSelectSegment"
@@ -297,13 +297,26 @@ import {
   EditOutlined,
   DeleteOutlined,
 } from "@ant-design/icons-vue";
-import { notification } from "ant-design-vue";
 import { useObject } from "../composables/ObjectID";
-import { useEsdlLayers } from "../composables/esdlLayers";
+import { displayNotification } from '@/utils/notification';
 import ProfileEditForm from "@/components/forms/ProfileEditForm.vue";
 
 const { currentObjectID } = useObject();
-const { getActiveEsdlLayerId } = useEsdlLayers();
+
+const props = defineProps({
+  esId: {
+    type: String,
+    default: ""
+  },
+  objectId: {
+    type: String,
+    default: ""
+  },
+  embeddedView: {
+    type: Boolean,
+    default: false
+  }
+});
 
 // to prevent stuck popup on UI
 const removeTooltipPopup = () => {
@@ -409,8 +422,14 @@ const columns = [
 onMounted(() => {
   console.debug("Asset Constraint component mounted");
 
-  activeEsdlId.value = currentObjectID.value["es_id"] ? currentObjectID.value["es_id"] : getActiveEsdlLayerId().value;
-  assetId.value = currentObjectID.value["object_id"] ? currentObjectID.value["object_id"] : null;
+  activeEsdlId.value = props.esId || currentObjectID.value?.["es_id"];
+  assetId.value = props.objectId || currentObjectID.value?.["object_id"];
+
+  if (!activeEsdlId.value || !assetId.value) {
+    console.error("Asset Constraint: esId or objectId is undefined or null.");
+    displayNotification("error", "Unable to load asset constraints: asset or energy system ID is missing.");
+    return;
+  }
 
   getAssetConstraint(activeEsdlId.value, assetId.value);
 });
@@ -421,6 +440,11 @@ onUnmounted(() => {
 
   console.debug("Asset Constraint component unmounted");
 });
+
+const segmentedOptions = computed(() => [
+  { value: SegmentOptions.CONSTRAINTS, label: SegmentOptions.CONSTRAINTS },
+  { value: SegmentOptions.ADD_CONSTRAINT, label: currentConstraint.value ? "Update Constraint" : SegmentOptions.ADD_CONSTRAINT },
+]);
 
 const invalidForm = computed(() => {
   return (
@@ -441,10 +465,17 @@ const getNewEmptyConstraint = async (constraintType) => {
 const getAssetConstraint = async (esId, assetId) => {
   try {
     const response = await fetch(`/asset_constraint/${esId}/${assetId}`);
+    if (response.status !== 200) {
+      const result = await response.text();
+      console.error(response.status, result);
+      displayNotification("error", "An error occurred when loading the asset constraints.");
+      return;
+    }
     const assetConstraints = await response.json();
     constraints.value = [...assetConstraints];
   } catch (error) {
     console.error(error);
+    displayNotification("error", "An error occurred when loading the asset constraints.");
   }
 };
 
@@ -459,18 +490,14 @@ const setAssetConstraint = async (esId, assetId, constraints) => {
     if (response.status !== 200) {
       const result = await response.text();
       console.error(response.status, result);
-      notification["error"]({
-        message: "Error",
-        description:
-          "An error occurred when adding or updating the asset constraint. Your changes will not be saved.",
-        placement: "bottomRight",
-        duration: 8,
-      });
+      displayNotification("error", "An error occurred when adding or updating the asset constraint. Your changes will not be saved.");
+      return;
     }
 
     getAssetConstraint(esId, assetId);
   } catch (error) {
     console.error(error);
+    displayNotification("error", "An error occurred when adding or updating the asset constraint. Your changes will not be saved.");
   }
 };
 

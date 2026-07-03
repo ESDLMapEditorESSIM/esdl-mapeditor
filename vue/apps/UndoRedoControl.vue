@@ -124,20 +124,39 @@ function typeToColor(type) {
 
 // eslint-disable-next-line no-unused-vars
 function canHighlight(entry) {
-  return entry.type.toLowerCase() !== 'remove';
+  return entry.type.toLowerCase() !== 'remove' && entry.commands.some(command => findLayerForCommand(command));
+}
+
+function getLayerById(layerName, id, type) {
+  if (!id || !window.get_layers(window.active_layer_id, layerName)) {
+    return undefined;
+  }
+  let layer = window.find_layer_by_id(window.active_layer_id, layerName, id, type);
+  if (Array.isArray(layer)) {
+    layer = layer[1];
+  }
+  return layer;
+}
+
+function findLayerForCommand(command) {
+  return getLayerById('esdl_layer', command.id, 'marker') ||
+    getLayerById('esdl_layer', command.id) ||
+    getLayerById('pot_layer', command.id, 'marker') ||
+    getLayerById('pot_layer', command.id) ||
+    getLayerById('area_layer', command.id) ||
+    getLayerById('bld_layer', command.id);
 }
 
 // eslint-disable-next-line no-unused-vars
 function highlight(entry) {
-  const layer = window.get_layers(window.active_layer_id, 'esdl_layer');
-  const esdl_objects = layer.getLayers();
   for (const command of entry.commands) {
-    for (const esdl_object of esdl_objects) {
-      if (esdl_object.id === command.id) {
+    const layer = findLayerForCommand(command);
+    if (layer !== undefined) {
+      if (!layer.selected) {
         window.select_assets.deselect_all_assets();
-        window.select_assets.toggle_selected(esdl_object);
-        return;
+        window.select_assets.toggle_selected(layer);
       }
+      return;
     }
   }
   alert("The selected asset could not be found in this ESDL.");

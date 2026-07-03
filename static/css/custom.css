@@ -710,6 +710,90 @@ z-index for jstree context menu, sidebar has 2000
     width: auto;
 }
 
+@media (max-width: 991.98px) {
+    #menu,
+    #ctrl {
+        float: none !important;
+        width: 100%;
+    }
+
+    #menu .navbar {
+        align-items: flex-start;
+        flex-wrap: wrap;
+        padding: 4px 16px;
+        position: relative;
+    }
+
+    #menu .navbar .container {
+        flex: 0 0 100%;
+        max-width: none;
+        width: 100%;
+    }
+
+    #navbarNavDropdown {
+        background-color: #343a40;
+        border: 1px solid rgba(255, 255, 255, .15);
+        border-radius: .25rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, .35);
+        left: 16px;
+        max-height: calc(100vh - 80px);
+        max-width: 360px;
+        overflow-y: auto;
+        padding: 6px 10px;
+        position: absolute;
+        top: 100%;
+        width: calc(100vw - 32px);
+        z-index: 20000;
+    }
+
+    #navbarNavDropdown .navbar-nav {
+        width: 100%;
+    }
+
+    #navbarNavDropdown .dropdown-menu {
+        background-color: transparent;
+        border: 0;
+        margin: 0;
+        padding: 2px 0 6px 12px;
+    }
+
+    #navbarNavDropdown .dropdown-menu>li {
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    #navbarNavDropdown .dropdown-menu>li>a {
+        display: block;
+        float: none;
+        left: auto;
+        padding: 4px 8px 4px 28px;
+        width: 100%;
+    }
+
+    #navbarNavDropdown .dropdown-item {
+        background-color: transparent;
+        color: rgba(255, 255, 255, .75);
+    }
+
+    #navbarNavDropdown .dropdown-item:focus,
+    #navbarNavDropdown .dropdown-item:hover {
+        background-color: rgba(255, 255, 255, .08);
+        color: rgba(255, 255, 255, .95);
+    }
+
+    #navbarNavDropdown .menu-icon {
+        left: 4px;
+    }
+
+    #ctrl {
+        clear: both;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        align-items: center;
+    }
+}
+
 .menu-icon {
     width: 16px;
     height: 16px;

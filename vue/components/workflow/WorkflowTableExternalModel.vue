@@ -646,14 +646,14 @@ div.ant-modal-content {
   color: lightgray;
 }
 
-::v-deep .ant-table th.ant-table-selection-column,
-::v-deep .ant-table td.ant-table-selection-column {
+:deep(.ant-table th.ant-table-selection-column),
+:deep(.ant-table td.ant-table-selection-column) {
   padding-left: 1px !important;
   padding-right: 1px !important;
 }
 
-::v-deep .ant-table th.ant-table-selection-column .ant-checkbox-wrapper,
-::v-deep .ant-table td.ant-table-selection-column .ant-checkbox-wrapper {
+:deep(.ant-table th.ant-table-selection-column .ant-checkbox-wrapper),
+:deep(.ant-table td.ant-table-selection-column .ant-checkbox-wrapper) {
   margin-left: 0 !important;
   margin-right: 0 !important;
   display: flex;

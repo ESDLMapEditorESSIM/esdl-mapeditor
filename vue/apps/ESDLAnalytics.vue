@@ -107,11 +107,6 @@
 
             <!-- Tab 2: Visualization Settings -->
             <a-tab-pane key="visualization" tab="Visualization" :disabled="datasetSelected.length === 0">
-
-
-
-
-
               <a-col>
                 <a-typography-title :level="4">Graph configuration</a-typography-title>
                 <a-row>
@@ -220,16 +215,20 @@
                   </a-typography-title>
                   <a-row>
                     <a-segmented
-                        v-model:value="chartType"
-                        :options="chartTypes"
-                        style="width: 100%;"
-                        size="small"
-                        block
-                        @change="onChartTypeBtnClick"
+                      v-model:value="chartType"
+                      :options="availableChartTypes"
+                      style="width: 100%;"
+                      size="small"
+                      block
+                      @change="onChartTypeBtnClick"
                     >
-                      <template #label="{ value: value, payload = {} }">
-                        <component :is="payload.icon" style="vertical-align: 0.05rem" />
-                        {{ value.charAt(0).toUpperCase() + value.slice(1) }}
+                      <template #label="{ payload = {} }">
+                        <a-tooltip :title="payload.tooltip">
+                          <div style="padding: 4px 4px">
+                            <component :is="payload.icon" style="vertical-align: 0.05rem" />
+                            <div>{{ payload.label }}</div>
+                          </div>
+                        </a-tooltip>
                       </template>
                     </a-segmented>
                   </a-row>
@@ -238,6 +237,23 @@
                 <!----- Profile variable - Display options ------>
                 <!----------------------------------------------->
                 <a-col v-if="isProfileVariable">
+                  <a-row style="align-items: center; padding-top: 12px;">
+                    <a-typography-paragraph style="padding-left: 8px; margin-bottom: 0px;">
+                      Downsampling
+                      <a-tooltip :title="profileDownsampleMsg">
+                        <a-button size="small" type="text">
+                          <component :is="InfoCircleOutlined" style="vertical-align: 0.1rem" />
+                        </a-button>
+                      </a-tooltip>
+                    </a-typography-paragraph>
+                    <a-switch
+                      v-model:checked="profileDownsampling"
+                      size="small"
+                      style="position: absolute; right: 0px"
+                      :disabled="profileVizTypeSelected === 'Aggregated'"
+                      @change="onProfileDownsampling"
+                    />
+                  </a-row>
                   <a-row>
                     <a-typography-title :level="5">Date selection</a-typography-title>
                     <a-range-picker
@@ -251,32 +267,48 @@
                         @change="onSelectProfileDataRange"
                     />
                   </a-row>
-                  <a-row>
-                    <a-typography-title :level="5">Visualization type</a-typography-title>
-                    <a-segmented
-                        v-model:value="profileVizTypeSelected"
-                        :options="profileVizTypes"
-                        style="width: 100%;"
-                        size="small"
-                        block
-                        @change="onSelectProfileVizType"
-                    />
-                  </a-row>
-                  <a-row style="align-items: center; padding-top: 12px;">
-                    <a-typography-paragraph style="padding-left: 8px; margin-bottom: 0px;">
-                      Downsampling
-                      <a-tooltip :title="profileDownsampleMsg">
-                        <a-button size="small" type="text">
-                          <component :is="InfoCircleOutlined" style="vertical-align: 0.1rem" />
-                        </a-button>
-                      </a-tooltip>
-                    </a-typography-paragraph>
-                    <a-switch
-                        v-model:checked="profileDownsampling"
+                  <!-- Frequency histogram bin size configuration -->
+                  <a-col v-if="chartType === 'hist'">
+                    <a-typography-title :level="5">Bin size</a-typography-title>
+                    <a-row style="align-items: center;">
+                      <a-typography-paragraph style="padding-left: 8px; margin-bottom: 0px;">
+                        Auto bin size
+                        <a-tooltip :title="autoBinSizeMsg">
+                          <a-button size="small" type="text">
+                            <component :is="InfoCircleOutlined" style="vertical-align: 0.1rem" />
+                          </a-button>
+                        </a-tooltip>
+                      </a-typography-paragraph>
+                      <a-switch
+                        v-model:checked="autoHistogramBinSize"
                         size="small"
                         style="position: absolute; right: 0px"
-                        :disabled="profileVizTypeSelected === 'Aggregated'"
-                        @change="onProfileDownsampling"
+                        @change="onAutoHistogramBinSize"
+                      />
+                    </a-row>
+                    <a-row v-if="!autoHistogramBinSize" style="align-items: center; padding-top: 8px;">
+                      <a-typography-paragraph style="padding-left: 8px; margin-bottom: 0px;">
+                        Bin width
+                      </a-typography-paragraph>
+                      <a-input-number
+                        v-model:value="histogramBinWidth"
+                        :min="0"
+                        :step="0.1"
+                        size="small"
+                        style="position: absolute; right: 0px; width: 100px;"
+                        @change="onHistogramBinWidthChange"
+                      />
+                    </a-row>
+                  </a-col>
+                  <a-row v-if="chartType === 'chart'">
+                    <a-typography-title :level="5">Visualization type</a-typography-title>
+                    <a-segmented
+                      v-model:value="profileVizTypeSelected"
+                      :options="profileVizTypes"
+                      style="width: 100%;"
+                      size="small"
+                      block
+                      @change="onSelectProfileVizType"
                     />
                   </a-row>
                   <!-- Only show subplot toggle when more than one dataset is selected and with profile data -->
@@ -324,8 +356,8 @@
                 <!----- Display options for Bar / Profile chart ------>
                 <!---------------------------------------------------->
                 <a-col
-                    v-if="chartType==='chart' &&
-                ((!isProfileVariable && variableSelected !== null) || isProfileVariable)"
+                  v-if="chartType !== 'table' &&
+                    ((!isProfileVariable && variableSelected !== null) || isProfileVariable)"
                 >
                   <a-row style="width: 100%">
                     <a-typography-title :level="5">Color palette</a-typography-title>
@@ -500,19 +532,21 @@
 <script setup>
 import {computed, defineProps, h, onMounted, onUnmounted, ref} from 'vue';
 import {
+  AreaChartOutlined,
   BarChartOutlined,
   DeleteOutlined,
   DownloadOutlined,
   EditOutlined,
   InfoCircleOutlined,
   LoadingOutlined,
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
-  SaveOutlined,
+  LineChartOutlined,
+	MenuFoldOutlined,
+	MenuUnfoldOutlined,
+  UploadOutlined,
+	SaveOutlined,
   SyncOutlined,
-  TableOutlined,
-  UploadOutlined
-} from "@ant-design/icons-vue";
+	TableOutlined }
+from "@ant-design/icons-vue";
 import AnalyticsPlot from '@/components/plot/AnalyticsPlot.vue';
 import {fetchData} from '@/utils/api';
 import {config, normalizePlotlyDateTimeStr} from '@/utils/profileVisualization';
@@ -546,9 +580,17 @@ const props = defineProps({
 
 // payload is used by AntD segmented component to display icon
 const chartTypes = [
-  {value: "chart", payload: { icon: BarChartOutlined } },
-  {value: "table", payload: { icon: TableOutlined } },
+  {value: "chart", payload: { label: "Chart", tooltip: "Default visualization chart", icon: AreaChartOutlined } },
+  {value: "ldc", payload: { label: "LDC", tooltip: "Load duration cruve", icon: LineChartOutlined } },
+  {value: "hist", payload: { label: "Freq.", tooltip: "Frequency histogram", icon: BarChartOutlined } },
+  {value: "table", payload: { label: "Table", tooltip: "Table", icon: TableOutlined } },
 ];
+
+// Only expose ldc and hist for profile variables
+const availableChartTypes = computed(() => {
+  if (isProfileVariable.value) return chartTypes;
+  return chartTypes.filter(t => t.value !== 'ldc' && t.value !== 'hist');
+});
 
 const dateTimeFormat = config.dateTimeFormat;
 const profileVizTypes = ['Profile', 'Aggregated'];
@@ -560,6 +602,8 @@ const profileDownsampleMsg = "Downsampling simplifies large dataset for better c
                              "The average value is used to represent data within each interval. " +
                              "Toggle it on to explore general trends or off to access the full dataset. " +
                              "It is disabled by default for the aggregated visualization type."
+
+const autoBinSizeMsg = "Bin count and width are automatically determined. Switch it off to apply a custom bin width.";
 
 const sampleColorCount = 12;
 const colorPalettes = [
@@ -607,7 +651,9 @@ const initOptions = {
   dataGrouping: 1,
   showSingleTooltip: false,
   showBarNumbers: false,
-  paletteSelected: colorPalettes[0]
+  paletteSelected: colorPalettes[0],
+  autoHistogramBinSize: true,
+  histogramBinWidth: null
 };
 
 const appliedOptions = props.options === null ? initOptions : props.options;
@@ -631,11 +677,6 @@ const updateTitleInputWidth = (value) => {
 };
 
 const chartType = ref(appliedOptions.chartType);
-
-const onChartTypeBtnClick = (value) => {
-  chartType.value = value;
-  updateTrace();
-};
 
 const isSyncingMetaData = ref(false);
 const isDeletingMetaData = ref(false);
@@ -668,6 +709,8 @@ const dataGrouping = ref(appliedOptions.dataGrouping);
 const showSingleTooltip = ref(appliedOptions.showSingleTooltip);
 const showBarNumbers = ref(appliedOptions.showBarNumbers);
 const paletteSelected = ref(appliedOptions.paletteSelected);
+const autoHistogramBinSize = ref(appliedOptions.autoHistogramBinSize);
+const histogramBinWidth = ref(appliedOptions.histogramBinWidth);
 
 /**
  * Return an object of reactive states of the component options.
@@ -700,7 +743,9 @@ const getOptions = () => {
     dataGrouping: dataGrouping.value,
     showSingleTooltip: showSingleTooltip.value,
     showBarNumbers: showBarNumbers.value,
-    paletteSelected: paletteSelected.value
+    paletteSelected: paletteSelected.value,
+    autoHistogramBinSize: autoHistogramBinSize.value,
+    histogramBinWidth: histogramBinWidth.value
   };
 };
 
@@ -749,6 +794,11 @@ const onSelectVariable = (_, value) => {
 
   isProfileVariable.value = value.datatype === 'PROFILE';
 
+  // falls back to default chart type if the user had ldc/hist selected and then picks a non-profile variable.
+  if (!isProfileVariable.value && (chartType.value === 'ldc' || chartType.value === 'hist')) {
+    chartType.value = 'chart';
+  }
+
   updateColumns().then(() => {
     // Retains user-applied groupbys and filters if they match the new variable options; discard otherwise.
     const appliedGroupbys = groupbySelected.value;
@@ -785,6 +835,21 @@ const onSelectFilters = () => {
   updateTrace();
 };
 
+const onChartTypeBtnClick = (value) => {
+  chartType.value = value;
+
+  // Switch off profile downsampling when chartType is not 'chart' (could be misleading)
+  if (profileDownsampling.value && chartType.value !== 'chart') {
+    profileDownsampling.value = false;
+    displayNotification(
+      'info', 
+      'Downsampling has been turned off for this view to avoid hiding data points. You can turn it back on anytime in the display options'
+    );
+  }
+  
+  updateTrace();
+};
+
 const onSelectDisplayOptions = () => {
 	updateTrace();
 };
@@ -797,6 +862,10 @@ const onSelectProfileVizType = () => {
   // Switch off profile downsampling when visualization type is not 'Profile' (could be misleading)
   if (profileVizTypeSelected.value !== 'Profile') {
     profileDownsampling.value = false;
+    displayNotification(
+      'info', 
+      'Downsampling has been turned off for this view.'
+    );
   } else {
     profileDownsampling.value = true;
   }
@@ -807,19 +876,35 @@ const onProfileDownsampling = () => {
   updateTrace();
 };
 
+const onAutoHistogramBinSize = () => {
+  if (autoHistogramBinSize.value) {
+    histogramBinWidth.value = null;
+  }
+  updateTrace();
+};
+
+const onHistogramBinWidthChange = () => {
+  updateTrace();
+};
+
 const onProfileSubplotView = () => {
   updateTrace();
 }
 
 /**
  * Triggered to update profileDataRangeSelected state when newLayoutRanges is emitted from
- * the user interaction with AnalyticsPlot (zoom in/out or pan). Only updateTrace() when interacting with profile data.
+ * the user interaction with AnalyticsPlot (zoom in/out or pan).
+ * Only updateTrace() when interacting with profile data and the chartType is 'chart'.
  *
  * @param {Object|null} newLayoutRanges An object with structure as {x: [xaxis.range[0], xaxis.range[1]], y: [yaxis.range[0], yaxis.range[1]]}
  *                                      when zoom in/out or pan event is occurred; otherwise, null is returned.
  */
 const onAnalyticsPlotRelayout = (newLayoutRanges) => {
   if (!isProfileVariable.value) {
+    return;
+  }
+
+  if (isProfileVariable.value && chartType.value !== 'chart') {
     return;
   }
 
@@ -1150,6 +1235,8 @@ const resetMenuToDefault = () => {
   showSingleTooltip.value = initOptions.showSingleTooltip;
   showBarNumbers.value = initOptions.showBarNumbers;
   paletteSelected.value = initOptions.paletteSelected;
+  autoHistogramBinSize.value = initOptions.autoHistogramBinSize;
+  histogramBinWidth.value = initOptions.histogramBinWidth;
 }
 
 /**
@@ -1345,8 +1432,15 @@ const updateTrace = async() => {
         displayNotification('warning', results['warning_msg']);
         console.warn(results['warnings']);
       }
-      const formattedData = chartType.value === 'table' ?
-        tableTraceHandler(traces) : profileTraceHandler(traces);
+
+      let formattedData;
+      if (chartType.value === 'table') {
+        formattedData = tableTraceHandler(traces);
+      } else if (chartType.value === 'hist') {
+        formattedData = histTraceHandler(traces);
+      } else {
+        formattedData = profileTraceHandler(traces);
+      }
       currentTrace.value = formattedData.traces;
       currentLayout.value = formattedData.layout;
     }
@@ -1529,6 +1623,54 @@ const barChartTraceHandler = (traces) => {
     default:
   }
   return colorscale;
+};
+
+/**
+ * Configures frequency histogram traces and layout for visualization.
+ *
+ * @param {Array} traces An array of histogram trace objects with bin label strings as x and counts as y.
+ * @returns {Object} An object containing the configured traces and layout.
+ */
+const histTraceHandler = (traces) => {
+  const colorscale = generateColorscale(paletteSelected.value, traces.length);
+  traces.forEach((t, idx) => {
+    t.type = 'histogram';
+    // bingroup forces Plotly to compute identical bin edges across all traces
+    t.bingroup = 'hist';
+    // Plotly histogram bins t.x values; profile values are in t.y, so swap them
+    t.x = t.y;
+    delete t.y;
+    // Custom bin width: pass to Plotly's xbins if user has disabled auto
+    if (!autoHistogramBinSize.value && histogramBinWidth.value !== null) {
+      t.xbins = { size: histogramBinWidth.value };
+    }
+    t.marker = { color: colorscale[idx % colorscale.length], opacity: 0.75 };
+    if (t.name.length >= 25) {
+      t.name = t.name.replace(new RegExp(`(.{1,${25}})`, 'g'), '$1<br>');
+    }
+  });
+
+  const histLayout = {
+    title: variableSelected.value,
+    xaxis: {
+      title: variableOptions.value[variableSelected.value].unit,
+      automargin: true,
+    },
+    yaxis: {
+      title: 'Frequency',
+      automargin: true,
+    },
+    bargap: 0.1,
+    hovermode: 'x unified',
+    barmode: 'overlay',
+    showlegend: true,
+    autosize: true,
+  };
+
+  return {
+    traces: traces,
+    layout: histLayout
+  };
 };
 
 /**

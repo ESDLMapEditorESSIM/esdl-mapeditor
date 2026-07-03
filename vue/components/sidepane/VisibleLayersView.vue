@@ -110,9 +110,9 @@ const selectedLayerId = ref('');
 const layerGroups = ref([]);
 const allLayersHidden = ref(false);
 
-watch(getVisibleLayerGroups(), (newGroups) => {
+watch(() => getVisibleLayerGroups(), (newGroups) => {
   layerGroups.value = [...newGroups];
-}, { immediate: true });
+}, { immediate: true, deep: true });
 
 /**
  * Toggles the visibility of an individual layer.

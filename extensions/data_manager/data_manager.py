@@ -596,11 +596,12 @@ class DataManager:
                         level_num -= 1
                         main_kpi = distribution_kpi.eContainer()
 
-                # manually fix KPIs that have the unit added to the KPI name (Electricity Demand [PJ])
+                # manually fix KPIs that have the unit added to the KPI name 
+                # An example KPI name, 'CAPEX breakdown [EUR] (30.0 year period)' becomes 'KPI - CAPEX breakdown (30.0 year period) - Cost [EUR]'
                 kpi_name = main_kpi.name
-                match = re.match(r"(.*)\[" + re.escape(original_unit) + r"\]", kpi_name)
+                match = re.match(r"(.*)\[" + re.escape(original_unit) + r"\](.*)", kpi_name)
                 if match:
-                    kpi_name = match.group(1)
+                    kpi_name = (match.group(1) + match.group(2)).strip()
 
                 variable_name = f'KPI - {kpi_name} - {physical_q_to_str(qau)} [{unit_to_string(qau)}]'
                 d.labels["Label"] = f'{distribution_kpi.name} - {eobj.label}' if distribution_kpi is not main_kpi else eobj.label
@@ -1162,6 +1163,8 @@ class DataManager:
 
             if chart_type == ChartType.TABLE:
                 resp['traces'] = self.process_profile_table_trace(traces)
+            elif chart_type == ChartType.LDC:
+                resp['traces'] = self.process_profile_into_ldc_trace(traces)
             else:
                 resp['traces'] = traces
 
@@ -1307,6 +1310,26 @@ class DataManager:
 
         return trace
     
+    @staticmethod
+    def process_profile_into_ldc_trace(traces: list[dict]) -> list:
+        """
+        Processes profile traces and formats them into a Load Duration Curve visualization structure.
+        """
+        ldc_traces = []
+
+        for trace in traces:
+            sorted_values = sorted(trace['y'], reverse=True)
+            duration = list(range(1, len(sorted_values) + 1))
+
+            ldc_trace = {
+                **trace,
+                "x": duration,
+                "y": sorted_values,
+            }
+            ldc_traces.append(ldc_trace)
+
+        return ldc_traces
+
     @staticmethod
     def process_table_trace(df: DataFrame) -> list:
         """

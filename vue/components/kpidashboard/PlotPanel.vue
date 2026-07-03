@@ -25,6 +25,7 @@
       <Plot
         :title="plot.title"
         :trace="plot.trace"
+        :layout="plotLayout"
         :on-resize="resizeEventCounter"
       />
     </a-row>
@@ -153,6 +154,16 @@ const createPlotProps = (plotType, title, data) => {
     trace: trace,
   };
 };
+
+const plotLayout = computed(() => {
+  if (plotType.value === 'bar') {
+    const yTitle = props.options.options?.scales?.y?.title;
+    if (yTitle?.display && yTitle?.text) {
+      return { yaxis: { title: yTitle.text } };
+    }
+  }
+  return {};
+});
 
 const plot = computed(() => {
   if (Object.keys(props.options).length && 

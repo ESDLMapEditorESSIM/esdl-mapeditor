@@ -24,7 +24,6 @@ import ExternalServiceSettings from "@/apps/ExternalServiceSettings.vue";
 import KPIDashboard from '@/apps/KPIDashboard.vue';
 import ESDLAnalytics from '@/apps/ESDLAnalytics.vue';
 import OwnershipDialog from '@/apps/OwnershipDialog.vue';
-import AssetConstraint from '@/apps/AssetConstraint.vue';
 import PortProfileEditor from "@/apps/PortProfileEditor.vue";
 import PortProfileViewer from '@/apps/PortProfileViewer.vue';
 import {
@@ -39,7 +38,6 @@ import {
 import UndoRedoControl from "./apps/UndoRedoControl";
 import UndoRedoMenu from "./components/toolbars/UndoRedoMenu";
 import ToggleShowUndoRedoControl from './components/toolbars/ToggleShowUndoRedoControl'
-import ToggleProjectView from './components/projects/ToggleProjectView'
 import LoadProjectFileButton from './components/projects/LoadSaveProjectButtons';
 import AssetsToBeAddedToolbar from '@/components/toolbars/AssetsToBeAddedToolbar.vue'
 import AssetDrawToolbar from '@/components/toolbars/AssetDrawToolbar.vue'
@@ -109,14 +107,6 @@ window.activate_port_profile_editor = (es_id, object_id) => {
     mountSidebarComponent(PortProfileEditor);
 }
 
-window.activate_asset_constraint = (es_id, object_id) => {
-    const { newObject } = useObject();
-    newObject({
-        es_id: es_id,
-        object_id: object_id
-    });
-    mountSidebarComponent(AssetConstraint);
-}
 
 window.activate_port_profile_viewer = (es_id, object_id) => {
     const { newObject } = useObject();
@@ -247,7 +237,6 @@ mountApp(SidePane, '#vue_side_pane_root')
 createApp(ActivityContextSelector).mount('#vue_activity_context_selector')
 createApp(ApplicationContextSelector).mount('#vue_application_context_selector')
 
-mountApp(ToggleProjectView, '#vue_toggle_show_project_view')
 mountApp(LoadProjectFileButton, '#vue_load_project_file')
 
 const [,toastNotificationInstance] = mountApp(ToastNotifications, '#toast_notifications');

@@ -124,12 +124,19 @@
               v-model:objectIDs="currentObjectIDs"
             />
           </a-collapse-panel>
+          <a-collapse-panel key="Constraints" header="Constraints">
+            <AssetConstraint 
+              :es-id="activeEsdlId"
+              :object-id="obj_properties.object.id"
+              :embedded-view="true"
+            />
+          </a-collapse-panel>
         </a-collapse>
       </a-col>
     </a-row>
     <a-row>
       <!-- these buttons are not necessary I think... -->
-      <a-col :span="24">
+      <a-col :span="24" style="padding-top: 16px;">
         <a-space>
           <a-button type="primary" @click="save">Save</a-button>
           <a-button type="primary" @click="cancel">Cancel</a-button>
@@ -161,21 +168,26 @@
 import dayjs from "dayjs";
 import FancyNumberEdit from "@/components/forms/FancyNumberEdit.vue";
 // import ProfileTableEdit from "@/components/forms/ProfileTableEdit";
+import AssetConstraint from "@/apps/AssetConstraint.vue";
 import PortsEdit from "@/components/forms/PortsEdit.vue";
 import CostInformationView from "@/components/forms/CostInformationView.vue";
 import ReferenceViewer from "@/components/forms/ReferenceViewer.vue";
 import { useObject } from "@/composables/ObjectID";
+import { useEsdlLayers } from "@/composables/esdlLayers";
 // import { camelCaseToWords } from "../../static/utils/utils"
 import spinner from "@/components/Spinner.vue";
 
+const { getActiveEsdlLayerId } = useEsdlLayers();
+
 const { currentObjectID } = useObject();
-const ignoredRefs = ['port', 'costInformation', 'geometry'];
+const ignoredRefs = ['port', 'costInformation', 'constraint', 'geometry'];
 
 export default {
   name: "ObjectProperties",
   components: {
     FancyNumberEdit,
     // ProfileTableEdit,
+    AssetConstraint,
     PortsEdit,
     CostInformationView,
     ReferenceViewer,
@@ -191,14 +203,10 @@ export default {
       ignoredRefs
     };
   },
-  watch:{
-    activePanels: function() {
-      //console.log('Active Panels changed', this.activePanels)
-      // store active panel state in global, so we can reuse it later on
-      window.object_properties_active_panels = this.activePanels;
-    }
-  },
   computed: {
+    activeEsdlId: function() {
+      return getActiveEsdlLayerId().value;
+    },
     filteredReferences: function() {
       return this.obj_properties.references.filter(ref => !ignoredRefs.includes(ref.name));
     },
@@ -211,6 +219,13 @@ export default {
     multipleAssetsSelected: function() {
       return (this.currentObjectIDs.length > 1);
     },
+  },
+  watch:{
+    activePanels: function() {
+      //console.log('Active Panels changed', this.activePanels)
+      // store active panel state in global, so we can reuse it later on
+      window.object_properties_active_panels = this.activePanels;
+    }
   },
   mounted() {
     this.getDataSocketIO();
