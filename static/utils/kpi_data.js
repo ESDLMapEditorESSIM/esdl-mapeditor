@@ -47,6 +47,8 @@ function createChartOptions(kpi_info) {
     // TODO: we now assume that the same KPI in different energy systems has the same type
     let distr_or_value = kpi_info[0].type;
 
+    const unit = (kpi_info[0].unit && kpi_info[0].unit !== 'N/A') ? kpi_info[0].unit : null;
+
     if (distr_or_value === 'Distribution') {
         let kpi_item = null;
         let dataset_dict = {};
@@ -148,7 +150,6 @@ function createChartOptions(kpi_info) {
             datasets.push(dataset)
         }
 
-        let unit = (kpi_info[0].unit && kpi_info[0].unit !== 'N/A') ? kpi_info[0].unit : null;
         type = 'bar'
         options = {
             legend: {
@@ -219,6 +220,11 @@ function createChartOptions(kpi_info) {
             },
             scales: {
                 y: {
+                    title: (type === 'bar') ? 
+                        {
+                            display: unit !== null,
+                            text: unit || '',
+                        } : {},
                     ticks: {
                         beginAtZero: true,
                         callback: function(value) {
