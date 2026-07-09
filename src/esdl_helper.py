@@ -242,8 +242,8 @@ def add_extra_attributes(asset: esdl.Asset, extra_attributes: dict = None) -> di
     return extra_attributes
 
 def energy_asset_to_ui(pm: ProjectManager, es_id, asset):  # , port_asset_mapping):
-    port_list = []
     conn_list = []
+    port_list = create_asset_port_message(asset)
 
     ports = asset.port
     for p in ports:
@@ -259,7 +259,6 @@ def energy_asset_to_ui(pm: ProjectManager, es_id, asset):  # , port_asset_mappin
         #     profile_info_list = generate_profile_info(profile)
         # port_list.append({'name': p.name, 'id': p.id, 'type': type(p).__name__, 'conn_to': conn_to,
         #                   'profile': profile_info_list, 'carrier': carrier_id})
-        port_list.extend(create_asset_port_message(asset))
         if conn_to:
             # conn_to_list = conn_to.split(' ')   # connectedTo attribute is list of port ID's separated by a space
             for id in conn_to:
