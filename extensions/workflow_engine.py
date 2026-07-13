@@ -150,7 +150,10 @@ class WorkflowStep:
                 else:
                     updated_run_values[STATUS] = RunStatus.ERROR.value
                     current_model_run_data = self.models_storage.get_model_run(self.sequence_data.run_id)
-                    updated_run_values[LOGS] = f"{current_model_run_data.get(LOGS, '')}\n{queries_error_message}"
+                    run_logs = ""
+                    if current_model_run_data:
+                        run_logs += f"{current_model_run_data.get(LOGS, '')}\n{queries_error_message}"
+                    updated_run_values[LOGS] = run_logs + f"\nError querying model for results: '{query_config['url']}'"
             elif STATUS not in updated_run_values or updated_run_values[STATUS] is None:
                 logger.error(
                     f"Workflow engine sequence for user '{self.sequence_data.user_email}' terminated:"
