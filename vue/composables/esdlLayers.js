@@ -23,6 +23,11 @@ export function useEsdlLayers() {
     const {createVisibleLayerGroup, removeVisibleLayerGroup, hideVisibleLayer, showVisibleLayer} = useVisibleLayers();
 
     /**
+     * Get all currently active ESDL layers. This is a object with as keys the ID of the layer.
+     */
+    const getEsdlLayers = () => ref(window.esdl_list);
+
+    /**
      * Get ESDL Leaflet FeatureGroup layer by energy system ID and layer name.
      * TODO: Check if needed after rve-poc merge.
      *
@@ -188,6 +193,7 @@ export function useEsdlLayers() {
     }
 
     return {
+        getEsdlLayers,
         clearEsdlLayers,
         getEsdlFeatureGroupLayer,
         removeEsdlLayer,
