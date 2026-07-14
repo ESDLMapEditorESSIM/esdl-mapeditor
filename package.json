@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "npx vue-cli-service build --inline-vue --mode development --dest static/dist --target lib vue/index.js --report",
     "build-prod": "npx vue-cli-service build --inline-vue --mode production --dest static/dist --target lib vue/index.js",
-    "build:vite": "vite build",
+    "build:vite": "vite build && cp static/dist/index.umd.min.js static/dist/index.umd.js",
     "version": "update_version.sh && git add src/version.py"
   },
   "dependencies": {
