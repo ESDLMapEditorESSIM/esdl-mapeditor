@@ -78,7 +78,7 @@ export function mountSidebarBottomComponent (component) {
 
 export function mountSettingsComponent(component) {
     let settings_div = document.getElementById('settings_module_contents');
-    settings_div.innerHTML = '<div id="mount_settings_component_div"></div>';
+    settings_div.innerHTML = '<div id="mount_settings_component_div" style="height:calc(100%-20px);"></div>';
     mountApp(component, '#mount_settings_component_div');
 }
 

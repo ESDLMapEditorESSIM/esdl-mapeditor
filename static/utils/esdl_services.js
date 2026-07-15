@@ -703,6 +703,11 @@ function add_service_to_wfs_object_contextmenu(layer, service, idx) {
     });
 }
 
+function show_external_service_management() {
+    window.activate_external_service_management_settings();
+    return $('<div>');
+}
+
 function update_esdl_services(event) {
     if (event.type === 'add_contextmenu') {
         let layer = event.layer;
@@ -781,7 +786,18 @@ function update_esdl_services(event) {
             }
         }
     }
+    if (event.type === 'settings_menu_items') {
+        let menu_items = {
+            'value': 'external_services_management',
+            'text': 'External services management (NEW)',
+            'settings_func': show_external_service_management,
+            'sub_menu_items': []
+        };
+
+        return menu_items;
+    }
 }
+
 
 $(document).ready(function () {
     extensions.push(update_esdl_services)

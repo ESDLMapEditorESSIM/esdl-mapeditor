@@ -19,7 +19,7 @@
 </template>
 
 <script setup>
-import {ref, onUnmounted, watch, computed} from 'vue';
+import {ref, onUnmounted, watch, computed, onMounted} from 'vue';
 import {EditorState} from '@codemirror/state';
 import {EditorView, keymap, lineNumbers} from '@codemirror/view';
 import {defaultKeymap, history} from '@codemirror/commands';
@@ -105,7 +105,7 @@ const onUpdate = (value) => {
     emit('validate', {valid: true});
 
     // optional live update
-    if (props.emitOnInput) {
+    if (props.updateOnInput) {
       emit('update:modelValue', value);
     }
 
@@ -185,17 +185,24 @@ const createEditor = (initialValue) => {
   });
 };
 
-// only create after language is set
+// Create editor on mount
+onMounted(() => {
+  const initialValue = typeof props.modelValue === 'string'
+    ? props.modelValue
+    : JSON.stringify(props.modelValue ?? {}, null, 2);
+  createEditor(initialValue);
+});
+
+// Recreate editor when language changes
 watch(
   () => props.language,
-  (lang) => {
-    if (!lang || editorView) return; // only create once
-    const initialValue = typeof props.modelValue === 'string'
-      ? props.modelValue
-      : JSON.stringify(props.modelValue ?? {}, null, 2);
-    createEditor(initialValue);
-  },
-  { immediate: true }
+  () => {
+    if (!editorView) return;
+    const currentContent = editorView.state.doc.toString();
+    editorView.destroy();
+    editorView = null;
+    createEditor(currentContent);
+  }
 );
 
 watch(
@@ -203,11 +210,15 @@ watch(
     (newVal) => {
       if (!editorView) return;
 
+      const stringValue = typeof newVal === 'string'
+        ? newVal
+        : JSON.stringify(newVal ?? {}, null, 2);
+
       const current = editorView.state.doc.toString();
 
-      if (current === newVal) return;
+      if (current === stringValue) return;
 
-      editorView.dispatch({changes: {from: 0, to: current.length, insert: newVal}});
+      editorView.dispatch({changes: {from: 0, to: current.length, insert: stringValue}});
     }
 );
 
