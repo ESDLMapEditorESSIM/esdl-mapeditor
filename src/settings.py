@@ -40,7 +40,14 @@ OIDC_CLIENT_SECRETS = os.environ.get('OIDC_CLIENT_SECRETS', None) # 'credentials
 _use_gevent = os.environ.get('MAPEDITOR_USE_GEVENT', '')
 USE_GEVENT = (_use_gevent.upper() == 'TRUE' or _use_gevent == '1')
 _use_rabbitmq = os.environ.get('USE_RABBITMQ', 'true')
-USE_RABBITMQ = (_use_rabbitmq.upper() == 'TRUE' or _use_rabbitmq == '1')
+_rabbitmq_enabled = (_use_rabbitmq.upper() == 'TRUE' or _use_rabbitmq == '1')
+_rabbitmq_configured = bool(os.environ.get('RABBITMQ_HOST'))
+USE_RABBITMQ = _rabbitmq_enabled and _rabbitmq_configured
+RABBITMQ_DISABLED_REASON = None
+if _rabbitmq_enabled and not _rabbitmq_configured:
+    RABBITMQ_DISABLED_REASON = "RABBITMQ_HOST is not configured"
+elif not _rabbitmq_enabled:
+    RABBITMQ_DISABLED_REASON = "USE_RABBITMQ is disabled"
 
 # Database settings
 POSTGRES_HOST = os.environ.get('POSTGRES_HOST', 'localhost')

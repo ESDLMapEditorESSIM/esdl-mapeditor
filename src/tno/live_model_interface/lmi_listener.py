@@ -211,7 +211,7 @@ def start_live_model_interface_thread(app: Flask):
     global LMI_THREAD
     global LOCAL_APP
     if not settings.USE_RABBITMQ:
-        logger.info("RabbitMQ disabled; skipping LMI listener thread")
+        logger.warning("RabbitMQ disabled; skipping LMI listener thread", reason=settings.RABBITMQ_DISABLED_REASON)
         return
     # Initialize the local_app variable so we have access to the app context in the thread.
     LOCAL_APP = app
@@ -228,6 +228,9 @@ def is_lmi_thread_alive() -> True:
     """Check if the LiveModelInterfaceThread is dead."""
     global LMI_THREAD
     global LMI_THREAD_LAST_HEALTH_CHECKED
+
+    if not settings.USE_RABBITMQ:
+        return True
 
     now = datetime.now(timezone.utc)
     if (now - LMI_THREAD_LAST_HEALTH_CHECKED).total_seconds() > 60:
