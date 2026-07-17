@@ -502,10 +502,22 @@ function restoreStyle(layer) {
     }
 }
 
+function setSelectedAreaStyle(layer) {
+    layer.setStyle({
+        weight: 3,
+        color: 'black',
+        dashArray: '',
+        fillOpacity: 0.5
+    });
+}
+
 function highlightAreaOrBuilding(e) {
     let layer = e.target;
 
-    saveStyle(layer);
+    // only save the style when the layer is not yet selected (otherwise it returns with selected color)
+    if (!layer.selected) {
+        saveStyle(layer);
+    }
     layer.setStyle({
         weight: 3,
         color: 'white',
@@ -524,7 +536,12 @@ function highlightAreaOrBuilding(e) {
 
 function resetHighlightArea(e) {
     let layer = e.target;
-    restoreStyle(layer);
+
+    if (layer.selected) {
+        setSelectedAreaStyle(layer);
+    } else {
+        restoreStyle(layer);
+    }
 //    geojson_area_layer.resetStyle(layer);         // Interferes with the contextmenu
     layer.closePopup();
 }
@@ -733,11 +750,30 @@ function set_area_handlers(area) {
             var area = e.target;
             var id = area.id;
 
+            // TODO: check if we want to do something with editing areas
+            // if (select_areas.is_select_mode()) {
+            //     // One or more areas have been selected
+            //     if (select_areas.is_selected(area)) {
+            //         // the current area is part of this selection
+            //         let area_list = select_areas.get_selected_areas();
+            //         object_properties_window(area_list);
+            //     } else { // the current area is clicked but was not part of the selection
+            //         object_properties_window(area.id);
+            //         select_areas.deselect_all_areas();
+            //         select_areas.toggle_selected(area);
+            //     }
+            // } else {
+            //     object_properties_window(area.id);
+            //     select_areas.deselect_all_areas();
+            //     select_areas.toggle_selected(area);
+            // }
+
             // This command does not exist. Should something else be called?
             // socket.emit('command', {cmd: 'get_area_info', id: id});
         }
     });
 
+    select_areas.add_area_handler(area);
 }
 
 // TODO: find a better place for this
