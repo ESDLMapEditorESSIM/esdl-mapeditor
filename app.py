@@ -40,6 +40,7 @@ from structlog.contextvars import bind_contextvars, clear_contextvars
 
 import src.esdl_config as esdl_config
 import src.settings as settings
+from commands.profiles import profiles_group
 from esdl import esdl
 from esdl.processing import ESDLAsset, ESDLEcore, ESDLEnergySystem, ESDLGeometry, ESDLQuantityAndUnits
 from esdl.processing.ESDLAsset import get_asset_capability_type, update_ids_in_object
@@ -138,6 +139,7 @@ logger.info('Running inside uWSGI: {}'.format(is_running_in_uwsgi()))
 #extensions
 schedule_session_clean_up()
 registered_extensions = register_extensions(app, socketio, executor, settings_storage, models_storage, esdl_doc)
+app.cli.add_command(profiles_group)
 wms_layers = registered_extensions.wms_layers
 esdl_api = registered_extensions.esdl_api
 essim = registered_extensions.essim

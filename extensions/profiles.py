@@ -394,179 +394,24 @@ class Profiles:
         if "type" in profile_settings:
             return profile_settings["type"]
         else:
-            if ("port" in profile_settings and profile_settings["port"] == 8086) or \
+            if ("port" in profile_settings and str(profile_settings["port"]) == "8086") or \
                     ("host" in profile_settings and "influxdb" in profile_settings["host"]):
                 return ProfileServerTypeEnum.INFLUXDB
-            elif ("port" in profile_settings and profile_settings["port"] == 5432) or \
+            elif ("port" in profile_settings and str(profile_settings["port"]) == "5432") or \
                     ("host" in profile_settings and "postgres" in profile_settings["host"]):
                 return ProfileServerTypeEnum.POSTGRESQL
 
     def process_csv_file(self, name, uuid, content):
-        logger.debug("Processing csv file(s) (threaded): ".format(name))
-
-        tz_string = datetime.now().astimezone().tzname()
+        logger.debug("Processing csv file(s) (threaded): {}".format(name))
 
         try:
-            logger.info("process CSV")
-            csv_file_name_without_extension = name.split('.')[0]
-
-            try:
-                csv_file = StringIO(content)
-                dialect = csv.Sniffer().sniff(csv_file.read(4096))
-                if dialect.delimiter == ',':
-                    raise ValueError(f"CSV file '{name}' uses comma ',' as delimiter. Please use semicolon ';' to avoid parsing errors.")
-                csv_file = StringIO(content)
-                reader = csv.reader(csv_file, dialect)
-            except csv.Error:
-                # If format cannot be determined automatically, try ; as a default
-                csv_file = StringIO(content)
-                reader = csv.reader(csv_file, delimiter=';')
-
-            column_names = next(reader)
-            num_fields = len(column_names)
-            timeseries_data = []
-
-            locale.setlocale(locale.LC_ALL, '')
-            start_datetime = None
-            end_datetime = ""
-            previous_datetime = None
-
-            for row in reader:
-                fields = {}
-                for i in range(1, num_fields):
-                    if row[i]:
-                        fields[column_names[i]] = locale.atof(row[i])
-
-                dt = parse_date(row[0])
-                try:
-                    aware_dt = pytz.utc.localize(dt)  # Assume timezone is UTC if no TZ was given (as asked in the UI)
-                except ValueError:  # ValueError: Not naive datetime (tzinfo is already set)
-                    aware_dt = dt
-
-                dt_string = aware_dt.strftime('%Y-%m-%dT%H:%M:%S%z')
-
-                if previous_datetime:
-                    if previous_datetime == aware_dt:
-                        raise (Exception("CSV contains duplicate datetimes ({}). Check timezone and daylight saving".
-                                         format(dt_string)))
-                previous_datetime = aware_dt
-
-                if not start_datetime:
-                    start_datetime = dt_string
-                else:
-                    end_datetime = dt_string
-
-                timeseries_data.append({
-                    "time": dt_string,
-                    "fields": fields
-                })
-
-            logger.info("CSV processing finished, now writing to database...")
-
-            with self.flask_app.app_context():
-                profiles_settings = self.get_profiles_settings()
-                profiles_server_index = int(self.csv_files[uuid]['profiles_server_index'])
-                host = profiles_settings['profiles_servers'][profiles_server_index]['host']
-                port = int(profiles_settings['profiles_servers'][profiles_server_index]['port'])
-                database = profiles_settings['profiles_servers'][profiles_server_index]['database']
-
-                profile_server_type_str = self.guess_profile_server_type(profiles_settings['profiles_servers'][profiles_server_index])
-                profile_server_type = ProfileServerTypeEnum(profile_server_type_str)
-                if profile_server_type == ProfileServerTypeEnum.INFLUXDB:
-                    influxdb_profile_server = InfluxDBServer(
-                        connection_settings=InfluxDBConnectionSettings(
-                            host=host,
-                            port=port,
-                            username=profiles_settings['profiles_servers'][profiles_server_index]['username'],
-                            password=profiles_settings['profiles_servers'][profiles_server_index]['password'],
-                            database=database,
-                            ssl=profiles_settings['profiles_servers'][profiles_server_index]['ssl_enabled'],
-                        )
-                    )
-
-                    influxdb_profile_server.connect()
-                    influxdb_profile_server.convert_data(data=timeseries_data, measurement=csv_file_name_without_extension)
-                    influxdb_profile_server.write_data()
-
-                    # Get or create a datasource in Grafana using the panalservice
-                    if profiles_settings['profiles_servers'][profiles_server_index]['ssl_enabled']:
-                        protocol = "https://"
-                    else:
-                        protocol = "http://"
-                    profiles_server_host = f"{protocol}{host}:{port}"
-                    datasource = get_panel_service_datasource(
-                        database=database,
-                        host=profiles_server_host,
-                        username=profiles_settings['profiles_servers'][profiles_server_index]['username'],
-                        password=profiles_settings['profiles_servers'][profiles_server_index]['password'],
-                    )
-
-                elif profile_server_type == ProfileServerTypeEnum.POSTGRESQL:
-                    postgres_profile_server = PostgreSQLServer(
-                        connection_settings=PostgreSQLConnectionSettings(
-                            host=host,
-                            port=port,
-                            username=profiles_settings['profiles_servers'][profiles_server_index]['username'],
-                            password=profiles_settings['profiles_servers'][profiles_server_index]['password'],
-                            database=database,
-                            ssl=profiles_settings['profiles_servers'][profiles_server_index]['ssl_enabled'] if "ssl_enabled" in profiles_settings['profiles_servers'][profiles_server_index] else False,
-                        )
-                    )
-
-                    postgres_profile_server.connect()
-                    postgres_profile_server.convert_data(data=timeseries_data, table_name=csv_file_name_without_extension)
-                    postgres_profile_server.write_data()
-
-            # Store profile information in settings
-            logger.info("Store profile information in settings")
-
-            group = self.csv_files[uuid]['group']
-            prof_aggr_type = self.csv_files[uuid]['prof_aggr_type']
-            for i in range(1, num_fields):
-                field = column_names[i]
-
-                # Stop if empty column was found
-                if field.strip() == '':
-                    break
-
-                # Create a dictionary with all relevant information about the new profile
-                profile = self.create_new_profile(
-                    group=group,
-                    uiname=csv_file_name_without_extension + '_' + field,
-                    multiplier=1,
-                    database_type=profile_server_type.value,
-                    host=host,
-                    port=port,
-                    database=database,
-                    profile_type="",
-                    start_datetime=start_datetime,
-                    end_datetime=end_datetime
-                )
-
-                if profile_server_type == ProfileServerTypeEnum.INFLUXDB:
-                    self.add_influxdb_details(profile, csv_file_name_without_extension, field)
-                elif profile_server_type == ProfileServerTypeEnum.POSTGRESQL:
-                    self.add_postgres_details(profile, csv_file_name_without_extension, field)
-
-                if profile_server_type == ProfileServerTypeEnum.INFLUXDB:
-                    # Create a grafana panel for visualization and add the embedURL to the dictionary
-                    profile["embedUrl"] = create_panel(
-                        graph_title=group + " - " + field,
-                        axis_title="",
-                        datasource=datasource,
-                        host=profiles_server_host,
-                        database=database,
-                        measurement=csv_file_name_without_extension,
-                        field=field,
-                        filters=[],
-                        qau=None,
-                        prof_aggr_type=prof_aggr_type,
-                        start_datetime=start_datetime,
-                        end_datetime=end_datetime
-                    )
-                # Store the new profile in the profiles settings
-                self.add_profile(str(uuid4()), profile)
-
+            self.import_profile_csv(
+                name,
+                content,
+                self.csv_files[uuid]['group'],
+                int(self.csv_files[uuid]['profiles_server_index']),
+                self.csv_files[uuid]['prof_aggr_type'],
+            )
             emit('csv_processing_done', {'name': name, 'uuid': uuid, 'pos': self.csv_files[uuid]['pos'],
                                          'success': True})
         except Exception as e:
@@ -577,7 +422,182 @@ class Profiles:
         # clean up
         del (self.csv_files[uuid])
 
-    def add_profile(self, profile_id, profile):
+    def import_profile_csv(self, name, content, group="Standard profiles", profiles_server_index=0,
+                           prof_aggr_type="sum", emit_update=True):
+        logger.info("process CSV")
+        csv_file_name_without_extension = name.split('.')[0]
+
+        try:
+            csv_file = StringIO(content)
+            dialect = csv.Sniffer().sniff(csv_file.read(4096))
+            if dialect.delimiter == ',':
+                raise ValueError(f"CSV file '{name}' uses comma ',' as delimiter. Please use semicolon ';' to avoid parsing errors.")
+            csv_file = StringIO(content)
+            reader = csv.reader(csv_file, dialect)
+        except csv.Error:
+            # If format cannot be determined automatically, try ; as a default
+            csv_file = StringIO(content)
+            reader = csv.reader(csv_file, delimiter=';')
+
+        column_names = next(reader)
+        num_fields = len(column_names)
+        timeseries_data = []
+
+        locale.setlocale(locale.LC_ALL, '')
+        start_datetime = None
+        end_datetime = ""
+        previous_datetime = None
+
+        for row in reader:
+            fields = {}
+            for i in range(1, num_fields):
+                if row[i]:
+                    fields[column_names[i]] = locale.atof(row[i])
+
+            dt = parse_date(row[0])
+            try:
+                aware_dt = pytz.utc.localize(dt)  # Assume timezone is UTC if no TZ was given (as asked in the UI)
+            except ValueError:  # ValueError: Not naive datetime (tzinfo is already set)
+                aware_dt = dt
+
+            dt_string = aware_dt.strftime('%Y-%m-%dT%H:%M:%S%z')
+
+            if previous_datetime:
+                if previous_datetime == aware_dt:
+                    raise (Exception("CSV contains duplicate datetimes ({}). Check timezone and daylight saving".
+                                     format(dt_string)))
+            previous_datetime = aware_dt
+
+            if not start_datetime:
+                start_datetime = dt_string
+            else:
+                end_datetime = dt_string
+
+            timeseries_data.append({
+                "time": dt_string,
+                "fields": fields
+            })
+
+        logger.info("CSV processing finished, now writing to database...")
+
+        with self.flask_app.app_context():
+            if group == "Standard profiles":
+                profiles_settings = self.get_profiles_system_settings()
+            else:
+                profiles_settings = self.get_profiles_settings()
+            host = profiles_settings['profiles_servers'][profiles_server_index]['host']
+            port = int(profiles_settings['profiles_servers'][profiles_server_index]['port'])
+            database = profiles_settings['profiles_servers'][profiles_server_index]['database']
+
+            profile_server_type_str = self.guess_profile_server_type(profiles_settings['profiles_servers'][profiles_server_index])
+            profile_server_type = ProfileServerTypeEnum(profile_server_type_str)
+            if profile_server_type == ProfileServerTypeEnum.INFLUXDB:
+                influxdb_profile_server = InfluxDBServer(
+                    connection_settings=InfluxDBConnectionSettings(
+                        host=host,
+                        port=port,
+                        username=profiles_settings['profiles_servers'][profiles_server_index]['username'],
+                        password=profiles_settings['profiles_servers'][profiles_server_index]['password'],
+                        database=database,
+                        ssl=profiles_settings['profiles_servers'][profiles_server_index]['ssl_enabled'],
+                    )
+                )
+
+                influxdb_profile_server.connect()
+                influxdb_profile_server.convert_data(data=timeseries_data, measurement=csv_file_name_without_extension)
+                influxdb_profile_server.write_data()
+
+                # Get or create a datasource in Grafana using the panalservice
+                if profiles_settings['profiles_servers'][profiles_server_index]['ssl_enabled']:
+                    protocol = "https://"
+                else:
+                    protocol = "http://"
+                profiles_server_host = f"{protocol}{host}:{port}"
+                datasource = get_panel_service_datasource(
+                    database=database,
+                    host=profiles_server_host,
+                    username=profiles_settings['profiles_servers'][profiles_server_index]['username'],
+                    password=profiles_settings['profiles_servers'][profiles_server_index]['password'],
+                )
+
+            elif profile_server_type == ProfileServerTypeEnum.POSTGRESQL:
+                postgres_profile_server = PostgreSQLServer(
+                    connection_settings=PostgreSQLConnectionSettings(
+                        host=host,
+                        port=port,
+                        username=profiles_settings['profiles_servers'][profiles_server_index]['username'],
+                        password=profiles_settings['profiles_servers'][profiles_server_index]['password'],
+                        database=database,
+                        ssl=profiles_settings['profiles_servers'][profiles_server_index]['ssl_enabled'] if "ssl_enabled" in profiles_settings['profiles_servers'][profiles_server_index] else False,
+                    )
+                )
+
+                postgres_profile_server.connect()
+                postgres_profile_server.convert_data(data=timeseries_data, table_name=csv_file_name_without_extension)
+                postgres_profile_server.write_data()
+
+        # Store profile information in settings
+        logger.info("Store profile information in settings")
+
+        profile_count = 0
+        for i in range(1, num_fields):
+            field = column_names[i]
+
+            # Stop if empty column was found
+            if field.strip() == '':
+                break
+
+            profile_name = csv_file_name_without_extension + '_' + field
+            profile_id = str(uuid4())
+            setting_type, project_name = self.get_setting_type_project_name(group)
+            setting_type = SettingType(setting_type)
+            identifier = self._get_identifier(setting_type, project_name)
+            if identifier is not None and self.settings_storage.has(setting_type, identifier, PROFILES_LIST):
+                profiles = self.settings_storage.get(setting_type, identifier, PROFILES_LIST)
+                for existing_id, existing_profile in profiles.items():
+                    if existing_profile.get('profile_uiname') == profile_name:
+                        profile_id = existing_id
+                        break
+
+            # Create a dictionary with all relevant information about the new profile
+            profile = self.create_new_profile(
+                group=group,
+                uiname=profile_name,
+                multiplier=1,
+                database_type=profile_server_type.value,
+                host=host,
+                port=port,
+                database=database,
+                profile_type="",
+                start_datetime=start_datetime,
+                end_datetime=end_datetime
+            )
+
+            if profile_server_type == ProfileServerTypeEnum.INFLUXDB:
+                self.add_influxdb_details(profile, csv_file_name_without_extension, field)
+            elif profile_server_type == ProfileServerTypeEnum.POSTGRESQL:
+                self.add_postgres_details(profile, csv_file_name_without_extension, field)
+
+            if profile_server_type == ProfileServerTypeEnum.INFLUXDB:
+                # Create a grafana panel for visualization and add the embedURL to the dictionary
+                profile["embedUrl"] = create_panel(
+                    graph_title=group + " - " + field,
+                    axis_title="",
+                    datasource=datasource,
+                    host=profiles_server_host,
+                    database=database,
+                    measurement=csv_file_name_without_extension,
+                    field=field,
+                    filters=[],
+                    qau=None,
+                    prof_aggr_type=prof_aggr_type,
+                    start_datetime=start_datetime,
+                    end_datetime=end_datetime
+                )
+            # Store the new profile in the profiles settings
+            self.add_profile(profile_id, profile, emit_update)
+
+    def add_profile(self, profile_id, profile, emit_update=True):
         setting_type = SettingType(profile['setting_type'])
         project_name = profile['project_name']
         identifier = self._get_identifier(setting_type, project_name)
@@ -587,7 +607,8 @@ class Profiles:
             profiles = dict()
         profiles[profile_id] = profile
         self.settings_storage.set(setting_type, identifier, PROFILES_LIST, profiles)
-        self.update_profiles_list()
+        if emit_update:
+            self.update_profiles_list()
 
     def remove_profile(self, profile_id):
         # as we only have an ID, we don't know if it is a user, project or system profile

@@ -243,7 +243,7 @@ def clean_up_sessions():
 def schedule_session_clean_up():
     logger.info("Scheduling session clean-up thread every {} seconds".format(CLEANUP_INTERVAL))
     global managed_sessions
-    clean_thread = threading.Thread(target=_clean_up_sessions_every_hour, name="Session-Cleanup-Thread")
+    clean_thread = threading.Thread(target=_clean_up_sessions_every_hour, name="Session-Cleanup-Thread", daemon=True)
     clean_thread.start()
 
 

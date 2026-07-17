@@ -30,7 +30,11 @@ class UserLogging:
         self.database_client = self.connect_to_database()
 
         if self.logging_enabled:
-            self.writer_thread = threading.Thread(target=self._writer_thread_function, name='Influx-Writer-Thread')
+            self.writer_thread = threading.Thread(
+                target=self._writer_thread_function,
+                name='Influx-Writer-Thread',
+                daemon=True,
+            )
             self.writer_thread.start()
 
     def connect_to_database(self):

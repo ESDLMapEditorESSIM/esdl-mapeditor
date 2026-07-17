@@ -29,7 +29,35 @@ def send_alert(message):
     emit('alert', message, namespace='/esdl')
 
 
-def get_panel_service_datasource(database, host=None, username=None, password=None):
+def _panel_service_profile_host(profile_host: str) -> str:
+    """
+    Return the InfluxDB host as seen by panel-service and Grafana.
+
+    MapEditor may reach the profile database through PROFILE_DATABASE_HOST, such as localhost in local development.
+    Panel-service and Grafana may run elsewhere, such as Docker, and then need PANEL_SERVICE_PROFILE_DB_HOST
+    instead.
+    """
+    profile_db_host = settings.profile_database_config['host']
+    panel_db_host = settings.panel_service_config['profile_database_host']
+    if not profile_db_host or not panel_db_host:
+        return profile_host
+
+    profile_db_port = settings.profile_database_config['port']
+    profile_db_url = '{}://{}:{}'.format(
+        settings.profile_database_config['protocol'], profile_db_host, profile_db_port
+    )
+    if profile_host not in [profile_db_host, profile_db_host + ':' + profile_db_port, profile_db_url]:
+        return profile_host
+
+    return '{}://{}:{}'.format(
+        settings.panel_service_config['profile_database_protocol'],
+        panel_db_host,
+        settings.panel_service_config['profile_database_port'],
+    )
+
+
+def get_panel_service_datasource(database: str, host: str | None = None, username: str | None = None,
+                                 password: str | None = None) -> str | None:
     """
     Create or get the name of the grafana datasource belonging to the database / host combination
     If you don't specify a host, the defaults from the config are taken (influxdb that is part of the MapEditor stack)
@@ -55,14 +83,9 @@ def get_panel_service_datasource(database, host=None, username=None, password=No
         if r.status_code == 200:
             result = json.loads(r.text)
 
+            datasource_host = _panel_service_profile_host(ps_influxdb_host)
             for idb in result["influxdbs"]:
-                # On local development, you might get a conflict if running the mapeditor outside of Docker, but the
-                # panel service typically is in Docker. They will both mean the same thing with localhost and influxdb.
-                if 'localhost' in ps_influxdb_host and 'localhost' not in idb['url']:
-                    db_host = ps_influxdb_host.replace('localhost', 'influxdb')
-                else:
-                    db_host = ps_influxdb_host
-                if idb["url"] == db_host and idb["database"] == database:
+                if idb["url"] == datasource_host and idb["database"] == database:
                     logger.debug("Datasource found: {}".format(idb["name"]))
                     ps_influxdb_name = idb["name"]
                     break
@@ -74,11 +97,12 @@ def get_panel_service_datasource(database, host=None, username=None, password=No
     if not ps_influxdb_name:
         logger.debug("No datasource found, creating new one")
 
-        host_for_datasource_name = ps_influxdb_host.replace("//", "").replace(":", "-")
+        datasource_host = _panel_service_profile_host(ps_influxdb_host)
+        host_for_datasource_name = datasource_host.replace("//", "").replace(":", "-")
         ps_influxdb_name = "PS_" + host_for_datasource_name + "_" + database
         payload = {
             "name": ps_influxdb_name,
-            "url": ps_influxdb_host,
+            "url": datasource_host,
             "database_name": database
         }
         if ps_influxdb_user is not None:
