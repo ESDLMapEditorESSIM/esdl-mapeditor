@@ -52,7 +52,10 @@ def on_result_message(channel, basic_deliver: Basic.Deliver, properties: BasicPr
 def start_rmq_thread():
     """Start the RabbitMQ thread."""
     if not settings.USE_RABBITMQ:
-        logger.info("RabbitMQ disabled; skipping live_model_interface results listener")
+        logger.warning(
+            "RabbitMQ disabled; skipping live_model_interface results listener",
+            reason=settings.RABBITMQ_DISABLED_REASON,
+        )
         return
     logger.info("Starting RabbitMQ thread for live_model_interface listener")
     thread = RMQThread()
