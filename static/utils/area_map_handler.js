@@ -168,6 +168,7 @@ function add_area_map_handlers(socket, map) {
 	      // unselect all assets, as the selections are leaflet layers too and could then be moved independently of
 	      // the asset itself
 	      select_assets.deselect_all_assets();
+	      select_areas.deselect_all_areas();
 	      deleting_objects = true;
     });
 
@@ -180,6 +181,7 @@ function add_area_map_handlers(socket, map) {
 	      // unselect all assets, as the selections are leaflet layers too and could then be moved independently of
 	      // the asset itself
 	      select_assets.deselect_all_assets();
+	      select_areas.deselect_all_areas();
 	      editing_objects = true;
     });
 
@@ -251,7 +253,8 @@ function add_area_map_handlers(socket, map) {
             cancel_connection(e);
             map.contextmenu.hide();
             remove_tooltip(); // clear tooltips if they are sticky
-            select_assets.deselect_all_assets(); //from select_asset.js
+            select_assets.deselect_all_assets(); // from select_asset.js
+            select_areas.deselect_all_areas();   // from select_area.js
         }
         // only react to events on the map
         //  a - start drawing assets (as markers)

@@ -767,6 +767,12 @@ function update_esdl_services(event) {
                                     state["asset_ids"] = window.select_assets.selected_assets;
                                 }
                             }
+                            if ("options" in service && "multiple_areas_support" in service["options"] && service["options"]["multiple_areas_support"]) {
+                                if (window.select_areas.select_mode) {
+                                    console.log(window.select_areas.selected_areas);
+                                    state["areas_ids"] = window.select_areas.selected_areas;
+                                }
+                            }
                             if (service['type'] === 'vueworkflow' || service['type'] === 'workflow') {
                                 window.show_service_settings(i, state);
                             } else {

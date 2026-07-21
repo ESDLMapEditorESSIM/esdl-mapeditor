@@ -206,6 +206,7 @@
     <script type="text/javascript" src="./utils/model_contexts.js"></script>
     <script type="text/javascript" src="./utils/ui_information.js"></script>
     <script type="text/javascript" src="./utils/select_asset.js"></script>
+    <script type="text/javascript" src="./utils/select_area.js"></script>
     <script type="text/javascript" src="./utils/assets.js"></script>
     <script type="text/javascript" src="./utils/asset_draw_toolbar.js"></script>
     <script type="text/javascript" src="./utils/spatial_buffers.js"></script>
@@ -1926,6 +1927,7 @@
     init_selection_pane(map); // from asset.js
 
     select_assets.add_map_handler(map);
+    select_areas.add_map_handler(map);
 
     baseTree = {
         label: 'Base layers',

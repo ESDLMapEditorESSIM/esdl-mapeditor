@@ -68,7 +68,6 @@ class SelectAssets {
         map.on('click', function(e) {
             if (!e.originalEvent.shiftKey) { // box select uses Shift to do selection
                 select_assets.deselect_all_assets();
-                select_assets.select_mode = false;
             }
         });
     }
