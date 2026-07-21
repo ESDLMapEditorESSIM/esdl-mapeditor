@@ -103,8 +103,8 @@ def update_kpi_metadata(kpi: esdl.KPI, data: Data):
     data.sector = kpi.sector.name if kpi.sector else None
     data.input = kpi.carrier.name if kpi.carrier else None
     if kpi.matter:
-        labels['Matter'] = kpi.matter.name or kpi.matter.id
-        labels['Matter state'] = kpi.matter.stateOfMatter.name if kpi.matter.stateOfMatter else None
+        labels['KPI matter'] = kpi.matter.name or kpi.matter.id
+        labels['KPI matter state'] = kpi.matter.stateOfMatter.name if kpi.matter.stateOfMatter else None
     if isinstance(container, esdl.Asset):
         # asset KPI
         data.region = container.area.name
@@ -113,7 +113,7 @@ def update_kpi_metadata(kpi: esdl.KPI, data: Data):
     elif isinstance(container, esdl.Area):
         # area KPI
         data.region = container.name
-        labels['Area type'] = container.scope.name
+        labels['Area scope'] = container.scope.name
 
     if len(labels) > 0:
         data.labels = labels
@@ -175,16 +175,16 @@ def handle_profile(profile: esdl.InfluxDBProfile | esdl.DataTableProfile | esdl.
     # Label profile id, so it can be retrieved when the query_profile() method is called.
     labels['profile_id'] = profile.id
     labels['Profile Type'] = profile.profileType.name
-    # TBD: Measurement label is from (legacy) InfluxDBProfile (profile.measurement), keep using it to avoid confusing users?
+    # Profile table is from the tableName field of legacy InfluxDBProfile data.
     # This tag is not applicable to TimeSeriesProfile
     if not isinstance(profile, esdl.TimeSeriesProfile):
-        labels['Measurement'] = profile.tableName
+        labels['Profile table'] = profile.tableName
 
     if isinstance(container, esdl.Port):
         port: esdl.Port = container
         asset: esdl.EnergyAsset = port.energyasset
         capability = get_asset_capability_type(asset)
-        labels['Capability'] = capability
+        labels['Asset capability'] = capability
         asset_container = asset.eContainer()
         if isinstance(asset_container, (esdl.Area, esdl.ExposedPortsAsset)):
             # ignore assets in Measures, Templates and Energymarkets
@@ -192,7 +192,7 @@ def handle_profile(profile: esdl.InfluxDBProfile | esdl.DataTableProfile | esdl.
             if asset.containingBuilding or asset.containingAsset:
                 container_asset = asset.eContainer()
                 area = container_asset.area
-                labels['Parent asset'] = container_asset.name
+                labels['Containing asset'] = container_asset.name
             d.sector = asset.sector.name if asset.sector else None
             d.node = asset.name or asset.id
             d.region = area.name
@@ -205,9 +205,6 @@ def handle_profile(profile: esdl.InfluxDBProfile | esdl.DataTableProfile | esdl.
             port: esdl.OutPort
             d.output = port.carrier.name if port.carrier else None
             labels["Flow direction"] = 'Out'
-            if len(port.connectedTo) > 0:
-                target_asset = port.connectedTo[0].energyasset
-                d.to_node = target_asset.name or target_asset.id
         other_ports = asset.port.select(lambda p: p != port)
         if len(other_ports) > 0:
             labels['Graph position'] = "Interior"
@@ -264,16 +261,16 @@ def handle_static_profile(profile: esdl.StaticProfile, ds: DataSet,
         port: esdl.Port = container
         asset: esdl.EnergyAsset = port.energyasset
         capability = get_asset_capability_type(asset)
-        labels = {'Capability': capability}
+        labels = {'Asset capability': capability}
         area = asset.area
         if asset.containingBuilding or asset.containingAsset:
             container_asset = asset.eContainer()
             area = container_asset.area
-            labels['Parent asset'] = container_asset.name
+            labels['Containing asset'] = container_asset.name
         d.sector = asset.sector.name if asset.sector else None
         d.node = asset.name or asset.id
         d.region = area.name or area.id
-        labels['Area type'] = area.scope.name
+        labels['Area scope'] = area.scope.name
         d.technology = asset.eClass.name
 
         variable_name = f'{physical_q_to_str(qau)} [{unit_to_string(qau)}]'
@@ -284,9 +281,6 @@ def handle_static_profile(profile: esdl.StaticProfile, ds: DataSet,
             port: esdl.OutPort
             d.output = port.carrier.name if port.carrier else None
             labels["Flow direction"] = 'Out'
-            if len(port.connectedTo) > 0:
-                target_asset = port.connectedTo[0].energyasset
-                d.to_node = target_asset.name or target_asset.id
         other_ports = asset.port.select(lambda p: p != port)
         if len(other_ports) > 0:
             labels['Graph position'] = "Interior"
@@ -310,16 +304,16 @@ def handle_static_profile(profile: esdl.StaticProfile, ds: DataSet,
                 if asset.containingBuilding or asset.containingAsset:
                     container_asset = asset.eContainer()
                     area = container_asset.area
-                    labels['Parent asset'] = container_asset.name
+                    labels['Containing asset'] = container_asset.name
                 d.sector = asset.sector.name if asset.sector else None
                 d.node = asset.name or asset.id
                 d.region = area.name or area.id
                 d.technology = asset.eClass.name
-            labels["Ownership"] = "Unassigned"
+            labels["Owner"] = "Unassigned"
             if asset.isOwnedBy is not None:
-                labels["Ownership"] = asset.isOwnedBy.name
+                labels["Owner"] = asset.isOwnedBy.name
             capability = get_asset_capability_type(asset)
-            labels['Capability'] = capability
+            labels['Asset capability'] = capability
         d.labels = labels
     # else:
     #     # e.g. container is Profiles section, we can ignore these as they are not directly attached to an asset port
@@ -565,7 +559,7 @@ class DataManager:
                 qau = check_qau(eobj.quantityAndUnit)
                 d.value, qau = convert_to_target_energy_unit(eobj.value, qau, target_energy_qau)
                 variable_name = f'KPI - {physical_q_to_str(qau)} [{unit_to_string(qau)}]'
-                d.labels["KPI type"] = eobj.name
+                d.labels["KPI name"] = eobj.name
 
             elif isinstance(eobj, esdl.IntKPI):
                 d = Data(dataset=ds)
@@ -574,7 +568,7 @@ class DataManager:
                 qau = check_qau(eobj.quantityAndUnit)
                 d.value, qau = convert_to_target_energy_unit(float(eobj.value), qau, target_energy_qau)
                 variable_name = f'KPI - {physical_q_to_str(qau)} [{unit_to_string(qau)}]'
-                d.labels["KPI type"] = eobj.name
+                d.labels["KPI name"] = eobj.name
             elif isinstance(eobj, esdl.StringItem):
                 # part of DistributionKPI
                 d = Data(dataset=ds)
@@ -604,14 +598,14 @@ class DataManager:
                     kpi_name = (match.group(1) + match.group(2)).strip()
 
                 variable_name = f'KPI - {kpi_name} - {physical_q_to_str(qau)} [{unit_to_string(qau)}]'
-                d.labels["Label"] = f'{distribution_kpi.name} - {eobj.label}' if distribution_kpi is not main_kpi else eobj.label
+                d.labels["KPI label"] = f'{distribution_kpi.name} - {eobj.label}' if distribution_kpi is not main_kpi else eobj.label
             # TODO other distributions
             #elif isinstance(distribution, esdl.FromToDistribution):
             elif isinstance(eobj, esdl.Producer) or isinstance(eobj, esdl.Consumer) or isinstance(eobj, esdl.Conversion):
                 if eobj.eIsSet('power'): # only add if value is set, not adding for default value of 0.0
                     power = eobj.power
                     d = Data(dataset=ds, value=power)
-                    d.labels = {'Power': power, 'State': eobj.state.name}
+                    d.labels = {'Power': power, 'Asset state': eobj.state.name}
                     d.node = eobj.name or eobj.id
                     d.technology = eobj.eClass.name
                     d.sector = eobj.sector.name if eobj.sector else None
@@ -626,7 +620,7 @@ class DataManager:
                         area = container_asset.area
                         if area:
                             d.region = area.name
-                        d.labels['Parent asset'] = container_asset.name
+                        d.labels['Containing asset'] = container_asset.name
                     elif isinstance(container_asset, esdl.Area):
                         d.region = eobj.area.name
 
@@ -634,7 +628,7 @@ class DataManager:
                 if eobj.eIsSet('capacity'):
                     capacity = eobj.capacity
                     d = Data(dataset=ds, value=capacity)
-                    d.labels = {'Capacity': capacity, 'State': eobj.state.name}
+                    d.labels = {'Capacity': capacity, 'Asset state': eobj.state.name}
                     d.region = self.find_region(eobj, d.labels)
                     d.node = eobj.name or eobj.id
                     d.technology = eobj.eClass.name
@@ -654,7 +648,7 @@ class DataManager:
                     length = eobj.length
                     diameter = eobj.diameter.name  # e.g. DN250
                     d = Data(dataset=ds, value=length)
-                    d.labels = {'Diameter': diameter, 'State': eobj.state.name}
+                    d.labels = {'Pipe diameter': diameter, 'Asset state': eobj.state.name}
                     d.region = self.find_region(eobj, d.labels)
                     d.node = eobj.name or eobj.id
                     d.technology = eobj.eClass.name
@@ -674,9 +668,9 @@ class DataManager:
             # Process asset ownership label
             if isinstance(eobj, esdl.Asset):
                 d.labels = d.labels if d.labels is not None else {}
-                d.labels["Ownership"] = "Unassigned"
+                d.labels["Owner"] = "Unassigned"
                 if eobj.isOwnedBy is not None:
-                    d.labels["Ownership"] = eobj.isOwnedBy.name
+                    d.labels["Owner"] = eobj.isOwnedBy.name
 
                 # Handle compound asset
                 container_asset = eobj.eContainer()
@@ -684,7 +678,7 @@ class DataManager:
                     area = container_asset.area
                     if area:
                         d.region = area.name
-                    d.labels['Parent asset'] = container_asset.name
+                    d.labels['Containing asset'] = container_asset.name
                 elif isinstance(container_asset, esdl.Area):
                     d.region = eobj.area.name
 
@@ -737,7 +731,6 @@ class DataManager:
             unique_sectors = filter_none(session.scalars(select(Data.sector).distinct().where(Data.variable_id == v.id).order_by(Data.sector)).all())
             unique_regions = filter_none(session.scalars(select(Data.region).distinct().where(Data.variable_id == v.id).order_by(Data.region)).all())
             unique_nodes = filter_none(session.scalars(select(Data.node).distinct().where(Data.variable_id == v.id).order_by(Data.node)).all())
-            unique_to_nodes = filter_none(session.scalars(select(Data.to_node).distinct().where(Data.variable_id == v.id).order_by(Data.to_node)).all())
             unique_output = filter_none(session.scalars(select(Data.output).distinct().where(Data.variable_id == v.id).order_by(Data.output)).all())
             unique_input = filter_none(session.scalars(select(Data.input).distinct().where(Data.variable_id == v.id).order_by(Data.input)).all())
             unique_technology = filter_none(session.scalars(select(Data.technology).distinct().where(Data.variable_id == v.id).order_by(Data.technology)).all())
@@ -770,11 +763,9 @@ class DataManager:
             if len(unique_sectors) > 0 and unique_sectors[0] is not None:
                 filter_options['Sector'] = FilterOptions(options=list(unique_sectors), column='sector', key=None)
             if len(unique_regions) > 0 and unique_regions[0] is not None:
-                filter_options['Region'] = FilterOptions(options=list(unique_regions), column='region', key=None)
+                filter_options['Area'] = FilterOptions(options=list(unique_regions), column='region', key=None)
             if len(unique_nodes) > 0 and unique_nodes[0] is not None:
-                filter_options['Node'] = FilterOptions(options=unique_nodes, column='node', key=None)
-            if len(unique_to_nodes) > 0 and unique_to_nodes[0] is not None:
-                filter_options['Flow to Node'] = FilterOptions(options=unique_to_nodes, column='to_node', key=None)
+                filter_options['Asset'] = FilterOptions(options=unique_nodes, column='node', key=None)
             if len(unique_output) > 0 and unique_output[0] is not None:
                 fo = FilterOptions(options=unique_output, column='output', key=None)
                 if v.output_description:
@@ -788,7 +779,7 @@ class DataManager:
                 else:
                     filter_options['Input'] = fo
             if len(unique_technology) > 0 and unique_technology[0] is not None:
-                filter_options['Technology'] = FilterOptions(options=unique_technology, column='technology', key=None)
+                filter_options['Asset class'] = FilterOptions(options=unique_technology, column='technology', key=None)
             if len(unique_year) > 0 and unique_year[0] is not None:
                 filter_options['Year'] = FilterOptions(options=unique_year, column='year', key=None)
 
