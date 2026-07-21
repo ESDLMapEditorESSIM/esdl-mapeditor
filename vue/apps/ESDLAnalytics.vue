@@ -5,7 +5,6 @@
   </a-row>
   <!-- Dialog content -->
   <a-row style="height: calc(100% - 60px)">
-    <!-- TODO: layout fix; user spinner? -->
     <div
       v-if="isSyncingMetaData || isDeletingMetaData || isLoadingData"
       class="loading"
@@ -136,10 +135,143 @@
               :disabled="datasetSelected.length === 0"
             >
               <a-col>
-                <a-row>
+                <a-row
+                  style="align-items: center; justify-content: space-between"
+                >
                   <a-typography-title :level="4"
                     >Graph configuration</a-typography-title
                   >
+                  <a-col>
+                    <a-tooltip title="Add graph configuration to favorites">
+                      <a-button
+                        size="small"
+                        type="text"
+                        @click="() => (showSaveGraphConfigModal = true)"
+                      >
+                        <component
+                          :is="StarOutlined"
+                          style="vertical-align: 0.1rem"
+                        />
+                      </a-button>
+                    </a-tooltip>
+                    <a-tooltip title="Load graph configuration from favorites">
+                      <a-button
+                        size="small"
+                        type="text"
+                        @click="onLoadGraphConfigBtnClick"
+                      >
+                        <component
+                          :is="FolderOpenOutlined"
+                          style="vertical-align: 0.1rem"
+                        />
+                      </a-button>
+                    </a-tooltip>
+                  </a-col>
+                  <!-- Modals for Load/Save Graph Configurations -->
+                  <a-modal
+                    v-model:open="showSaveGraphConfigModal"
+                    title="Save graph configuration"
+                    ok-text="Save"
+                    :ok-button-props="{ disabled: !graphConfigNameInput }"
+                    @ok="onSaveGraphConfigBtnClick"
+                    @cancel="onCancelGraphConfigModal"
+                  >
+                    <a-form layout="vertical">
+                      <a-form-item label="Name" required>
+                        <a-input
+                          v-model:value="graphConfigNameInput"
+                          placeholder="Enter a name for this graph configuration"
+                        />
+                      </a-form-item>
+                      <a-form-item label="Group">
+                        <a-auto-complete
+                          v-model:value="graphConfigGroupInput"
+                          :options="graphConfigGroupOptions"
+                          placeholder="Select an existing group or type a new one"
+                          :filter-option="
+                            (inputValue, option) =>
+                              option.value
+                                .toLowerCase()
+                                .includes(inputValue.toLowerCase())
+                          "
+                          @mouseleave="removeTooltipPopup"
+                        />
+                      </a-form-item>
+                    </a-form>
+                    <a-form-item style="margin-bottom: 0; margin-top: 16px">
+                      <a-row style="align-items: center">
+                        <a-switch
+                          v-model:checked="graphConfigIsTemplate"
+                          size="small"
+                          style="margin-right: 8px"
+                        />
+                        <span>Save as template</span>
+                        <a-tooltip
+                          title="A template saves only visualization settings without binding to specific datasets. When loaded, the settings are applied to whatever datasets are currently selected."
+                        >
+                          <a-button size="small" type="text">
+                            <component
+                              :is="InfoCircleOutlined"
+                              style="vertical-align: 0.1rem"
+                            />
+                          </a-button>
+                        </a-tooltip>
+                      </a-row>
+                    </a-form-item>
+                  </a-modal>
+                  <a-modal
+                    v-model:open="showLoadGraphConfigModal"
+                    title="Load graph configuration"
+                    ok-text="Load"
+                    :ok-button-props="{ disabled: !selectedGraphConfigKey }"
+                    @ok="onLoadGraphConfigConfirm"
+                    @cancel="onCancelLoadGraphConfigModal"
+                  >
+                    <a-empty
+                      v-if="userGraphConfigs.length === 0"
+                      description="No saved graph configurations yet"
+                    />
+                    <a-tree-select
+                      v-else
+                      v-model:value="selectedGraphConfigKey"
+                      :tree-data="graphConfigTreeData"
+                      tree-default-expand-all
+                      :dropdown-match-select-width="false"
+                      style="width: 100%"
+                      placeholder="Select a saved graph configuration"
+                      @mouseleave="removeTooltipPopup"
+                    >
+                      <template #title="nodeData">
+                        <span
+                          style="
+                            display: flex;
+                            align-items: center;
+                            justify-content: space-between;
+                            width: 100%;
+                          "
+                        >
+                          <span>{{ nodeData.title }}</span>
+                          <a-button
+                            type="text"
+                            size="small"
+                            danger
+                            @click.stop="onDeleteGraphConfigNode(nodeData)"
+                          >
+                            <component
+                              :is="DeleteOutlined"
+                              style="vertical-align: 0.1rem"
+                            />
+                          </a-button>
+                        </span>
+                      </template>
+                    </a-tree-select>
+                    <a-alert
+                      v-if="loadConfigWarningMessage"
+                      type="warning"
+                      :message="loadConfigWarningMessage"
+                      style="margin-top: 8px"
+                    />
+                  </a-modal>
                 </a-row>
                 <a-row>
                   <a-typography-title :level="5">Variable</a-typography-title>
@@ -678,6 +810,7 @@ import {
   DeleteOutlined,
   DownloadOutlined,
   EditOutlined,
+  FolderOpenOutlined,
   InfoCircleOutlined,
   LoadingOutlined,
   LineChartOutlined,
@@ -685,9 +818,12 @@ import {
   MenuUnfoldOutlined,
   UploadOutlined,
   SaveOutlined,
+  StarOutlined,
   SyncOutlined,
   TableOutlined,
 } from "@ant-design/icons-vue";
+import { Modal } from "ant-design-vue";
+import { v4 as uuidv4 } from "uuid";
 import AnalyticsPlot from "@/components/plot/AnalyticsPlot.vue";
 import { fetchData } from "@/utils/api";
 import {
@@ -857,7 +993,6 @@ const appliedOptions = props.options === null ? initOptions : props.options;
 
 const collapsed = ref(false);
 
-const title = ref(appliedOptions.title);
 const editingTitle = ref(false);
 const activeTabKey = ref("data");
 
@@ -869,12 +1004,12 @@ const updateTitleInputWidth = (value) => {
   inputWidth.value = newWidth >= minWidth ? newWidth : minWidth;
 };
 
-const chartType = ref(appliedOptions.chartType);
-
 const isSyncingMetaData = ref(false);
 const isDeletingMetaData = ref(false);
 const isLoadingData = ref(false);
 
+const title = ref(appliedOptions.title);
+const chartType = ref(appliedOptions.chartType);
 const currentTrace = ref(appliedOptions.currentTrace);
 const currentLayout = ref(appliedOptions.currentLayout);
 // A list of selected variant IDs.
@@ -966,6 +1101,374 @@ const energyUnitOptions = [
 ];
 const energyUnit = ref(energyUnitOptions[0].value);
 
+// -------------------------------------------------- //
+// --------- Load/Save Graph Configurations --------- //
+// -------------------------------------------------- //
+
+const userGraphConfigs = ref([]);
+
+const showSaveGraphConfigModal = ref(false);
+const graphConfigNameInput = ref("");
+const graphConfigGroupInput = ref(undefined);
+const graphConfigIsTemplate = ref(false);
+
+const showLoadGraphConfigModal = ref(false);
+const selectedGraphConfigKey = ref(undefined);
+
+// A list of unique group names already used by saved graph configurations, for the Group auto-complete options.
+const graphConfigGroupOptions = computed(() => {
+  const groups = new Set(
+    userGraphConfigs.value.map((c) => c.group).filter((g) => !!g),
+  );
+  return Array.from(groups).map((g) => ({ value: g }));
+});
+
+// Tree data grouping saved graph configurations by group ('folder') for the Load modal's tree select.
+const graphConfigTreeData = computed(() => {
+  const groups = {};
+  userGraphConfigs.value.forEach((c) => {
+    const groupName = c.group || "Ungrouped";
+    if (!groups[groupName]) {
+      groups[groupName] = [];
+    }
+    groups[groupName].push(c);
+  });
+
+  return Object.entries(groups).map(([groupName, configs]) => ({
+    key: `group:${groupName}`,
+    value: `group:${groupName}`,
+    title: groupName,
+    selectable: false,
+    children: configs.map((c) => ({
+      key: `config:${c.id}`,
+      value: `config:${c.id}`,
+      title: `${c.isTemplate ? "[Template] " : ""}${c.name} (${dayjs(c.lastUpdate).format(dateTimeFormat)})`,
+      isLeaf: true,
+    })),
+  }));
+});
+
+const fetchUserGraphConfigs = async () => {
+  console.debug("Fetching user graph configurations...");
+  try {
+    const configs = await fetchData("datamanager/get_graph_configs");
+    userGraphConfigs.value = configs;
+  } catch (error) {
+    console.error(error);
+    displayNotification(
+      "error",
+      "Failed to retrieve saved graph configurations.",
+    );
+  }
+};
+
+const resetGraphConfigModalInputs = () => {
+  graphConfigNameInput.value = "";
+  graphConfigGroupInput.value = undefined;
+  graphConfigIsTemplate.value = false;
+};
+
+const onSaveGraphConfigBtnClick = async () => {
+  if (!graphConfigNameInput.value) {
+    return;
+  }
+
+  const graphConfig = getOptions();
+
+  const configSetting = {
+    id: uuidv4(),
+    group: graphConfigGroupInput.value || "Ungrouped",
+    name: graphConfigNameInput.value,
+    isTemplate: graphConfigIsTemplate.value,
+    // Used as a simple way to distinguish settings sharing the same name and group.
+    lastUpdate: Date.now(),
+    // Do not save trace and layout states as it should be updated when the config is applied and the chart is loaded.
+    config: {
+      ...graphConfig,
+      currentTrace: [],
+      currentLayout: {},
+      // Templates do not bind to specific datasets; regular configs enrich datasetSelected
+      // with identity objects (uniqueDsId + label) for future resolution.
+      datasetSelected: graphConfigIsTemplate.value
+        ? []
+        : graphConfig.datasetSelected.map((id) => {
+            return datasetOptions.value.find((o) => o.value === id);
+          }),
+    },
+  };
+
+  const updatedConfigs = [...userGraphConfigs.value, configSetting];
+
+  try {
+    const savedConfigs = await fetchData("datamanager/save_graph_configs", {
+      configs: updatedConfigs,
+    });
+    userGraphConfigs.value = savedConfigs;
+    displayNotification(
+      "success",
+      `Graph configuration '${configSetting.name}' saved.`,
+    );
+  } catch (error) {
+    // On failure the backend returns None; keep the current userGraphConfigs state unchanged.
+    console.error(error);
+    displayNotification(
+      "error",
+      `Failed to save graph configuration '${configSetting.name}'.`,
+    );
+  } finally {
+    resetGraphConfigModalInputs();
+    showSaveGraphConfigModal.value = false;
+  }
+};
+
+const onCancelGraphConfigModal = () => {
+  resetGraphConfigModalInputs();
+};
+
+const onLoadGraphConfigBtnClick = () => {
+  selectedGraphConfigKey.value = undefined;
+  showLoadGraphConfigModal.value = true;
+};
+
+/**
+ * Resolves a saved dataset selection against the live dataset options using the stable
+ * uniqueDsId (es_id + name) key stored in the saved config.
+ *
+ * @param {Array} savedDatasetSelected Array of selected dataset objects saved in the config.
+ * @param {Array} liveDatasetOptions The current live dataset options (datasetOptions.value).
+ * @returns {{resolvedIds: Array, staleNames: Array}} The current database row ids for resolved
+ *          datasets, and the names of datasets that could not be resolved.
+ */
+const resolveGraphConfigDatasetSelection = (
+  savedDatasetSelected,
+  liveDatasetOptions,
+) => {
+  const liveOptionByUniqueId = new Map(
+    liveDatasetOptions.map((opt) => [opt.uniqueDsId, opt]),
+  );
+  const resolvedIds = [];
+  const staleNames = [];
+
+  savedDatasetSelected.forEach((obj) => {
+    const liveOpt = liveOptionByUniqueId.get(obj.uniqueDsId);
+    if (liveOpt) {
+      resolvedIds.push(liveOpt.value);
+    } else {
+      staleNames.push(obj.label ?? obj.uniqueDsId);
+    }
+  });
+
+  return { resolvedIds, staleNames };
+};
+
+/**
+ * A pre-apply warning message for the Load modal, computed from the currently selected
+ * graph configuration. Empty string when no config is selected or all datasets resolve.
+ */
+const loadConfigWarningMessage = computed(() => {
+  if (
+    !selectedGraphConfigKey.value ||
+    !selectedGraphConfigKey.value.startsWith("config:")
+  )
+    return "";
+
+  const configId = selectedGraphConfigKey.value.slice("config:".length);
+  const savedConfig = userGraphConfigs.value.find((c) => c.id === configId);
+  if (!savedConfig) return "";
+
+  const { staleNames } = resolveGraphConfigDatasetSelection(
+    savedConfig.config.datasetSelected,
+    datasetOptions.value,
+  );
+  // Templates have no dataset binding by design; no warning needed.
+  if (savedConfig.isTemplate || staleNames.length === 0) return "";
+
+  const nameList = staleNames.map((n) => `'${n}'`).join(", ");
+  if (staleNames.length === savedConfig.config.datasetSelected.length) {
+    return (
+      `Datasets ${nameList} are no longer available. ` +
+      "Only chart settings will be restored — you will need to select new datasets."
+    );
+  }
+  return `Dataset(s) ${nameList} are no longer available and will be removed from the selection.`;
+});
+
+/**
+ * Restores the reactive states of the component from a previously saved graphConfig object.
+ *
+ * Selection option lists (datasetOptions, variableOptions, groupbyOptions, filterOptions) are
+ * deliberately NOT restored from the snapshot. Instead they are refreshed from the backend
+ * so the menus reflect the current live database state.
+ *
+ * @param {Object} selectedConfig A graphConfig object.
+ * @returns {Promise<void>} A promise that resolves once the dataset/variable/groupby/filter
+ *                          options have been refreshed from the backend.
+ */
+const applyConfig = async (selectedConfig) => {
+  const graphConfig = selectedConfig.config;
+
+  title.value = graphConfig.title;
+  chartType.value = graphConfig.chartType;
+  currentTrace.value = graphConfig.currentTrace;
+  currentLayout.value = graphConfig.currentLayout;
+  variableSelected.value = graphConfig.variableSelected;
+  variableWarningMsg.value = graphConfig.variableWarningMsg;
+  isProfileVariable.value = graphConfig.isProfileVariable;
+  profileDataRanges.value = graphConfig.profileDataRanges;
+  profileDataRangeSelected.value = graphConfig.profileDataRangeSelected;
+  profileVizTypeSelected.value = graphConfig.profileVizTypeSelected;
+  profileDownsampling.value = graphConfig.profileDownsampling;
+  profileGroupbyEnabled.value = graphConfig.profileGroupbyEnabled;
+  profileGroupbyAggFuncSelected.value =
+    graphConfig.profileGroupbyAggFuncSelected;
+  profileAggIntervalSelected.value = graphConfig.profileAggIntervalSelected;
+  profileIntervalAggFuncSelected.value =
+    graphConfig.profileIntervalAggFuncSelected;
+  groupbySelected.value = graphConfig.groupbySelected;
+  filterSelected.value = graphConfig.filterSelected;
+  dataGrouping.value = graphConfig.dataGrouping;
+  showSingleTooltip.value = graphConfig.showSingleTooltip;
+  showBarNumbers.value = graphConfig.showBarNumbers;
+  paletteSelected.value = graphConfig.paletteSelected;
+  autoHistogramBinSize.value = graphConfig.autoHistogramBinSize;
+  histogramBinWidth.value = graphConfig.histogramBinWidth;
+
+  // Do not restore the option lists from the snapshot. Instead, clear them and refresh from the backend.
+  datasetOptions.value = [];
+  variableOptions.value = {};
+  groupbyOptions.value = [];
+  filterOptions.value = [];
+
+  await updateDatasets();
+
+  if (!selectedConfig.isTemplate) {
+    // Regular config: resolve saved dataset selection against live options.
+    const { resolvedIds, staleNames } = resolveGraphConfigDatasetSelection(
+      graphConfig.datasetSelected,
+      datasetOptions.value,
+    );
+    datasetSelected.value = resolvedIds;
+
+    if (staleNames.length) {
+      displayNotification(
+        "warning",
+        `The following dataset selections in the saved configuration could not be resolved and were ignored: ${staleNames.join(
+          ", ",
+        )}`,
+      );
+    }
+  }
+
+  if (datasetSelected.value.length) {
+    await updateVariables();
+  }
+  if (datasetSelected.value.length && variableSelected.value !== null) {
+    await updateColumns();
+  }
+};
+
+const onLoadGraphConfigConfirm = async () => {
+  if (!selectedGraphConfigKey.value) {
+    return;
+  }
+
+  const configId = selectedGraphConfigKey.value.slice("config:".length);
+  const selectedConfig = userGraphConfigs.value.find((c) => c.id === configId);
+
+  if (selectedConfig) {
+    // Restores selections and refreshes dataset/variable/groupby/filter options from the backend.
+    await applyConfig(selectedConfig);
+    updateTrace();
+  }
+
+  selectedGraphConfigKey.value = undefined;
+  showLoadGraphConfigModal.value = false;
+};
+
+const onCancelLoadGraphConfigModal = () => {
+  selectedGraphConfigKey.value = undefined;
+};
+
+/**
+ * Persists the updated graph configurations list to the backend.
+ * If saving fails, reverts userGraphConfigs back to its previous value and notifies the user.
+ *
+ * @param {Array} updatedConfigs The full list of graph configurations after the deletion.
+ * @param {Array} previousConfigs The full list of graph configurations before the deletion, used to revert on failure.
+ */
+const persistGraphConfigDeletion = async (updatedConfigs, previousConfigs) => {
+  userGraphConfigs.value = updatedConfigs;
+  try {
+    const savedConfigs = await fetchData("datamanager/save_graph_configs", {
+      configs: updatedConfigs,
+    });
+    userGraphConfigs.value = savedConfigs;
+  } catch (error) {
+    console.error(error);
+    displayNotification(
+      "error",
+      "Failed to delete graph configuration(s). Please try again.",
+    );
+    userGraphConfigs.value = previousConfigs;
+  }
+};
+
+/**
+ * Deletes a group (and all the saved graph configurations within it) or a single saved graph
+ * configuration from the Load graph configuration tree, after user confirmation, and syncs the
+ * change with the backend.
+ *
+ * @param {Object} nodeData The tree node data of the group or saved configuration to delete.
+ */
+const onDeleteGraphConfigNode = (nodeData) => {
+  const key = nodeData.key ?? nodeData.value;
+  if (typeof key !== "string") {
+    return;
+  }
+
+  if (key.startsWith("group:")) {
+    const groupName = key.slice("group:".length);
+    Modal.confirm({
+      title: `Delete group '${groupName}'?`,
+      content:
+        "This will delete all saved graph configurations within this group.",
+      okText: "Delete",
+      okType: "danger",
+      onOk: async () => {
+        const previousConfigs = userGraphConfigs.value;
+        const updatedConfigs = previousConfigs.filter(
+          (c) => (c.group || "Ungrouped") !== groupName,
+        );
+        await persistGraphConfigDeletion(updatedConfigs, previousConfigs);
+        if (
+          selectedGraphConfigKey.value &&
+          !userGraphConfigs.value.some(
+            (c) => `config:${c.id}` === selectedGraphConfigKey.value,
+          )
+        ) {
+          selectedGraphConfigKey.value = undefined;
+        }
+      },
+    });
+  } else if (key.startsWith("config:")) {
+    const configId = key.slice("config:".length);
+    const target = userGraphConfigs.value.find((c) => c.id === configId);
+    Modal.confirm({
+      title: `Delete '${target?.name ?? "this configuration"}'?`,
+      okText: "Delete",
+      okType: "danger",
+      onOk: async () => {
+        const previousConfigs = userGraphConfigs.value;
+        const updatedConfigs = previousConfigs.filter((c) => c.id !== configId);
+        await persistGraphConfigDeletion(updatedConfigs, previousConfigs);
+        if (selectedGraphConfigKey.value === key) {
+          selectedGraphConfigKey.value = undefined;
+        }
+      },
+    });
+  }
+};
+
 const onSelectPalette = () => {
   updateTrace();
 };
@@ -1044,10 +1547,12 @@ const onSelectFilters = () => {
 const onChartTypeBtnClick = (value) => {
   chartType.value = value;
 
-  // TODO: this does not apply to non-profile type data
-
   // Switch off profile downsampling when chartType is not 'chart' (could be misleading)
-  if (profileDownsampling.value && chartType.value !== "chart") {
+  if (
+    isProfileVariable.value &&
+    profileDownsampling.value &&
+    chartType.value !== "chart"
+  ) {
     profileDownsampling.value = false;
     displayNotification(
       "info",
@@ -1168,6 +1673,9 @@ const onSelectProfileIntervalAggFunc = () => {
 
 onMounted(() => {
   console.info("Initializing ESDL Analytics");
+
+  fetchUserGraphConfigs();
+
   getESDLProject(); // Get project data with variant hierarchy
   updateDatasets();
 });
@@ -1483,8 +1991,9 @@ const updateDatasets = async () => {
     const datasets = await fetchData("datamanager/datasets");
     if (datasets.length) {
       datasetOptions.value = datasets.map((d) => ({
-        value: d.id,
+        value: d.id, // This id refers to the dataset id in the database, not the es_id of the ESDL variant.
         label: `${d.name}`,
+        uniqueDsId: `${d.es_id}_${d.name}`,
       }));
     } else {
       datasetOptions.value = [];
@@ -2073,7 +2582,7 @@ const exportChartDataToCSV = () => {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  width: calc(100% - 52px);
+  width: calc(100% - 12px);
   height: calc(100% - 60px);
   z-index: 100;
   background-color: rgba(0, 0, 0, 0.03);
