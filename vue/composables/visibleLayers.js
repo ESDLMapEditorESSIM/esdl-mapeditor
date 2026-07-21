@@ -39,6 +39,7 @@ const {
     layerOrderCache,
     layerVisibilityCache,
     removeLayerFromVisibleLayerGroups,
+    setLayerOrderCache,
     visibleLayerGroups,
     WMS_LAYERS_GROUP_NAME
 } = useVisibleLayerState();
@@ -308,9 +309,9 @@ export function useVisibleLayers() {
                     }
                 });
             }
-            if (layerOrderCache.value[groupId]) {
+            if (layerOrderCache.value.has(groupId)) {
                 console.debug(`Restoring layer order for group ${groupId}`);
-                updateDisplayOrderVisibleLayers(groupId, layerOrderCache.value[groupId]);
+                updateDisplayOrderVisibleLayers(groupId, layerOrderCache.value.get(groupId));
             }
         } else {
             console.warn(`Group with ID ${groupId} already exists.`);
@@ -357,19 +358,37 @@ export function useVisibleLayers() {
      * @param newOrder
      */
     const updateDisplayOrderVisibleLayers = (groupId, newOrder) => {
-        // Find the group by groupId
         const group = visibleLayerGroups.value.find(group => group.id === groupId);
         if (!group) {
             console.error(`Group with id ${groupId} not found.`);
             return;
         }
 
-        // Reorder the layers within the group based on the new order provided
-        const reorderedLayers = newOrder.map(layerId => {
-            return group.layers.find(layer => layer.id === layerId);
+        const layersById = Object.create(null);
+        const orderedLayerIds = [];
+        const handledLayerIds = new Set();
+
+        group.layers.forEach(layer => {
+            layersById[layer.id] = layer;
         });
-        group.layers = reorderedLayers;
-        layerOrderCache.value[groupId] = newOrder;
+
+        newOrder.forEach(layerId => {
+            if (layersById[layerId] && !handledLayerIds.has(layerId)) {
+                orderedLayerIds.push(layerId);
+                handledLayerIds.add(layerId);
+            }
+        });
+
+        group.layers.forEach(layer => {
+            if (!handledLayerIds.has(layer.id)) {
+                orderedLayerIds.push(layer.id);
+            }
+        });
+
+        group.layers = orderedLayerIds.map(layerId => {
+            return layersById[layerId];
+        });
+        setLayerOrderCache(groupId, orderedLayerIds);
         updateVisibleLayersOrderOnMap();
     };
 

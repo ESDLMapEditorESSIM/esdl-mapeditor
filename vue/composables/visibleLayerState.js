@@ -1,12 +1,84 @@
 import {computed, ref} from "vue";
 
 const WMS_LAYERS_GROUP_NAME = 'wms_layers';
+const VISIBLE_LAYER_ORDER_STORAGE_KEY = 'visibleLayerOrder';
 
 /** @type {import('vue').Ref<import('@/composables/visibleLayers').VisibleLayerGroup[]>} */
 const visibleLayerGroups = ref([]);
 
-const layerOrderCache = ref({});
+/**
+ * Checks if a stored layer order can be restored or saved.
+ */
+const shouldStoreLayerOrder = (groupId, order) => {
+    return typeof groupId === 'string' &&
+        groupId !== WMS_LAYERS_GROUP_NAME &&
+        Array.isArray(order) &&
+        order.every(id => typeof id === 'string');
+};
+
+/**
+ * Restores per-ESDL layer order from localStorage.
+ */
+const loadLayerOrderCache = () => {
+    const layerOrder = new Map();
+
+    try {
+        const storedLayerOrder = window.localStorage.getItem(VISIBLE_LAYER_ORDER_STORAGE_KEY);
+        if (!storedLayerOrder) {
+            return layerOrder;
+        }
+
+        const parsedLayerOrder = JSON.parse(storedLayerOrder);
+        // Ignore unexpected data shapes so localStorage cannot break layer loading.
+        if (!parsedLayerOrder || typeof parsedLayerOrder !== 'object' || Array.isArray(parsedLayerOrder)) {
+            return layerOrder;
+        }
+
+        Object.entries(parsedLayerOrder).forEach(([groupId, order]) => {
+            if (shouldStoreLayerOrder(groupId, order)) {
+                layerOrder.set(groupId, order);
+            }
+        });
+    } catch (e) {
+        console.warn('Could not restore visible layer order.', e);
+    }
+
+    return layerOrder;
+};
+
+const layerOrderCache = ref(loadLayerOrderCache());
 const layerVisibilityCache = ref({});
+
+/**
+ * Saves per-ESDL layer order to localStorage.
+ */
+const saveLayerOrderCache = () => {
+    try {
+        const storedLayerOrder = {};
+        layerOrderCache.value.forEach((order, groupId) => {
+            if (shouldStoreLayerOrder(groupId, order)) {
+                storedLayerOrder[groupId] = order;
+            }
+        });
+        window.localStorage.setItem(VISIBLE_LAYER_ORDER_STORAGE_KEY, JSON.stringify(storedLayerOrder));
+    } catch (e) {
+        console.warn('Could not save visible layer order.', e);
+    }
+};
+
+/**
+ * Updates the layer order cache and persists ESDL layer groups.
+ */
+const setLayerOrderCache = (groupId, order) => {
+    if (typeof groupId !== 'string') {
+        return;
+    }
+
+    layerOrderCache.value.set(groupId, order);
+    if (groupId !== WMS_LAYERS_GROUP_NAME) {
+        saveLayerOrderCache();
+    }
+};
 
 const getDefaultGroupDescription = (groupId) => {
     return groupId === WMS_LAYERS_GROUP_NAME ? "Service layers" : "Untitled Group";
@@ -112,6 +184,7 @@ export function useVisibleLayerState() {
         layerOrderCache,
         layerVisibilityCache,
         removeLayerFromVisibleLayerGroups,
+        setLayerOrderCache,
         visibleLayerGroups,
         WMS_LAYERS_GROUP_NAME
     };
