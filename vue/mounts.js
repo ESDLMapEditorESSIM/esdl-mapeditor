@@ -10,6 +10,7 @@ import VueGridLayout from 'vue-grid-layout';
 // Import subset.
 import {
     AutoComplete,
+    Alert,
     Breadcrumb,
     Button,
     Card,
@@ -103,6 +104,7 @@ export function mountApp(component, elementSelector) {
 
     // Components from ant-design-vue
     app.use(AutoComplete);
+    app.use(Alert);
     app.use(Breadcrumb);
     app.use(Button);
     app.use(Card);

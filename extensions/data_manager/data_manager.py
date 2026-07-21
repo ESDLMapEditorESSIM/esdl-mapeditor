@@ -43,17 +43,20 @@ from extensions.data_manager.data_manager_message import (ChartType,
                                                           GetColumnsRequestBody,
                                                           QueryRequestBody,
                                                           ProfileVizType,
-                                                          ProfileAggInterval)
+                                                          ProfileAggInterval,
+                                                          SaveGraphConfigsRequestBody)
 from extensions.data_manager.db_interaction import create_db_tables, get_db_driver_type, DriverType, create_db, drop_db
 from extensions.data_manager.db_model import DataSet, Variable, DataType, Data, BaseModel
 from extensions.profiles import Profiles, ProfileVizOptions, EmptyProfileWarning
 from extensions.session_manager import get_session, get_project_manager
+from extensions.settings_storage import SettingsStorage
 from src import settings
 from src.log import get_logger
 from utils.utils import camelCaseToWords
 
 logger = get_logger(__name__)
 
+ESDL_ANALYTICS_SETTINGS = "ESDL_ANALYTICS"
 
 class MetadataCRUDStatus(Enum):
     SUCCESS = "SUCCESS"
@@ -406,9 +409,13 @@ def aggregate_profile_data_by_interval(df: DataFrame, interval: str, agg_func: s
     return aggregated_data
 
 class DataManager:
-    def __init__(self, flask_app: Flask, socket: SocketIO):
+    def __init__(self, flask_app: Flask, socket: SocketIO, settings_storage: SettingsStorage):
         self.flask_app = flask_app
         self.socketio = socket
+
+        # Settings storage is used to store and retrieve user graph configuration settings. 
+        self.settings_storage = settings_storage
+
         self.register()
 
     def register(self):
@@ -500,6 +507,62 @@ class DataManager:
                 return self.query_profile(db.session, options=req_body)
             else:
                 return self.query(db.session, options=req_body)
+        
+        @self.socketio.on("datamanager/get_graph_configs", namespace="/esdl")
+        def _get_graph_configs():
+            return self.get_graph_configs()
+
+        @self.socketio.on("datamanager/save_graph_configs", namespace="/esdl")
+        def _save_graph_configs(params: Dict):
+            try:
+                req_body = SaveGraphConfigsRequestBody(**params)
+            except (TypeError, ValueError) as e:
+                logger.error(f"Invalid request body for save_graph_configs: {e}")
+                return None
+
+            return self.save_graph_configs(req_body.configs)
+
+    def get_graph_configs(self) -> Optional[List[dict]]:
+        """
+        Fetches the saved graph configurations for the currently logged in user.
+
+        :return: The list of saved graph configurations, or None if they could not be fetched.
+        """
+        user = get_session('user-email')
+        if user is None:
+            logger.warning("No active user session found; cannot fetch graph configurations.")
+            return None
+
+        try:
+            configs: List[dict] = []
+            if self.settings_storage.has_user(user, ESDL_ANALYTICS_SETTINGS):
+                user_settings = self.settings_storage.get_user(user, ESDL_ANALYTICS_SETTINGS)
+                if user_settings and user_settings.get('graph_configs') is not None:
+                    configs = user_settings.get('graph_configs')
+            return configs
+        except Exception as e:
+            logger.error(f"An error occurred while fetching graph configurations for {user}: {e}")
+            return None
+
+    def save_graph_configs(self, configs: List[dict]) -> Optional[List[dict]]:
+        """
+        Saves the given list of graph configurations for the currently logged in user.
+
+        :param configs: The full list of graph configurations to persist.
+
+        :return: The persisted list of graph configurations, or None if they could not be saved.
+        """
+        user = get_session('user-email')
+        if user is None:
+            logger.warning("No active user session found; cannot save graph configurations.")
+            return None
+
+        try:
+            self.settings_storage.set_user(user, ESDL_ANALYTICS_SETTINGS, {"graph_configs": configs})
+            return configs
+        except Exception as e:
+            logger.error(f"An error occurred while saving graph configurations for {user}: {e}")
+            return None
 
     def process_esdl(self, es: esdl.EnergySystem, owner: str, energy_unit: str) -> List[BaseModel]:
         """
@@ -955,7 +1018,8 @@ class DataManager:
             timestamp: datetime = dataset.run_timestamp
             response.append({
                 'name': dataset.name,
-                'id': dataset.id,
+                'id': dataset.id, # database row id; dynamic updated on dataset update/sync. operations.
+                'es_id': dataset.energy_system_id,
                 'description': dataset.description,
                 'run_timestamp': timestamp.strftime(dt_str_format)
             })
