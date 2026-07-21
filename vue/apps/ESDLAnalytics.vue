@@ -194,30 +194,9 @@
                                 .toLowerCase()
                                 .includes(inputValue.toLowerCase())
                           "
-                          @mouseleave="removeTooltipPopup"
                         />
                       </a-form-item>
                     </a-form>
-                    <a-form-item style="margin-bottom: 0; margin-top: 16px">
-                      <a-row style="align-items: center">
-                        <a-switch
-                          v-model:checked="graphConfigIsTemplate"
-                          size="small"
-                          style="margin-right: 8px"
-                        />
-                        <span>Save as template</span>
-                        <a-tooltip
-                          title="A template saves only visualization settings without binding to specific datasets. When loaded, the settings are applied to whatever datasets are currently selected."
-                        >
-                          <a-button size="small" type="text">
-                            <component
-                              :is="InfoCircleOutlined"
-                              style="vertical-align: 0.1rem"
-                            />
-                          </a-button>
-                        </a-tooltip>
-                      </a-row>
-                    </a-form-item>
                   </a-modal>
                   <a-modal
                     v-model:open="showLoadGraphConfigModal"
@@ -265,12 +244,17 @@
                         </span>
                       </template>
                     </a-tree-select>
-                    <a-alert
-                      v-if="loadConfigWarningMessage"
-                      type="warning"
-                      :message="loadConfigWarningMessage"
-                      style="margin-top: 8px"
-                    />
+                    <a-typography-text
+                      v-if="
+                        userGraphConfigs.length > 0 && selectedGraphConfigKey
+                      "
+                      type="secondary"
+                      style="font-size: small; margin-top: 8px; display: block"
+                    >
+                      After loading, verify that the saved variable, group by,
+                      and filter selections are still applicable to the
+                      currently selected datasets.
+                    </a-typography-text>
                   </a-modal>
                 </a-row>
                 <a-row>
@@ -1110,7 +1094,6 @@ const userGraphConfigs = ref([]);
 const showSaveGraphConfigModal = ref(false);
 const graphConfigNameInput = ref("");
 const graphConfigGroupInput = ref(undefined);
-const graphConfigIsTemplate = ref(false);
 
 const showLoadGraphConfigModal = ref(false);
 const selectedGraphConfigKey = ref(undefined);
@@ -1165,7 +1148,6 @@ const fetchUserGraphConfigs = async () => {
 const resetGraphConfigModalInputs = () => {
   graphConfigNameInput.value = "";
   graphConfigGroupInput.value = undefined;
-  graphConfigIsTemplate.value = false;
 };
 
 const onSaveGraphConfigBtnClick = async () => {
@@ -1179,7 +1161,6 @@ const onSaveGraphConfigBtnClick = async () => {
     id: uuidv4(),
     group: graphConfigGroupInput.value || "Ungrouped",
     name: graphConfigNameInput.value,
-    isTemplate: graphConfigIsTemplate.value,
     // Used as a simple way to distinguish settings sharing the same name and group.
     lastUpdate: Date.now(),
     // Do not save trace and layout states as it should be updated when the config is applied and the chart is loaded.
@@ -1187,13 +1168,6 @@ const onSaveGraphConfigBtnClick = async () => {
       ...graphConfig,
       currentTrace: [],
       currentLayout: {},
-      // Templates do not bind to specific datasets; regular configs enrich datasetSelected
-      // with identity objects (uniqueDsId + label) for future resolution.
-      datasetSelected: graphConfigIsTemplate.value
-        ? []
-        : graphConfig.datasetSelected.map((id) => {
-            return datasetOptions.value.find((o) => o.value === id);
-          }),
     },
   };
 
@@ -1231,82 +1205,15 @@ const onLoadGraphConfigBtnClick = () => {
 };
 
 /**
- * Resolves a saved dataset selection against the live dataset options using the stable
- * uniqueDsId (es_id + name) key stored in the saved config.
+ * Restores the visualization settings from a previously saved graph configuration
+ * and refreshes the variable/groupby/filter option lists from the backend.
  *
- * @param {Array} savedDatasetSelected Array of selected dataset objects saved in the config.
- * @param {Array} liveDatasetOptions The current live dataset options (datasetOptions.value).
- * @returns {{resolvedIds: Array, staleNames: Array}} The current database row ids for resolved
- *          datasets, and the names of datasets that could not be resolved.
- */
-const resolveGraphConfigDatasetSelection = (
-  savedDatasetSelected,
-  liveDatasetOptions,
-) => {
-  const liveOptionByUniqueId = new Map(
-    liveDatasetOptions.map((opt) => [opt.uniqueDsId, opt]),
-  );
-  const resolvedIds = [];
-  const staleNames = [];
-
-  savedDatasetSelected.forEach((obj) => {
-    const liveOpt = liveOptionByUniqueId.get(obj.uniqueDsId);
-    if (liveOpt) {
-      resolvedIds.push(liveOpt.value);
-    } else {
-      staleNames.push(obj.label ?? obj.uniqueDsId);
-    }
-  });
-
-  return { resolvedIds, staleNames };
-};
-
-/**
- * A pre-apply warning message for the Load modal, computed from the currently selected
- * graph configuration. Empty string when no config is selected or all datasets resolve.
- */
-const loadConfigWarningMessage = computed(() => {
-  if (
-    !selectedGraphConfigKey.value ||
-    !selectedGraphConfigKey.value.startsWith("config:")
-  )
-    return "";
-
-  const configId = selectedGraphConfigKey.value.slice("config:".length);
-  const savedConfig = userGraphConfigs.value.find((c) => c.id === configId);
-  if (!savedConfig) return "";
-
-  const { staleNames } = resolveGraphConfigDatasetSelection(
-    savedConfig.config.datasetSelected,
-    datasetOptions.value,
-  );
-  // Templates have no dataset binding by design; no warning needed.
-  if (savedConfig.isTemplate || staleNames.length === 0) return "";
-
-  const nameList = staleNames.map((n) => `'${n}'`).join(", ");
-  if (staleNames.length === savedConfig.config.datasetSelected.length) {
-    return (
-      `Datasets ${nameList} are no longer available. ` +
-      "Only chart settings will be restored — you will need to select new datasets."
-    );
-  }
-  return `Dataset(s) ${nameList} are no longer available and will be removed from the selection.`;
-});
-
-/**
- * Restores the reactive states of the component from a previously saved graphConfig object.
+ * Dataset selection is intentionally not restored — the configuration applies
+ * to whatever datasets are currently selected.
  *
- * Selection option lists (datasetOptions, variableOptions, groupbyOptions, filterOptions) are
- * deliberately NOT restored from the snapshot. Instead they are refreshed from the backend
- * so the menus reflect the current live database state.
- *
- * @param {Object} selectedConfig A graphConfig object.
- * @returns {Promise<void>} A promise that resolves once the dataset/variable/groupby/filter
- *                          options have been refreshed from the backend.
+ * @param {Object} graphConfig A graphConfig object (the .config field of a saved entry).
  */
-const applyConfig = async (selectedConfig) => {
-  const graphConfig = selectedConfig.config;
-
+const applyConfig = async (graphConfig) => {
   title.value = graphConfig.title;
   chartType.value = graphConfig.chartType;
   currentTrace.value = graphConfig.currentTrace;
@@ -1333,31 +1240,11 @@ const applyConfig = async (selectedConfig) => {
   autoHistogramBinSize.value = graphConfig.autoHistogramBinSize;
   histogramBinWidth.value = graphConfig.histogramBinWidth;
 
-  // Do not restore the option lists from the snapshot. Instead, clear them and refresh from the backend.
-  datasetOptions.value = [];
+  // Refresh variable/groupby/filter option lists based on the current dataset selection.
+  // These are cleared so the UI reflects what is actually available from the live datasets.
   variableOptions.value = {};
   groupbyOptions.value = [];
   filterOptions.value = [];
-
-  await updateDatasets();
-
-  if (!selectedConfig.isTemplate) {
-    // Regular config: resolve saved dataset selection against live options.
-    const { resolvedIds, staleNames } = resolveGraphConfigDatasetSelection(
-      graphConfig.datasetSelected,
-      datasetOptions.value,
-    );
-    datasetSelected.value = resolvedIds;
-
-    if (staleNames.length) {
-      displayNotification(
-        "warning",
-        `The following dataset selections in the saved configuration could not be resolved and were ignored: ${staleNames.join(
-          ", ",
-        )}`,
-      );
-    }
-  }
 
   if (datasetSelected.value.length) {
     await updateVariables();
@@ -1376,8 +1263,9 @@ const onLoadGraphConfigConfirm = async () => {
   const selectedConfig = userGraphConfigs.value.find((c) => c.id === configId);
 
   if (selectedConfig) {
-    // Restores selections and refreshes dataset/variable/groupby/filter options from the backend.
-    await applyConfig(selectedConfig);
+    // Restores visualization settings and refreshes variable/groupby/filter options
+    // based on the currently selected datasets.
+    await applyConfig(selectedConfig.config);
     updateTrace();
   }
 
