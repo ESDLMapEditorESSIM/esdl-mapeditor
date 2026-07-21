@@ -139,7 +139,7 @@ def register_extensions(
     Ownership(app)
     SpatialVisualization(app)
     AssetConstraint(app)
-    data_manager = DataManager(app, socketio)
+    data_manager = DataManager(app, socketio, settings_storage)
     ExternalModels(app, socketio, models_storage, toast_notifications)
     WorkflowEngine(app, socketio, models_storage, esdl_services, toast_notifications)
 

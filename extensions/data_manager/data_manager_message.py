@@ -26,6 +26,10 @@ class GetColumnsRequestBody:
     dataset_ids: List[int]
     variable_name: str
 
+@dataclass
+class SaveGraphConfigsRequestBody:
+    configs: List[dict]
+
 class ChartType(Enum):
     CHART = "chart"
     TABLE = "table"
