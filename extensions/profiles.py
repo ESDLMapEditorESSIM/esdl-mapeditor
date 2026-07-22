@@ -1543,6 +1543,7 @@ class Profiles:
                     credentials_dict=cred_dict,
                     table_name=dtp_viz.tableName,
                     column_name=dtp_viz.columnName,
+                    schema=dtp_viz.schema or None,
                     start_date=start_dt,
                     end_date=end_dt,
                     additional_filters=query_filters,
