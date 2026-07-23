@@ -110,6 +110,12 @@ class ProfileClassEnum(Enum):
     INFLUXDBPROFILE = "InfluxDBProfile"
     DATATABLEPROFILE = "DataTableProfile"
 
+
+class ProfileAggregationMethodEnum(Enum):
+    SUM = "sum"
+    MEAN = "mean"
+
+
 @dataclass
 class AddProfileRequest:
     es_id: str
@@ -423,8 +429,10 @@ class Profiles:
         del (self.csv_files[uuid])
 
     def import_profile_csv(self, name, content, group="Standard profiles", profiles_server_index=0,
-                           prof_aggr_type="sum", emit_update=True):
+                           prof_aggr_type=ProfileAggregationMethodEnum.SUM, emit_update=True):
         logger.info("process CSV")
+        if isinstance(prof_aggr_type, str):
+            prof_aggr_type = ProfileAggregationMethodEnum(prof_aggr_type)
         csv_file_name_without_extension = name.split('.')[0]
 
         try:
@@ -508,11 +516,11 @@ class Profiles:
                 influxdb_profile_server.write_data()
 
                 # Get or create a datasource in Grafana using the panalservice
-                if profiles_settings['profiles_servers'][profiles_server_index]['ssl_enabled']:
-                    protocol = "https://"
-                else:
-                    protocol = "http://"
-                profiles_server_host = f"{protocol}{host}:{port}"
+                profiles_server_host = self._profile_server_url(
+                    host,
+                    port,
+                    profiles_settings['profiles_servers'][profiles_server_index]['ssl_enabled'],
+                )
                 datasource = get_panel_service_datasource(
                     database=database,
                     host=profiles_server_host,
@@ -575,6 +583,7 @@ class Profiles:
 
             if profile_server_type == ProfileServerTypeEnum.INFLUXDB:
                 self.add_influxdb_details(profile, csv_file_name_without_extension, field)
+                profile["profile_aggregation_method"] = prof_aggr_type.value
             elif profile_server_type == ProfileServerTypeEnum.POSTGRESQL:
                 self.add_postgres_details(profile, csv_file_name_without_extension, field)
 
@@ -590,7 +599,7 @@ class Profiles:
                     field=field,
                     filters=[],
                     qau=None,
-                    prof_aggr_type=prof_aggr_type,
+                    prof_aggr_type=prof_aggr_type.value,
                     start_datetime=start_datetime,
                     end_datetime=end_datetime
                 )
@@ -609,6 +618,99 @@ class Profiles:
         self.settings_storage.set(setting_type, identifier, PROFILES_LIST, profiles)
         if emit_update:
             self.update_profiles_list()
+
+    @staticmethod
+    def _profile_server_url(host: str, port: int | str, ssl_enabled: bool = False) -> str:
+        """
+        Build the URL used by panel-service for a profile server.
+        """
+        parsed_host = urlparse(host)
+        if parsed_host.scheme:
+            return host if parsed_host.port else f"{host}:{port}"
+
+        protocol = "https" if ssl_enabled else "http"
+        return f"{protocol}://{host}:{port}"
+
+    def regenerate_profile_panels(self) -> tuple[int, int]:
+        """
+        Regenerate panel-service panels for all stored InfluxDB profiles.
+        """
+        updated = 0
+        skipped = 0
+        system_profiles_settings = self.get_profiles_system_settings()
+        required_fields = ['host', 'port', 'database', 'measurement', 'field', 'start_datetime', 'end_datetime']
+
+        for setting_type in SettingType:
+            for doc in self.settings_storage.get_all_settings_for_type(setting_type):
+                if PROFILES_LIST not in doc:
+                    continue
+
+                profiles = doc[PROFILES_LIST]
+                profiles_settings = doc.get(PROFILES_SETTINGS, {})
+                changed = False
+                for profile in profiles.values():
+                    if profile.get('type') != ProfileServerTypeEnum.INFLUXDB.value or not all(
+                            profile.get(field) for field in required_fields):
+                        skipped += 1
+                        continue
+
+                    try:
+                        profile_aggregation_method = ProfileAggregationMethodEnum(
+                            profile.get('profile_aggregation_method', ProfileAggregationMethodEnum.MEAN.value)
+                        )
+                    except ValueError:
+                        skipped += 1
+                        continue
+
+                    profile_server = None
+                    for settings_doc in [profiles_settings, system_profiles_settings]:
+                        for prof_server in settings_doc.get('profiles_servers', []):
+                            if prof_server.get('host') == profile['host'] and \
+                                    str(prof_server.get('port')) == str(profile['port']) and \
+                                    prof_server.get('database') == profile['database']:
+                                profile_server = prof_server
+                                break
+                        if profile_server:
+                            break
+
+                    profiles_server_host = self._profile_server_url(
+                        profile['host'],
+                        profile['port'],
+                        profile_server.get('ssl_enabled', False) if profile_server else False,
+                    )
+                    datasource = get_panel_service_datasource(
+                        database=profile['database'],
+                        host=profiles_server_host,
+                        username=profile_server.get('username') if profile_server else None,
+                        password=profile_server.get('password') if profile_server else None,
+                    )
+                    embed_url = create_panel(
+                        graph_title=profile['profile_uiname'],
+                        axis_title="",
+                        datasource=datasource,
+                        host=profiles_server_host,
+                        database=profile['database'],
+                        measurement=profile['measurement'],
+                        field=profile['field'],
+                        filters=[],
+                        qau=None,
+                        prof_aggr_type=profile_aggregation_method.value,
+                        start_datetime=profile['start_datetime'],
+                        end_datetime=profile['end_datetime']
+                    )
+                    if not embed_url:
+                        skipped += 1
+                        continue
+
+                    profile['embedUrl'] = embed_url
+                    profile['profile_aggregation_method'] = profile_aggregation_method.value
+                    updated += 1
+                    changed = True
+
+                if changed:
+                    self.settings_storage.set(setting_type, doc['name'], PROFILES_LIST, profiles)
+
+        return updated, skipped
 
     def remove_profile(self, profile_id):
         # as we only have an ID, we don't know if it is a user, project or system profile

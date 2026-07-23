@@ -17,7 +17,7 @@ profiles_group = AppGroup("profiles", help="Manage profiles.")
     "csv_paths", nargs=-1, type=click.Path(exists=True, dir_okay=False, path_type=Path)
 )
 @with_appcontext
-def upload_profile_csv(csv_paths):
+def upload_profile_csv(csv_paths: tuple[Path, ...]) -> None:
     """
     Upload profile CSVs as standard profiles.
     """
@@ -32,3 +32,14 @@ def upload_profile_csv(csv_paths):
             emit_update=False,
         )
         click.echo(f"{csv_path}: uploaded")
+
+
+@profiles_group.command("regen-panels")
+@with_appcontext
+def regen_panels() -> None:
+    """
+    Regenerate panel-service panels for all stored InfluxDB profiles.
+    """
+    profiles_extension = Profiles.get_instance()
+    updated, skipped = profiles_extension.regenerate_profile_panels()
+    click.echo(f"Regenerated {updated} panel(s), skipped {skipped} profile(s).")
