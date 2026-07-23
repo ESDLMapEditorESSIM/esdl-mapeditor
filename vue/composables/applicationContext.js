@@ -15,7 +15,7 @@
  */
 
 import {ref} from "vue";
-import { useToast } from "vue-toastification";
+import {displayNotification, NotificationType} from "@/utils/notification";
 
 /**
  * @typedef {Object} LiveModelInterface
@@ -42,7 +42,6 @@ const defaultApplicationContext = {
 
 // The active application context is the context that is currently active in the map.
 const activeApplicationContext = ref(defaultApplicationContext);
-const toast = useToast();
 
 
 export function useApplicationContext() {
@@ -71,7 +70,7 @@ export function useApplicationContext() {
         }
 
         if (applicationContext.toast_text) {
-            toast.info(applicationContext.toast_text);
+            displayNotification(NotificationType.INFO, applicationContext.toast_text);
         }
 
     }

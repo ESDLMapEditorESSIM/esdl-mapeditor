@@ -64,8 +64,8 @@ import {computed, ref, watch} from 'vue';
 import {CaretDownFilled} from '@ant-design/icons-vue';
 import {useWmsLayers, showLayer, hideLayer} from "@/composables/wmsLayers";
 import {useVisibleLayers} from "@/composables/visibleLayers";
-import {notification} from 'ant-design-vue';
 import {useSocketIO} from "@/composables/socketio";
+import {displayNotification, NotificationPlacement, NotificationType} from "@/utils/notification";
 
 const {socket} = useSocketIO();
 const {layerExists} = useVisibleLayers(window.map, socket);
@@ -337,12 +337,12 @@ function collectLayerIds(itemId, layerIds) {
 }
 
 function showWarningMsg(hiddenLayerCount, maxLayerOpenCount) {
-  notification['warning']({
-    message: 'Warning',
-    description: `You are trying to open ${hiddenLayerCount} map layers. Opening more than ${maxLayerOpenCount} layers at once is not allowed, `
+  displayNotification(
+    NotificationType.WARNING,
+    `You are trying to open ${hiddenLayerCount} map layers. Opening more than ${maxLayerOpenCount} layers at once is not allowed, `
       + "please open layers individually.",
-    placement: 'bottomLeft',
-  });
+    {placement: NotificationPlacement.BOTTOM_LEFT}
+  );
 }
 </script>
 

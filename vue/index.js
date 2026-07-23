@@ -54,7 +54,6 @@ import ActiveLongProcess from '@/components/progress/ActiveProcess.vue'
 import SidePane from "@/apps/SidePane.vue"
 // import ToggleActiveLongProcess from './components/progress/ToggleActiveLongProcess'
 import {useTooltipInfo} from './composables/TooltipInfo';
-import "./composables/toasts.js";
 import AssetTooltip from './apps/AssetTooltip';
 import './bridge.js';
 import Swal from "sweetalert2";
@@ -68,10 +67,12 @@ import './utils/startDrawAsset';
 import ResultVisualizationsToolbar from "@/components/toolbars/ResultVisualizationsToolbar.vue";
 import ETMInterface from "@/apps/ETMInterface.vue";
 import {useReplaceEDRAsset} from "@/composables/replaceEDRAsset";
-import ToastNotifications from "@/apps/ToastNotifications.vue";
 import PromptDialog from "@/apps/PromptDialog.vue";
+import {registerNotificationListeners} from "@/utils/notification";
 
 // Vue.config.productionTip = false
+
+registerNotificationListeners();
 
 window.activate_service_workflow = async (serviceIndex, service, state) => {
     const { startNewWorkflow, currentWorkflow } = useWorkflow();
@@ -238,12 +239,6 @@ createApp(ActivityContextSelector).mount('#vue_activity_context_selector')
 createApp(ApplicationContextSelector).mount('#vue_application_context_selector')
 
 mountApp(LoadProjectFileButton, '#vue_load_project_file')
-
-const [,toastNotificationInstance] = mountApp(ToastNotifications, '#toast_notifications');
-import {useToastNotifications} from "@/composables/toastNotifications";
-const {setToastNotificationsInstance } = useToastNotifications();
-setToastNotificationsInstance(toastNotificationInstance);
-
 mountApp(PromptDialog, '#prompt_dialog');
 
 createVueLControl(AssetsToBeAddedToolbar, {

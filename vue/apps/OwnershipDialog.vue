@@ -97,7 +97,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { displayNotification } from '@/utils/notification';
+import { displayNotification, NotificationType } from '@/utils/notification';
 
 const displayedText = ref('');
 
@@ -178,15 +178,15 @@ const addNewParty = async (esId) => {
 
     if (!response.ok) {
       console.error(response.status, result.error);
-      displayNotification("Error", `Something went wrong when creating a new party. ${result.error}`);
+      displayNotification(NotificationType.ERROR, `Something went wrong when creating a new party. ${result.error}`);
       return;
     }
 
-    displayNotification("Success", `${result.message}`);
+    displayNotification(NotificationType.SUCCESS, `${result.message}`);
     getOwnershipState(esId);
   } catch (error) {
     console.error(error);
-    displayNotification("Error", "Something went wrong when creating a new party.");
+    displayNotification(NotificationType.ERROR, "Something went wrong when creating a new party.");
   } finally {
     onModalClose();
   }
@@ -202,16 +202,16 @@ const deleteParty = async (esId) => {
     });
 
     if (response.status === 204) {
-      displayNotification("Success", "Successfully removed the party.");
+      displayNotification(NotificationType.SUCCESS, "Successfully removed the party.");
       getOwnershipState(esId);
     } else {
       const result = await response.json();
       console.error(response.status, result.error);
-      displayNotification("Error", `Something went wrong when removing the party. ${result.error}`);
+      displayNotification(NotificationType.ERROR, `Something went wrong when removing the party. ${result.error}`);
     }
   } catch (error) {
     console.error(error);
-    displayNotification("Error", "Something went wrong when removing the party.");
+    displayNotification(NotificationType.ERROR, "Something went wrong when removing the party.");
   }
 };
 
@@ -223,7 +223,7 @@ const getPartiesList = async (esId) => {
   } catch (error) {
     console.error(error);
     displayNotification(
-      "Error", 
+      NotificationType.ERROR,
       "Something went wrong when retrieving the party list from the ESDL."
     );
   }
@@ -237,7 +237,7 @@ const getAssetsList = async (esId) => {
   } catch (error) {
     console.error(error);
     displayNotification(
-      "Error", 
+      NotificationType.ERROR,
       "Something went wrong when retrieving the asset list from the ESDL."
     );
   }
@@ -323,14 +323,14 @@ const postOwnershipAssignment = async (esId, partyId, assignment) => {
     const result = await response.json();
 
     if (response.status === 200) {
-      displayNotification("Success", `${result.message}`);
+      displayNotification(NotificationType.SUCCESS, `${result.message}`);
     } else {
       console.error(response.status, result.error);
-      displayNotification("Error", "Something went wrong when assigning ownership.");
+      displayNotification(NotificationType.ERROR, "Something went wrong when assigning ownership.");
     }    
   } catch (error) {
     console.error(error);
-    displayNotification("Error", "Something went wrong when assigning ownership.");
+    displayNotification(NotificationType.ERROR, "Something went wrong when assigning ownership.");
   } finally {
     getOwnershipState(esId);
     isLoading.value = false;

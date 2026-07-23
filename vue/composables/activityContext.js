@@ -18,8 +18,8 @@ import {ref, watch} from "vue";
 import {useWmsLayers, showLayer} from "@/composables/wmsLayers";
 import {useEsdlAreas} from "@/composables/esdlAreas";
 import {useEsdlBuildings} from "./esdlBuildings";
-import { useToast } from "vue-toastification";
 import {useEsdlLayers} from "@/composables/esdlLayers";
+import {displayNotification, NotificationType} from "@/utils/notification";
 
 const { clearWmsLayers } = useWmsLayers();
 const { addAreaContextMenuItem, totalEntriesAndAreas, esdlAreasDict,
@@ -64,8 +64,6 @@ const activeActivityContext = ref({});
 const enabledAreaContextMenus = ref([]);
 const enabledMapContextMenus = ref([]);
 const enabledBuildingContextMenus = ref([]);
-
-const toast = useToast();
 
 watch(totalEntriesAndAreas, () => {
     addContextMenuJsFunctions(activeActivityContext.value); // trigger only on structural change
@@ -211,7 +209,7 @@ const {hideEsdlLayerAllEsdls, showEsdlLayerAllEsdls} = useEsdlLayers();
         addContextMenuServices(activityContext)
 
         if (activityContext.toast_text) {
-            toast.info(activityContext.toast_text);
+            displayNotification(NotificationType.INFO, activityContext.toast_text);
         }
 
     }

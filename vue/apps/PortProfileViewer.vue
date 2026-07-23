@@ -95,7 +95,7 @@ import dayjs from "dayjs";
 
 import {fetchData} from "@/utils/api";
 import {config, normalizePlotlyDateTimeStr} from "@/utils/profileVisualization";
-import {displayNotification} from "@/utils/notification";
+import {displayNotification, NotificationType} from "@/utils/notification";
 import {useObject} from "@/composables/ObjectID";
 import {useEsdlLayers} from "@/composables/esdlLayers";
 import AnalyticsPlot from "@/components/plot/AnalyticsPlot.vue";
@@ -241,7 +241,7 @@ const listProfileOptions = async (esId, selectedAssetIds) => {
 
               if (profileClass === "TimeSeriesProfile") {
                 displayNotification(
-                  "warning",
+                  NotificationType.WARNING,
                   `Profile downsampling is not supported for ${profileClass} profile ${profileDisplayedName}.`
                 );
               }
@@ -254,7 +254,7 @@ const listProfileOptions = async (esId, selectedAssetIds) => {
             } else {
               const profileDisplayedName = `${profileObj.name || profileObj.id} [${profileObj.profileQuantityAndUnit?.description?.split(" ").at(-1) ?? "Undefined"}]`;
               displayNotification(
-                "warning",
+                NotificationType.WARNING,
                 `${profileClass} profile ${profileDisplayedName} is not supported for visualization in Port Profile Viewer.`
               );
               return {
@@ -302,7 +302,7 @@ const fetchAssetsPortsProfiles = async (esId, assetIds) => {
   } catch (e) {
     console.error(e);
     displayNotification(
-      "error",
+      NotificationType.ERROR,
       `Error listing port profiles from the active ESDL (id=${esId}) and selected assets with Ids [${assetIds}].`
     );
   }
@@ -323,7 +323,7 @@ const onChartTypeBtnClick = (value) => {
   if (profileDownsampling.value && chartType.value !== 'chart') {
     profileDownsampling.value = false;
     displayNotification(
-      'info', 
+      NotificationType.INFO,
       'Downsampling has been turned off for this view to avoid hiding data points. You can turn it back on anytime in the display options'
     );
   }
@@ -377,7 +377,7 @@ const updateTrace = async () => {
     if (results.warnings && results.warnings.length > 0) {
       results.warnings.forEach((warningObj) => {
         displayNotification(
-          "warning",
+          NotificationType.WARNING,
           `${warningObj.warning}`
         );
         console.warn(warningObj)
@@ -394,7 +394,7 @@ const updateTrace = async () => {
         if (errObj.error.includes("unreachable")) {
           errMsg = `Unable to display profile (id=${errObj.profile_id}) due to database connection error.`;
         }
-        displayNotification("error", errMsg);
+        displayNotification(NotificationType.ERROR, errMsg);
         console.error(errObj);
       });
     }
@@ -412,7 +412,7 @@ const updateTrace = async () => {
     currentLayout.value = formattedData.layout;
   } catch (e) {
     displayNotification(
-      "error",
+      NotificationType.ERROR,
       `Failed to fetch profile traces: ${e.message || e}`
     );
     console.error(e);
