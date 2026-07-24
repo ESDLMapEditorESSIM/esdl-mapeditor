@@ -25,6 +25,7 @@
     "@jsonforms/core": "^3.4.0",
     "@jsonforms/vue": "^3.4.0",
     "@jsonforms/vue-vanilla": "^3.4.0",
+    "@maplibre/maplibre-gl-style-spec": "^26.1.0",
     "@revolist/vue3-datagrid": "3.2.17",
     "ajv": "^8.12.0",
     "ajv-formats": "^3.0.1",
