@@ -1818,8 +1818,8 @@
         </div>
 
         <div id="ctrl" style="float: right; position: relative; padding:3px;">
-            <input class="inputFile" type="file" accept=".esdl,.xml,application/xml" style="display: none;" onchange="load_esdl_files(event);" accept=".esdl" onclick="this.value=null;" multiple>
-            <input class="inputImportFile" type="file" accept=".esdl,.xml,application/xml" style="display: none;" onchange="import_esdl_files(event);" accept=".esdl" onclick="this.value=null;" multiple>
+            <input class="inputFile" type="file" accept=".esdl" style="display: none;" onchange="load_esdl_files(event);" onclick="this.value=null;" multiple>
+            <input class="inputImportFile" type="file" accept=".esdl" style="display: none;" onchange="import_esdl_files(event);" onclick="this.value=null;" multiple>
 {#            <input class="inputImportInlineFile" type="file" style="display: none;" onchange="import_esdl_with_inline_profiles(event);" onclick="this.value=null;">#}
 
 {% if edr_enabled %}

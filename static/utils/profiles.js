@@ -133,7 +133,9 @@ function select_qau_profile_type() {
 
 function port_profile_info_window(port_profile_info) {
     const profile_info_list = port_profile_info['profile_info'];
+    const viewer_context = window.port_profile_viewer_context;
     const port_id = port_profile_info['port_id'];
+    let show_profile_viewer = false;
 
     const sidebar_ctr = window.sidebar.getContainer();
 
@@ -155,6 +157,9 @@ function port_profile_info_window(port_profile_info) {
                 profile_uiname = 'SingleValue';
             } else if (profile_class === 'InfluxDBProfile') {
                 profile_value_or_multiplier = (+profile_info['multiplier']).toFixed(4);
+                show_profile_viewer = true;
+            } else if (profile_class === 'DataTableProfile') {
+                show_profile_viewer = true;
             } else if (profile_class === 'DateTimeProfile') {
                 profile_value_or_multiplier = 0;
                 profile_uiname = 'DateTimeProfile';
@@ -174,6 +179,7 @@ function port_profile_info_window(port_profile_info) {
         sidebar_ctr.innerHTML += 'No profiles yet';
     }
 
+    sidebar_ctr.innerHTML += '<div id="port_profile_viewer_button"></div>';
     sidebar_ctr.innerHTML += '<h1>Add profile to port:</h1>';
     let table = '<table>';
 
@@ -264,6 +270,13 @@ function port_profile_info_window(port_profile_info) {
     sidebar_ctr.innerHTML += '<button onclick="sidebar.hide();add_profile_to_port();">Add</button>';
 
     sidebar_ctr.innerHTML += '<p><div id="div_for_graph_panel"></div></p>';
+
+    if (show_profile_viewer && viewer_context) {
+        let viewer_button = $('<button>').text('Show in Port Profile Viewer').click(function() {
+            window.activate_port_profile_viewer(viewer_context['es_id'], viewer_context['asset_id']);
+        });
+        $('#port_profile_viewer_button').append(viewer_button);
+    }
 
     sidebar.show();
 
