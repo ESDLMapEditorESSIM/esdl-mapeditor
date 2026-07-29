@@ -429,7 +429,10 @@ class Profiles:
         del (self.csv_files[uuid])
 
     def import_profile_csv(self, name, content, group="Standard profiles", profiles_server_index=0,
-                           prof_aggr_type=ProfileAggregationMethodEnum.SUM, emit_update=True):
+                           prof_aggr_type=ProfileAggregationMethodEnum.SUM, emit_update=True, drop_measurement=False):
+        """
+        Import a profile CSV into the configured profile server and profile settings.
+        """
         logger.info("process CSV")
         if isinstance(prof_aggr_type, str):
             prof_aggr_type = ProfileAggregationMethodEnum(prof_aggr_type)
@@ -512,6 +515,10 @@ class Profiles:
                 )
 
                 influxdb_profile_server.connect()
+
+                if drop_measurement:
+                    influxdb_profile_server.drop_measurement(csv_file_name_without_extension)
+
                 influxdb_profile_server.convert_data(data=timeseries_data, measurement=csv_file_name_without_extension)
                 influxdb_profile_server.write_data()
 
