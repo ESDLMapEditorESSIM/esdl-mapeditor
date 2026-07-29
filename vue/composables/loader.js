@@ -15,7 +15,7 @@ export const isLoading = computed(() => loaderCount.value > 0);
 
 /**
  * Start a loader operation and return its unique ID.
- * @param scope
+ * @param {string} [scope]
  * @returns {number}
  */
 export function startLoader(scope) {
@@ -58,7 +58,7 @@ function removeLoader(loaderId) {
 
 /**
  * Stop a loader operation by ID or scope, or the latest scoped loader when neither is provided.
- * @param loaderIdOrScope
+ * @param {number|string} [loaderIdOrScope]
  * @returns {boolean}
  */
 export function stopLoader(loaderIdOrScope) {
