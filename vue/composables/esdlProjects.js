@@ -1,7 +1,7 @@
 import {computed, ref, watchEffect} from "vue";
 import {useSocketIO} from "./socketio"
 import {MessageNames, PubSubManager} from "@/bridge";
-
+import {useLoader} from "@/composables/loader";
 
 /**
  * @typedef {Object} Variant
@@ -28,6 +28,7 @@ import {MessageNames, PubSubManager} from "@/bridge";
 const esdlProject = ref(null);
 
 const {socket, subscribe} = useSocketIO();
+const {startLoader, stopLoader} = useLoader();
 
 /**
  * @param {ESDLProject} responseProject
@@ -88,10 +89,9 @@ export function useESDLProjects() {
 
     function setActiveVariant(variantId) {
         console.debug("Setting active variant to ID " + variantId);
-        const loaderScope = "set_active_variant"
-        window.show_loader(loaderScope);
+        const loaderId = startLoader();
         socket.value.emit('set_active_variant', {id: variantId}, () => {
-            window.hide_loader(loaderScope);
+            stopLoader(loaderId);
         });
     }
 

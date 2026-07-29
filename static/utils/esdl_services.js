@@ -153,7 +153,6 @@ var asset_severity_class = {
 
 function process_service_results(results) {
     let service_results_div = document.getElementById('service_results_div');
-    hide_loader();
     // TODO: Make this more generic
 
     if ('show_asset_results' in results) {

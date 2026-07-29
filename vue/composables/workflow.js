@@ -19,8 +19,10 @@ import {v4 as uuidv4} from 'uuid';
 import {nextStepsSchemaValidator} from "@/utils/workflowSchemas";
 import {workflowGetData, workflowPostData} from "@/components/workflow/utils/api";
 import {useOngoingBackendProcesses} from "@/composables/ongoingBackendProcesses";
+import {useLoader} from "@/composables/loader";
 
 const {getStartingBackendProcessId} = useOngoingBackendProcesses();
+const {startLoader, stopLoader} = useLoader();
 
 export const WorkflowStepTypes = Object.freeze({
     CHOICE: 'choice',
@@ -145,10 +147,10 @@ export function useWorkflow() {
     };
 
     const activatePersistedWorkflow = (uuid) => {
-        window.show_loader();
+        const loaderId = startLoader();
         window.socket.emit('/workflow/load', {workflow_id: uuid}, function (response) {
+            stopLoader(loaderId);
             if (response.message) {
-                window.hide_loader();
                 alert(response.message);
                 return;
             }

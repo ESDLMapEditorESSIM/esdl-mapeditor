@@ -294,7 +294,7 @@ function get_boundary_info(obj) {
         add_service_area_tennet_info = document.getElementById('service_area_tennet').value;
     }
 
-    show_loader();
+    show_loader(window.LoaderScopes.ESDL);
     socket.emit('get_boundary_info', {identifier: identifier, toparea_name: toparea_name, scope: scope,
         subscope_enabled: subscope_enabled, add_toparea: add_toparea, subscope: subscope,
         select_subareas: select_subareas, selected_subareas: selected_subareas, initialize_ES: initialize_ES,
@@ -304,6 +304,8 @@ function get_boundary_info(obj) {
     }, function(res) {
         if (res) {
             window.refresh_esdl();
+        } else {
+            hide_loader(window.LoaderScopes.ESDL);
         }
     });
 }

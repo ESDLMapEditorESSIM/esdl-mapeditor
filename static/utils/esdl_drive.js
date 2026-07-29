@@ -347,7 +347,7 @@ class ESDLDrive {
                             $openbtn.click(function () {
                                     // use cache?
                                     socket.emit('cdo_open', {'path':  d.path, 'nocache': self.noCache, 'import': false});
-                                    show_loader();
+                                    show_loader(window.LoaderScopes.ESDL);
                                     dialog.close();
                                 });
 
@@ -355,7 +355,7 @@ class ESDLDrive {
                             $importbtn.css('margin-left', '30px');
                             $importbtn.click(function () {
                                     socket.emit('cdo_open', {'path':  d.path, 'nocache': self.noCache, 'import': true});
-                                    show_loader();
+                                    show_loader(window.LoaderScopes.ESDL);
                                     dialog.close();
                                 });
 
@@ -744,7 +744,7 @@ class ESDLDrive {
             $a.click(function(e) {
                 console.log(e);
                 socket.emit('cdo_open', {'path':  history.path, 'revision': commit.time});
-                show_loader();
+                show_loader(window.LoaderScopes.ESDL);
                 dialog.close();
             });
             $tr.append($('<td>').append($a));

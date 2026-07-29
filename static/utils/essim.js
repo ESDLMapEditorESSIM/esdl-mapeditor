@@ -156,7 +156,7 @@ function download_results(sim_id) {
 }
 
 function get_essim_result(sim_id) {
-    show_loader();
+    show_loader(window.LoaderScopes.ESDL);
     socket.emit('essim_get_esdl_with_results', sim_id);
 }
 

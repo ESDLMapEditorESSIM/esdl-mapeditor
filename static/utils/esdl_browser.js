@@ -587,7 +587,7 @@ class ESDLBrowser {
         map.on('dialog:closed', function(e) {
            if (self.changed) {
                // refresh complete esdl completely for now something has changed
-               show_loader();
+               show_loader(window.LoaderScopes.ESDL);
                self.changed = false;
                socket.emit('command', {cmd: 'refresh_esdl', es_id: active_layer_id});
            } else {
