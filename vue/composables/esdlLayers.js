@@ -28,22 +28,6 @@ export function useEsdlLayers() {
     const getEsdlLayers = () => ref(window.esdl_list);
 
     /**
-     * Get ESDL Leaflet FeatureGroup layer by energy system ID and layer name.
-     * TODO: Check if needed after rve-poc merge.
-     *
-     * @param {string} esId Energy system ID
-     * @param {string} layerName Layer name defined in multi_esdl.js
-     * @returns {Object} Leaflet FeatureGroup layer object.
-     */
-    const getEsdlFeatureGroupLayer = (esId, layerName) => window.get_layers(esId, layerName);
-
-    /**
-     * Remove ESDL layer by ID.
-     * TODO: Check if needed after rve-poc merge.
-     */
-    const removeEsdlLayer = (id) => window.remove_esdl_layer(id);
-
-    /**
      * Get the ID of the active ESDL layer.
      */
     const getActiveEsdlLayerId = () => ref(window.active_layer_id);
@@ -195,8 +179,6 @@ export function useEsdlLayers() {
     return {
         getEsdlLayers,
         clearEsdlLayers,
-        getEsdlFeatureGroupLayer,
-        removeEsdlLayer,
         getActiveEsdlLayerId,
         disableAllEsdls,
         enableEsdl,
