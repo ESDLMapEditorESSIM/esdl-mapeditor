@@ -54,82 +54,92 @@
           :key="idx"
           :header="vizLayer.name"
         >
-          <a-row class="layer-style-option-row" style="padding-bottom: 8px">
-            Source
+          <a-col class="layer-info-row">
+            <a-typography-text strong>
+              Source
+            </a-typography-text>
             <a-col :span="15">
               {{ vizLayer.sourceRef.name }}
             </a-col>
-          </a-row>
-          <a-row class="layer-style-option-row" style="padding-bottom: 8px">
-            Style field
+          </a-col>
+          <a-col class="layer-info-row">
+            <a-typography-text strong>
+              Field
+            </a-typography-text>
             <a-select
-              :value="vizLayer.styledField"
-              style="width: 250px"
+              :value="vizLayer.style.field"
               :options="vizLayer.fieldOptions"
-              @change="(field) => vizLayer.onSelectStyledField(field)"
+              style="width: 100%"
+              @change="(field) => vizLayer.onSelectField(field)"
               @mouseleave="removeTooltipPopup"
             />
-          </a-row>
+          </a-col>
           <a-space
-            v-if="vizLayer.styledField !== undefined"
+            v-if="vizLayer.style.field !== undefined"
             direction="vertical"
             style="width: 100%"
           >
-            <a-row class="layer-style-option-row">
-              Style type
-              <a-select
-                :value="vizLayer.styledType"
-                style="width: 250px"
-                :options="VisualizedLayer.StyleTypes[vizLayer.styledFieldType]"
-                :status="vizLayer.styledType === undefined ? 'error' : null"
-                :placeholder="
-                  vizLayer.styledType === undefined
-                    ? 'Unsupported type for styling'
-                    : ''
-                "
-                @change="(type) => vizLayer.onSelectStyleType(type)"
-                @mouseleave="removeTooltipPopup"
-              />
-            </a-row>
-            <a-row
-              v-if="vizLayer.colorPickerColor !== undefined"
-              class="layer-style-option-row"
-            >
-              Color
-              <a-select
-                :value="vizLayer.colorPickerColor"
-                style="width: 250px"
-                @change="(color) => vizLayer.onSelectColor(color)"
-              >
-                <a-select-option
-                  v-for="option in VisualizedLayer.colorPickerPalette"
-                  :key="option.value"
-                  :value="option.value"
+            <a-col class="layer-info-row">
+              <a-typography-text strong>
+                Style options
+              </a-typography-text>
+              <a-row>
+                <a-segmented
+                  v-model:value="vizLayer.style.styleType"
+                  :options="VisualizedLayer.StyleTypes[vizLayer.style.fieldType]"
+                  style="width: 100%"
+                  size="small"
+                  block
+                  @change="(type) => vizLayer.onSelectStyleType(type)"
                 >
-                  <a-col
-                    :key="option.label"
-                    :span="24"
-                    :style="{ backgroundColor: option.label, height: '100%' }"
-                  />
-                </a-select-option>
-              </a-select>
-            </a-row>
-            <a-row
-              v-if="vizLayer.colorPalette !== undefined"
-              class="layer-style-option-row"
+                  <template #label="{ payload = {} }">
+                    <div style="padding: 4px 4px">
+                      <component
+                        :is="payload.icon"
+                        style="vertical-align: 0.05rem"
+                      />
+                      <div>{{ payload.label }}</div>
+                    </div>
+                  </template>
+                </a-segmented>
+              </a-row>
+            </a-col>
+            <a-col 
+              v-if="vizLayer.style.paint.color.mode === 'fixed'"
+              class="layer-info-row"
             >
-              Color palette
+              <a-typography-text strong>
+                Color
+              </a-typography-text>
+              <input
+                type="color"
+                :value="vizLayer.style.paint.color.value"
+                @input="(e) => vizLayer.onSelectColor(e.target.value)"
+                style="width: 100%; height: 35px; cursor: pointer; border: none;"
+              />
+            </a-col>
+            <a-col 
+              v-if="vizLayer.style.paint.color.mode !== 'fixed'"
+              class="layer-info-row"
+            >
+              <a-typography-text strong>
+                Color palette
+              </a-typography-text>
               <a-select
-                :value="vizLayer.colorPalette"
-                style="width: 250px"
+                :value="vizLayer.style.paint.color.palette"
+                style="width: 100%"
                 @change="(palette) => vizLayer.onSelectPalette(palette)"
               >
                 <a-select-option
-                  v-for="option in vizLayer.displayedPalettes"
+                  v-for="option in VisualizedLayer.colorPalettes[vizLayer.style.paint.color.mode]"
                   :key="option.value"
                   :value="option.value"
                 >
-                  <a-row>
+                  <div
+                    v-if="vizLayer.style.paint.color.mode === ColorMode.GRADIENT"
+                    :style="{ background: toCssGradient(option.sample), height: '35px', width: '100%', borderRadius: '2px' }"
+                  />
+                  <a-row v-else>
                     <a-col
                       v-for="color in option.sample"
                       :key="color"
@@ -144,56 +154,60 @@
                   </a-row>
                 </a-select-option>
               </a-select>
-            </a-row>
-            <a-row class="layer-style-option-row">
-              Size
-              <a-col :span="16">
-                <a-slider
-                  :value="vizLayer.markerSizeValue"
-                  :min="1"
-                  :max="10"
-                  :step="1"
-                  @change="(size) => vizLayer.onSizeChange(size)"
-                />
-              </a-col>
-            </a-row>
-            <a-row class="layer-style-option-row">
-              Opacity
-              <a-col :span="16">
-                <a-slider
-                  :value="vizLayer.opacity"
-                  :min="0"
-                  :max="1"
-                  :step="0.01"
-                  @change="(opacity) => vizLayer.onOpacityChange(opacity)"
-                />
-              </a-col>
-            </a-row>
+            </a-col>
+            <a-col class="layer-info-row">
+              <a-typography-text strong>
+                Size
+              </a-typography-text>
+              <a-slider
+                :value="vizLayer.style.paint.symbol.size.value"
+                :min="vizLayer.style.paint.symbol.size.minSize"
+                :max="vizLayer.style.paint.symbol.size.maxSize"
+                :step="1"
+                @change="(size) => vizLayer.onSizeChange(size)"
+              />
+            </a-col>
+            <a-col class="layer-info-row">
+              <a-typography-text strong>
+                Opacity
+              </a-typography-text>
+              <a-slider
+                :value="vizLayer.style.paint.opacity"
+                :min="0"
+                :max="1"
+                :step="0.01"
+                @change="(opacity) => vizLayer.onOpacityChange(opacity)"
+              />
+            </a-col>
             <a-row
               v-if="!vizLayer.features[0].geometry.type.includes('LineString')"
               class="layer-style-option-row"
             >
-              Show outline
+              <a-typography-text strong>
+                Show outline
+              </a-typography-text>
               <a-col :span="2">
                 <a-switch
-                  :checked="vizLayer.showStroke"
+                  :checked="vizLayer.style.paint.stroke.visible"
                   size="small"
                   @change="
-                    (checkedStatus) =>
-                      vizLayer.onToggleShowStroke(checkedStatus)
+                    (visible) =>
+                      vizLayer.onToggleShowStroke(visible)
                   "
                 />
               </a-col>
             </a-row>
             <a-row class="layer-style-option-row">
-              Show label
+              <a-typography-text strong>
+                Show label
+              </a-typography-text>
               <a-col :span="2">
                 <a-switch
-                  :checked="vizLayer.showLabel"
+                  :checked="vizLayer.style.paint.label.visible"
                   size="small"
                   @change="
-                    (checkedStatus) =>
-                      vizLayer.onToggleShowLabels(checkedStatus)
+                    (visible) =>
+                      vizLayer.onToggleShowLabels(visible)
                   "
                 />
               </a-col>
@@ -300,22 +314,34 @@ import {
   EyeOutlined,
   FolderOpenOutlined,
   StarOutlined,
+  BgColorsOutlined,
+  AppstoreOutlined,
+  ExpandAltOutlined,
+  BarChartOutlined,
+  DotChartOutlined,
 } from "@ant-design/icons-vue";
 import { displayNotification } from "@/utils/notification";
-// TODO: organize imports
 import {
   getAssetFields,
   generateColorscale,
   setLeafletFeatureStyle,
-  LeafletStyler,
+  FieldType,
+  StyleType,
+  ColorMode,
+  SizeMode,
+  PaletteName,
 } from "@/utils/spatialVisualization";
-import { defaultColorScheme } from "@/utils/visualization";
 import {
   useVisibleLayers,
   VisibleLayerType,
 } from "@/composables/visibleLayers";
 
 const { getLayerType } = useVisibleLayers();
+
+const toCssGradient = (colors) => {
+  const stops = colors.map(c => c.startsWith('#') ? c : `#${c}`).join(', ');
+  return `linear-gradient(to right, ${stops})`;
+};
 
 // to prevent stuck popup on UI
 const removeTooltipPopup = () => {
@@ -707,107 +733,127 @@ class EsdlLayerSource extends DataSource {
  * Class representing a visualized layer on the map, with styling and interactivity.
  */
 class VisualizedLayer {
-  static initMarkerSizeValue = 5;
-  static initOpacity = 1.0;
-  static initStrokeWeight = 2;
-  static initColorPickerColor = undefined;
-  static initColorPalette = undefined;
-  static initDisplayedPalettes = [];
-
-  // a constant factor to scale between marker radius and weight.
-  static radiusToWeight = 0.4;
-
+  // NICE TO HAVE: custom icons
   // Supported style types
   static StyleTypes = Object.freeze({
-    boolean: [{ value: "categoricalColor", label: "Categorical Color" }],
-    string: [
-      { value: "singleColor", label: "Single Color" },
-      { value: "categoricalColor", label: "Categorical Color" },
+    [FieldType.BOOLEAN]: [{
+      value: StyleType.CATEGORICAL_COLOR,
+      payload: {
+        label: "Categorical Color",
+        icon: AppstoreOutlined,
+      }
+    }],
+    [FieldType.STRING]: [
+      {
+        value: StyleType.SINGLE_COLOR,
+        payload: {
+          label: "Single Color",
+          icon: BgColorsOutlined,
+        }
+      },
+      {
+        value: StyleType.CATEGORICAL_COLOR,
+        payload: {
+          label: "Categorical Color",
+          icon: AppstoreOutlined,
+        }
+      },
     ],
-    number: [
-      { value: "size", label: "Size" },
-      { value: "gradientColor", label: "Gradient Color" },
-      { value: "colorAndSize", label: "Color and Size" },
+    [FieldType.NUMBER]: [
+      {
+        value: StyleType.SIZE,
+        payload: {
+          label: "Size",
+          icon: ExpandAltOutlined,
+        }
+      },
+      {
+        value: StyleType.GRADIENT_COLOR,
+        payload: {
+          label: "Gradient Color",
+          icon: BarChartOutlined,
+        }
+      },
+      {
+        value: StyleType.COLOR_AND_SIZE,
+        payload: {
+          label: "Color and Size",
+          icon: DotChartOutlined,
+        }
+      },
     ],
   });
 
-  static colorPickerPalette = defaultColorScheme.map((c) => ({
-    value: c,
-    label: c,
-  }));
-
-  static sampleNum = 12;
   static colorPalettes = {
-    Categorical: [
+    [ColorMode.CATEGORICAL]: [
       {
         label: "Default",
-        value: "Default",
-        sample: defaultColorScheme.slice(0, VisualizedLayer.sampleNum),
+        value: PaletteName.DEFAULT,
+        sample: generateColorscale(PaletteName.DEFAULT),
       },
       {
         label: "Qualitative",
-        value: "Qualitative",
-        sample: window.palette("mpn65", VisualizedLayer.sampleNum),
+        value: PaletteName.QUALITATIVE,
+        sample: generateColorscale(PaletteName.QUALITATIVE),
       },
     ],
-    Continuous: [
+    [ColorMode.GRADIENT]: [
       {
         label: "Diverging",
-        value: "Diverging",
-        sample: window.palette("tol-dv", VisualizedLayer.sampleNum),
+        value: PaletteName.DIVERGING,
+        sample: generateColorscale(PaletteName.DIVERGING),
       },
       {
         label: "Sequential",
-        value: "Sequential",
-        sample: window.palette("tol-sq", VisualizedLayer.sampleNum),
+        value: PaletteName.SEQUENTIAL,
+        sample: generateColorscale(PaletteName.SEQUENTIAL),
       },
       {
         label: "Rainbow",
-        value: "Rainbow",
-        sample: window.palette("tol-rainbow", VisualizedLayer.sampleNum),
+        value: PaletteName.RAINBOW,
+        sample: generateColorscale(PaletteName.RAINBOW),
       },
     ],
   };
 
-  // TODO: remove and reuse the one from setLeafletFeatureStyle
-  static setFeatureStyle(
-    geometryType,
-    color = "#1f78b4",
-    opacity = 1,
-    radius = 5,
-    weight = 2,
-    stroke = false,
-  ) {
-    switch (geometryType) {
-      case "Point":
-      case "MultiPoint":
-        return {
-          fillColor: color,
-          radius: radius,
-          fillOpacity: opacity,
-          stroke: stroke,
-        };
-      case "LineString":
-      case "MultiLineString":
-        return {
-          color: color,
-          weight: weight,
-          opacity: opacity,
-        };
-      case "Polygon":
-      case "MultiPolygon":
-        return {
-          fillColor: color,
-          fillOpacity: opacity,
-          stroke: stroke,
-        };
-      default:
-        console.error(`Unsupported geometry type: ${geometryType}.`);
-        return {};
-    }
-  }
-
   static customMapPane = "vizLayerPane";
+
+  // a constant factor to scale between marker radius and weight.
+  static radiusToWeight = 0.4;
+
+  static defaultStyle = {
+    field: undefined,
+    fieldType: undefined, // undefined || FieldType Enum
+    styleType: undefined, // undefined || StyleType Enum
+    paint: {
+      color: {
+        mode: ColorMode.FIXED, // ColorMode Enum
+        value: "#1f78b4",
+        field: undefined,
+        palette: undefined,
+        stops: [],
+      },
+      symbol: {
+        size: {
+          mode: SizeMode.FIXED, // SizeMode Enum
+          field: undefined,
+          value: 5,
+          minSize: 1,
+          maxSize: 10,
+        }
+      },
+      stroke: {
+        visible: false,
+        color: "#000000",
+        weight: 2,
+        opacity: 1.0,
+      },
+      opacity: 1.0,
+      label: {
+        visible: false,
+      },
+    },
+  };
 
   constructor(sourceRef, name, features) {
     this.sourceRef = sourceRef;
@@ -817,34 +863,24 @@ class VisualizedLayer {
     this._initVizLayerPane();
 
     this.id = `${sourceRef.id}-${name}`;
-    this.layer = this.createGeoJsonLayer(this.features);
+    this.layer = this.styleGeoJsonFeatures(this.features);
     this.visible = true;
     this.fieldOptions = this._listLayerFieldOptions();
 
-    this.addLayerToMap(this.layer);
+    this.style = JSON.parse(JSON.stringify(VisualizedLayer.defaultStyle));
 
-    // Layer styling options
-    this.styledField = undefined;
-    this.styledFieldType = undefined;
-    this.styledType = undefined;
-    this.markerSizeValue = VisualizedLayer.initMarkerSizeValue;
-    this.opacity = VisualizedLayer.initOpacity;
-    this.colorPickerColor = VisualizedLayer.initColorPickerColor;
-    this.colorPalette = VisualizedLayer.initColorPalette;
-    this.displayedPalettes = VisualizedLayer.initDisplayedPalettes;
-    this.showStroke = false;
-    this.showLabel = false;
+    this.addLayerToMap(this.layer);
   }
 
-  createGeoJsonLayer(features) {
+  styleGeoJsonFeatures(features) {
     const layer = L.geoJSON(features, {
       style: function (feature) {
-        return VisualizedLayer.setFeatureStyle(feature.geometry.type);
+        return setLeafletFeatureStyle(feature.geometry.type);
       },
       pointToLayer: function (feature, latlng) {
         return L.circleMarker(
           latlng,
-          VisualizedLayer.setFeatureStyle(feature.geometry.type),
+          setLeafletFeatureStyle(feature.geometry.type),
         );
       },
     });
@@ -875,9 +911,9 @@ class VisualizedLayer {
   redrawLayerOnFeaturesUpdate(updatedFeatures) {
     this.features = updatedFeatures;
     this.removeLayerFromMap(this.layer);
-    this.layer = this.createGeoJsonLayer(this.features);
+    this.layer = this.styleGeoJsonFeatures(this.features);
     this.addLayerToMap(this.layer);
-    this.styleLayer(this.styledType);
+    this.applyStyle();
   }
 
   toggleLayer(event) {
@@ -901,102 +937,157 @@ class VisualizedLayer {
     }
   }
 
-  onSelectStyledField(selectedField) {
-    this.styledField = selectedField;
-    this.styledFieldType = this.fieldOptions.find(
-      (f) => f.value === selectedField,
+  // ---------------------------------------- //
+  // ----------- Event handlers ------------- //
+  // ---------------------------------------- //
+
+  onSelectField (field) {
+    this.style.field = field;
+    this.style.fieldType = this.fieldOptions.find(
+      (f) => f.value === field,
     ).type;
 
-    let defaultStyleType = undefined;
-    if (
-      Object.keys(VisualizedLayer.StyleTypes).includes(this.styledFieldType)
-    ) {
-      // Default to the first StyleType when the styledField is updated.
-      defaultStyleType =
-        VisualizedLayer.StyleTypes[this.styledFieldType][0].value;
+    this.preSelectStyleTypeOnFieldSelection();
+    this.applyStyle();
+  }
+
+  preSelectStyleTypeOnFieldSelection() {
+    if (Object.keys(VisualizedLayer.StyleTypes).includes(this.style.fieldType)) {
+      this.style.styleType = VisualizedLayer.StyleTypes[this.style.fieldType][0].value;
+      this.preSelectColorOnStyleTypeChange();
     } else {
       console.warn(
-        `No supported style type for ${this.styledField} [${this.styledFieldType}]`,
+        `No supported style type for ${this.style.field} [${this.style.fieldType}]`,
       );
     }
-    this._setStyleType(defaultStyleType);
   }
 
-  onSelectStyleType (selectedStyleType) {
-    this._setStyleType(selectedStyleType);
+  onSelectStyleType (type) {
+    this.style.styleType = type;
+
+    this.preSelectColorOnStyleTypeChange();
+    this.applyStyle();
   }
 
-  onSizeChange(size) {
-    this.markerSizeValue = size;
-    this.styleLayer(this.styledType);
+  preSelectColorOnStyleTypeChange() {
+    if (
+      this.style.styleType === StyleType.SINGLE_COLOR ||
+      this.style.styleType === StyleType.SIZE
+    ) {
+      this.style.paint.color.value = VisualizedLayer.defaultStyle.paint.color.value;
+    } else if (
+      this.style.styleType === StyleType.CATEGORICAL_COLOR ||
+      this.style.styleType === StyleType.GRADIENT_COLOR ||
+      this.style.styleType === StyleType.COLOR_AND_SIZE
+    ) {
+      if (this.style.fieldType === FieldType.STRING || this.style.fieldType === FieldType.BOOLEAN) {
+        this.style.paint.color.palette = VisualizedLayer.colorPalettes[ColorMode.CATEGORICAL][0].value;
+      } else if (this.style.fieldType === FieldType.NUMBER) {
+        this.style.paint.color.palette = VisualizedLayer.colorPalettes[ColorMode.GRADIENT][0].value;
+      }
+    }
   }
 
   onSelectColor(color) {
-    this.colorPickerColor = color;
-    this.styleLayer(this.styledType);
+    this.style.paint.color.value = color;
+    this.applyStyle();
   }
 
   onSelectPalette(palette) {
-    this.colorPalette = palette;
-    this.styleLayer(this.styledType);
+    this.style.paint.color.palette = palette;
+    this.applyStyle();
+  }
+
+  onSizeChange(size) {
+    this.style.paint.symbol.size.value = size;
+    this.applyStyle();
   }
 
   onOpacityChange(opacity) {
-    this.opacity = opacity;
-    this.styleLayer(this.styledType);
+    this.style.paint.opacity = opacity;
+    this.applyStyle();
   }
 
-  onToggleShowStroke(checkedStatus) {
-    this.showStroke = checkedStatus;
-    this.styleLayer(this.styledType);
+  onToggleShowStroke(visible) {
+    this.style.paint.stroke.visible = visible;
+    this.applyStyle();
   }
 
-  onToggleShowLabels(checkedStatus) {
-    this.showLabel = checkedStatus;
-    this.styleLayer(this.styledType);
+  onToggleShowLabels(visible) {
+    this.style.paint.label.visible = visible;
+    this.applyStyle();
   }
 
   /**
-   * Style layer according to the given styleType and current style options.
+   * Builds and returns a new style object derived from the current `this.style` state.
+   * It maps `fieldType` and `styleType` to derive `paint.color.mode` and
+   *   `paint.symbol.size.mode` values.
    *
-   * @param {string|undefined} styleType The style type to be applied.
+   * @returns {Object} A fresh style object.
    */
-  styleLayer(styleType) {
-    switch (styleType) {
-      default:
-      case "singleColor":
-        this._styleMarkerWithSingleColor(this.colorPickerColor);
-        this._styleMarkerSize(this.markerSizeValue);
-        break;
-      case "categoricalColor":
-        this._styleMarkerColorOnCategorizedFieldValue(
-          this.styledField,
-          this.colorPalette,
-        );
-        this._styleMarkerSize(this.markerSizeValue);
-        break;
-      case "size":
-        this._styleMarkerWithSingleColor(this.colorPickerColor);
-        this._styleMarkerSizeOnNumericalFieldValue(this.styledField);
-        break;
-      case "gradientColor":
-        this._styleMarkerColorOnNumericalFieldValue(
-          this.styledField,
-          this.colorPalette,
-        );
-        this._styleMarkerSize(this.markerSizeValue);
-        break;
-      case "colorAndSize":
-        this._styleMarkerColorOnNumericalFieldValue(
-          this.styledField,
-          this.colorPalette,
-        );
-        this._styleMarkerSizeOnNumericalFieldValue(this.styledField);
-        break;
+  _updateStyle() {
+    // Start from a safe default base.
+    const updated = JSON.parse(JSON.stringify(VisualizedLayer.defaultStyle));
+
+    // Carry over the field selection.
+    updated.field = this.style.field;
+    updated.fieldType = this.style.fieldType;
+    updated.styleType = this.style.styleType;
+
+    // Derive paint modes from fieldType + styleType.
+    const { fieldType } = updated;
+    if (fieldType === FieldType.BOOLEAN || fieldType === FieldType.STRING) {
+      updated.paint.color.mode = updated.styleType === StyleType.CATEGORICAL_COLOR ? ColorMode.CATEGORICAL : ColorMode.FIXED;
+      updated.paint.symbol.size.mode = SizeMode.FIXED;
+    } else if (fieldType === FieldType.NUMBER) {
+      if (updated.styleType === StyleType.SIZE) {
+        updated.paint.color.mode = ColorMode.FIXED;
+        updated.paint.symbol.size.mode = SizeMode.GRADUATED;
+      } else if (updated.styleType === StyleType.GRADIENT_COLOR) {
+        updated.paint.color.mode = ColorMode.GRADIENT;
+        updated.paint.symbol.size.mode = SizeMode.FIXED;
+      } else if (updated.styleType === StyleType.COLOR_AND_SIZE) {
+        updated.paint.color.mode = ColorMode.GRADIENT;
+        updated.paint.symbol.size.mode = SizeMode.GRADUATED;
+      }
     }
-    this._styleMarkerOpacity(this.opacity);
-    this._showHideMarkerStroke(this.showStroke);
-    this._showHideFeatureLabels(this.styledField, this.showLabel);
+
+    // Preserve explicit user-configured paint values from the previous style.
+    updated.paint.color.value = this.style.paint.color.value;
+    updated.paint.color.palette = this.style.paint.color.palette;
+    updated.paint.symbol.size.value = this.style.paint.symbol.size.value;
+    updated.paint.opacity = this.style.paint.opacity;
+    updated.paint.stroke = { ...this.style.paint.stroke };
+    updated.paint.label = { ...this.style.paint.label };
+
+    return updated;
+  }
+
+  applyStyle() {
+    this.style = this._updateStyle();
+
+    const { paint, field } = this.style;
+
+    // Apply color
+    if (paint.color.mode === ColorMode.FIXED) {
+      this._styleMarkerWithSingleColor(paint.color.value);
+    } else if (paint.color.mode === ColorMode.CATEGORICAL) {
+      this._styleMarkerColorOnCategorizedFieldValue(field, paint.color.palette);
+    } else if (paint.color.mode === ColorMode.GRADIENT) {
+      this._styleMarkerColorOnNumericalFieldValue(field, paint.color.palette);
+    }
+
+    // Apply size
+    if (paint.symbol.size.mode === SizeMode.FIXED) {
+      this._styleMarkerSize(paint.symbol.size.value, paint.stroke.weight);
+    } else if (paint.symbol.size.mode === SizeMode.GRADUATED) {
+      this._styleMarkerSizeOnNumericalFieldValue(field, paint.symbol.size.value, paint.stroke.weight);
+    }
+
+    // Apply opacity, stroke, labels
+    this._styleMarkerOpacity(paint.opacity);
+    this._showHideMarkerStroke(paint.stroke);
+    this._showHideFeatureLabels(field, paint.label.visible);
   }
 
   // ---------------------------------------- //
@@ -1010,13 +1101,11 @@ class VisualizedLayer {
     });
   }
 
-  _styleMarkerSize(size) {
+  _styleMarkerSize(size, strokeWeight) {
     const isPolyline = this.features[0].geometry.type.includes("LineString");
     this.layer.setStyle({
       radius: size,
-      weight: isPolyline
-        ? size * VisualizedLayer.radiusToWeight
-        : VisualizedLayer.initStrokeWeight,
+      weight: isPolyline ? size * VisualizedLayer.radiusToWeight : strokeWeight
     });
   }
 
@@ -1027,161 +1116,88 @@ class VisualizedLayer {
     });
   }
 
-  // Should only be applied to Point or Polygon feature
-  _showHideMarkerStroke(showStroke) {
+  /** Should only be applied to Point or Polygon features. */
+  _showHideMarkerStroke(stroke) {
     const isPolyline = this.features[0].geometry.type.includes("LineString");
     if (!isPolyline) {
       this.layer.setStyle({
-        stroke: showStroke,
-        weight: VisualizedLayer.initStrokeWeight,
-        color: "#2e4053",
+        stroke: stroke.visible,
+        weight: stroke.weight,
+        color: stroke.color,
       });
     }
   }
 
-  /**
-   * Show or hide the selected field value from features as tooltip labels.
-   */
   _showHideFeatureLabels(selectedField, showLabel = false) {
     this.layer.eachLayer((featureLayer) => {
-      // Clean up existing tooltip
       featureLayer.closeTooltip();
       featureLayer.unbindTooltip();
 
-      if (
-        showLabel &&
-        featureLayer.feature &&
-        featureLayer.feature.properties
-      ) {
+      if (showLabel && featureLayer.feature?.properties) {
         const fieldValue = featureLayer.feature.properties[selectedField];
         const popupContent = fieldValue !== null ? `${fieldValue}` : "No data";
         featureLayer
-          .bindTooltip(popupContent, {
-            permanent: true,
-            direction: "top",
-            opacity: 0.8,
-          })
+          .bindTooltip(popupContent, { permanent: true, direction: "top", opacity: 0.8 })
           .openTooltip();
       }
     });
   }
 
-  _styleMarkerColorOnCategorizedFieldValue(styledField, palette) {
-    const fieldUniqueValues = this._getFieldUniqueValues(styledField);
+  _styleMarkerColorOnCategorizedFieldValue(field, palette) {
+    const fieldUniqueValues = this._getFieldUniqueValues(field);
     if (fieldUniqueValues.length) {
       const colorscale = generateColorscale(palette, fieldUniqueValues.length);
       this.layer.setStyle((feature) => {
-        const fieldValue = feature.properties[styledField];
-        const idx = fieldUniqueValues.findIndex((val) => val === fieldValue);
-        // To handle if the number of unique features is more than available colors (e.g. Default)
+        const idx = fieldUniqueValues.findIndex((val) => val === feature.properties[field]);
         const markerColor = colorscale[idx % colorscale.length];
-        return {
-          fillColor: markerColor,
-          color: markerColor,
-        };
+        return { fillColor: markerColor, color: markerColor };
       });
     } else {
-      const markerColor = generateColorscale(palette, 1);
-      this._styleMarkerWithSingleColor(markerColor[0]);
+      this._styleMarkerWithSingleColor(generateColorscale(palette, 1)[0]);
     }
   }
 
-  _styleMarkerColorOnNumericalFieldValue(styledField, palette) {
-    const fieldUniqueValues = this._getFieldUniqueValues(styledField);
-
-    // TODO: how should this be defined?
-    const colorNum = 25;
+  _styleMarkerColorOnNumericalFieldValue(field, palette) {
+    const fieldUniqueValues = this._getFieldUniqueValues(field);
+    const colorNum = 25; // TODO: how to determine this number?
     const colorscale = generateColorscale(palette, colorNum + 1);
 
     if (fieldUniqueValues.length > 1) {
       const min = Math.min(...fieldUniqueValues);
       const max = Math.max(...fieldUniqueValues);
-
       this.layer.setStyle((feature) => {
-        const fieldValue = feature.properties[styledField];
         const normalizedValue =
-          (Math.log1p(fieldValue) - Math.log1p(min)) /
+          (Math.log1p(feature.properties[field]) - Math.log1p(min)) /
           (Math.log1p(max) - Math.log1p(min));
-        const colorIndex = parseInt(normalizedValue * colorNum);
-        const markerColor = colorscale[colorIndex];
-        return {
-          fillColor: markerColor,
-          color: markerColor,
-        };
+        const markerColor = colorscale[parseInt(normalizedValue * colorNum)];
+        return { fillColor: markerColor, color: markerColor };
       });
     } else {
-      const markerColor = generateColorscale(palette, 1);
-      this._styleMarkerWithSingleColor(markerColor[0]);
+      this._styleMarkerWithSingleColor(generateColorscale(palette, 1)[0]);
     }
   }
 
-  _styleMarkerSizeOnNumericalFieldValue(styledField) {
-    const fieldUniqueValues = this._getFieldUniqueValues(styledField);
+  _styleMarkerSizeOnNumericalFieldValue(field, baseSize, strokeWeight) {
+    const fieldUniqueValues = this._getFieldUniqueValues(field);
     if (fieldUniqueValues.length > 1) {
       const min = Math.min(...fieldUniqueValues);
       const max = Math.max(...fieldUniqueValues);
-
-      const sizeMin = this.markerSizeValue;
+      const sizeMin = baseSize;
       const sizeMax = sizeMin * 6;
-
       this.layer.setStyle((feature) => {
         const normalizedValue =
-          (Math.log1p(feature.properties[styledField]) - Math.log1p(min)) /
+          (Math.log1p(feature.properties[field]) - Math.log1p(min)) /
           (Math.log1p(max) - Math.log1p(min));
         const size = normalizedValue * (sizeMax - sizeMin) + sizeMin;
         const isPolyline = feature.geometry.type.includes("LineString");
         return {
           radius: size,
-          weight: isPolyline
-            ? size * VisualizedLayer.radiusToWeight
-            : VisualizedLayer.initStrokeWeight,
+          weight: isPolyline ? size * VisualizedLayer.radiusToWeight : strokeWeight,
         };
       });
     } else {
-      this._styleMarkerSize(this.markerSizeValue);
+      this._styleMarkerSize(baseSize, strokeWeight);
     }
-  }
-
-  /**
-   * When the styledType is updated, reset the style options (size, opacity, etc.) to the default state,
-   * and apply styledFieldType and styledType dependent color settings to style layer.
-   *
-   * @param {string|undefined} styleType The style type to be applied.
-   */
-  _setStyleType(styleType) {
-    this.styledType = styleType;
-
-    this._resetStyleOptions();
-
-    if (
-      styleType === undefined ||
-      styleType === "singleColor" ||
-      styleType === "size"
-    ) {
-      this.colorPickerColor = "#1f78b4";
-    } else {
-      if (["string", "boolean"].includes(this.styledFieldType)) {
-        this.displayedPalettes = VisualizedLayer.colorPalettes["Categorical"];
-        this.colorPalette = this.displayedPalettes[0].value;
-      } else if (this.styledFieldType === "number") {
-        this.displayedPalettes = VisualizedLayer.colorPalettes["Continuous"];
-        this.colorPalette = this.displayedPalettes[0].value;
-      } else {
-        console.warn(
-          `No supported color palette for styledFieldType: ${this.styledFieldType}`,
-        );
-      }
-    }
-
-    this.styleLayer(styleType);
-  }
-
-  _resetStyleOptions() {
-    this.markerSizeValue = VisualizedLayer.initMarkerSizeValue;
-    this.opacity = VisualizedLayer.initOpacity;
-    this.colorPickerColor = VisualizedLayer.initColorPickerColor;
-    this.colorPalette = VisualizedLayer.initColorPalette;
-    this.displayedPalettes = VisualizedLayer.initDisplayedPalettes;
   }
 
   // --------------------------------- //
@@ -1208,6 +1224,7 @@ class VisualizedLayer {
       label: `${f.name.toUpperCase()} [${f.type}]`,
       value: f.name,
       type: f.type,
+      disabled: !Object.values(FieldType).includes(f.type),
     }));
     return options;
   }
@@ -1227,13 +1244,21 @@ class VisualizedLayer {
 </script>
 
 <style scoped>
+
+:deep(.ant-segmented-item),
+:deep(.ant-segmented-item::selection) {
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 .layer-style-option-row {
   justify-content: space-between;
 }
 
-.style-section-divider {
-  margin: 8px 0 6px 0;
-  font-size: 12px;
-  color: rgba(0, 0, 0, 0.45);
+.layer-info-row {
+  padding-bottom: 8px;
 }
+
 </style>

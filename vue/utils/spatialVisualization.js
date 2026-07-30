@@ -1,14 +1,52 @@
-import { defaultColorScheme, nseColorScheme } from "@/utils/visualization";
+import { defaultColorScheme } from "@/utils/visualization";
+
+/** Valid field data types that can be used for layer styling. */
+const FieldType = Object.freeze({
+  BOOLEAN: 'boolean',
+  STRING:  'string',
+  NUMBER:  'number',
+});
+
+/** Visual style mode applied to a field. */
+const StyleType = Object.freeze({
+  SINGLE_COLOR:      'singleColor',
+  CATEGORICAL_COLOR: 'categoricalColor',
+  SIZE:              'size',
+  GRADIENT_COLOR:    'gradientColor',
+  COLOR_AND_SIZE:    'colorAndSize',
+});
+
+/** How fill/line color is derived per feature. */
+const ColorMode = Object.freeze({
+  FIXED:       'fixed',
+  CATEGORICAL: 'categorical',
+  GRADIENT:    'gradient',
+});
+
+/** How symbol size is derived per feature. */
+const SizeMode = Object.freeze({
+  FIXED:     'fixed',
+  GRADUATED: 'graduated',
+});
+
+/** Named color palettes available for styling. */
+const PaletteName = Object.freeze({
+  DEFAULT:     'Default',
+  QUALITATIVE: 'Qualitative',
+  DIVERGING:   'Diverging',
+  SEQUENTIAL:  'Sequential',
+  RAINBOW:     'Rainbow',
+});
 
 const mapEcoreTypeToJsType = (ecoreType) => {
     switch (ecoreType) {
-        case 'EString': return 'string';
-        case 'EEnum': return 'string';
-        case 'EInt': return 'number';
-        case 'EDouble': return 'number';
-        case 'EBoolean': return 'boolean';
-        case 'EDate': return 'date';
-        default: 
+        case 'EString': return FieldType.STRING;
+        case 'EEnum': return FieldType.STRING;
+        case 'EInt': return FieldType.NUMBER;
+        case 'EDouble': return FieldType.NUMBER;
+        case 'EBoolean': return FieldType.BOOLEAN;
+        case 'EDate': return 'date'; // not a supported style field type
+        default:
         console.error(`Unsupported Ecore type: ${ecoreType}`);
         return ecoreType;
     }
@@ -54,58 +92,37 @@ const getAssetFields = async(esId, assetId) => {
       console.error(error);
     }
 };
-// Custom North Sea Energy color palette 
-// TODO: implement a generic way to store and configure color options
-const nseColorPalette = { 
-  label: 'North Sea Energy',
-  value: 'NSE',
-  sample: nseColorScheme
-};
 
 // TODO: avoid duplicated code (ESDLAnalytics.vue)
 /**
  * Generates a colorscale based on the specified palette and number of colors.
  * 
- * @param {string} palette The type of color palette to use. Options include:
- *                         'Qualitative', 'Diverging', 'Sequential', 'Rainbow', and 'Default'.
+ * @param {string} palette The type of color palette to use. Use {@link PaletteName} values.
  * @param {number} numColors The number of colors to generate in the colorscale.
  * @param {Array} defaultColors Default color scheme array.
  * @returns {Array} An array of colorscale values.
  */
-const generateColorscale = (palette, numColors, defaultColors = defaultColorScheme) => {
-    let colorscale = defaultColors;
+const generateColorscale = (palette, numColors = 12, defaultColors = defaultColorScheme) => {
+    let colorscale = defaultColors.slice(0, numColors);
     switch (palette) {
-      case 'Qualitative':
+      case PaletteName.QUALITATIVE:
         // The maximum number of colors: 65
         colorscale = window.palette('mpn65', numColors > 65 ? 65 : numColors);
         break;
-      case 'Diverging': 
+      case PaletteName.DIVERGING:
         colorscale = window.palette('tol-dv', numColors);
         break;
-      case 'Sequential':
+      case PaletteName.SEQUENTIAL:
         colorscale = window.palette('tol-sq', numColors);
         break;
-      case 'Rainbow':
+      case PaletteName.RAINBOW:
         colorscale = window.palette('tol-rainbow', numColors);
         break;
-      // TODO: remove this quick fix (implemented to support NSE use case)
-      case 'NSE':
-        colorscale = nseColorPalette.sample;
-        break;
-      case 'Default':
+      case PaletteName.DEFAULT:
       default:
     }
     return colorscale.map(c => c.startsWith('#') ? c : `#${c}`);
 };
-
-/**
- * @typedef {Object} FeatureStyle
- * @property {string} [color]
- * @property {number} [opacity]
- * @property {number} [radius]
- * @property {number} [weight]
- * @property {boolean} [stroke]
- */
 
 /**
  * @param {string} geometryType Leaflet geometry type
@@ -149,5 +166,5 @@ const setLeafletFeatureStyle = (geometryType, style = {}) => {
   }
 }
 
-export { getAssetFields, generateColorscale, nseColorPalette, setLeafletFeatureStyle };
+export { getAssetFields, generateColorscale, setLeafletFeatureStyle, FieldType, StyleType, ColorMode, SizeMode, PaletteName };
 
