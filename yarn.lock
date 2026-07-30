@@ -2270,38 +2270,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mapbox/jsonlint-lines-primitives@npm:^2.0.3":
-  version: 2.0.3
-  resolution: "@mapbox/jsonlint-lines-primitives@npm:2.0.3"
-  checksum: 4a8b40b15581607af1b1ad09841edcbc67f8be22ad28b1902c9071431e2d080e50fc5a12791f7a85e11b07613ccc04f215ebae1eef662231d307a11656ca0e66
-  languageName: node
-  linkType: hard
-
-"@mapbox/unitbezier@npm:^1.0.0":
-  version: 1.0.0
-  resolution: "@mapbox/unitbezier@npm:1.0.0"
-  checksum: 41371f6edf0c643da0867453c18e1f7070d4c342339817495075bbb841d5283589a1b5492da6f2eb617803e0d6efc2e5354080b302b0eb84b13b3dcd64991230
-  languageName: node
-  linkType: hard
-
-"@maplibre/maplibre-gl-style-spec@npm:^26.1.0":
-  version: 26.1.0
-  resolution: "@maplibre/maplibre-gl-style-spec@npm:26.1.0"
-  dependencies:
-    "@mapbox/jsonlint-lines-primitives": ^2.0.3
-    "@mapbox/unitbezier": ^1.0.0
-    json-stringify-pretty-compact: ^4.0.0
-    minimist: ^1.2.8
-    quickselect: ^3.0.0
-    tinyqueue: ^3.0.0
-  bin:
-    gl-style-format: dist/gl-style-format.mjs
-    gl-style-migrate: dist/gl-style-migrate.mjs
-    gl-style-validate: dist/gl-style-validate.mjs
-  checksum: c48e25fd3dab4553b61315e5750b56a1cabc525534ce5e250021ddc234f156d6c1adcea5cb62161fe638f036c02d861170b866ed15c06bff428ed826ed6509ba
-  languageName: node
-  linkType: hard
-
 "@marijn/find-cluster-break@npm:^1.0.0":
   version: 1.0.2
   resolution: "@marijn/find-cluster-break@npm:1.0.2"
@@ -7110,13 +7078,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"json-stringify-pretty-compact@npm:^4.0.0":
-  version: 4.0.0
-  resolution: "json-stringify-pretty-compact@npm:4.0.0"
-  checksum: a10d5c423e467872994a49c5c1b56b073f277ce02d899cf567fc625f3783b89406bee6408bfb3b4bdeeff509b6a562f5259227e26754a6186f721809ca895f0c
-  languageName: node
-  linkType: hard
-
 "json5@npm:^1.0.1":
   version: 1.0.2
   resolution: "json5@npm:1.0.2"
@@ -7714,7 +7675,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"minimist@npm:^1.2.0, minimist@npm:^1.2.5, minimist@npm:^1.2.6, minimist@npm:^1.2.8":
+"minimist@npm:^1.2.0, minimist@npm:^1.2.5, minimist@npm:^1.2.6":
   version: 1.2.8
   resolution: "minimist@npm:1.2.8"
   checksum: 75a6d645fb122dad29c06a7597bddea977258957ed88d7a6df59b5cd3fe4a527e253e9bbf2e783e4b73657f9098b96a5fe96ab8a113655d4109108577ecf85b0
@@ -9024,13 +8985,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"quickselect@npm:^3.0.0":
-  version: 3.0.0
-  resolution: "quickselect@npm:3.0.0"
-  checksum: 8f72bedb8bb14bce5c3767c55f567bc296fa3ca9d98ba385e3867e434463bc633feee1eddf3dfec17914b7e88feeb08c7b313cf47114a8ff11bf964f77f51cfc
-  languageName: node
-  linkType: hard
-
 "randombytes@npm:^2.1.0":
   version: 2.1.0
   resolution: "randombytes@npm:2.1.0"
@@ -9398,7 +9352,6 @@ __metadata:
     "@jsonforms/core": ^3.4.0
     "@jsonforms/vue": ^3.4.0
     "@jsonforms/vue-vanilla": ^3.4.0
-    "@maplibre/maplibre-gl-style-spec": ^26.1.0
     "@revolist/vue3-datagrid": 3.2.17
     "@vitejs/plugin-vue": ^6.0.7
     "@vue/cli-plugin-babel": 5.0.8
@@ -10284,13 +10237,6 @@ __metadata:
     fdir: ^6.5.0
     picomatch: ^4.0.4
   checksum: 041e73eae568152c376551b21b8a27909d474166a8f405cdb0345991c50cf6afd0f878d7a387645d9c05d8ea2c9a55cc2fd2cfe6c5d5a5264770972b1adcad86
-  languageName: node
-  linkType: hard
-
-"tinyqueue@npm:^3.0.0":
-  version: 3.0.0
-  resolution: "tinyqueue@npm:3.0.0"
-  checksum: 49a5454935991685512e2e1848e423fce1953b95e0fe0456b9a50d07ff0bfbf4c2b1a1682191dc2d520b37c554ef518ad225133cea9434eb9cfebf811fc61e71
   languageName: node
   linkType: hard
 
