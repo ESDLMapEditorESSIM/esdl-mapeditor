@@ -1,9 +1,8 @@
-<!-- TODO: move this to components -->
 <template>
   <a-space
     id="layer-studio"
     direction="vertical"
-    style="width: 100%; padding: 4px; padding-top: 20px; height: 100%"
+    style="width: 100%; padding-top: 20px; height: 100%"
   >
     <!-- HEADER -->
     <a-row type="flex" justify="space-between" align="middle">
@@ -12,7 +11,7 @@
       </a-col>
       <a-col>
         <a-dropdown trigger="click">
-          <a-button type="primary" size="small" @click.prevent
+          <a-button type="primary" size="small" :disabled="isLoading" :loading="isLoading" @click.prevent
             >Style Layer</a-button
           >
           <template #overlay>
@@ -53,8 +52,9 @@
           v-for="(vizLayer, idx) in visualizedLayers"
           :key="idx"
           :header="vizLayer.name"
+          style="background: #FAFAFA; border-bottom: 1px solid #d9d9d9;"
         >
-          <a-col class="layer-info-row">
+          <a-col class="layer-info-col">
             <a-typography-text strong>
               Source
             </a-typography-text>
@@ -62,14 +62,25 @@
               {{ vizLayer.sourceRef.name }}
             </a-col>
           </a-col>
-          <a-col class="layer-info-row">
-            <a-typography-text strong>
-              Field
-            </a-typography-text>
+          <a-col class="layer-info-col">
+            <a-row style="align-items: center">
+              <a-typography-text strong>
+                Field
+              </a-typography-text>
+              <a-tooltip title="Type to search field for styling." placement="right">
+                <a-button size="small" type="text">
+                  <component
+                    :is="InfoCircleOutlined"
+                    style="vertical-align: 0.1rem"
+                  />
+                </a-button>
+              </a-tooltip>
+            </a-row>
             <a-select
               :value="vizLayer.style.field"
               :options="vizLayer.fieldOptions"
               style="width: 100%"
+              :show-search="true"
               @change="(field) => vizLayer.onSelectField(field)"
               @mouseleave="removeTooltipPopup"
             />
@@ -79,7 +90,7 @@
             direction="vertical"
             style="width: 100%"
           >
-            <a-col class="layer-info-row">
+            <a-col class="layer-info-col">
               <a-typography-text strong>
                 Style options
               </a-typography-text>
@@ -106,7 +117,7 @@
             </a-col>
             <a-col 
               v-if="vizLayer.style.paint.color.mode === 'fixed'"
-              class="layer-info-row"
+              class="layer-info-col"
             >
               <a-typography-text strong>
                 Color
@@ -120,7 +131,7 @@
             </a-col>
             <a-col 
               v-if="vizLayer.style.paint.color.mode !== 'fixed'"
-              class="layer-info-row"
+              class="layer-info-col"
             >
               <a-typography-text strong>
                 Color palette
@@ -155,7 +166,48 @@
                 </a-select-option>
               </a-select>
             </a-col>
-            <a-col class="layer-info-row">
+            <!-- Legend -->
+            <a-col v-if="vizLayer.legend" class="layer-info-col">
+              <a-typography-text strong>Legend</a-typography-text>
+              <!-- Categorical legend -->
+              <template v-if="vizLayer.legend.type === ColorMode.CATEGORICAL">
+                <div style="max-height: 250px; overflow-y: auto;">
+                  <div
+                    v-for="entry in vizLayer.legend.entries"
+                    :key="entry.label"
+                    style="display: flex; align-items: center; gap: 6px; padding: 2px 0"
+                  >
+                    <span
+                      :style="{
+                        backgroundColor: entry.color.startsWith('#') ? entry.color : `#${entry.color}`,
+                        width: '14px',
+                        height: '14px',
+                        display: 'inline-block',
+                        borderRadius: '2px',
+                        flexShrink: 0,
+                      }"
+                    />
+                    <a-typography-text style="font-size: small">{{ entry.label }}</a-typography-text>
+                  </div>
+                </div>
+              </template>
+              <!-- Gradient legend (min/max only; scale is log-normalized) -->
+              <template v-else-if="vizLayer.legend.type === ColorMode.GRADIENT">
+                <div
+                  :style="{
+                    background: toCssGradient(vizLayer.legend.colors),
+                    height: '14px',
+                    borderRadius: '2px',
+                    width: '100%',
+                  }"
+                />
+                <div style="display: flex; justify-content: space-between; margin-top: 2px">
+                  <a-typography-text style="font-size: small">{{ vizLayer.legend.min.toLocaleString() }}</a-typography-text>
+                  <a-typography-text style="font-size: small">{{ vizLayer.legend.max.toLocaleString() }}</a-typography-text>
+                </div>
+              </template>
+            </a-col>
+            <a-col class="layer-info-col">
               <a-typography-text strong>
                 Size
               </a-typography-text>
@@ -167,7 +219,7 @@
                 @change="(size) => vizLayer.onSizeChange(size)"
               />
             </a-col>
-            <a-col class="layer-info-row">
+            <a-col class="layer-info-col">
               <a-typography-text strong>
                 Opacity
               </a-typography-text>
@@ -181,7 +233,7 @@
             </a-col>
             <a-row
               v-if="!vizLayer.features[0].geometry.type.includes('LineString')"
-              class="layer-style-option-row"
+              class="layer-info-row"
             >
               <a-typography-text strong>
                 Show outline
@@ -197,7 +249,7 @@
                 />
               </a-col>
             </a-row>
-            <a-row class="layer-style-option-row">
+            <a-row class="layer-info-row">
               <a-typography-text strong>
                 Show label
               </a-typography-text>
@@ -292,16 +344,17 @@
 import { ref, onMounted, computed, watch, onUnmounted } from "vue";
 import { v4 as uuidv4 } from "uuid";
 import {
+  AppstoreOutlined,
+  BarChartOutlined,
+  BgColorsOutlined,
   DeleteOutlined,
+  DotChartOutlined,
   EyeInvisibleOutlined,
   EyeOutlined,
+  ExpandAltOutlined,
+  InfoCircleOutlined,
   FolderOpenOutlined,
   StarOutlined,
-  BgColorsOutlined,
-  AppstoreOutlined,
-  ExpandAltOutlined,
-  BarChartOutlined,
-  DotChartOutlined,
 } from "@ant-design/icons-vue";
 import SaveFavoritesModal from "@/components/modals/SaveFavoritesModal.vue";
 import LoadFavoritesModal from "@/components/modals/LoadFavoritesModal.vue";
@@ -510,6 +563,10 @@ const onConfirmLoadStyle = (id) => {
 // --------  Data source and Visualized Layer  ------ //
 // -------------------------------------------------- //
 
+const isLoading = computed(() => {
+  return datasources.value.find(ds => ds.loading === true) ? true : false; 
+});
+
 /**
  * Flatten all datasources' vizLayers (VisualizedLayer instances) into a single-level list.
  */
@@ -529,8 +586,10 @@ const visualizedLayers = computed(() => {
  */
 const onSelectSource = async (datasource, sourceKey) => {
   if (!datasource.geoJsonSources[sourceKey]) {
+    datasource.loading = true;
     await datasource.addAsGeoJsonSource(sourceKey);
   }
+  datasource.loading = false;
 
   datasource.onAddLayerToMap(sourceKey);
 };
@@ -651,7 +710,6 @@ class EsdlLayerSource extends DataSource {
   }
 
   /**
-   * TODO: show loading icon
    * Enrich the asset features of the given sourceKey with attribute (field) values returned
    * from the backend and store them as a GeoJSON FeatureCollection in `this.geoJsonSources`.
    *
@@ -860,6 +918,7 @@ class VisualizedLayer {
     this.fieldOptions = this._listLayerFieldOptions();
 
     this.style = JSON.parse(JSON.stringify(VisualizedLayer.defaultStyle));
+    this.legend = null;
 
     this.addLayerToMap(this.layer);
   }
@@ -1060,6 +1119,9 @@ class VisualizedLayer {
 
     const { paint, field } = this.style;
 
+    // Reset legend; set by color-styling methods when applicable.
+    this.legend = null;
+
     // Apply color
     if (paint.color.mode === ColorMode.FIXED) {
       this._styleMarkerWithSingleColor(paint.color.value);
@@ -1144,6 +1206,13 @@ class VisualizedLayer {
         const markerColor = colorscale[idx % colorscale.length];
         return { fillColor: markerColor, color: markerColor };
       });
+      this.legend = {
+        type: ColorMode.CATEGORICAL,
+        entries: fieldUniqueValues.map((val, i) => ({
+          label: String(val),
+          color: colorscale[i % colorscale.length],
+        })),
+      };
     } else {
       this._styleMarkerWithSingleColor(generateColorscale(palette, 1)[0]);
     }
@@ -1164,6 +1233,12 @@ class VisualizedLayer {
         const markerColor = colorscale[parseInt(normalizedValue * colorNum)];
         return { fillColor: markerColor, color: markerColor };
       });
+      this.legend = {
+        type: ColorMode.GRADIENT,
+        colors: colorscale,
+        min,
+        max,
+      };
     } else {
       this._styleMarkerWithSingleColor(generateColorscale(palette, 1)[0]);
     }
@@ -1245,11 +1320,11 @@ class VisualizedLayer {
   align-items: center;
 }
 
-.layer-style-option-row {
+.layer-info-row {
   justify-content: space-between;
 }
 
-.layer-info-row {
+.layer-info-col {
   padding-bottom: 8px;
 }
 
