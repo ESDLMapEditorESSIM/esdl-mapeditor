@@ -137,7 +137,7 @@ def register_extensions(
     ApplicationContextExtension(app, socketio, settings_storage)
     ResidentialArea(app, socketio, settings_storage)
     Ownership(app)
-    SpatialVisualization(app)
+    SpatialVisualization(app, socketio, settings_storage)
     AssetConstraint(app)
     data_manager = DataManager(app, socketio, settings_storage)
     ExternalModels(app, socketio, models_storage, toast_notifications)

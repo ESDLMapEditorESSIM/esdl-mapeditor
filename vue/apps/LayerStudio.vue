@@ -8,12 +8,12 @@
     <!-- HEADER -->
     <a-row type="flex" justify="space-between" align="middle">
       <a-col>
-        <h3>Visual Editor</h3>
+        <h3>Layer Visual Editor</h3>
       </a-col>
       <a-col>
         <a-dropdown trigger="click">
           <a-button type="primary" size="small" @click.prevent
-            >Add Layer</a-button
+            >Style Layer</a-button
           >
           <template #overlay>
             <a-menu>
@@ -265,43 +265,26 @@
         </a-collapse-panel>
       </a-collapse>
     </a-col>
-    <!-- TODO: support group -->
     <!-- Save layer style modal -->
-    <a-modal
+    <SaveFavoritesModal
       v-model:open="showSaveStyleModal"
       title="Add layer style to favorites"
-      ok-text="Save"
-      :ok-button-props="{ disabled: !styleNameInput }"
-      @ok="onConfirmSaveStyle"
+      :existing-groups="savedStyleGroups"
+      name-placeholder="e.g. Style demand asset power"
+      @save="({name, group}) => onConfirmSaveStyle({name, group})"
       @cancel="onCancelSaveStyleModal"
-    >
-      <a-form layout="vertical">
-        <a-form-item label="Style name">
-          <a-input
-            v-model:value="styleNameInput"
-            placeholder="e.g. Display asset name on map"
-          />
-        </a-form-item>
-      </a-form>
-    </a-modal>
+    />
     <!-- Load layer style modal -->
-    <a-modal
+    <LoadFavoritesModal
       v-model:open="showLoadStyleModal"
       title="Load layer style from favorites"
-      ok-text="Load"
-      :ok-button-props="{ disabled: !selectedSavedStyleId }"
-      @ok="onConfirmLoadStyle"
+      :items="savedStyles"
+      :label-formatter="(s) => s.lastUpdate ? `${s.name} (${new Date(s.lastUpdate).toLocaleString()})` : s.name"
+      @load="(id) => onConfirmLoadStyle(id)"
+      @delete-item="(id) => onDeleteSavedStyle(id)"
+      @delete-group="(groupName) => onDeleteSavedStyleGroup(groupName)"
       @cancel="onCancelLoadStyleModal"
-    >
-      <a-select
-        v-if="savedStyles.length > 0"
-        v-model:value="selectedSavedStyleId"
-        style="width: 100%"
-        placeholder="Select a saved style"
-        :options="savedStyles.map((s) => ({ value: s.id, label: s.name }))"
-      />
-      <p v-else class="text-only">No saved styles yet.</p>
-    </a-modal>
+    />
   </a-space>
 </template>
 
@@ -320,6 +303,9 @@ import {
   BarChartOutlined,
   DotChartOutlined,
 } from "@ant-design/icons-vue";
+import SaveFavoritesModal from "@/components/modals/SaveFavoritesModal.vue";
+import LoadFavoritesModal from "@/components/modals/LoadFavoritesModal.vue";
+import { fetchData } from "@/utils/api";
 import { displayNotification } from "@/utils/notification";
 import {
   getAssetFields,
@@ -362,6 +348,7 @@ const activeVizLayerKeys = ref([]);
 
 onMounted(async () => {
   console.debug("Initializing Layer Studio component.");
+  await fetchLayerStyles();
   if (props.layerSources.length > 0) {
     datasources.value = createDatasources(props.layerSources);
   }
@@ -387,129 +374,136 @@ onUnmounted(() => {
 
 const savedStyles = ref([]);
 
+const fetchLayerStyles = async () => {
+  try {
+    const styles = await fetchData("spatial_visualization/get_layer_styles");
+    savedStyles.value = styles;
+  } catch (error) {
+    console.error(error);
+    displayNotification("error", "Failed to retrieve saved layer styles.");
+  }
+};
+
+/**
+ * Persists the full styles list to the backend.
+ * On failure reverts `savedStyles` to its previous value.
+ *
+ * @param {Array} updatedStyles
+ * @param {Array} previousStyles
+ */
+const persistLayerStyles = async (updatedStyles, previousStyles) => {
+  savedStyles.value = updatedStyles;
+  try {
+    const saved = await fetchData("spatial_visualization/save_layer_styles", {
+      styles: updatedStyles,
+    });
+    savedStyles.value = saved;
+  } catch (error) {
+    console.error(error);
+    displayNotification("error", "Failed to save layer styles.");
+    savedStyles.value = previousStyles;
+  }
+};
+
 const showSaveStyleModal = ref(false);
-const styleNameInput = ref("");
 const vizLayerToSaveStyle = ref(undefined);
 
+const savedStyleGroups = computed(() =>
+  [...new Set(savedStyles.value.map((s) => s.group).filter(Boolean))]
+);
+
 const showLoadStyleModal = ref(false);
-const selectedSavedStyleId = ref(undefined);
 const vizLayerToLoadStyle = ref(undefined);
 
 const onSaveStyleBtnClick = (vizLayer) => {
   vizLayerToSaveStyle.value = vizLayer;
-  styleNameInput.value = "";
   showSaveStyleModal.value = true;
 };
 
 const onLoadSavedStyleBtnClick = (vizLayer) => {
   vizLayerToLoadStyle.value = vizLayer;
-  selectedSavedStyleId.value = undefined;
   showLoadStyleModal.value = true;
 };
 
-const resetSaveStyleModalInputs = () => {
-  vizLayerToSaveStyle.value = undefined;
-  styleNameInput.value = "";
-};
-
 const onCancelSaveStyleModal = () => {
-  resetSaveStyleModalInputs();
+  vizLayerToSaveStyle.value = undefined;
 };
 
 /**
- * TODO: connect with MongoDB settings
- * Snapshot the target layer's current `paint` and add it to the savedStyles list.
+ * Snapshot the target layer's current `style` and persist the updated list to the backend.
  */
-const onConfirmSaveStyle = () => {
-  if (!styleNameInput.value || !vizLayerToSaveStyle.value) {
-    return;
-  }
+const onConfirmSaveStyle = async ({ name, group }) => {
+  if (!vizLayerToSaveStyle.value) return;
 
-  const styleName = styleNameInput.value;
-
-  savedStyles.value.push({
+  const newStyle = {
     id: uuidv4(),
-    name: styleName,
-    paint: JSON.parse(JSON.stringify(vizLayerToSaveStyle.value.paint)),
-  });
+    name,
+    group,
+    // Used as a simple way to distinguish styles sharing the same name and group.
+    lastUpdate: Date.now(),
+    style: JSON.parse(JSON.stringify(vizLayerToSaveStyle.value.style)),
+  };
+  const previousStyles = savedStyles.value;
+  const updatedStyles = [...previousStyles, newStyle];
 
-  displayNotification(
-    "success",
-    `Layer style '${styleName}' saved to favorites.`,
-  );
+  vizLayerToSaveStyle.value = undefined;
 
-  resetSaveStyleModalInputs();
-  showSaveStyleModal.value = false;
-};
-
-const resetLoadStyleModalInputs = () => {
-  vizLayerToLoadStyle.value = undefined;
-  selectedSavedStyleId.value = undefined;
+  await persistLayerStyles(updatedStyles, previousStyles);
+  displayNotification("success", `Layer style '${name}' saved to favorites.`);
 };
 
 const onCancelLoadStyleModal = () => {
-  resetLoadStyleModalInputs();
+  vizLayerToLoadStyle.value = undefined;
+};
+
+const onDeleteSavedStyle = async (id) => {
+  const previousStyles = savedStyles.value;
+  const updatedStyles = previousStyles.filter((s) => s.id !== id);
+  await persistLayerStyles(updatedStyles, previousStyles);
+};
+
+const onDeleteSavedStyleGroup = async (groupName) => {
+  const previousStyles = savedStyles.value;
+  const updatedStyles = previousStyles.filter(
+    (s) => (s.group || "Ungrouped") !== groupName,
+  );
+  await persistLayerStyles(updatedStyles, previousStyles);
 };
 
 /**
- * TODO: review & show notification on fallback
- *
- * Applies a saved `paint` config onto the target vizLayer. Field references (color/size/label)
- * that don't exist on the target layer (e.g. the style was saved from a different sourceKey/asset
- * type) are treated as untrusted and dropped, falling back to a safe default, before applyStyle()
- * is called.
+ * Applies a saved style config onto the target vizLayer.
  *
  * @param {VisualizedLayer} vizLayer
- * @param {Object} savedPaint
+ * @param {Object} savedStyle - Full savedStyle object ({ id, name, group, style }).
  */
-const applySavedStyleToVizLayer = (vizLayer, savedPaint) => {
-  const paint = JSON.parse(JSON.stringify(savedPaint));
+const applySavedStyleToVizLayer = (vizLayer, savedStyle) => {
+  const style = JSON.parse(JSON.stringify(savedStyle.style));
   const fieldNames = vizLayer.fieldOptions.map((f) => f.value);
-  const numericFieldNames = vizLayer.numericFieldOptions.map((f) => f.value);
 
-  if (paint.color.field !== undefined) {
-    const validFieldNames =
-      paint.color.mode === "gradient" ? numericFieldNames : fieldNames;
-    if (!validFieldNames.includes(paint.color.field)) {
-      paint.color.field = undefined;
-      paint.color.mode = "single";
-    }
-  }
-  if (
-    paint.size.field !== undefined &&
-    !numericFieldNames.includes(paint.size.field)
-  ) {
-    paint.size.field = undefined;
-    paint.size.mode = "fixed";
-  }
-  if (
-    paint.label.field !== undefined &&
-    !fieldNames.includes(paint.label.field)
-  ) {
-    paint.label.field = undefined;
-    paint.label.visible = false;
-  }
-
-  vizLayer.paint = paint;
-  vizLayer.applyStyle();
-};
-
-// TODO: retrieve savedStyles from MongoDB settings
-const onConfirmLoadStyle = () => {
-  if (!selectedSavedStyleId.value || !vizLayerToLoadStyle.value) {
+  // If the saved field does not exist on the target layer, abort and warn the user.
+  if (style.field !== undefined && !fieldNames.includes(style.field)) {
+    displayNotification(
+      "warning",
+      `Field '${style.field}' is not available on this layer. Style not applied.`,
+    );
     return;
   }
 
-  const savedStyle = savedStyles.value.find(
-    (s) => s.id === selectedSavedStyleId.value,
-  );
+  vizLayer.style = style;
+  vizLayer.applyStyle();
+  displayNotification("success", `Layer style '${savedStyle.name}' applied.`);
+};
+
+// Applies a saved style to the target vizLayer.
+const onConfirmLoadStyle = (id) => {
+  if (!vizLayerToLoadStyle.value) return;
+
+  const savedStyle = savedStyles.value.find((s) => s.id === id);
   if (savedStyle) {
-    applySavedStyleToVizLayer(vizLayerToLoadStyle.value, savedStyle.paint);
-    displayNotification("success", `Layer style '${savedStyle.name}' applied.`);
+    applySavedStyleToVizLayer(vizLayerToLoadStyle.value, savedStyle);
   }
 
-  resetLoadStyleModalInputs();
-  showLoadStyleModal.value = false;
+  vizLayerToLoadStyle.value = undefined;
 };
 
 // -------------------------------------------------- //
@@ -829,14 +823,12 @@ class VisualizedLayer {
       color: {
         mode: ColorMode.FIXED, // ColorMode Enum
         value: "#1f78b4",
-        field: undefined,
         palette: undefined,
         stops: [],
       },
       symbol: {
         size: {
           mode: SizeMode.FIXED, // SizeMode Enum
-          field: undefined,
           value: 5,
           minSize: 1,
           maxSize: 10,
