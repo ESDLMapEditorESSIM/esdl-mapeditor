@@ -158,6 +158,28 @@ class ESDLFileImport:
             call_process_energy_system.submit()
 
     @staticmethod
+    def convert_asset_inline_profiles_to_influx(asset: esdl.Asset) -> esdl.Asset:
+        area = esdl.Area(id=str(uuid.uuid4()), name="Service result", asset=[asset])
+        energy_system = esdl.EnergySystem(
+            id=str(uuid.uuid4()),
+            name="Service result",
+            energySystemInformation=esdl.EnergySystemInformation(
+                id=str(uuid.uuid4()),
+                profiles=esdl.Profiles(id=str(uuid.uuid4())),
+            ),
+            instance=[
+                esdl.Instance(
+                    id=str(uuid.uuid4()),
+                    name="Service result",
+                    area=area,
+                )
+            ],
+        )
+        ESDLFileImport.convert_inline_to_influx(energy_system)
+        area.asset.remove(asset)
+        return asset
+
+    @staticmethod
     def convert_inline_to_influx(inline_es: EnergySystem) -> EnergySystem:
         inline_esi = inline_es.energySystemInformation
 

@@ -47,6 +47,7 @@ from extensions.projects import update_visualization_options
 from extensions.session_manager import get_project_manager, get_session, set_session, del_session
 from extensions.settings_storage import SettingsStorage
 from src.esdl2inlineprofile import copy_and_convert_esdl_profiles
+from src.esdl_file_import import ESDLFileImport
 from src.esdl_helper import energy_asset_to_ui
 from src.process_es_area_bld import (
     calc_possible_locations_in_area,
@@ -621,10 +622,11 @@ class ESDLServices:
                     add_assets_to_area = add_assets_service_result
                 else:
                     add_assets = add_assets_service_result["add_assets"]
+                    target_area_id = state_params.get("area_id", area.id) if state_params else area.id
                     if isinstance(add_assets, list):
-                        add_assets_to_area[area.id] = add_assets
+                        add_assets_to_area[target_area_id] = add_assets
                     elif isinstance(add_assets, str):
-                        add_assets_to_area[area.id] = [add_assets]
+                        add_assets_to_area[target_area_id] = [add_assets]
                     else:
                         logger.error("add_assets service config not handled properly yet!")
                         return (False, "add_assets service config not handled properly yet!", None)
@@ -656,6 +658,8 @@ class ESDLServices:
 
                     for asset_str in asset_str_list:
                         asset = ESDLAsset.load_asset_from_string(asset_str)
+                        if result_config.get("profiles") == "influxdb":
+                            asset = ESDLFileImport.convert_asset_inline_profiles_to_influx(asset)
                         # Only assign a new location if the asset didn't already have a location
                         if not asset.geometry and area_shape and possible_locations:
                             # The asset gets a random location from the list of possible locations
