@@ -1,4 +1,5 @@
 import { defaultColorScheme } from "@/utils/visualization";
+import { fetchData } from "@/utils/api";
 
 /** Valid field data types that can be used for layer styling. */
 const FieldType = Object.freeze({
@@ -68,32 +69,109 @@ const parseFieldValue = (value, type) => {
     }
 };
 
-// TODO: improve performance
 const getAssetFields = async(esId, assetId) => {
     try {
-      const response = await fetch(`/spatial_visualization/asset_fields/${esId}/${assetId}`);
-      const fields = await response.json();
-  
-      const parsedFields = fields.map((f) => {
-        const jsType = mapEcoreTypeToJsType(f.type);
-        let parsedValue = f.value;
-        if (f.value !== null) {
-          parsedValue = parseFieldValue(f.value, jsType);
-        }
+      const attributes = await fetchData('spatial_visualization/asset_fields', { es_id: esId, asset_id: assetId });
+
+      return attributes.map((attr) => {
+        const jsType = mapEcoreTypeToJsType(attr.type);
         return {
-          ...f,
+          ...attr,
           type: jsType,
-          value: parsedValue,
+          value: attr.value !== null ? parseFieldValue(attr.value, jsType) : attr.value,
         };
       });
-  
-      return parsedFields;
     } catch (error) {
       console.error(error);
+      return [];
     }
 };
 
-// TODO: avoid duplicated code (ESDLAnalytics.vue)
+/**
+ * Fetch the complete reference field tree for the given assets in a single pass.
+ *
+ * The tree carries ref field names and types only; values are
+ * fetched by getRefFieldValues() separately once a leaf is selected.
+ *
+ * @param {string} esId - Energy system ID.
+ * @param {string[]} assetIds - Assets the tree is built over.
+ * @returns {Promise<Array>} Nested tree nodes; leaves carry { value, display, type }.
+ */
+const getRefFieldSchema = async (esId, assetIds) => {
+  const refFieldSchemaRequest = {
+    es_id: esId,
+    asset_ids: assetIds,
+  };
+  try {
+    const data = await fetchData('spatial_visualization/ref_field_schema', refFieldSchemaRequest);
+    const nodes = [];
+
+    // Parse costInformation dict into a-tree-select nodes; KPIs ignored for now.
+    const costInfo = data?.ref?.costInformation;
+    if (costInfo && typeof costInfo === 'object') {
+      const children = Object.entries(costInfo)
+        .map(([refName, attrs]) => {
+          const leaves = (attrs || []).map((a) => {
+            const jsType = mapEcoreTypeToJsType(a.attrType);
+            return {
+              value: a.path,
+              label: `${a.attr} [${jsType}]`,
+              display: `Cost Information > ${refName} > ${a.attr}`,
+              attrType: a.attrType,
+              type: jsType,
+              disabled: !Object.values(FieldType).includes(jsType),
+              isLeaf: true,
+            };
+          });
+          if (!leaves.length) return null;
+          return { value: `costInformation:${refName}`, label: refName, selectable: false, children: leaves };
+        })
+        .filter(Boolean);
+      if (children.length) {
+        nodes.push({ value: 'costInformation', label: 'Cost Information', selectable: false, children });
+      }
+    }
+
+    return nodes;
+  } catch (error) {
+    console.error('Error fetching ref field schema:', error);
+    throw error;
+  }
+};
+
+/**
+ * Fetch the values of a scalar ref field in bulk for the given assets.
+ *
+ * @param {string} esId - Energy system ID.
+ * @param {string[]} assetIds - Array of asset IDs to fetch values for.
+ * @param {string} path - Opaque path token from a leaf node's `value`.
+ * @returns {Promise<Object>} Map of { assetId: { value, type } | null }.
+ *   The `value` is already parsed to the correct JS type; `type` is a {@link FieldType} value.
+ */
+const getRefFieldValues = async (esId, assetIds, path) => {
+  const refFieldValuesRequest = {
+    es_id: esId,
+    asset_ids: assetIds,
+    path: path,
+  };
+  const data = await fetchData('spatial_visualization/ref_field_values', refFieldValuesRequest);
+  // data: { assetId: { value: string | null, type: EcoreTypeName } | null }
+
+  const result = {};
+  for (const [assetId, entry] of Object.entries(data)) {
+      if (entry === null || entry.type === null) {
+          result[assetId] = null;
+      } else {
+          const jsType = mapEcoreTypeToJsType(entry.type);
+          result[assetId] = {
+              value: entry.value !== null ? parseFieldValue(entry.value, jsType) : null,
+              type: jsType,
+          };
+      }
+  }
+  return result;
+};
+ 
 /**
  * Generates a colorscale based on the specified palette and number of colors.
  * 
@@ -166,5 +244,5 @@ const setLeafletFeatureStyle = (geometryType, style = {}) => {
   }
 }
 
-export { getAssetFields, generateColorscale, setLeafletFeatureStyle, FieldType, StyleType, ColorMode, SizeMode, PaletteName };
+export { getAssetFields, getRefFieldSchema, getRefFieldValues, generateColorscale, setLeafletFeatureStyle, FieldType, StyleType, ColorMode, SizeMode, PaletteName };
 

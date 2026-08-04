@@ -67,7 +67,7 @@
               <a-typography-text strong>
                 Field
               </a-typography-text>
-              <a-tooltip title="Type to search field for styling." placement="right">
+              <a-tooltip title="Type to search a field for styling. Reference fields load their values on selection." placement="right">
                 <a-button size="small" type="text">
                   <component
                     :is="InfoCircleOutlined"
@@ -76,11 +76,15 @@
                 </a-button>
               </a-tooltip>
             </a-row>
-            <a-select
+            <a-tree-select
               :value="vizLayer.style.field"
-              :options="vizLayer.fieldOptions"
+              :tree-data="vizLayer.fieldTree"
+              :tree-default-expanded-keys="['__attributes__']"
+              :loading="vizLayer.loadingRefSchema || vizLayer.loadingRefField"
               style="width: 100%"
               :show-search="true"
+              tree-node-filter-prop="label"
+              @focus="vizLayer.loadRefSchema()"
               @change="(field) => vizLayer.onSelectField(field)"
               @mouseleave="removeTooltipPopup"
             />
@@ -362,6 +366,8 @@ import { fetchData } from "@/utils/api";
 import { displayNotification } from "@/utils/notification";
 import {
   getAssetFields,
+  getRefFieldSchema,
+  getRefFieldValues,
   generateColorscale,
   setLeafletFeatureStyle,
   FieldType,
@@ -525,12 +531,19 @@ const onDeleteSavedStyleGroup = async (groupName) => {
 
 /**
  * Applies a saved style config onto the target vizLayer.
+ * If the saved style references a ref path that hasn't been loaded yet, it is loaded first.
  *
  * @param {VisualizedLayer} vizLayer
  * @param {Object} savedStyle - Full savedStyle object ({ id, name, group, style }).
  */
-const applySavedStyleToVizLayer = (vizLayer, savedStyle) => {
+const applySavedStyleToVizLayer = async (vizLayer, savedStyle) => {
   const style = JSON.parse(JSON.stringify(savedStyle.style));
+
+  // Ensure ref field is enriched before checking fieldOptions.
+  if (style.refPath && !vizLayer.loadedRefPaths[style.refPath]) {
+    await vizLayer.loadRefField(style.refPath, style.refLabel);
+  }
+
   const fieldNames = vizLayer.fieldOptions.map((f) => f.value);
 
   // If the saved field does not exist on the target layer, abort and warn the user.
@@ -548,12 +561,12 @@ const applySavedStyleToVizLayer = (vizLayer, savedStyle) => {
 };
 
 // Applies a saved style to the target vizLayer.
-const onConfirmLoadStyle = (id) => {
+const onConfirmLoadStyle = async (id) => {
   if (!vizLayerToLoadStyle.value) return;
 
   const savedStyle = savedStyles.value.find((s) => s.id === id);
   if (savedStyle) {
-    applySavedStyleToVizLayer(vizLayerToLoadStyle.value, savedStyle);
+    await applySavedStyleToVizLayer(vizLayerToLoadStyle.value, savedStyle);
   }
 
   vizLayerToLoadStyle.value = undefined;
@@ -720,23 +733,15 @@ class EsdlLayerSource extends DataSource {
     const layerFeatures = this.sources[sourceKey];
     const geoJsonFeaturePromises = layerFeatures.map(async (f) => {
       const g = f.toGeoJSON();
+      g.id = f.id; // Preserve asset ID for later ref field value lookup.
 
       const assetId = f.id;
-      // TODO: this method is ESDL specific, but it could be made more generic if needed
-      // TODO: support references; this is not very efficient?
       const fields = await getAssetFields(this.id, assetId);
-      g["_fields"] = fields["attributes"];
+      g["_fields"] = fields;
 
       const properties = {};
-      // Direct asset attributes
-      fields.attributes.forEach((attr) => {
+      fields.forEach((attr) => {
         properties[attr.name] = attr.value;
-      });
-      // Reference sub-attributes — namespaced as "refName.attrName" to avoid collisions
-      fields.references.forEach((ref) => {
-        ref.attributes.forEach((attr) => {
-          properties[`${ref.name}.${attr.name}`] = attr.value;
-        });
       });
       g.properties = properties;
 
@@ -877,6 +882,8 @@ class VisualizedLayer {
     field: undefined,
     fieldType: undefined, // undefined || FieldType Enum
     styleType: undefined, // undefined || StyleType Enum
+    refPath: null, // opaque ref path token when the field is a reference attribute
+    refLabel: null, // human readable form of refPath, kept so saved styles can restore the field option
     paint: {
       color: {
         mode: ColorMode.FIXED, // ColorMode Enum
@@ -919,6 +926,15 @@ class VisualizedLayer {
 
     this.style = JSON.parse(JSON.stringify(VisualizedLayer.defaultStyle));
     this.legend = null;
+
+    // Tracks which ref paths have already had their values fetched, keyed by path token → JS type.
+    this.loadedRefPaths = {};
+    this.loadingRefField = false;
+
+    // Reference field tree. Kept per layer because it only lists paths this layer's assets populate.
+    this.refSchema = [];
+    this.loadingRefSchema = false;
+    this.fieldTree = this._buildFieldTree();
 
     this.addLayerToMap(this.layer);
   }
@@ -988,15 +1004,123 @@ class VisualizedLayer {
     }
   }
 
+  /**
+   * Loads the full reference field tree once, on first focus of the field selector.
+   */
+  async loadRefSchema() {
+    if (this.refSchema.length > 0 || this.loadingRefSchema) return;
+    this.loadingRefSchema = true;
+    try {
+      this.refSchema = await getRefFieldSchema(this.sourceRef.id, this._assetIds());
+      this.fieldTree = this._buildFieldTree();
+    } catch (error) {
+      console.error('Failed to load reference field schema:', error);
+      displayNotification('error', 'Failed to load reference field schema.');
+    } finally {
+      this.loadingRefSchema = false;
+    }
+  }
+
+  /**
+   * @param {string} path - Opaque ref path token.
+   * @returns {Object|null} The schema leaf with that value, if the tree is loaded.
+   */
+  findRefSchemaNode(path) {
+    const search = (nodes) => {
+      for (const node of nodes) {
+        if (node.value === path) return node;
+        const found = node.children ? search(node.children) : null;
+        if (found) return found;
+      }
+      return null;
+    };
+    return search(this.refSchema);
+  }
+
+  _assetIds() {
+    return this.features.map((f) => f.id);
+  }
+
+  // TODO: cleanup
+  _buildFieldTree() {
+    const attributes = this.fieldOptions
+      .filter((opt) => !opt.refPath)
+      .map((opt) => ({ value: opt.value, label: opt.label, disabled: opt.disabled, isLeaf: true }));
+    return [
+      { value: '__attributes__', label: 'Attributes', selectable: false, children: attributes },
+      ...this.refSchema,
+    ];
+  }
+
+  /**
+   * TODO: review
+   * Enriches the layer features with values for the given ref path and
+   * registers the path as a selectable field.
+   *
+   * @param {string} path - Opaque ref path token produced by the backend schema endpoint.
+   * @param {string} [label] - Fallback readable path, used when the schema tree isn't loaded.
+   */
+  async loadRefField(path, label) {
+    if (this.loadedRefPaths[path]) return;
+    this.loadingRefField = true;
+    try {
+      // Needed so a restored saved style can resolve its label without a prior browse.
+      await this.loadRefSchema();
+      const displayLabel = this.findRefSchemaNode(path)?.display || label || path;
+      const result = await getRefFieldValues(this.sourceRef.id, this._assetIds(), path);
+
+      const firstEntry = Object.values(result).find((r) => r !== null);
+      if (!firstEntry) {
+        console.warn(`No data returned for ref path '${path}'`);
+        return;
+      }
+
+      const jsType = firstEntry.type;
+
+      // Inject ref values into each feature's properties so styling methods can access them.
+      this.features.forEach((f) => {
+        f.properties[path] = result[f.id]?.value ?? null;
+      });
+
+      if (!this.fieldOptions.find((opt) => opt.value === path)) {
+        this.fieldOptions = [
+          ...this.fieldOptions,
+          {
+            label: `${displayLabel} [${jsType}]`,
+            value: path,
+            type: jsType,
+            refPath: path,
+            refLabel: displayLabel,
+            disabled: !Object.values(FieldType).includes(jsType),
+          },
+        ];
+      }
+
+      this.loadedRefPaths[path] = jsType;
+    } catch (error) {
+      console.error(`Failed to load reference field '${path}':`, error);
+      displayNotification('error', 'Failed to load reference field values.');
+    } finally {
+      this.loadingRefField = false;
+    }
+  }
+
   // ---------------------------------------- //
   // ----------- Event handlers ------------- //
   // ---------------------------------------- //
 
-  onSelectField (field) {
+  async onSelectField (field) {
+    // Reference fields only exist as schema nodes until picked; their values load on first selection.
+    if (!this.fieldOptions.find((f) => f.value === field)) {
+      await this.loadRefField(field);
+    }
+    const opt = this.fieldOptions.find((f) => f.value === field);
+    if (!opt) return;
+
     this.style.field = field;
-    this.style.fieldType = this.fieldOptions.find(
-      (f) => f.value === field,
-    ).type;
+    this.style.fieldType = opt.type;
+    this.style.refPath = opt.refPath || null;
+    this.style.refLabel = opt.refLabel || null;
 
     this.preSelectStyleTypeOnFieldSelection();
     this.applyStyle();
@@ -1084,6 +1208,8 @@ class VisualizedLayer {
     updated.field = this.style.field;
     updated.fieldType = this.style.fieldType;
     updated.styleType = this.style.styleType;
+    updated.refPath = this.style.refPath;
+    updated.refLabel = this.style.refLabel;
 
     // Derive paint modes from fieldType + styleType.
     const { fieldType } = updated;
