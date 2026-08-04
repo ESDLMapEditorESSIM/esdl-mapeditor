@@ -261,13 +261,61 @@
                 <a-switch
                   :checked="vizLayer.style.paint.label.visible"
                   size="small"
-                  @change="
-                    (visible) =>
-                      vizLayer.onToggleShowLabels(visible)
-                  "
+                  @change="(visible) => vizLayer.onToggleShowLabels(visible)"
                 />
               </a-col>
             </a-row>
+            <template v-if="vizLayer.style.paint.label.visible">
+              <a-row class="layer-info-row" style="padding-left: 16px">
+                <a-typography-text>
+                  Show on hover
+                </a-typography-text>
+                <a-col :span="2">
+                  <a-switch
+                    :checked="!vizLayer.style.paint.label.permanent"
+                    size="small"
+                    @change="(hoverOnly) => vizLayer.onToggleLabelPermanent(!hoverOnly)"
+                  />
+                </a-col>
+              </a-row>
+              <a-row class="layer-info-row" style="padding-left: 16px">
+                <a-typography-text>
+                  Show 'No data' labels
+                </a-typography-text>
+                <a-col :span="2">
+                  <a-switch
+                    :checked="vizLayer.style.paint.label.showNullValues"
+                    size="small"
+                    @change="(v) => vizLayer.onToggleLabelShowNullValues(v)"
+                  />
+                </a-col>
+              </a-row>
+              <a-col class="layer-info-col" style="padding-left: 16px">
+                <a-typography-text>Label offset</a-typography-text>
+                <a-row :gutter="8" style="margin-top: 4px">
+                  <a-col :span="12">
+                    <a-input-number
+                      :value="vizLayer.style.paint.label.offset[0]"
+                      :controls="true"
+                      size="small"
+                      style="width: 100%"
+                      addon-before="X"
+                      @change="(v) => vizLayer.onLabelOffsetChange('x', v)"
+                    />
+                  </a-col>
+                  <a-col :span="12">
+                    <a-input-number
+                      :value="vizLayer.style.paint.label.offset[1]"
+                      :controls="true"
+                      size="small"
+                      style="width: 100%"
+                      addon-before="Y"
+                      @change="(v) => vizLayer.onLabelOffsetChange('y', v)"
+                    />
+                  </a-col>
+                </a-row>
+              </a-col>
+            </template>
           </a-space>
           <template #extra>
             <a-row>
@@ -908,6 +956,9 @@ class VisualizedLayer {
       opacity: 1.0,
       label: {
         visible: false,
+        permanent: true,
+        offset: [0, 0],
+        showNullValues: false,
       },
     },
   };
@@ -1193,6 +1244,23 @@ class VisualizedLayer {
     this.applyStyle();
   }
 
+  onToggleLabelPermanent(permanent) {
+    this.style.paint.label.permanent = permanent;
+    this.applyStyle();
+  }
+
+  onToggleLabelShowNullValues(showNullValues) {
+    this.style.paint.label.showNullValues = showNullValues;
+    this.applyStyle();
+  }
+
+  onLabelOffsetChange(axis, value) {
+    const offset = [...this.style.paint.label.offset];
+    offset[axis === 'x' ? 0 : 1] = value ?? 0;
+    this.style.paint.label.offset = offset;
+    this.applyStyle();
+  }
+
   /**
    * Builds and returns a new style object derived from the current `this.style` state.
    * It maps `fieldType` and `styleType` to derive `paint.color.mode` and
@@ -1267,7 +1335,7 @@ class VisualizedLayer {
     // Apply opacity, stroke, labels
     this._styleMarkerOpacity(paint.opacity);
     this._showHideMarkerStroke(paint.stroke);
-    this._showHideFeatureLabels(field, paint.label.visible);
+    this._showHideFeatureLabels(field, paint.label);
   }
 
   // ---------------------------------------- //
@@ -1308,17 +1376,22 @@ class VisualizedLayer {
     }
   }
 
-  _showHideFeatureLabels(selectedField, showLabel = false) {
+  _showHideFeatureLabels(selectedField, label) {
     this.layer.eachLayer((featureLayer) => {
       featureLayer.closeTooltip();
       featureLayer.unbindTooltip();
 
-      if (showLabel && featureLayer.feature?.properties) {
+      if (label.visible && featureLayer.feature?.properties) {
         const fieldValue = featureLayer.feature.properties[selectedField];
+        if (fieldValue === null && !label.showNullValues) return;
         const popupContent = fieldValue !== null ? `${fieldValue}` : "No data";
-        featureLayer
-          .bindTooltip(popupContent, { permanent: true, direction: "top", opacity: 0.8 })
-          .openTooltip();
+        featureLayer.bindTooltip(popupContent, {
+          permanent: label.permanent,
+          direction: "top",
+          offset: label.offset,
+          opacity: 0.8,
+        });
+        if (label.permanent) featureLayer.openTooltip();
       }
     });
   }
