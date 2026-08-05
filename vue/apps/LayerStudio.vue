@@ -79,7 +79,7 @@
             <a-tree-select
               :value="vizLayer.style.field"
               :tree-data="vizLayer.fieldTree"
-              :tree-default-expanded-keys="['__attributes__']"
+              :tree-default-expanded-keys="['__attributes__', '__costInformation__', '__KPIs__']"
               :loading="vizLayer.loadingRefSchema || vizLayer.loadingRefField"
               style="width: 100%"
               :show-search="true"
@@ -120,7 +120,7 @@
               </a-row>
             </a-col>
             <a-col 
-              v-if="vizLayer.style.paint.color.mode === 'fixed'"
+              v-if="vizLayer.style.paint.color.mode === ColorMode.FIXED"
               class="layer-info-col"
             >
               <a-typography-text strong>
@@ -134,7 +134,7 @@
               />
             </a-col>
             <a-col 
-              v-if="vizLayer.style.paint.color.mode !== 'fixed'"
+              v-if="vizLayer.style.paint.color.mode !== ColorMode.FIXED"
               class="layer-info-col"
             >
               <a-typography-text strong>
@@ -174,7 +174,7 @@
             <a-col v-if="vizLayer.legend" class="layer-info-col">
               <a-typography-text strong>Legend</a-typography-text>
               <!-- Categorical legend -->
-              <template v-if="vizLayer.legend.type === ColorMode.CATEGORICAL">
+              <template v-if="[ColorMode.CATEGORICAL, StyleType.PIE_CHART].includes(vizLayer.legend.type)">
                 <div style="max-height: 250px; overflow-y: auto;">
                   <div
                     v-for="entry in vizLayer.legend.entries"
@@ -278,7 +278,10 @@
                   />
                 </a-col>
               </a-row>
-              <a-row class="layer-info-row" style="padding-left: 16px">
+              <a-row
+                v-if="vizLayer.style.styleType !== StyleType.PIE_CHART"
+                class="layer-info-row" style="padding-left: 16px"
+              >
                 <a-typography-text>
                   Show 'No data' labels
                 </a-typography-text>
@@ -404,9 +407,10 @@ import {
   EyeInvisibleOutlined,
   EyeOutlined,
   ExpandAltOutlined,
-  InfoCircleOutlined,
   FolderOpenOutlined,
+  InfoCircleOutlined,
   StarOutlined,
+  PieChartOutlined
 } from "@ant-design/icons-vue";
 import SaveFavoritesModal from "@/components/modals/SaveFavoritesModal.vue";
 import LoadFavoritesModal from "@/components/modals/LoadFavoritesModal.vue";
@@ -887,6 +891,15 @@ class VisualizedLayer {
         }
       },
     ],
+    [FieldType.ARRAY]: [
+      {
+        value: StyleType.PIE_CHART,
+        payload: {
+          label: "Pie Chart",
+          icon: PieChartOutlined,
+        }
+      },
+    ]
   });
 
   static colorPalettes = {
@@ -937,14 +950,13 @@ class VisualizedLayer {
         mode: ColorMode.FIXED, // ColorMode Enum
         value: "#1f78b4",
         palette: undefined,
-        stops: [],
       },
       symbol: {
         size: {
           mode: SizeMode.FIXED, // SizeMode Enum
-          value: 5,
+          value: 10,
           minSize: 1,
-          maxSize: 10,
+          maxSize: 20,
         }
       },
       stroke: {
@@ -981,6 +993,9 @@ class VisualizedLayer {
     // Tracks which ref paths have already had their values fetched, keyed by path token → JS type.
     this.loadedRefPaths = {};
     this.loadingRefField = false;
+
+    // Separate Leaflet layer group used only when styleType is PIE_CHART.
+    this._symbolLayer = null;
 
     // Reference field tree. Kept per layer because it only lists paths this layer's assets populate.
     this.refSchema = [];
@@ -1037,10 +1052,12 @@ class VisualizedLayer {
   toggleLayer(event) {
     event.stopPropagation();
     if (this.visible) {
+      if (this._symbolLayer) this.sourceRef.mapLayerGroup.removeLayer(this._symbolLayer);
       this.sourceRef.mapLayerGroup.removeLayer(this.layer);
       this.visible = false;
     } else {
       this.sourceRef.mapLayerGroup.addLayer(this.layer);
+      if (this._symbolLayer) this.sourceRef.mapLayerGroup.addLayer(this._symbolLayer);
       this.visible = true;
     }
   }
@@ -1048,6 +1065,7 @@ class VisualizedLayer {
   removeLayer(event) {
     event.stopPropagation();
     if (this.sourceRef) {
+      this._clearSymbolLayer();
       this.sourceRef.vizLayers = this.sourceRef.vizLayers.filter(
         (layer) => layer.id !== this.id,
       );
@@ -1092,7 +1110,6 @@ class VisualizedLayer {
     return this.features.map((f) => f.id);
   }
 
-  // TODO: cleanup
   _buildFieldTree() {
     const attributes = this.fieldOptions
       .filter((opt) => !opt.refPath)
@@ -1211,6 +1228,8 @@ class VisualizedLayer {
       } else if (this.style.fieldType === FieldType.NUMBER) {
         this.style.paint.color.palette = VisualizedLayer.colorPalettes[ColorMode.GRADIENT][0].value;
       }
+    } else if (this.style.styleType === StyleType.PIE_CHART) {
+      this.style.paint.color.palette = VisualizedLayer.colorPalettes[ColorMode.CATEGORICAL][0].value;
     }
   }
 
@@ -1295,6 +1314,8 @@ class VisualizedLayer {
         updated.paint.color.mode = ColorMode.GRADIENT;
         updated.paint.symbol.size.mode = SizeMode.GRADUATED;
       }
+    } else if (fieldType === FieldType.ARRAY) {
+      updated.paint.color.mode = ColorMode.CATEGORICAL;
     }
 
     // Preserve explicit user-configured paint values from the previous style.
@@ -1315,6 +1336,15 @@ class VisualizedLayer {
 
     // Reset legend; set by color-styling methods when applicable.
     this.legend = null;
+
+    if (this.style.styleType === StyleType.PIE_CHART) {
+      this._styleMarkersAsPieCharts(field, paint.color.palette, paint.symbol.size.value, paint.opacity, paint.stroke);
+      this._showHidePieChartLabels(field, paint.label);
+      return;
+    }
+
+    // For non-pie-chart styles, clean up any existing symbol overlay.
+    this._clearSymbolLayer();
 
     // Apply color
     if (paint.color.mode === ColorMode.FIXED) {
@@ -1341,6 +1371,130 @@ class VisualizedLayer {
   // ---------------------------------------- //
   // ----- Internal methods for styling ----- //
   // ---------------------------------------- //
+
+  _clearSymbolLayer() {
+    if (!this._symbolLayer) return;
+    // Close tooltips before removing to avoid orphaned zoom-animation listeners.
+    this._symbolLayer.eachLayer((layer) => { layer.closeTooltip(); layer.unbindTooltip(); });
+    this._symbolLayer.clearLayers();
+    this.sourceRef.mapLayerGroup.removeLayer(this._symbolLayer);
+    this._symbolLayer = null;
+  }
+
+  _styleMarkersAsPieCharts(field, palette, size, opacity, stroke) {
+    // NICE TO HAVE: cache allLabels to avoid recalculating on each style change.
+    // Collect all unique labels across features for a consistent color assignment.
+    const allLabels = new Set();
+    this.features.forEach((f) => {
+      const items = f.properties[field];
+      if (Array.isArray(items)) items.forEach((i) => allLabels.add(i.label));
+    });
+    const labelList = [...allLabels].sort();
+    const colorscale = generateColorscale(palette, labelList.length);
+    const colorByLabel = Object.fromEntries(labelList.map((l, i) => [l, colorscale[i]]));
+
+    // NICE TO HAVE: cache featureSums to avoid recalculating on each style change.
+    // Compute each feature's distribution sum to drive proportional radius scaling.
+    const featureSums = new Map();
+    this.features.forEach((f) => {
+      const items = f.properties[field];
+      if (!Array.isArray(items) || items.length === 0) return;
+      const sum = items.reduce((acc, i) => acc + (i.value ?? 0), 0);
+      if (sum > 0) featureSums.set(f.id, sum);
+    });
+    const sums = [...featureSums.values()];
+    const minSum = sums.length ? Math.min(...sums) : 0;
+    const maxSum = sums.length ? Math.max(...sums) : 0;
+    const rMin = size ?? 5;
+    const rMax = rMin * 6;
+
+    // Log-normalized radius;
+    const calcRadius = (id) => {
+      const sum = featureSums.get(id);
+      if (!sum) return 0;
+      if (minSum === maxSum) return rMax;
+      return ((Math.log1p(sum) - Math.log1p(minSum)) / (Math.log1p(maxSum) - Math.log1p(minSum))) * (rMax - rMin) + rMin;
+    };
+
+    // Full teardown each time so Leaflet properly removes zoom-animation listeners on old markers.
+    this._clearSymbolLayer();
+    this._symbolLayer = L.layerGroup();
+    this._symbolLayer.addTo(this.sourceRef.mapLayerGroup);
+
+    // Hide all base circle markers; features without array data show nothing.
+    this.layer.eachLayer((fl) => fl.setStyle({ opacity: 0, fillOpacity: 0, stroke: false }));
+
+    this.layer.eachLayer((featureLayer) => {
+      const feature = featureLayer.feature;
+      // TODO: maybe also support Polyline or Polygon features with a centroid for the pie chart position?
+      if (!feature.geometry.type.includes('Point')) return;
+      const items = feature.properties[field];
+      if (!Array.isArray(items) || items.length === 0) return;
+
+      const radius = calcRadius(feature.id);
+      if (radius <= 0) return;
+
+      const [lng, lat] = feature.geometry.coordinates;
+      const data = {};
+      const chartOptions = {};
+      labelList.forEach((label) => {
+        const item = items.find((i) => i.label === label);
+        data[label] = item?.value ?? 0;
+        chartOptions[label] = {
+          fillColor: colorByLabel[label],
+        };
+      });
+
+      const pieChart = new L.PieChartMarker(
+        new L.LatLng(lat, lng),
+        {
+          radius,
+          fillOpacity: opacity ?? 1.0,
+          opacity: opacity ?? 1.0,
+          data,
+          chartOptions,
+          weight: stroke?.weight ?? 1,
+          stroke: stroke?.visible ?? false,
+          color: stroke?.color ?? '#000000',
+          rotation: -90,
+          pane: VisualizedLayer.customMapPane,
+        }
+      );
+      this._symbolLayer.addLayer(pieChart);
+      pieChart._featureId = feature.id; // required by _showHidePieChartLabels to look up the feature
+    });
+
+    this.legend = {
+      type: StyleType.PIE_CHART,
+      entries: labelList.map((label, i) => ({ label, color: colorscale[i] })),
+    };
+  }
+
+  _showHidePieChartLabels(field, label) {
+    // Tooltips for features with data are bound to the PieChartMarker in _symbolLayer.
+    if (this._symbolLayer) {
+      this._symbolLayer.eachLayer((pieChart) => {
+        pieChart.closeTooltip();
+        pieChart.unbindTooltip();
+        if (!label.visible) return;
+        const feature = this.features.find((f) => f.id === pieChart._featureId);
+        const items = feature?.properties[field];
+        if (!Array.isArray(items)) return;
+
+        const lines = items.map((i) => `${i.label}: ${(i.value ?? 0).toLocaleString()}`);
+        const total = items.reduce((acc, i) => acc + (i.value ?? 0), 0);
+        lines.push(`<b>Total: ${total.toLocaleString()}</b>`);
+
+        pieChart.bindTooltip(lines.join('<br>'), {
+          permanent: label.permanent,
+          direction: 'top',
+          offset: label.offset,
+          opacity: 0.8,
+        });
+        if (label.permanent) pieChart.openTooltip();
+      });
+    }
+  }
 
   _styleMarkerWithSingleColor(color) {
     this.layer.setStyle({
@@ -1419,7 +1573,7 @@ class VisualizedLayer {
 
   _styleMarkerColorOnNumericalFieldValue(field, palette) {
     const fieldUniqueValues = this._getFieldUniqueValues(field);
-    const colorNum = 25; // TODO: how to determine this number?
+    const colorNum = 25;
     const colorscale = generateColorscale(palette, colorNum + 1);
 
     if (fieldUniqueValues.length > 1) {

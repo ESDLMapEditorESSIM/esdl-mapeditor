@@ -6,6 +6,7 @@ const FieldType = Object.freeze({
   BOOLEAN: 'boolean',
   STRING:  'string',
   NUMBER:  'number',
+  ARRAY:   'array', // for distribution values
 });
 
 /** Visual style mode applied to a field. */
@@ -15,6 +16,7 @@ const StyleType = Object.freeze({
   SIZE:              'size',
   GRADIENT_COLOR:    'gradientColor',
   COLOR_AND_SIZE:    'colorAndSize',
+  PIE_CHART:         'pieChart',
 });
 
 /** How fill/line color is derived per feature. */
@@ -106,7 +108,7 @@ const getRefFieldSchema = async (esId, assetIds) => {
     const data = await fetchData('spatial_visualization/ref_field_schema', refFieldSchemaRequest);
     const nodes = [];
 
-    // Parse costInformation dict into a-tree-select nodes; KPIs ignored for now.
+    // Parse costInformation dict into a-tree-select nodes.
     const costInfo = data?.ref?.costInformation;
     if (costInfo && typeof costInfo === 'object') {
       const children = Object.entries(costInfo)
@@ -128,8 +130,25 @@ const getRefFieldSchema = async (esId, assetIds) => {
         })
         .filter(Boolean);
       if (children.length) {
-        nodes.push({ value: 'costInformation', label: 'Cost Information', selectable: false, children });
+        nodes.push({ value: '__costInformation__', label: 'Cost Information', selectable: false, children });
       }
+    }
+
+    // KPI keys are JSON strings {name, type}
+    const kpis = data?.ref?.KPIs;
+    if (kpis && typeof kpis === 'object' && Object.keys(kpis).length > 0) {
+      const children = Object.keys(kpis).map((key) => {
+        const kpiInfo = JSON.parse(key);
+        return {
+          value: key,
+          label: `${kpiInfo.name} [${FieldType.ARRAY}]`,
+          display: `KPIs > ${kpiInfo.name}`,
+          type: FieldType.ARRAY,
+          disabled: false,
+          isLeaf: true,
+        };
+      });
+      nodes.push({ value: '__KPIs__', label: 'KPIs', selectable: false, children });
     }
 
     return nodes;
@@ -155,12 +174,15 @@ const getRefFieldValues = async (esId, assetIds, path) => {
     path: path,
   };
   const data = await fetchData('spatial_visualization/ref_field_values', refFieldValuesRequest);
-  // data: { assetId: { value: string | null, type: EcoreTypeName } | null }
+  // data: { assetId: { value: string | [{label,value}] | null, type: EcoreTypeName | 'distribution' } | null }
 
   const result = {};
   for (const [assetId, entry] of Object.entries(data)) {
       if (entry === null || entry.type === null) {
           result[assetId] = null;
+      } else if (Array.isArray(entry.value)) {
+          // Distribution value is an array of {label,value} objects; map to ARRAY type regardless of specific distribution class.
+          result[assetId] = { value: entry.value, type: FieldType.ARRAY };
       } else {
           const jsType = mapEcoreTypeToJsType(entry.type);
           result[assetId] = {

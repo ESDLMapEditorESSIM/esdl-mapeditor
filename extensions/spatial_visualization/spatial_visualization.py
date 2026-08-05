@@ -184,14 +184,14 @@ class SpatialVisualization:
 
         ref_schema: Dict[str, Any] = {
             "costInformation": {},
-            "KPIs": [],
+            "KPIs": {},
         }
 
         for schema in ref_schema.keys():
             if schema == "costInformation":
                 ref_schema[schema] = self._collect_cost_info_schema(assets.values())
             if schema == "KPIs":
-                pass
+                ref_schema[schema] = self._collect_kpi_schema(assets.values())
 
         return {"ref": ref_schema}
 
@@ -244,10 +244,40 @@ class SpatialVisualization:
 
         return result
 
+    def _collect_kpi_schema(self, assets) -> dict:
+        """Walk KPIs on each asset and return {path_key: []} for each DistributionKPI found across all assets."""
+        result: Dict[str, list] = {}
+
+        for asset in assets:
+            ref_kpis = asset.eGet("KPIs")
+            if ref_kpis is None:
+                continue
+            for kpi in ref_kpis.kpi:
+                if kpi is None:
+                    continue
+                if isinstance(kpi, esdl.DistributionKPI):
+                    # TODO: maybe support unit; Be aware of kpi with the same name
+                    path = json.dumps({
+                        "type": kpi.eClass.name,
+                        "name": kpi.name,
+                    }, sort_keys=True)
+                    if path not in result:
+                        result[path] = []
+
+        return result
+
     def get_ref_field_values(self, es_id: str, asset_ids: List[str], path: str) -> dict:
         """Map of { assetId: { value, type } | None } for the ref field identified by `path`."""
         ref_group, steps, attr = _parse_path(path)
         if not steps or not attr:
+            # Path is not a standard ref trail; try routing it as a distribution KPI.
+            try:
+                kpi_info = json.loads(path)
+                kpi_cls = esdl.getEClassifier(kpi_info.get("type"))
+                if kpi_cls is not None and issubclass(kpi_cls, esdl.DistributionKPI):
+                    return self._get_distribution_kpi_values(es_id, asset_ids, kpi_info["name"])
+            except (json.JSONDecodeError, KeyError):
+                pass
             return {}
 
         # Steps already encode the exact trail; empty matchers means no type filtering.
@@ -267,3 +297,25 @@ class SpatialVisualization:
                 break
 
         return result
+
+    def _get_distribution_kpi_values(self, es_id: str, asset_ids: List[str], kpi_name: str) -> dict:
+        """Map of { assetId: { value: [{label, value}], type: 'distribution' } | None } for a DistributionKPI."""
+        result: Dict[str, Any] = {aid: None for aid in asset_ids}
+
+        for asset_id, asset in self._assets_by_id(es_id, asset_ids).items():
+            ref_kpis = asset.eGet("KPIs")
+            if ref_kpis is None:
+                continue
+            for kpi in ref_kpis.kpi:
+                if kpi is None or kpi.name != kpi_name:
+                    continue
+                if not isinstance(kpi, esdl.DistributionKPI):
+                    break
+                dist = kpi.distribution
+                if isinstance(dist, esdl.StringLabelDistribution):
+                    items = [{"label": si.label, "value": si.value} for si in dist.stringItem]
+                    result[asset_id] = {"value": items, "type": "distribution"}
+                break
+
+        return result
+
