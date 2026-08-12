@@ -108,6 +108,7 @@ export function handleErrorResponse(e) {
  * @returns {Promise<Array|Object>} A promise that resolves with the response or rejects with an error.
  */
 export const fetchData = async (path, requestBody) => {
+    while (window.socket === undefined) await new Promise(resolve => setTimeout(resolve, 10));
     const result = new Promise((resolve, reject) => {
         const callback = (response) => {
             if (response) {

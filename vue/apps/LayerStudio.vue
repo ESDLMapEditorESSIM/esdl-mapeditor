@@ -16,9 +16,9 @@
           >
           <template #overlay>
             <a-menu>
-              <template v-if="datasources.length > 0">
+              <template v-if="datasources.some(ds => ds.visible)">
                 <a-menu-item-group
-                  v-for="datasource in datasources"
+                  v-for="datasource in datasources.filter(ds => ds.visible)"
                   :key="datasource.id"
                   :title="datasource.name"
                 >
@@ -428,12 +428,11 @@ import {
   SizeMode,
   PaletteName,
 } from "@/utils/spatialVisualization";
-import {
-  useVisibleLayers,
-  VisibleLayerType,
-} from "@/composables/visibleLayers";
+import { useESDLProjects } from "@/composables/esdlProjects";
+import { useEsdlLayers } from "@/composables/esdlLayers";
 
-const { getLayerType } = useVisibleLayers();
+const { getAllVariants } = useESDLProjects();
+const { enabledEsdlIdList, isEsdlLoaded } = useEsdlLayers();
 
 const toCssGradient = (colors) => {
   const stops = colors.map(c => c.startsWith('#') ? c : `#${c}`).join(', ');
@@ -445,39 +444,80 @@ const removeTooltipPopup = () => {
   window.jquery(".ui-tooltip-content").parents("div").remove();
 };
 
-const props = defineProps({
-  // An array of objects with each object contains data to create a DataSource instance (and the corresponding GeoJSON FeatureCollection).
-  layerSources: {
-    type: Array,
-    default: () => [],
-  },
-});
+// NOTE: As a placeholder for future extension to support other data source type.
+// At the moment, only ESDL data source is supported and created during onMounted() and watch() of enabledEsdlIdList below.
+// const props = defineProps({
+//   // An array of objects with each object contains data to create a DataSource instance (and the corresponding GeoJSON FeatureCollection).
+//   layerSources: {
+//     type: Array,
+//     default: () => [],
+//   },
+// });
 
 const datasources = ref([]);
 
 const activeVizLayerKeys = ref([]);
 
 onMounted(async () => {
-  console.debug("Initializing Layer Studio component.");
+  console.debug("Mount Layer Studio component.");
   await fetchLayerStyles();
-  if (props.layerSources.length > 0) {
-    datasources.value = createDatasources(props.layerSources);
+  // Initialize datasources for ESDLs already fully loaded at mount time
+  for (const esId of enabledEsdlIdList.value.filter(id => isEsdlLoaded(id))) {
+    const es = window.esdl_list?.[esId];
+    if (es) {
+      datasources.value = [...datasources.value, new EsdlLayerSource(esId, es.title)];
+    }
   }
 });
 
 onUnmounted(() => {
-  // TODO: should call ds.dispose() when ESDL is removed from the app.
-  // console.debug("Disposing Layer Studio component.");
-  // datasources.value.forEach((ds) => ds.dispose());
+  console.debug("Unmount Layer Studio component.");
+  datasources.value.forEach((ds) => ds.dispose());
 });
 
-// // TODO: refinement; update on layerSources change and do not format existing data
-// watch(
-//   () => props.layerSources,
-//   (newLayerSources) => {
-//     datasources.value = initDatasources(newLayerSources);
-//   }
-// );
+// Create datasource when an ESDL becomes fully loaded (ADD_ESDL_OBJECTS and other mandatory messages
+// arrive after enableEsdl fires from area_layer, so we must wait for isEsdlLoaded).
+watch(
+  () => enabledEsdlIdList.value.filter(id => isEsdlLoaded(id)),
+  (loadedIds) => {
+    for (const esId of loadedIds) {
+      if (!datasources.value.find(ds => ds.id === esId)) {
+        const es = window.esdl_list?.[esId];
+        if (es) {
+          datasources.value = [...datasources.value, new EsdlLayerSource(esId, es.title)];
+        }
+      }
+    }
+  }
+);
+
+// Watch enabled ESDL list to show/hide/dispose datasources based on project state.
+watch(
+  () => [...enabledEsdlIdList.value],
+  (newIds, oldIds) => {
+    const prevIds = oldIds ?? [];
+    const addedIds = newIds.filter(id => !prevIds.includes(id));
+    const removedIds = prevIds.filter(id => !newIds.includes(id));
+    const projectEsIds = new Set(getAllVariants().map(v => v.es_id));
+
+    for (const esId of addedIds) {
+      const existing = datasources.value.find(ds => ds.id === esId);
+      if (existing) existing.setVisible(true);
+      // Creation is handled by the loading watch above
+    }
+
+    for (const esId of removedIds) {
+      const ds = datasources.value.find(d => d.id === esId);
+      if (!ds) continue;
+      if (projectEsIds.has(esId)) {
+        ds.setVisible(false);
+      } else {
+        ds.dispose();
+        datasources.value = datasources.value.filter(d => d.id !== esId);
+      }
+    }
+  }
+);
 
 // -------------------------------------------------- //
 // -------------- Save/Load layer style ------------- //
@@ -637,7 +677,7 @@ const isLoading = computed(() => {
  */
 const visualizedLayers = computed(() => {
   return datasources.value
-    .filter((ds) => ds.vizLayers !== undefined)
+    .filter((ds) => ds.vizLayers !== undefined && ds.visible)
     .map((ds) => ds.vizLayers)
     .flat();
 });
@@ -657,26 +697,6 @@ const onSelectSource = async (datasource, sourceKey) => {
   datasource.loading = false;
 
   datasource.onAddLayerToMap(sourceKey);
-};
-
-/**
- * Maps raw layer sources from the `layerSources` prop into typed DataSource instances.
- * Currently only ESDL layer sources are supported; unrecognised source types are skipped.
- *
- * @param {Array} layerSources - The raw layer source objects passed via the `layerSources` prop.
- * @returns {DataSource[]} Array of initialised DataSource instances ready to be used by the component.
- */
-const createDatasources = (layerSources) => {
-  let datasources = [];
-  layerSources.forEach((source) => {
-    if (getLayerType(source) === VisibleLayerType.ESDL) {
-      const esId = source.es.id;
-      const esdlTitle = source.es.title;
-      const esdlSource = new EsdlLayerSource(esId, esdlTitle);
-      datasources.push(esdlSource);
-    }
-  });
-  return datasources;
 };
 
 /**
@@ -712,6 +732,7 @@ class DataSource {
     // Take the global Leaflet map instance
     this._map = map;
     this.mapLayerGroup = L.featureGroup().addTo(this._map);
+    this.visible = true; // whether this datasource's ESDL variant is currently enabled in the project tree
   }
 
   /**
@@ -746,9 +767,22 @@ class DataSource {
   }
 
   dispose() {
-    this.vizLayers.forEach((vl) => vl.removeLayerFromMap(vl.layer));
+    console.debug(`Disposing DataSource ${this.name} (${this.id})`);
+    this.vizLayers.forEach((vl) => {
+      vl._clearSymbolLayer();
+      vl.removeLayerFromMap(vl.layer);
+    });
     this.mapLayerGroup?.remove();
     this.vizLayers = [];
+  }
+
+  setVisible(visible) {
+    this.visible = visible;
+    if (visible) {
+      this._map.addLayer(this.mapLayerGroup);
+    } else {
+      this._map.removeLayer(this.mapLayerGroup);
+    }
   }
 
   _createUniqueVizLayerName = (name) => {
@@ -984,7 +1018,7 @@ class VisualizedLayer {
 
     this.id = `${sourceRef.id}-${name}`;
     this.layer = this.styleGeoJsonFeatures(this.features);
-    this.visible = true;
+    this.visible = true; // whether this individual viz layer is shown on the map (user eye-toggle)
     this.fieldOptions = this._listLayerFieldOptions();
 
     this.style = JSON.parse(JSON.stringify(VisualizedLayer.defaultStyle));

@@ -70,6 +70,7 @@
     <a-row v-else>
       <p class="text-only">No map layers loaded.</p>
     </a-row>
+    <LayerStudio />
   </div>
 </template>
 
@@ -78,6 +79,7 @@ import {ref, watch} from 'vue';
 import { VueDraggableNext as draggable } from 'vue-draggable-next';
 import { useVisibleLayers, VisibleLayerType } from '@/composables/visibleLayers';
 const {esdlProject} = useESDLProjects();
+import LayerStudio from "@/apps/LayerStudio.vue";
 import LayerOpacityPopover from "@/components/popover/LayerOpacityPopover.vue";
 import {useESDLProjects} from "@/composables/esdlProjects";
 
@@ -202,7 +204,7 @@ const getLayerDescription = (visibleLayer) => {
  * @returns {boolean} True if the group's ID matches the active ESDL project ID, false otherwise.
  */
 const isActiveGroup = (group) => {
-  return group.id === esdlProject.value.active_es_id;
+  return group.id === esdlProject.value?.active_es_id;
 };
 </script>
 
