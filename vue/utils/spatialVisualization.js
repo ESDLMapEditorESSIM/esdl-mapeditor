@@ -71,9 +71,9 @@ const parseFieldValue = (value, type) => {
     }
 };
 
-const getAssetFields = async(esId, assetId) => {
+const getEsdlObjectFields = async(esId, objectId) => {
     try {
-      const attributes = await fetchData('spatial_visualization/asset_fields', { es_id: esId, asset_id: assetId });
+      const attributes = await fetchData('spatial_visualization/object_fields', { es_id: esId, object_id: objectId });
 
       return attributes.map((attr) => {
         const jsType = mapEcoreTypeToJsType(attr.type);
@@ -90,19 +90,19 @@ const getAssetFields = async(esId, assetId) => {
 };
 
 /**
- * Fetch the complete reference field tree for the given assets in a single pass.
+ * Fetch the complete reference field tree for the given ESDL objects in a single pass.
  *
  * The tree carries ref field names and types only; values are
  * fetched by getRefFieldValues() separately once a leaf is selected.
  *
  * @param {string} esId - Energy system ID.
- * @param {string[]} assetIds - Assets the tree is built over.
+ * @param {string[]} objectIds - ESDL object IDs the tree is built over.
  * @returns {Promise<Array>} Nested tree nodes; leaves carry { value, display, type }.
  */
-const getRefFieldSchema = async (esId, assetIds) => {
+const getRefFieldSchema = async (esId, objectIds) => {
   const refFieldSchemaRequest = {
     es_id: esId,
-    asset_ids: assetIds,
+    object_ids: objectIds,
   };
   try {
     const data = await fetchData('spatial_visualization/ref_field_schema', refFieldSchemaRequest);
@@ -159,33 +159,33 @@ const getRefFieldSchema = async (esId, assetIds) => {
 };
 
 /**
- * Fetch the values of a scalar ref field in bulk for the given assets.
+ * Fetch the values of a scalar ref field in bulk for the given ESDL objects.
  *
  * @param {string} esId - Energy system ID.
- * @param {string[]} assetIds - Array of asset IDs to fetch values for.
+ * @param {string[]} objectIds - Array of ESDL object IDs to fetch values for.
  * @param {string} path - Opaque path token from a leaf node's `value`.
- * @returns {Promise<Object>} Map of { assetId: { value, type } | null }.
+ * @returns {Promise<Object>} Map of { objectId: { value, type } | null }.
  *   The `value` is already parsed to the correct JS type; `type` is a {@link FieldType} value.
  */
-const getRefFieldValues = async (esId, assetIds, path) => {
+const getRefFieldValues = async (esId, objectIds, path) => {
   const refFieldValuesRequest = {
     es_id: esId,
-    asset_ids: assetIds,
+    object_ids: objectIds,
     path: path,
   };
   const data = await fetchData('spatial_visualization/ref_field_values', refFieldValuesRequest);
-  // data: { assetId: { value: string | [{label,value}] | null, type: EcoreTypeName | 'distribution' } | null }
+  // data: { objectId: { value: string | [{label,value}] | null, type: EcoreTypeName | 'distribution' } | null }
 
   const result = {};
-  for (const [assetId, entry] of Object.entries(data)) {
+  for (const [objectId, entry] of Object.entries(data)) {
       if (entry === null || entry.type === null) {
-          result[assetId] = null;
+          result[objectId] = null;
       } else if (Array.isArray(entry.value)) {
           // Distribution value is an array of {label,value} objects; map to ARRAY type regardless of specific distribution class.
-          result[assetId] = { value: entry.value, type: FieldType.ARRAY };
+          result[objectId] = { value: entry.value, type: FieldType.ARRAY };
       } else {
           const jsType = mapEcoreTypeToJsType(entry.type);
-          result[assetId] = {
+          result[objectId] = {
               value: entry.value !== null ? parseFieldValue(entry.value, jsType) : null,
               type: jsType,
           };
@@ -268,5 +268,5 @@ const setLeafletFeatureStyle = (geometryType, style = {}) => {
   }
 }
 
-export { getAssetFields, getRefFieldSchema, getRefFieldValues, generateColorscale, setLeafletFeatureStyle, FieldType, StyleType, ColorMode, SizeMode, PaletteName };
+export { getEsdlObjectFields, getRefFieldSchema, getRefFieldValues, generateColorscale, setLeafletFeatureStyle, FieldType, StyleType, ColorMode, SizeMode, PaletteName };
 

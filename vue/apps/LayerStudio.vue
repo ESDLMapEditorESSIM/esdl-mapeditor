@@ -417,7 +417,7 @@ import LoadFavoritesModal from "@/components/modals/LoadFavoritesModal.vue";
 import { fetchData } from "@/utils/api";
 import { displayNotification } from "@/utils/notification";
 import {
-  getAssetFields,
+  getEsdlObjectFields,
   getRefFieldSchema,
   getRefFieldValues,
   generateColorscale,
@@ -862,7 +862,7 @@ class EsdlLayerSource extends DataSource {
 
       // TODO: assumes split polygon pieces of the same MultiPolygon area share identical attribute/KPI
       // values (fetched once per real area id) - needs validation against real multi-polygon test data.
-      const fields = await getAssetFields(this.id, objectId);
+      const fields = await getEsdlObjectFields(this.id, objectId);
       g["_fields"] = fields;
 
       const properties = {};
@@ -1111,7 +1111,7 @@ class VisualizedLayer {
     // Separate Leaflet layer group used only when styleType is PIE_CHART.
     this._symbolLayer = null;
 
-    // Reference field tree. Kept per layer because it only lists paths this layer's assets populate.
+    // Reference field tree.
     this.refSchema = [];
     this.loadingRefSchema = false;
     this.fieldTree = this._buildFieldTree();
@@ -1198,7 +1198,7 @@ class VisualizedLayer {
     if (this.refSchema.length > 0 || this.loadingRefSchema) return;
     this.loadingRefSchema = true;
     try {
-      this.refSchema = await getRefFieldSchema(this.sourceRef.id, this._assetIds());
+      this.refSchema = await getRefFieldSchema(this.sourceRef.id, this._objectIds());
       this.fieldTree = this._buildFieldTree();
     } catch (error) {
       console.error('Failed to load reference field schema:', error);
@@ -1235,7 +1235,7 @@ class VisualizedLayer {
     return this.features[0].geometry.type.includes('Polygon');
   }
 
-  _assetIds() {
+  _objectIds() {
     return this.features.map((f) => f._objectId ?? f.id);
   }
 
@@ -1264,7 +1264,7 @@ class VisualizedLayer {
       // Needed so a restored saved style can resolve its label without a prior browse.
       await this.loadRefSchema();
       const displayLabel = this.findRefSchemaNode(path)?.display || label || path;
-      const result = await getRefFieldValues(this.sourceRef.id, this._assetIds(), path);
+      const result = await getRefFieldValues(this.sourceRef.id, this._objectIds(), path);
 
       const firstEntry = Object.values(result).find((r) => r !== null);
       if (!firstEntry) {

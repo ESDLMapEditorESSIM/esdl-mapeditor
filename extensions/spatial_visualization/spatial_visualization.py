@@ -63,12 +63,12 @@ def _parse_path(path: str):
 @dataclass()
 class RefFieldSchemaRequest:
     es_id: str
-    asset_ids: List[str]
+    object_ids: List[str]
 
 @dataclass()
 class RefFieldValuesRequest:
     es_id: str
-    asset_ids: List[str]
+    object_ids: List[str]
     path: str
 class SpatialVisualization:
     def __init__(self, flask_app: Flask, socket: SocketIO, settings_storage: SettingsStorage):
@@ -80,19 +80,19 @@ class SpatialVisualization:
     def register(self):
         logger.info("Registering SpatialVisualization extension")
 
-        @self.socketio.on("spatial_visualization/asset_fields", namespace="/esdl")
-        def _get_esdl_asset_fields(params: Dict):
-            return self.get_esdl_asset_attributes(params["es_id"], params["asset_id"])
+        @self.socketio.on("spatial_visualization/object_fields", namespace="/esdl")
+        def _get_esdl_object_fields(params: Dict):
+            return self.get_esdl_object_attributes(params["es_id"], params["object_id"])
 
         @self.socketio.on("spatial_visualization/ref_field_schema", namespace="/esdl")
         def _get_ref_field_schema(params: Dict) -> dict:
             req = RefFieldSchemaRequest(**params)
-            return self.get_ref_schema(req.es_id, req.asset_ids)
+            return self.get_ref_schema(req.es_id, req.object_ids)
 
         @self.socketio.on("spatial_visualization/ref_field_values", namespace="/esdl")
         def _get_ref_field_values(params: Dict) -> dict:
             req = RefFieldValuesRequest(**params)
-            return self.get_ref_field_values(req.es_id, req.asset_ids, req.path)
+            return self.get_ref_field_values(req.es_id, req.object_ids, req.path)
 
         @self.socketio.on("spatial_visualization/get_layer_styles", namespace="/esdl")
         def _get_layer_styles():
@@ -147,39 +147,39 @@ class SpatialVisualization:
             logger.error(f"An error occurred while saving layer styles for {user}: {e}")
             return None
 
-    def _get_attributes(self, asset) -> list:
+    def _get_attributes(self, obj) -> list:
         return [
             {'name': a['name'], 'type': a['type'], 'value': a['value']}
-            for a in ESDLEcore.get_asset_attributes(asset)
+            for a in ESDLEcore.get_asset_attributes(obj)
         ]
-    
-    def get_esdl_asset_attributes(self, es_id: str, asset_id: str):
+
+    def get_esdl_object_attributes(self, es_id: str, object_id: str):
         pm = get_project_manager()
         try:
-            asset: esdl.Asset = pm.get_by_id(es_id, asset_id)
-            attributes = self._get_attributes(asset)
+            obj: esdl.EObject = pm.get_by_id(es_id, object_id)
+            attributes = self._get_attributes(obj)
             return attributes
         except KeyError:
-            logger.error(f"Error getting asset with ES id {es_id} and asset id: {asset_id}")
+            logger.error(f"Error getting object with ES id {es_id} and object id: {object_id}")
             return []
 
-    def _assets_by_id(self, es_id: str, asset_ids: List[str]) -> Dict[str, Any]:
-        """Map each requested id to its asset, skipping ids that are not in the model."""
+    def _objects_by_id(self, es_id: str, object_ids: List[str]) -> Dict[str, Any]:
+        """Map each requested id to its ESDL object, skipping ids that are not in the model."""
         pm = get_project_manager()
         resource = pm.get_energy_system_resource_by_id(es_id)
         if resource is None:
             logger.error(f"Cannot find energy system resource for {es_id}")
             return {}
         uuid_dict = resource.uuid_dict
-        return {aid: uuid_dict[aid] for aid in asset_ids if aid in uuid_dict}
+        return {oid: uuid_dict[oid] for oid in object_ids if oid in uuid_dict}
 
-    def get_ref_schema(self, es_id: str, asset_ids: List[str]) -> dict:
+    def get_ref_schema(self, es_id: str, object_ids: List[str]) -> dict:
         """
-        Return a reference field schema as a tree (dict) for the given assets 
+        Return a reference field schema as a tree (dict) for the given ESDL objects 
         that can be displayed in frontend dropdown menu.
         """
-        assets = self._assets_by_id(es_id, asset_ids)
-        if not assets:
+        objects = self._objects_by_id(es_id, object_ids)
+        if not objects:
             return {"ref": {}}
 
         ref_schema: Dict[str, Any] = {
@@ -189,23 +189,23 @@ class SpatialVisualization:
 
         for schema in ref_schema.keys():
             if schema == "costInformation":
-                ref_schema[schema] = self._collect_cost_info_schema(assets.values())
+                ref_schema[schema] = self._collect_cost_info_schema(objects.values())
             if schema == "KPIs":
-                ref_schema[schema] = self._collect_kpi_schema(assets.values())
+                ref_schema[schema] = self._collect_kpi_schema(objects.values())
 
         return {"ref": ref_schema}
 
-    def _collect_cost_info_schema(self, assets) -> dict:
-        """Walk costInformation on each asset and return {c_ref_name: [{attr, attrType}]} merged over all assets."""
+    def _collect_cost_info_schema(self, objects) -> dict:
+        """Walk costInformation on each object and return {c_ref_name: [{attr, attrType}]} merged over all objects."""
         supported_types = ["SingleValue"]
         query_attrs = ["value"]
         result: Dict[str, list] = {}
 
-        for asset in assets:
+        for obj in objects:
             containment_refs = []
-            if asset.eClass.findEStructuralFeature("costInformation") is None:
+            if obj.eClass.findEStructuralFeature("costInformation") is None:
                 continue  # e.g. esdl.Area has no costInformation reference
-            ref_cost_info = asset.eGet("costInformation")
+            ref_cost_info = obj.eGet("costInformation")
             if ref_cost_info is None:
                 continue
 
@@ -233,12 +233,12 @@ class SpatialVisualization:
                                 collected_attrs.append({
                                     "attr": attr.name,
                                     "attrType": attr.eType.name,
-                                    # Path token used to fetch the value of this attr on any asset.
+                                    # Path token used to fetch the value of this attr on any object.
                                     "path": _build_path("cost_information", [{"ref": "costInformation"}, {"ref": c_ref.name}], attr.name),
                                 })
                     if c_ref.name not in result:
                         result[c_ref.name] = []
-                    # Merge attrs seen on any asset; different assets may have different subsets set.
+                    # Merge attrs seen on any object; different objects may have different subsets set.
                     existing = {a["attr"] for a in result[c_ref.name]}
                     for a in collected_attrs:
                         if a["attr"] not in existing:
@@ -246,12 +246,12 @@ class SpatialVisualization:
 
         return result
 
-    def _collect_kpi_schema(self, assets) -> dict:
-        """Walk KPIs on each asset and return {path_key: []} for each DistributionKPI found across all assets."""
+    def _collect_kpi_schema(self, objects) -> dict:
+        """Walk KPIs on each object and return {path_key: []} for each DistributionKPI found across all objects."""
         result: Dict[str, list] = {}
 
-        for asset in assets:
-            ref_kpis = asset.eGet("KPIs")
+        for obj in objects:
+            ref_kpis = obj.eGet("KPIs")
             if ref_kpis is None:
                 continue
             for kpi in ref_kpis.kpi:
@@ -268,8 +268,8 @@ class SpatialVisualization:
 
         return result
 
-    def get_ref_field_values(self, es_id: str, asset_ids: List[str], path: str) -> dict:
-        """Map of { assetId: { value, type } | None } for the ref field identified by `path`."""
+    def get_ref_field_values(self, es_id: str, object_ids: List[str], path: str) -> dict:
+        """Map of { objectId: { value, type } | None } for the ref field identified by `path`."""
         ref_group, steps, attr = _parse_path(path)
         if not steps or not attr:
             # Path is not a standard ref trail; try routing it as a distribution KPI.
@@ -277,22 +277,22 @@ class SpatialVisualization:
                 kpi_info = json.loads(path)
                 kpi_cls = esdl.getEClassifier(kpi_info.get("type"))
                 if kpi_cls is not None and issubclass(kpi_cls, esdl.DistributionKPI):
-                    return self._get_distribution_kpi_values(es_id, asset_ids, kpi_info["name"])
+                    return self._get_distribution_kpi_values(es_id, object_ids, kpi_info["name"])
             except (json.JSONDecodeError, KeyError):
                 pass
             return {}
 
         # Steps already encode the exact trail; empty matchers means no type filtering.
         matchers = [{} for _ in steps]
-        result: Dict[str, Any] = {aid: None for aid in asset_ids}
+        result: Dict[str, Any] = {oid: None for oid in object_ids}
 
-        for asset_id, asset in self._assets_by_id(es_id, asset_ids).items():
-            for leaf in _walk(asset, steps, matchers):
+        for object_id, obj in self._objects_by_id(es_id, object_ids).items():
+            for leaf in _walk(obj, steps, matchers):
                 feature = leaf.eClass.findEStructuralFeature(attr)
                 if not isinstance(feature, EAttribute) or not leaf.eIsSet(attr):
                     continue
                 raw = leaf.eGet(feature)
-                result[asset_id] = {
+                result[object_id] = {
                     "value": feature.eType.to_string(raw) if raw is not None else None,
                     "type": feature.eType.name,
                 }
@@ -300,12 +300,12 @@ class SpatialVisualization:
 
         return result
 
-    def _get_distribution_kpi_values(self, es_id: str, asset_ids: List[str], kpi_name: str) -> dict:
-        """Map of { assetId: { value: [{label, value}], type: 'distribution' } | None } for a DistributionKPI."""
-        result: Dict[str, Any] = {aid: None for aid in asset_ids}
+    def _get_distribution_kpi_values(self, es_id: str, object_ids: List[str], kpi_name: str) -> dict:
+        """Map of { objectId: { value: [{label, value}], type: 'distribution' } | None } for a DistributionKPI."""
+        result: Dict[str, Any] = {oid: None for oid in object_ids}
 
-        for asset_id, asset in self._assets_by_id(es_id, asset_ids).items():
-            ref_kpis = asset.eGet("KPIs")
+        for object_id, obj in self._objects_by_id(es_id, object_ids).items():
+            ref_kpis = obj.eGet("KPIs")
             if ref_kpis is None:
                 continue
             for kpi in ref_kpis.kpi:
@@ -316,7 +316,7 @@ class SpatialVisualization:
                 dist = kpi.distribution
                 if isinstance(dist, esdl.StringLabelDistribution):
                     items = [{"label": si.label, "value": si.value} for si in dist.stringItem]
-                    result[asset_id] = {"value": items, "type": "distribution"}
+                    result[object_id] = {"value": items, "type": "distribution"}
                 break
 
         return result
