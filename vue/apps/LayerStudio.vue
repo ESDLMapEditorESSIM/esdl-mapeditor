@@ -101,7 +101,7 @@
               <a-row>
                 <a-segmented
                   v-model:value="vizLayer.style.styleType"
-                  :options="VisualizedLayer.StyleTypes[vizLayer.style.fieldType]"
+                  :options="vizLayer.styleTypeOptions"
                   style="width: 100%"
                   size="small"
                   block
@@ -211,7 +211,7 @@
                 </div>
               </template>
             </a-col>
-            <a-col class="layer-info-col">
+            <a-col class="layer-info-col" v-if="!vizLayer.isPolygon || vizLayer.style.styleType === StyleType.PIE_CHART">
               <a-typography-text strong>
                 Size
               </a-typography-text>
@@ -429,7 +429,7 @@ import {
   PaletteName,
 } from "@/utils/spatialVisualization";
 import { useESDLProjects } from "@/composables/esdlProjects";
-import { useEsdlLayers } from "@/composables/esdlLayers";
+import { useEsdlLayers, collectAllLayers, groupByLevels } from "@/composables/esdlLayers";
 
 const { getAllVariants } = useESDLProjects();
 const { enabledEsdlIdList, isEsdlLoaded } = useEsdlLayers();
@@ -590,6 +590,7 @@ const onConfirmSaveStyle = async ({ name, group }) => {
     id: uuidv4(),
     name,
     group,
+    sourceType: vizLayerToSaveStyle.value.sourceType,
     // Used as a simple way to distinguish styles sharing the same name and group.
     lastUpdate: Date.now(),
     style: JSON.parse(JSON.stringify(vizLayerToSaveStyle.value.style)),
@@ -629,6 +630,14 @@ const onDeleteSavedStyleGroup = async (groupName) => {
  * @param {Object} savedStyle - Full savedStyle object ({ id, name, group, style }).
  */
 const applySavedStyleToVizLayer = async (vizLayer, savedStyle) => {
+  if (savedStyle.sourceType && savedStyle.sourceType !== vizLayer.sourceType) {
+    displayNotification(
+      "warning",
+      `Style '${savedStyle.name}' was saved for a layer of type '${savedStyle.sourceType}' and cannot be applied to this layer of type '${vizLayer.sourceType}'.`,
+    );
+    return;
+  }
+
   const style = JSON.parse(JSON.stringify(savedStyle.style));
 
   // Ensure ref field is enriched before checking fieldOptions.
@@ -761,9 +770,19 @@ class DataSource {
     if (!this.geoJsonSources[sourceKey]) {
       throw new Error(`GeoJSON source for '${sourceKey}' not found.`);
     }
-    const features = this.geoJsonSources[sourceKey];
-    const vizLayer = new VisualizedLayer(this, layerName, features);
+    const vizLayer = new VisualizedLayer(this, layerName, sourceKey);
     this.vizLayers.push(vizLayer);
+  }
+
+  /**
+   * Categorizes a sourceKey. Subclasses may override this;
+   * the base implementation returns undefined when a source has no such distinction.
+   *
+   * @param {string} sourceKey
+   * @returns {string|undefined}
+   */
+  getSourceType(sourceKey) {
+    return undefined;
   }
 
   dispose() {
@@ -799,30 +818,51 @@ class DataSource {
 
 /**
  * Data source class for ESDL layers, extending the base DataSource class.
- * It fetches and enriches ESDL asset features with attribute values from the backend.
+ * It fetches and enriches ESDL asset and area features with attribute values from the backend.
  */
 class EsdlLayerSource extends DataSource {
+  
+  /** Category of ESDL entity a VisualizedLayer's features originate from. */
+  static SourceType = Object.freeze({
+    ASSET: 'ESDL Asset',
+    AREA:  'ESDL Area',
+  });
+
   constructor(id, name) {
     super(id, name, DataSourceType.ESDL);
 
-    this._getEsdlAssetLayers();
+    const assetEntries = this._getEsdlAssetLayers();
+    const areaEntries = this._getEsdlAreaLevels();
+    this.sources = Object.fromEntries([...assetEntries, ...areaEntries]);
+    // Tracks SourceType per sourceKey.
+    this._sourceTypeByKey = {
+      ...Object.fromEntries(assetEntries.map(([key]) => [key, EsdlLayerSource.SourceType.ASSET])),
+      ...Object.fromEntries(areaEntries.map(([key]) => [key, EsdlLayerSource.SourceType.AREA])),
+    };
   }
 
   /**
-   * Enrich the asset features of the given sourceKey with attribute (field) values returned
-   * from the backend and store them as a GeoJSON FeatureCollection in `this.geoJsonSources`.
+   * Enrich the features of the given sourceKey (asset type or area hierarchy level) with attribute
+   * (field) values returned from the backend and store them as a GeoJSON FeatureCollection in
+   * `this.geoJsonSources`.
    *
-   * @param {string} sourceKey ESDL asset type
+   * @param {string} sourceKey ESDL asset type, or area level (e.g. "Area L1 (Municipality)")
    * @override
    */
   async addAsGeoJsonSource(sourceKey) {
     const layerFeatures = this.sources[sourceKey];
+    const isArea = this.getSourceType(sourceKey) === EsdlLayerSource.SourceType.AREA;
+
     const geoJsonFeaturePromises = layerFeatures.map(async (f) => {
       const g = f.toGeoJSON();
-      g.id = f.id; // Preserve asset ID for later ref field value lookup.
+      // Leaflet layer.id for a split MultiPolygon area carries a " (i of N)" suffix and isn't a real ESDL id.
+      const objectId = isArea ? f.id.replace(/ \(\d+ of \d+\)$/, '') : f.id;
+      g.id = f.id; // keep the (possibly suffixed) id for map/legend bookkeeping and per-feature lookups
+      g._objectId = objectId; // real ESDL id used for backend attribute/ref field lookups
 
-      const assetId = f.id;
-      const fields = await getAssetFields(this.id, assetId);
+      // TODO: assumes split polygon pieces of the same MultiPolygon area share identical attribute/KPI
+      // values (fetched once per real area id) - needs validation against real multi-polygon test data.
+      const fields = await getAssetFields(this.id, objectId);
       g["_fields"] = fields;
 
       const properties = {};
@@ -853,10 +893,17 @@ class EsdlLayerSource extends DataSource {
     return window.get_layers(esId, layerName);
   }
 
+  /** @override */
+  getSourceType(sourceKey) {
+    return this._sourceTypeByKey[sourceKey];
+  }
+
   /**
-   * Get all asset layers of the ESDL model as a map of layer type to Leaflet layers.
+   * Get all asset layers of the ESDL model, grouped by ESDL asset type.
+   *
+   * @returns {Array<[string, Object[]]>} [sourceKey, layers[]] pairs, to be merged into `this.sources`.
    */
-  async _getEsdlAssetLayers() {
+  _getEsdlAssetLayers() {
     const esdlLayer = this._getEsdlFeatureGroupLayer(this.id, "esdl_layer");
     const layerList = esdlLayer.getLayers();
 
@@ -868,7 +915,30 @@ class EsdlLayerSource extends DataSource {
         layers[l.type] = [l];
       }
     });
-    this.sources = layers;
+    return Object.entries(layers);
+  }
+
+  /**
+   * Get all area layers of the ESDL model, grouped by hierarchy depth (for example, municipality, wijk, buurt, ...),
+   * derived from `parent_area_id` regardless of any ESDL `logicalGroup` nesting.
+   *
+   * @returns {Array<[string, Object[]]>} [sourceKey, layers[]] pairs, to be merged into `this.sources`.
+   */
+  _getEsdlAreaLevels() {
+    const areaFeatureGroup = this._getEsdlFeatureGroupLayer(this.id, "area_layer");
+    const allAreaLayers = collectAllLayers(areaFeatureGroup); // TODO: review and check
+    const levels = groupByLevels(allAreaLayers);
+
+    return levels.map((levelLayers, idx) => {
+      const scopes = new Set(levelLayers.map((l) => l.feature?.properties?.scope).filter(Boolean));
+      let sourceKey = `Area L${idx + 1}`;
+      if (scopes.size === 1) {
+        sourceKey += ` (${[...scopes][0]})`;
+      } else if (scopes.size > 1) {
+        sourceKey += ` (mixed scope)`;
+      }
+      return [sourceKey, levelLayers];
+    });
   }
 }
 
@@ -973,6 +1043,9 @@ class VisualizedLayer {
   // a constant factor to scale between marker radius and weight.
   static radiusToWeight = 0.4;
 
+  // Solid fill opacity makes adjacent/overlapping area polygons unreadable, so default them lower.
+  static defaultPolygonOpacity = 0.5;
+
   static defaultStyle = {
     field: undefined,
     fieldType: undefined, // undefined || FieldType Enum
@@ -1009,10 +1082,12 @@ class VisualizedLayer {
     },
   };
 
-  constructor(sourceRef, name, features) {
+  constructor(sourceRef, name, sourceKey) {
     this.sourceRef = sourceRef;
     this.name = name;
-    this.features = features;
+    this.features = sourceRef.geoJsonSources[sourceKey];
+    // Resolved by the owning DataSource; recorded on saved styles so they aren't cross-applied to the wrong source type.
+    this.sourceType = sourceRef.getSourceType(sourceKey);
 
     this._initVizLayerPane();
 
@@ -1022,6 +1097,11 @@ class VisualizedLayer {
     this.fieldOptions = this._listLayerFieldOptions();
 
     this.style = JSON.parse(JSON.stringify(VisualizedLayer.defaultStyle));
+    // To make default style more visible for polygon with lower opacity and visible stroke.
+    if (this.isPolygon) {
+      this.style.paint.opacity = VisualizedLayer.defaultPolygonOpacity;
+      this.style.paint.stroke.visible = true;
+    }
     this.legend = null;
 
     // Tracks which ref paths have already had their values fetched, keyed by path token → JS type.
@@ -1042,7 +1122,11 @@ class VisualizedLayer {
   styleGeoJsonFeatures(features) {
     const layer = L.geoJSON(features, {
       style: function (feature) {
-        return setLeafletFeatureStyle(feature.geometry.type);
+        const isPolygon = feature.geometry.type.includes('Polygon');
+        return setLeafletFeatureStyle(
+          feature.geometry.type,
+          isPolygon ? { opacity: VisualizedLayer.defaultPolygonOpacity, stroke: true } : {},
+        );
       },
       pointToLayer: function (feature, latlng) {
         return L.circleMarker(
@@ -1140,8 +1224,19 @@ class VisualizedLayer {
     return search(this.refSchema);
   }
 
+  /** Style type options for the current field, excluding radius-based options which don't apply to polygon fill. */
+  get styleTypeOptions() {
+    const options = VisualizedLayer.StyleTypes[this.style.fieldType] ?? [];
+    if (!this.isPolygon) return options;
+    return options.filter((opt) => opt.value !== StyleType.SIZE && opt.value !== StyleType.COLOR_AND_SIZE);
+  }
+
+  get isPolygon() {
+    return this.features[0].geometry.type.includes('Polygon');
+  }
+
   _assetIds() {
-    return this.features.map((f) => f.id);
+    return this.features.map((f) => f._objectId ?? f.id);
   }
 
   _buildFieldTree() {
@@ -1181,7 +1276,7 @@ class VisualizedLayer {
 
       // Inject ref values into each feature's properties so styling methods can access them.
       this.features.forEach((f) => {
-        f.properties[path] = result[f.id]?.value ?? null;
+        f.properties[path] = result[f._objectId ?? f.id]?.value ?? null;
       });
 
       if (!this.fieldOptions.find((opt) => opt.value === path)) {
@@ -1230,7 +1325,7 @@ class VisualizedLayer {
 
   preSelectStyleTypeOnFieldSelection() {
     if (Object.keys(VisualizedLayer.StyleTypes).includes(this.style.fieldType)) {
-      this.style.styleType = VisualizedLayer.StyleTypes[this.style.fieldType][0].value;
+      this.style.styleType = this.styleTypeOptions[0]?.value;
       this.preSelectColorOnStyleTypeChange();
     } else {
       console.warn(
@@ -1460,15 +1555,16 @@ class VisualizedLayer {
 
     this.layer.eachLayer((featureLayer) => {
       const feature = featureLayer.feature;
-      // TODO: maybe also support Polyline or Polygon features with a centroid for the pie chart position?
-      if (!feature.geometry.type.includes('Point')) return;
       const items = feature.properties[field];
       if (!Array.isArray(items) || items.length === 0) return;
 
       const radius = calcRadius(feature.id);
       if (radius <= 0) return;
 
-      const [lng, lat] = feature.geometry.coordinates;
+      // Points use their own location; polygons use their bounds centroid (computed client-side).
+      const center = feature.geometry.type.includes('Point')
+        ? featureLayer.getLatLng()
+        : featureLayer.getBounds().getCenter();
       const data = {};
       const chartOptions = {};
       labelList.forEach((label) => {
@@ -1480,7 +1576,7 @@ class VisualizedLayer {
       });
 
       const pieChart = new L.PieChartMarker(
-        new L.LatLng(lat, lng),
+        center,
         {
           radius,
           fillOpacity: opacity ?? 1.0,

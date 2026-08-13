@@ -233,7 +233,7 @@ function isEsdlLoaded(es_id) {
  * Recursively collect sublayers of a given layer.
  * @param layer - The layer to collect sublayers from.
  */
-function collectAllLayers(layer) {
+export function collectAllLayers(layer) {
     if (typeof layer.eachLayer !== 'function') {
         return [layer];
     }
@@ -247,7 +247,7 @@ function collectAllLayers(layer) {
     return result;
 }
 
-function groupByLevels(descendants) {
+export function groupByLevels(descendants) {
     const byId = new Map(descendants.map(d => [d.id, d]));
     const allIds = new Set(byId.keys());
 

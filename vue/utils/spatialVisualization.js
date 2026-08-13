@@ -234,7 +234,7 @@ const setLeafletFeatureStyle = (geometryType, style = {}) => {
     opacity = 1,
     radius = 5,
     weight = 2,
-    stroke = false
+    stroke = false,
   } = style;
 
   switch (geometryType) {
@@ -259,6 +259,8 @@ const setLeafletFeatureStyle = (geometryType, style = {}) => {
         fillColor: color,
         fillOpacity: opacity,
         stroke: stroke,
+        color: '#000000',
+        weight: 2,
       };
     default:
       console.error(`Unsupported geometry type: ${geometryType}.`);

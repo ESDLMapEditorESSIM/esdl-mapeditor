@@ -203,6 +203,8 @@ class SpatialVisualization:
 
         for asset in assets:
             containment_refs = []
+            if asset.eClass.findEStructuralFeature("costInformation") is None:
+                continue  # e.g. esdl.Area has no costInformation reference
             ref_cost_info = asset.eGet("costInformation")
             if ref_cost_info is None:
                 continue
