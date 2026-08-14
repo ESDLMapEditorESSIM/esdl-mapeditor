@@ -236,7 +236,7 @@
               />
             </a-col>
             <a-row
-              v-if="!vizLayer.features[0].geometry.type.includes('LineString')"
+              v-if="!vizLayer.isPolyline && vizLayer.style.styleType !== StyleType.PIE_CHART"
               class="layer-info-row"
             >
               <a-typography-text strong>
@@ -301,7 +301,7 @@
                       :value="vizLayer.style.paint.label.offset[0]"
                       :controls="true"
                       size="small"
-                      style="width: 100%"
+                      style="max-width: 150px"
                       addon-before="X"
                       @change="(v) => vizLayer.onLabelOffsetChange('x', v)"
                     />
@@ -311,7 +311,7 @@
                       :value="vizLayer.style.paint.label.offset[1]"
                       :controls="true"
                       size="small"
-                      style="width: 100%"
+                      style="max-width: 150px"
                       addon-before="Y"
                       @change="(v) => vizLayer.onLabelOffsetChange('y', v)"
                     />
@@ -1092,9 +1092,14 @@ class VisualizedLayer {
     this._initVizLayerPane();
 
     this.id = `${sourceRef.id}-${name}`;
+    // The persistent feature store. Holds feature geometries and field data.
     this.layer = this.styleGeoJsonFeatures(this.features);
     this.visible = true; // whether this individual viz layer is shown on the map (user eye-toggle)
     this.fieldOptions = this._listLayerFieldOptions();
+
+    // A separate Leaflet layer group used only for distribution PIE_CHART,
+    // via leaflet-dvf PieChartMarker subclass.
+    this._symbolLayer = null;
 
     this.style = JSON.parse(JSON.stringify(VisualizedLayer.defaultStyle));
     // To make default style more visible for polygon with lower opacity and visible stroke.
@@ -1107,9 +1112,6 @@ class VisualizedLayer {
     // Tracks which ref paths have already had their values fetched, keyed by path token → JS type.
     this.loadedRefPaths = {};
     this.loadingRefField = false;
-
-    // Separate Leaflet layer group used only when styleType is PIE_CHART.
-    this._symbolLayer = null;
 
     // Reference field tree.
     this.refSchema = [];
@@ -1232,7 +1234,11 @@ class VisualizedLayer {
   }
 
   get isPolygon() {
-    return this.features[0].geometry.type.includes('Polygon');
+    return this.features[0].geometry.type.includes('Polygon') || this.features[0].geometry.type.includes('MultiPolygon');
+  }
+
+  get isPolyline() {
+    return this.features[0].geometry.type.includes('LineString') || this.features[0].geometry.type.includes('MultiLineString');
   }
 
   _objectIds() {
@@ -1455,6 +1461,11 @@ class VisualizedLayer {
     updated.paint.stroke = { ...this.style.paint.stroke };
     updated.paint.label = { ...this.style.paint.label };
 
+    // Overwrite opacity and stroke for array type for pie chart style.
+    if (fieldType === FieldType.ARRAY) {
+      updated.paint.opacity = 1.0;
+    }
+
     return updated;
   }
 
@@ -1466,8 +1477,9 @@ class VisualizedLayer {
     // Reset legend; set by color-styling methods when applicable.
     this.legend = null;
 
+    // Special handling for Distribution KPIs piechart
     if (this.style.styleType === StyleType.PIE_CHART) {
-      this._styleMarkersAsPieCharts(field, paint.color.palette, paint.symbol.size.value, paint.opacity, paint.stroke);
+      this._styleMarkersAsPieCharts(field, paint.color.palette, paint.symbol.size.value, paint.opacity);
       this._showHidePieChartLabels(field, paint.label);
       return;
     }
@@ -1510,7 +1522,12 @@ class VisualizedLayer {
     this._symbolLayer = null;
   }
 
-  _styleMarkersAsPieCharts(field, palette, size, opacity, stroke) {
+  _styleMarkersAsPieCharts(field, palette, size, opacity) {
+    // Full teardown of existing _symbolLayer, so Leaflet properly removes zoom-animation listeners on old markers.
+    this._clearSymbolLayer();
+    this._symbolLayer = L.layerGroup();
+    this._symbolLayer.addTo(this.sourceRef.mapLayerGroup);
+
     // NICE TO HAVE: cache allLabels to avoid recalculating on each style change.
     // Collect all unique labels across features for a consistent color assignment.
     const allLabels = new Set();
@@ -1545,12 +1562,7 @@ class VisualizedLayer {
       return ((Math.log1p(sum) - Math.log1p(minSum)) / (Math.log1p(maxSum) - Math.log1p(minSum))) * (rMax - rMin) + rMin;
     };
 
-    // Full teardown each time so Leaflet properly removes zoom-animation listeners on old markers.
-    this._clearSymbolLayer();
-    this._symbolLayer = L.layerGroup();
-    this._symbolLayer.addTo(this.sourceRef.mapLayerGroup);
-
-    // Hide all base circle markers; features without array data show nothing.
+    // Hide markers from the base layer so only the pie chart markers are visible.
     this.layer.eachLayer((fl) => fl.setStyle({ opacity: 0, fillOpacity: 0, stroke: false }));
 
     this.layer.eachLayer((featureLayer) => {
@@ -1572,6 +1584,9 @@ class VisualizedLayer {
         data[label] = item?.value ?? 0;
         chartOptions[label] = {
           fillColor: colorByLabel[label],
+          displayText: function (value) {
+            return typeof value === 'number' ? value.toFixed(2) : value;
+          }
         };
       });
 
@@ -1583,9 +1598,10 @@ class VisualizedLayer {
           opacity: opacity ?? 1.0,
           data,
           chartOptions,
-          weight: stroke?.weight ?? 1,
-          stroke: stroke?.visible ?? false,
-          color: stroke?.color ?? '#000000',
+          // Use the popup method instead of LegendIcon method.
+          usePopup: true,
+          // Leaflet DVF plugin bug: a non-null stroke triggers _updateBounds() which doesn't exist on sector paths.
+          stroke: null,
           rotation: -90,
           pane: VisualizedLayer.customMapPane,
         }
@@ -1606,21 +1622,30 @@ class VisualizedLayer {
       this._symbolLayer.eachLayer((pieChart) => {
         pieChart.closeTooltip();
         pieChart.unbindTooltip();
-        if (!label.visible) return;
+        if (!label.visible) {
+          return;
+        };
         const feature = this.features.find((f) => f.id === pieChart._featureId);
         const items = feature?.properties[field];
-        if (!Array.isArray(items)) return;
+        if (!Array.isArray(items)) {
+          return;
+        };
 
         const lines = items.map((i) => `${i.label}: ${(i.value ?? 0).toLocaleString()}`);
         const total = items.reduce((acc, i) => acc + (i.value ?? 0), 0);
         lines.push(`<b>Total: ${total.toLocaleString()}</b>`);
 
+        // Bind custom tooltip to the PieChartMarker with the aggregated data.
         pieChart.bindTooltip(lines.join('<br>'), {
           permanent: label.permanent,
           direction: 'top',
           offset: label.offset,
           opacity: 0.8,
         });
+
+        // Strip DVF's per-slice popup so only the custom _showHidePieChartLabels tooltip is shown.
+        pieChart.eachLayer((slice) => { slice.off('mouseover').off('mouseout'); });
+
         if (label.permanent) pieChart.openTooltip();
       });
     }
@@ -1634,10 +1659,9 @@ class VisualizedLayer {
   }
 
   _styleMarkerSize(size, strokeWeight) {
-    const isPolyline = this.features[0].geometry.type.includes("LineString");
     this.layer.setStyle({
       radius: size,
-      weight: isPolyline ? size * VisualizedLayer.radiusToWeight : strokeWeight
+      weight: this.isPolyline ? size * VisualizedLayer.radiusToWeight : strokeWeight
     });
   }
 
@@ -1650,8 +1674,7 @@ class VisualizedLayer {
 
   /** Should only be applied to Point or Polygon features. */
   _showHideMarkerStroke(stroke) {
-    const isPolyline = this.features[0].geometry.type.includes("LineString");
-    if (!isPolyline) {
+    if (!this.isPolyline) {
       this.layer.setStyle({
         stroke: stroke.visible,
         weight: stroke.weight,
