@@ -206,8 +206,8 @@
                   }"
                 />
                 <div style="display: flex; justify-content: space-between; margin-top: 2px">
-                  <a-typography-text style="font-size: small">{{ vizLayer.legend.min.toLocaleString() }}</a-typography-text>
-                  <a-typography-text style="font-size: small">{{ vizLayer.legend.max.toLocaleString() }}</a-typography-text>
+                  <a-typography-text style="font-size: small">{{ fmtNl(vizLayer.legend.min) }}</a-typography-text>
+                  <a-typography-text style="font-size: small">{{ fmtNl(vizLayer.legend.max) }}</a-typography-text>
                 </div>
               </template>
             </a-col>
@@ -438,6 +438,8 @@ const toCssGradient = (colors) => {
   const stops = colors.map(c => c.startsWith('#') ? c : `#${c}`).join(', ');
   return `linear-gradient(to right, ${stops})`;
 };
+
+const fmtNl = (n) => n.toLocaleString('nl-NL', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
 // to prevent stuck popup on UI
 const removeTooltipPopup = () => {
@@ -1279,7 +1281,6 @@ class VisualizedLayer {
   }
 
   /**
-   * TODO: review
    * Enriches the layer features with values for the given ref path and
    * registers the path as a selectable field.
    *
@@ -1608,7 +1609,7 @@ class VisualizedLayer {
         chartOptions[label] = {
           fillColor: colorByLabel[label],
           displayText: function (value) {
-            return typeof value === 'number' ? value.toFixed(2) : value;
+            return typeof value === 'number' ? fmtNl(value) : value;
           }
         };
       });
@@ -1654,9 +1655,9 @@ class VisualizedLayer {
           return;
         };
 
-        const lines = items.map((i) => `${i.label}: ${(i.value ?? 0).toLocaleString()}`);
+        const lines = items.map((i) => `${i.label}: ${fmtNl(i.value ?? 0)}`);
         const total = items.reduce((acc, i) => acc + (i.value ?? 0), 0);
-        lines.push(`<b>Total: ${total.toLocaleString()}</b>`);
+        lines.push(`<b>Total: ${fmtNl(total)}</b>`);
 
         // Bind custom tooltip to the PieChartMarker with the aggregated data.
         pieChart.bindTooltip(lines.join('<br>'), {
@@ -1714,7 +1715,9 @@ class VisualizedLayer {
       if (label.visible && featureLayer.feature?.properties) {
         const fieldValue = featureLayer.feature.properties[selectedField];
         if (fieldValue === null && !label.showNullValues) return;
-        const popupContent = fieldValue !== null ? `${fieldValue}` : "No data";
+        const popupContent = fieldValue !== null
+          ? (typeof fieldValue === 'number' ? fmtNl(fieldValue) : `${fieldValue}`)
+          : "No data";
         featureLayer.bindTooltip(popupContent, {
           permanent: label.permanent,
           direction: "top",
