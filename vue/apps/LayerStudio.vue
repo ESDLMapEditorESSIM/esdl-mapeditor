@@ -853,28 +853,51 @@ class EsdlLayerSource extends DataSource {
     const layerFeatures = this.sources[sourceKey];
     const isArea = this.getSourceType(sourceKey) === EsdlLayerSource.SourceType.AREA;
 
-    const geoJsonFeaturePromises = layerFeatures.map(async (f) => {
+    // First pass: compute geometry and objectId synchronously — no field fetching yet.
+    const rawFeatures = layerFeatures.map((f) => {
       const g = f.toGeoJSON();
-      // Leaflet layer.id for a split MultiPolygon area carries a " (i of N)" suffix and isn't a real ESDL id.
       const objectId = isArea ? f.id.replace(/ \(\d+ of \d+\)$/, '') : f.id;
-      g.id = f.id; // keep the (possibly suffixed) id for map/legend bookkeeping and per-feature lookups
-      g._objectId = objectId; // real ESDL id used for backend attribute/ref field lookups
-
-      // TODO: assumes split polygon pieces of the same MultiPolygon area share identical attribute/KPI
-      // values (fetched once per real area id) - needs validation against real multi-polygon test data.
-      const fields = await getEsdlObjectFields(this.id, objectId);
-      g["_fields"] = fields;
-
-      const properties = {};
-      fields.forEach((attr) => {
-        properties[attr.name] = attr.value;
-      });
-      g.properties = properties;
-
+      // g.id retains the suffixed piece id for grouping; _objectId is the real ESDL id used after merge.
+      g.id = f.id;
+      g._objectId = objectId;
       return g;
     });
 
-    const geoJsonFeatureCollection = await Promise.all(geoJsonFeaturePromises);
+    // Group split Polygon pieces that share the same _objectId and merge into one MultiPolygon.
+    const byObjectId = new Map();
+    for (const g of rawFeatures) {
+      if (!byObjectId.has(g._objectId)) byObjectId.set(g._objectId, []);
+      byObjectId.get(g._objectId).push(g);
+    }
+
+    // Second pass: fetch fields once per unique objectId, not once per polygon piece.
+    const featurePromises = [...byObjectId.entries()].map(async ([objectId, pieces]) => {
+      const fields = await getEsdlObjectFields(this.id, objectId);
+      const properties = {};
+      fields.forEach((attr) => { properties[attr.name] = attr.value; });
+
+      // Polygon feature
+      if (pieces.length === 1) {
+        pieces[0].id = objectId;
+        pieces[0]["_fields"] = fields;
+        pieces[0].properties = properties;
+        return pieces[0];
+      } else {
+        // Reassemble split Polygon pieces into a single MultiPolygon feature.
+        return {
+          ...pieces[0],
+          id: objectId,
+          _fields: fields,
+          properties,
+          geometry: {
+            type: 'MultiPolygon',
+            coordinates: pieces.map(p => p.geometry.coordinates),
+          },
+        };
+      }
+    });
+
+    const geoJsonFeatureCollection = await Promise.all(featurePromises);
 
     this.geoJsonSources = {
       ...(this.geoJsonSources || {}),
