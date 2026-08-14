@@ -247,8 +247,12 @@ class SpatialVisualization:
         return result
 
     def _collect_kpi_schema(self, objects) -> dict:
-        """Walk KPIs on each object and return {path_key: []} for each DistributionKPI found across all objects."""
-        result: Dict[str, list] = {}
+        """
+        Walk KPIs on each object and return {path_key: {ecoreType}} for each supported KPI found across all objects.
+        
+        TODO: return KPI unit in schema?
+        """
+        result: Dict[str, dict] = {}
 
         for obj in objects:
             ref_kpis = obj.eGet("KPIs")
@@ -257,14 +261,17 @@ class SpatialVisualization:
             for kpi in ref_kpis.kpi:
                 if kpi is None:
                     continue
+                path = json.dumps({"type": kpi.eClass.name, "name": kpi.name}, sort_keys=True)
+                if path in result:
+                    continue
                 if isinstance(kpi, esdl.DistributionKPI):
-                    # TODO: maybe support unit; Be aware of kpi with the same name
-                    path = json.dumps({
-                        "type": kpi.eClass.name,
-                        "name": kpi.name,
-                    }, sort_keys=True)
-                    if path not in result:
-                        result[path] = []
+                    result[path] = {"ecoreType": "distribution"}
+                elif isinstance(kpi, esdl.IntKPI):
+                    result[path] = {"ecoreType": "EInt"}
+                elif isinstance(kpi, esdl.DoubleKPI):
+                    result[path] = {"ecoreType": "EDouble"}
+                elif isinstance(kpi, esdl.StringKPI):
+                    result[path] = {"ecoreType": "EString"}
 
         return result
 
@@ -272,12 +279,15 @@ class SpatialVisualization:
         """Map of { objectId: { value, type } | None } for the ref field identified by `path`."""
         ref_group, steps, attr = _parse_path(path)
         if not steps or not attr:
-            # Path is not a standard ref trail; try routing it as a distribution KPI.
+            # Path is not a standard ref trail; try routing it as a KPI.
             try:
                 kpi_info = json.loads(path)
                 kpi_cls = esdl.getEClassifier(kpi_info.get("type"))
-                if kpi_cls is not None and issubclass(kpi_cls, esdl.DistributionKPI):
-                    return self._get_distribution_kpi_values(es_id, object_ids, kpi_info["name"])
+                if kpi_cls is not None:
+                    if issubclass(kpi_cls, esdl.DistributionKPI):
+                        return self._get_distribution_kpi_values(es_id, object_ids, kpi_info["name"])
+                    if issubclass(kpi_cls, (esdl.IntKPI, esdl.DoubleKPI, esdl.StringKPI)):
+                        return self._get_scalar_kpi_values(es_id, object_ids, kpi_info["name"])
             except (json.JSONDecodeError, KeyError):
                 pass
             return {}
@@ -295,6 +305,33 @@ class SpatialVisualization:
                 result[object_id] = {
                     "value": feature.eType.to_string(raw) if raw is not None else None,
                     "type": feature.eType.name,
+                }
+                break
+
+        return result
+
+    def _get_scalar_kpi_values(self, es_id: str, object_ids: List[str], kpi_name: str) -> dict:
+        """Map of { objectId: { value, type: EcoreTypeName } | None } for IntKPI, DoubleKPI, or StringKPI."""
+        result: Dict[str, Any] = {oid: None for oid in object_ids}
+
+        for object_id, obj in self._objects_by_id(es_id, object_ids).items():
+            ref_kpis = obj.eGet("KPIs")
+            if ref_kpis is None:
+                continue
+            for kpi in ref_kpis.kpi:
+                if kpi is None or kpi.name != kpi_name:
+                    continue
+                if isinstance(kpi, esdl.IntKPI):
+                    ecore_type, raw = "EInt", kpi.value
+                elif isinstance(kpi, esdl.DoubleKPI):
+                    ecore_type, raw = "EDouble", kpi.value
+                elif isinstance(kpi, esdl.StringKPI):
+                    ecore_type, raw = "EString", kpi.value
+                else:
+                    break
+                result[object_id] = {
+                    "value": str(raw) if raw is not None else None,
+                    "type": ecore_type,
                 }
                 break
 

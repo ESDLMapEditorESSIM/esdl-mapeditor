@@ -134,17 +134,19 @@ const getRefFieldSchema = async (esId, objectIds) => {
       }
     }
 
-    // KPI keys are JSON strings {name, type}
+    // KPI keys are JSON strings {name, type}; values carry {ecoreType} to distinguish scalar from distribution.
     const kpis = data?.ref?.KPIs;
     if (kpis && typeof kpis === 'object' && Object.keys(kpis).length > 0) {
-      const children = Object.keys(kpis).map((key) => {
+      const children = Object.entries(kpis).map(([key, meta]) => {
         const kpiInfo = JSON.parse(key);
+        const ecoreType = meta?.ecoreType ?? 'distribution';
+        const jsType = ecoreType === 'distribution' ? FieldType.ARRAY : mapEcoreTypeToJsType(ecoreType);
         return {
           value: key,
-          label: `${kpiInfo.name} [${FieldType.ARRAY}]`,
+          label: `${kpiInfo.name} [${jsType}]`,
           display: `KPIs > ${kpiInfo.name}`,
-          type: FieldType.ARRAY,
-          disabled: false,
+          type: jsType,
+          disabled: !Object.values(FieldType).includes(jsType),
           isLeaf: true,
         };
       });
