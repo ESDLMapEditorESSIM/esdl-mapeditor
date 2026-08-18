@@ -93,6 +93,13 @@ class ESDLDrive:
                         emit('alert', message, namespace='/esdl')
                         # print(pm.rset.resources)
                 except Exception as e:
+                    emit(
+                        'esdl_load_failed',
+                        {
+                            'es_id': get_session('active_es_id'),
+                            'error': 'An error occurred while loading the ESDL from ESDL Drive.',
+                        },
+                    )
                     logger.error("Error in loading file from ESDLDrive: "+ str(e))
                     return
                 pm.set_active_variant(variant)

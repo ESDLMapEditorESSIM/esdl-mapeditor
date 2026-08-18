@@ -64,11 +64,13 @@ import {computed, onMounted, ref, watch} from 'vue';
 import {CaretDownFilled} from '@ant-design/icons-vue';
 import {useESDLProjects} from '@/composables/esdlProjects';
 import {useEsdlLayers} from '@/composables/esdlLayers';
+import {useLoader} from "@/composables/loader";
 import {useSocketIO} from "@/composables/socketio";
 
 // Composables
 const { esdlProject, getESDLProject, activeVariant, setActiveVariant, getAllVariants } = useESDLProjects();
 const { enableEsdl, disableEsdl, enabledEsdlIdList } = useEsdlLayers();
+const { startLoader, stopLoader } = useLoader();
 const { socket } = useSocketIO();
 
 // State for Ant Tree
@@ -337,12 +339,11 @@ function renameVariant(variant) {
 function removeVariant(variant) {
   if (window.confirm(`Remove variant "${variant.name}"?`)) {
     console.debug(`Remove variant ${variant.id}`);
-    const loaderScope = "delete_variant"
-    window.show_loader(loaderScope)
+    const loaderId = startLoader();
     disableEsdl(variant.es_id);
     const msg = {id: variant.id};
     socket.value.emit("delete_variant", msg, () => {
-      window.hide_loader(loaderScope)
+      stopLoader(loaderId);
     })
   }
 }

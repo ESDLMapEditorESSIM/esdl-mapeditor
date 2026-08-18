@@ -83,6 +83,7 @@
 import {ref} from 'vue';
 import axios from 'axios'
 import spinner from "@/components/Spinner.vue";
+import {LoaderScopes} from "@/composables/loader";
 
 const isLoading = ref(true);
 const activePanel = ref(['ETM_scenarios'])
@@ -109,7 +110,7 @@ get_ETM_scenarios();
 
 function select() {
   window.socket.emit('etm_select_scenario', {scenario_id: selected_scenario_id.value, year_source: year_source.value});
-  window.show_loader();
+  window.show_loader(LoaderScopes.ESDL);
   window.sidebar.hide();
 }
 

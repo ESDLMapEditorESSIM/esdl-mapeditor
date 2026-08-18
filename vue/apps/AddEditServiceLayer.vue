@@ -196,7 +196,7 @@ import {
   updateGlobalServiceLayerList,
   showLayer
 } from "../composables/wmsLayers";
-import { displayNotification } from '@/utils/notification';
+import { displayNotification, NotificationType } from '@/utils/notification';
 
 const serviceType = Object.freeze({
   WMS: "WMS",
@@ -394,7 +394,7 @@ const onWfsAddToMapBtnClick = async () => {
       const allLayers = await addServiceLayer(wfsLayerInfo);
       await updateGlobalServiceLayerList(allLayers, layerId);
       await showLayer(layerId);
-      displayNotification("warning", `${layerName} has been added to the map, but it may not be visible until you zoom in further.`);
+      displayNotification(NotificationType.WARNING, `${layerName} has been added to the map, but it may not be visible until you zoom in further.`);
     } catch (error) {
       console.error(error);
       window.alert(error);

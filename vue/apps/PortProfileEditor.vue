@@ -94,7 +94,7 @@ import { useEsdlLayers } from "@/composables/esdlLayers";
 import { useObject } from "../composables/ObjectID";
 
 import { fetchData } from "@/utils/api";
-import { displayNotification } from "@/utils/notification";
+import { displayNotification, NotificationType } from "@/utils/notification";
 
 import ProfileEditForm from "@/components/forms/ProfileEditForm.vue";
 
@@ -196,7 +196,7 @@ const initPortsProfiles = async () => {
   // No ports defined
   if (ports.length === 0) {
     displayNotification(
-      "warning",
+      NotificationType.WARNING,
       `Asset (id=${assetId.value}) has no ports defined.`
     );
     resetPortsState();
@@ -230,7 +230,7 @@ const fetchAssetPortsProfiles = async (esId, assetId) => {
   } catch (e) {
     console.error(e);
     displayNotification(
-      "error",
+      NotificationType.ERROR,
       `Failed to retrieve ports and profiles for asset (id=${assetId}). Please verify that the corresponding ESDL is active.`
     );
   } finally {

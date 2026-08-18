@@ -284,9 +284,6 @@
 
         window.jquery = $;
 
-        const loaders = new Set();
-        loaders.add('es');
-
         // ------------------------------------------------------------------------------------------------------------
         //
         // ------------------------------------------------------------------------------------------------------------
@@ -299,30 +296,6 @@
 
         function debug() {
             socket.emit('command', {cmd: 'debug'});
-        }
-
-        function show_loader(scope) {
-            if (scope === undefined) {
-                scope = 'default';
-            }
-            console.debug("Show loader for scope: " + scope, loaders);
-            loaders.add(scope);
-            document.getElementById("loader").style.display = "block";
-        }
-
-        function hide_loader(scope) {
-            if (scope === undefined) {
-                scope = 'default';
-            }
-            console.debug("Hide loader for scope: " + scope, loaders);
-            if (scope === "all") {
-                loaders.clear();
-            } else {
-                loaders.delete(scope);
-            }
-            if (loaders.size === 0) {
-                document.getElementById("loader").style.display = "none";
-            }
         }
 
         function select_area_bld_list(id) {
@@ -713,6 +686,14 @@
             socket.on('clear_esdl_layer_list', function() {
                 clear_esdl_layer_list();
                 active_layer_id = null;
+            });
+
+            socket.on('esdl_load_started', function(message) {
+                window.PubSubManager.broadcast('ESDL_LOAD_STARTED', message);
+            });
+
+            socket.on('esdl_load_failed', function(message) {
+                window.PubSubManager.broadcast('ESDL_LOAD_FAILED', message);
             });
 
             socket.on('create_new_esdl_layer', function(message) {
@@ -1406,27 +1387,6 @@
                 }
             });
 
-            let clickCount = 0;
-            let clickTimer = null;
-
-            $('#loader-hider').on('click', function() {
-                console.debug("Hiding loader: " + clickCount);
-                clickCount++;
-
-                if (clickTimer) {
-                    clearTimeout(clickTimer);
-                }
-
-                clickTimer = setTimeout(function() {
-                    clickCount = 0;
-                }, 1000); // Reset after 1 second
-
-                if (clickCount === 3) {
-                    clickCount = 0;
-                    clearTimeout(clickTimer);
-                    hide_loader('all');
-                }
-            });
         });
     </script>
 
@@ -1812,8 +1772,8 @@
         </div>
 
         <div id="ctrl" style="float: right; position: relative; padding:3px;">
-            <input class="inputFile" type="file" accept=".esdl,.xml,application/xml" style="display: none;" onchange="load_esdl_files(event);" accept=".esdl" onclick="this.value=null;" multiple>
-            <input class="inputImportFile" type="file" accept=".esdl,.xml,application/xml" style="display: none;" onchange="import_esdl_files(event);" accept=".esdl" onclick="this.value=null;" multiple>
+            <input class="inputFile" type="file" accept=".esdl" style="display: none;" onchange="load_esdl_files(event);" onclick="this.value=null;" multiple>
+            <input class="inputImportFile" type="file" accept=".esdl" style="display: none;" onchange="import_esdl_files(event);" onclick="this.value=null;" multiple>
 {#            <input class="inputImportInlineFile" type="file" style="display: none;" onchange="import_esdl_with_inline_profiles(event);" onclick="this.value=null;">#}
 
 {% if edr_enabled %}
@@ -1838,17 +1798,16 @@
 
     <div id="sidebar"></div>
     <div id="sidebar_b"></div>
-    <div id="loader">
-        {# Click 3 times in the top left corner to hide the loader. #}
-        <div id="loader-hider"></div>
-        <div class="spinner"></div>
+    <div id="vue_loader_root">
+        <div id="loader">
+            <div class="spinner"></div>
+        </div>
     </div>
     <div id="kpicharts"></div>
     <div id="ldccontrol"></div>
     <div id="tdmonitorcontrol"></div>
     <div id="essim_kpis_control"></div>
     <div id="vuemodal"></div>
-    <div id="toast_notifications"></div>
     <div id="prompt_dialog"></div>
 
     <div id="userMessages" class="userMessages userMessages-hidden"><p id="userMessage">There is a message</p></div>

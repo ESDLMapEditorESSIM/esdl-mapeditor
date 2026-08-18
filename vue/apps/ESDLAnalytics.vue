@@ -814,7 +814,7 @@ import {
   config,
   normalizePlotlyDateTimeStr,
 } from "@/utils/profileVisualization";
-import { displayNotification } from "@/utils/notification";
+import { displayNotification, NotificationType } from "@/utils/notification";
 import dayjs from "dayjs";
 import minMax from "dayjs/plugin/minMax";
 import VueJsTree from "@/components/jstree/VueJsTree.vue";
@@ -1139,7 +1139,7 @@ const fetchUserGraphConfigs = async () => {
   } catch (error) {
     console.error(error);
     displayNotification(
-      "error",
+      NotificationType.ERROR,
       "Failed to retrieve saved graph configurations.",
     );
   }
@@ -1179,14 +1179,14 @@ const onSaveGraphConfigBtnClick = async () => {
     });
     userGraphConfigs.value = savedConfigs;
     displayNotification(
-      "success",
+      NotificationType.SUCCESS,
       `Graph configuration '${configSetting.name}' saved.`,
     );
   } catch (error) {
     // On failure the backend returns None; keep the current userGraphConfigs state unchanged.
     console.error(error);
     displayNotification(
-      "error",
+      NotificationType.ERROR,
       `Failed to save graph configuration '${configSetting.name}'.`,
     );
   } finally {
@@ -1294,7 +1294,7 @@ const persistGraphConfigDeletion = async (updatedConfigs, previousConfigs) => {
   } catch (error) {
     console.error(error);
     displayNotification(
-      "error",
+      NotificationType.ERROR,
       "Failed to delete graph configuration(s). Please try again.",
     );
     userGraphConfigs.value = previousConfigs;
@@ -1443,7 +1443,7 @@ const onChartTypeBtnClick = (value) => {
   ) {
     profileDownsampling.value = false;
     displayNotification(
-      "info",
+      NotificationType.INFO,
       "Downsampling has been turned off for this view to avoid hiding data points. You can turn it back on anytime in the display options",
     );
   }
@@ -1464,7 +1464,7 @@ const onSelectProfileVizType = () => {
   if (profileVizTypeSelected.value !== "Profile") {
     profileDownsampling.value = false;
     displayNotification(
-      "info",
+      NotificationType.INFO,
       "Downsampling has been turned off for this view.",
     );
   } else {
@@ -1528,7 +1528,7 @@ const onAnalyticsPlotRelayout = (newLayoutRanges) => {
       );
     } catch (error) {
       displayNotification(
-        "error",
+        NotificationType.ERROR,
         `An error occurred while applying the selected data extent for querying: ${error}`,
       );
     }
@@ -1781,7 +1781,7 @@ const onSyncBtnClick = async () => {
 
       try {
         displayNotification(
-          "info",
+          NotificationType.INFO,
           `Adding ${esTitle} [${esId}] into the database.`,
         );
         const reqBody = { es_id: esId, energyUnit: energyUnit.value };
@@ -1790,7 +1790,7 @@ const onSyncBtnClick = async () => {
       } catch (error) {
         console.error(error);
         displayNotification(
-          "error",
+          NotificationType.ERROR,
           `An unknown error occurred while adding ${esTitle} [${esId}] to the database`,
         );
       }
@@ -1799,7 +1799,7 @@ const onSyncBtnClick = async () => {
   } catch (error) {
     console.error(error);
     displayNotification(
-      "error",
+      NotificationType.ERROR,
       `An error occurred while synchronizing metadata: ${error}`,
     );
   } finally {
@@ -1826,7 +1826,7 @@ const onDeleteBtnClick = async () => {
   } catch (error) {
     console.error(error);
     displayNotification(
-      "error",
+      NotificationType.ERROR,
       `An error occurred while deleting metadata: ${error}`,
     );
   } finally {
@@ -2066,11 +2066,11 @@ const updateTrace = async () => {
     if (queryProfileData) {
       profileDataRanges.value = dtStringsToDayJsObjects(results["data_range"]);
       if (results["error_msg"] !== "") {
-        displayNotification("error", results["error_msg"]);
+        displayNotification(NotificationType.ERROR, results["error_msg"]);
         console.error(results["errors"]);
       }
       if (results["warning_msg"] !== "") {
-        displayNotification("warning", results["warning_msg"]);
+        displayNotification(NotificationType.WARNING, results["warning_msg"]);
         console.warn(results["warnings"]);
       }
 
@@ -2094,7 +2094,7 @@ const updateTrace = async () => {
     }
   } catch (error) {
     console.error(error);
-    displayNotification("error", `${error}`);
+    displayNotification(NotificationType.ERROR, `${error}`);
   }
   isLoadingData.value = false;
 };
@@ -2398,12 +2398,12 @@ const exportChartDataToCSV = () => {
     } catch (error) {
       const errorMsg = `Error exporting CSV: ${error}`;
       console.error(errorMsg);
-      displayNotification("error", `${errorMsg}`);
+      displayNotification(NotificationType.ERROR, `${errorMsg}`);
     }
   } else {
     const errorMsg = "No data or incorrect chart type.";
     console.error(errorMsg);
-    displayNotification("error", `${errorMsg}`);
+    displayNotification(NotificationType.ERROR, `${errorMsg}`);
   }
 };
 </script>

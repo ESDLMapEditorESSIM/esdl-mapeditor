@@ -53,9 +53,8 @@ import ActiveLongProcess from '@/components/progress/ActiveProcess.vue'
 import SidePane from "@/apps/SidePane.vue"
 // import ToggleActiveLongProcess from './components/progress/ToggleActiveLongProcess'
 import {useTooltipInfo} from './composables/TooltipInfo';
-import "./composables/toasts.js";
 import AssetTooltip from './apps/AssetTooltip';
-import './bridge.js';
+import {MessageNames, PubSubManager} from './bridge.js';
 import Swal from "sweetalert2";
 import {useUndoRedo} from "./composables/undoRedo";
 import ActivityContextSelector from "@/apps/ActivityContextSelector.vue";
@@ -67,10 +66,31 @@ import './utils/startDrawAsset';
 import ResultVisualizationsToolbar from "@/components/toolbars/ResultVisualizationsToolbar.vue";
 import ETMInterface from "@/apps/ETMInterface.vue";
 import {useReplaceEDRAsset} from "@/composables/replaceEDRAsset";
-import ToastNotifications from "@/apps/ToastNotifications.vue";
 import PromptDialog from "@/apps/PromptDialog.vue";
+import GlobalLoader from "@/components/GlobalLoader.vue";
+import {LoaderScopes, useLoader} from "@/composables/loader";
+import {registerNotificationListeners} from "@/utils/notification";
 
 // Vue.config.productionTip = false
+
+const {activeLoaders, startLoader, stopLoader} = useLoader();
+window.LoaderScopes = LoaderScopes;
+window.show_loader = (scope = LoaderScopes.DEFAULT) => {
+    const loaderId = startLoader(scope);
+    console.debug("Show loader", activeLoaders);
+    return loaderId;
+};
+window.hide_loader = (scope) => {
+    console.debug("Hide loader", activeLoaders);
+    return stopLoader(scope);
+};
+
+const initialLoaderId = startLoader();
+const stopInitialLoader = () => stopLoader(initialLoaderId);
+PubSubManager.subscribe(MessageNames.ESDL_LOAD_STARTED, stopInitialLoader);
+PubSubManager.subscribe(MessageNames.ESDL_LOAD_FAILED, stopInitialLoader);
+createApp(GlobalLoader).mount("#vue_loader_root");
+registerNotificationListeners();
 
 window.activate_service_workflow = async (serviceIndex, service, state) => {
     const { startNewWorkflow, currentWorkflow } = useWorkflow();
@@ -234,12 +254,6 @@ createApp(ActivityContextSelector).mount('#vue_activity_context_selector')
 createApp(ApplicationContextSelector).mount('#vue_application_context_selector')
 
 mountApp(LoadProjectFileButton, '#vue_load_project_file')
-
-const [,toastNotificationInstance] = mountApp(ToastNotifications, '#toast_notifications');
-import {useToastNotifications} from "@/composables/toastNotifications";
-const {setToastNotificationsInstance } = useToastNotifications();
-setToastNotificationsInstance(toastNotificationInstance);
-
 mountApp(PromptDialog, '#prompt_dialog');
 
 createVueLControl(AssetsToBeAddedToolbar, {

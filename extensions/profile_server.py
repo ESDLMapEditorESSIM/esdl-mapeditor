@@ -12,7 +12,7 @@
 #  Manager:
 #      TNO
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from dataclasses import dataclass
 from enum import Enum
 from typing import List, Any
@@ -168,6 +168,12 @@ class InfluxDBServer(ProfileServer):
                 'measurement': measurement,
                 **d,
             })
+
+    def drop_measurement(self, measurement: str) -> None:
+        """
+        Drop an existing measurement before replacing all profile rows.
+        """
+        self.client.drop_measurement(measurement)
 
     def write_data(self):
         self.client.write_points(points=self.data, database=self.connection_settings.database, batch_size=100)

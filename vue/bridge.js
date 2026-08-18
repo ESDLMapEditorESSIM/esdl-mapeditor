@@ -17,6 +17,8 @@ export const MessageNames = Object.freeze({
     GEOJSON_PROCESSED: 'GEOJSON_PROCESSED',
     NEW_ESDL: 'NEW_ESDL',
     KEY_ESCAPE: 'KEY_ESCAPE',
+    ESDL_LOAD_STARTED: 'ESDL_LOAD_STARTED',
+    ESDL_LOAD_FAILED: 'ESDL_LOAD_FAILED',
     // The below are all the mandatory parts of loading a single ESDL.
     CREATE_NEW_ESDL_LAYER: 'CREATE_NEW_ESDL_LAYER',
     SET_ACTIVE_LAYER_ID: 'SET_ACTIVE_LAYER_ID',

@@ -10,14 +10,18 @@
 import {ref} from "vue";
 import {useVisibleLayers} from "@/composables/visibleLayers";
 import {MessageNames, PubSubManager} from "@/bridge";
+import {LoaderScopes, useLoader} from "@/composables/loader";
+import {displayNotification} from "@/utils/notification";
 import {useEsdlLayerMapActions} from "./esdlLayerMapActions";
 
 /** @type {import('vue').Ref<string[]>} */
 const enabledEsdlIdList = ref([]);
 
 const esdlLoadingStatus = ref({});
+const esdlLoaderIds = new Map();
 
 const {hideEsdlLayerFromMap, showEsdlLayerOnMap} = useEsdlLayerMapActions();
+const {startLoader, stopLoader} = useLoader();
 
 export function useEsdlLayers() {
     const {createVisibleLayerGroup, removeVisibleLayerGroup, hideVisibleLayer, showVisibleLayer} = useVisibleLayers();
@@ -209,23 +213,47 @@ const MANDATORY_ESDL_LOADING_MESSAGES = [
 
 /**
  * Add a status to the ESDL loading status object.
- * @param es_id
+ * @param esId
  * @param status
  */
-function addEsdlLoadingStatus(es_id, status) {
-    if (!esdlLoadingStatus.value[es_id]) {
-        esdlLoadingStatus.value[es_id] = new Set();
+function addEsdlLoadingStatus(esId, status) {
+    if (!esdlLoadingStatus.value[esId]) {
+        return;
     }
-    esdlLoadingStatus.value[es_id].add(status);
+    esdlLoadingStatus.value[esId].add(status);
 }
 
 /**
- * Check if all messages have been received for the given ESDL ID.
- * @param es_id
- * @returns {this is (string)[]}
+ * Check if all messages have been received for the given ESDL.
+ * @param esId
+ * @returns {boolean}
  */
-function isEsdlLoaded(es_id) {
-    return MANDATORY_ESDL_LOADING_MESSAGES.every((messageName) => esdlLoadingStatus.value[es_id]?.has(messageName));
+function isEsdlLoaded(esId) {
+    return MANDATORY_ESDL_LOADING_MESSAGES.every((messageName) => esdlLoadingStatus.value[esId]?.has(messageName));
+}
+
+/**
+ * Finish an ESDL load and remove its progress state.
+ * @param esId
+ */
+function finishEsdlLoad(esId) {
+    const loaderId = esdlLoaderIds.get(esId);
+    if (loaderId !== undefined) {
+        stopLoader(loaderId);
+    }
+    esdlLoaderIds.delete(esId);
+    delete esdlLoadingStatus.value[esId];
+}
+
+/**
+ * Clear all active ESDL loads.
+ */
+function clearEsdlLoadingStatus() {
+    for (const loaderId of esdlLoaderIds.values()) {
+        stopLoader(loaderId);
+    }
+    esdlLoaderIds.clear();
+    esdlLoadingStatus.value = {};
 }
 
 
@@ -300,19 +328,47 @@ function setupSubscription() {
     });
     PubSubManager.subscribe(MessageNames.CLEAR_ESDL_LAYER_LIST, () => {
         disableAllEsdls();
+        clearEsdlLoadingStatus();
+        stopLoader(LoaderScopes.ESDL);
+    });
+
+    PubSubManager.subscribe(MessageNames.ESDL_LOAD_STARTED, (name, message) => {
+        const esId = message.es_id;
+        if (!esId) {
+            console.error("Cannot start ESDL load without an ESDL ID");
+            return;
+        }
+        if (esdlLoaderIds.has(esId)) {
+            finishEsdlLoad(esId);
+        }
+        stopLoader(LoaderScopes.ESDL);
+        esdlLoadingStatus.value[esId] = new Set();
+        esdlLoaderIds.set(esId, startLoader());
+        console.debug("Started loading ESDL with ID " + esId);
+    });
+
+    PubSubManager.subscribe(MessageNames.ESDL_LOAD_FAILED, (name, message) => {
+        stopLoader(LoaderScopes.ESDL);
+        if (message.es_id) {
+            finishEsdlLoad(message.es_id);
+        }
+        console.error("Failed loading ESDL with ID " + message.es_id, message.error);
+        displayNotification("error", message.error);
     });
 
     const esdlLoadingStatusHandler = (name, message) => {
-        const es_id = message.es_id;
-        addEsdlLoadingStatus(es_id, name);
-        console.debug("Received message " + name + " for ESDL with ID " + es_id);
-        window.show_loader("es")
-        // Check if all message names are in the esdlLoadingStatus. If so, hide the loader.
-        if (isEsdlLoaded(es_id)) {
-            console.debug("All messages received for ESDL with ID " + es_id);
-            window.hide_loader("es");
+        const esId = message.es_id;
+        if (!esId || !esdlLoadingStatus.value[esId]) {
+            return;
         }
-    }
+
+        addEsdlLoadingStatus(esId, name);
+        console.debug("Received message " + name + " for ESDL with ID " + esId);
+        if (isEsdlLoaded(esId)) {
+            console.debug("All messages received for ESDL with ID " + esId);
+            finishEsdlLoad(esId);
+        }
+    };
 
     for (const messageName of MANDATORY_ESDL_LOADING_MESSAGES) {
         PubSubManager.subscribe(messageName, esdlLoadingStatusHandler);

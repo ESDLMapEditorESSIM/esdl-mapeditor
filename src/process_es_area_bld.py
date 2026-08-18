@@ -1108,6 +1108,10 @@ def call_process_energy_system(force_update_es_id=None, zoom=True, only_process_
         process_energy_system(force_update_es_id, zoom, only_process_es_id)
     except Exception as e:
         # Exceptions get swallowed by the executor. Log it here.
+        emit(
+            'esdl_load_failed',
+            {'es_id': get_session('active_es_id'), 'error': 'An error occurred while loading the ESDL.'},
+        )
         logger.exception(str(e))
 
     if result_post_esdl_load:
@@ -1136,6 +1140,7 @@ def process_energy_system(force_update_es_id=None, zoom=True, only_process_es_id
         if not acquired:
             raise TimeoutError("Timeout while acquiring lock for process energy system")
         logger.info(f"Lock acquired, processing {threading.current_thread()}" )
+        loading_es_id = get_session('active_es_id')
         try:
             logger.info("Processing active energy system")
 
@@ -1149,6 +1154,10 @@ def process_energy_system(force_update_es_id=None, zoom=True, only_process_es_id
                 energy_systems = [es for es in energy_systems if es.id == only_process_es_id]
 
             if not energy_systems:
+                emit(
+                    'esdl_load_failed',
+                    {'es_id': loading_es_id, 'error': 'No energy systems found in project manager.'},
+                )
                 logger.error("No energy systems found in project manager!")
                 return
 
@@ -1162,6 +1171,8 @@ def process_energy_system(force_update_es_id=None, zoom=True, only_process_es_id
 
                 if force_update_es_id == es.id or es.id not in es_info_list:
                     logger.info(f"- Processing energysystem with id {es.id}")
+                    loading_es_id = es.id
+                    emit('esdl_load_started', {'es_id': es.id})
                     name = es.name
                     if not name:
                         title = 'Untitled Energysystem'
@@ -1217,7 +1228,7 @@ def process_energy_system(force_update_es_id=None, zoom=True, only_process_es_id
                     emit('add_esdl_objects', {'es_id': es.id, 'asset_pot_list': asset_list, 'zoom': zoom})
                     emit('area_bld_list', {'es_id': es.id, 'area_bld_list': area_bld_list})
                     emit('add_connections', {'es_id': es.id, 'add_to_building': False, 'conn_list': conn_list})
-                    emit('add_notes', {'es_id': es.id,  'notes_list': notes_list})
+                    emit('add_notes', {'es_id': es.id, 'notes_list': notes_list})
                     emit('bring_kpis_to_front', es.id)
 
                     set_session_for_esid(es.id, 'conn_list', conn_list)
@@ -1236,6 +1247,13 @@ def process_energy_system(force_update_es_id=None, zoom=True, only_process_es_id
 
             #logger.info('session variables set', session=session)
         except Exception:
+            emit(
+                'esdl_load_failed',
+                {
+                    'es_id': loading_es_id,
+                    'error': 'An error occurred while loading the ESDL.',
+                },
+            )
             logger.exception("Exception while processing energy system")
     finally:
         logger.info(f"Releasing lock {threading.current_thread()}")

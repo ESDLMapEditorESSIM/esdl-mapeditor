@@ -24,10 +24,12 @@ import {useESDLProjects} from "../../composables/esdlProjects";
 import {download_binary_file_from_base64_str_with_type} from "../../utils/files";
 import {useSocketIO} from "../../composables/socketio";
 import {useActivityContext} from "../../composables/activityContext";
+import {useLoader} from "../../composables/loader";
 
 const {setEsdlProject, setActiveVariant} = useESDLProjects();
 const {socket} = useSocketIO();
 const {clearActivityContext} = useActivityContext();
+const {startLoader, stopLoader} = useLoader();
 
 async function loadProjectFile(file) {
   const file_reader = new FileReader();
@@ -36,8 +38,8 @@ async function loadProjectFile(file) {
   // This function will do the actual uploading. It is triggered when
   // calling readAsDataURL on the file_reader.
   file_reader.onload = async () => {
+    const loaderId = startLoader();
     try {
-      window.show_loader("load_project");
       const base64_file = file_reader.result;
       const params = {base64_file: base64_file, filename: file_name};
 
@@ -62,7 +64,7 @@ async function loadProjectFile(file) {
         alert("Failed loading energy project file.");
       }
     } finally {
-      window.hide_loader("load_project");
+      stopLoader(loaderId);
     }
   }
   // Trigger the onload.

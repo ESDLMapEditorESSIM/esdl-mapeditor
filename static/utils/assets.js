@@ -70,6 +70,7 @@ function remove_port(pid) {
 
 function set_port_profile(e, marker_id, port_id) {
     // console.log('setPortProfile(marker_id=' + marker_id + ', port_id=' + port_id + ')');
+    window.port_profile_viewer_context = {'es_id': active_layer_id, 'asset_id': marker_id};
     socket.emit('command', {'cmd': 'get_port_profile_info', 'port_id': port_id});
 }
 

@@ -213,7 +213,7 @@ import { LoadingOutlined, InfoCircleOutlined } from "@ant-design/icons-vue";
 import AnalyticsPlot from "@/components/plot/AnalyticsPlot.vue";
 import { config } from "@/utils/profileVisualization";
 import { fetchData } from "@/utils/api";
-import { displayNotification } from "@/utils/notification";
+import { displayNotification, NotificationType } from "@/utils/notification";
 
 // to prevent stuck popup on UI
 const removeTooltipPopup = () => {
@@ -446,7 +446,7 @@ const initializeProfileEditing = (profileInfo) => {
     castSingleValueObjToFormData(profileInfo.profileObj);
   } 
   else if (profileInfo.profileClass === "TimeSeriesProfile") {
-    displayNotification("warning", "Editing of TimeSeriesProfile is not supported in the Port Profile Editor yet.");
+    displayNotification(NotificationType.WARNING, "Editing of TimeSeriesProfile is not supported in the Port Profile Editor yet.");
     resetForm();
     return;
   }
@@ -575,7 +575,7 @@ const updateTrace = async () => {
         if (err.error.includes("unreachable") || err.error.includes("401")) {
           errMsg = `Unable to display profile preview due to connection error.`;
         }
-        displayNotification("error", errMsg);
+        displayNotification(NotificationType.ERROR, errMsg);
         console.error(err);
       });
     }
@@ -586,7 +586,7 @@ const updateTrace = async () => {
     profileForm.currentLayout = formattedData.layout;
   } catch (e) {
     displayNotification(
-      "error",
+      NotificationType.ERROR,
       `An unknown error occurs while fetching profile: ${e.message || e}`
     );
     profileForm.currentTrace = [];
@@ -605,14 +605,14 @@ const addProfile = async (profilePayload) => {
     const result = await fetchData("add_esdl_profile", profilePayload);
 
     if (result.success) {
-      displayNotification("success", result.message);
+      displayNotification(NotificationType.SUCCESS, result.message);
     } else {
-      displayNotification("error", result.message);
+      displayNotification(NotificationType.ERROR, result.message);
       console.error(result.message);
     }
   } catch (e) {
     displayNotification(
-      "error",
+      NotificationType.ERROR,
       `An unknown error occurs while adding profile: ${e.message || e}.`
     );
   } finally {
@@ -633,14 +633,14 @@ const replaceProfile = async (profileId, profilePayload) => {
     const result = await fetchData("replace_esdl_profile", replaceProfileRequest);
 
     if (result.success) {
-      displayNotification("success", result.message);
+      displayNotification(NotificationType.SUCCESS, result.message);
     } else {
-      displayNotification("error", result.message);
+      displayNotification(NotificationType.ERROR, result.message);
       console.error(result.message);
     }
   } catch (e) {
     displayNotification(
-      "error",
+      NotificationType.ERROR,
       `An unknown error occurs while replacing profile: ${e.message || e}.`
     );
   } finally {
@@ -689,14 +689,14 @@ const updateProfile = async (profilePayload) => {
     const result = await fetchData("update_esdl_profile", updateProfileRequest);
 
     if (result.success) {
-      displayNotification("success", result.message);
+      displayNotification(NotificationType.SUCCESS, result.message);
     } else {
-      displayNotification("error", result.message);
+      displayNotification(NotificationType.ERROR, result.message);
       console.error(result.message);
     }
   } catch (e) {
     displayNotification(
-      "error",
+      NotificationType.ERROR,
       `An unknown error occurs while updating profile: ${e.message || e}. Changes will not be saved.`
     );
   } finally {
@@ -921,13 +921,13 @@ const getProfileSettings = async () => {
     const result = await fetchData("get_profile_settings_as_dtp_objects");
 
     if (result.length === 0) {
-      displayNotification("warning", "No profiles found in the profile database for listing.");
+      displayNotification(NotificationType.WARNING, "No profiles found in the profile database for listing.");
     }
 
     return result;
   } catch (e) {
     displayNotification(
-      "error",
+      NotificationType.ERROR,
       `An unknown error occurs while listing stored profiles: ${e.message || e}`
     );
   } finally {

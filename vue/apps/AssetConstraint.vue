@@ -298,7 +298,7 @@ import {
   DeleteOutlined,
 } from "@ant-design/icons-vue";
 import { useObject } from "../composables/ObjectID";
-import { displayNotification } from '@/utils/notification';
+import { displayNotification, NotificationType } from '@/utils/notification';
 import ProfileEditForm from "@/components/forms/ProfileEditForm.vue";
 
 const { currentObjectID } = useObject();
@@ -427,7 +427,7 @@ onMounted(() => {
 
   if (!activeEsdlId.value || !assetId.value) {
     console.error("Asset Constraint: esId or objectId is undefined or null.");
-    displayNotification("error", "Unable to load asset constraints: asset or energy system ID is missing.");
+    displayNotification(NotificationType.ERROR, "Unable to load asset constraints: asset or energy system ID is missing.");
     return;
   }
 
@@ -468,14 +468,14 @@ const getAssetConstraint = async (esId, assetId) => {
     if (response.status !== 200) {
       const result = await response.text();
       console.error(response.status, result);
-      displayNotification("error", "An error occurred when loading the asset constraints.");
+      displayNotification(NotificationType.ERROR, "An error occurred when loading the asset constraints.");
       return;
     }
     const assetConstraints = await response.json();
     constraints.value = [...assetConstraints];
   } catch (error) {
     console.error(error);
-    displayNotification("error", "An error occurred when loading the asset constraints.");
+    displayNotification(NotificationType.ERROR, "An error occurred when loading the asset constraints.");
   }
 };
 
@@ -490,14 +490,14 @@ const setAssetConstraint = async (esId, assetId, constraints) => {
     if (response.status !== 200) {
       const result = await response.text();
       console.error(response.status, result);
-      displayNotification("error", "An error occurred when adding or updating the asset constraint. Your changes will not be saved.");
+      displayNotification(NotificationType.ERROR, "An error occurred when adding or updating the asset constraint. Your changes will not be saved.");
       return;
     }
 
     getAssetConstraint(esId, assetId);
   } catch (error) {
     console.error(error);
-    displayNotification("error", "An error occurred when adding or updating the asset constraint. Your changes will not be saved.");
+    displayNotification(NotificationType.ERROR, "An error occurred when adding or updating the asset constraint. Your changes will not be saved.");
   }
 };
 

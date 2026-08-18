@@ -153,7 +153,6 @@ var asset_severity_class = {
 
 function process_service_results(results) {
     let service_results_div = document.getElementById('service_results_div');
-    hide_loader();
     // TODO: Make this more generic
 
     if ('show_asset_results' in results) {
@@ -751,7 +750,6 @@ function update_esdl_services(event) {
                             $.ajax({
                                 url: '/get_object_esdl/' + id,
                                 success: function (data) {
-                                    console.log(data);
                                     state['esdl'] = data['esdl'];
                                     if (service['type'] === 'vueworkflow' || service['type'] === 'workflow') {
                                         window.show_service_settings(i, state);
