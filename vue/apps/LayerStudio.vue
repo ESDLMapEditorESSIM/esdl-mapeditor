@@ -396,7 +396,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch, onUnmounted } from "vue";
+import { ref, onMounted, computed, watch, onUnmounted, markRaw } from "vue";
 import { v4 as uuidv4 } from "uuid";
 import {
   AppstoreOutlined,
@@ -742,7 +742,9 @@ class DataSource {
 
     // Take the global Leaflet map instance
     this._map = map;
-    this.mapLayerGroup = L.featureGroup().addTo(this._map);
+    // markRaw prevents Vue's Proxy from wrapping Leaflet internals, avoiding _map = null during zoom animation.
+    // Ref: https://stackoverflow.com/questions/65981712/uncaught-typeerror-this-map-is-null-vue-js-3-leaflet/66693709#66693709
+    this.mapLayerGroup = markRaw(L.featureGroup().addTo(this._map));
     this.visible = true; // whether this datasource's ESDL variant is currently enabled in the project tree
   }
 
@@ -1118,7 +1120,7 @@ class VisualizedLayer {
 
     this.id = `${sourceRef.id}-${name}`;
     // The persistent feature store. Holds feature geometries and field data.
-    this.layer = this.styleGeoJsonFeatures(this.features);
+    this.layer = markRaw(this.styleGeoJsonFeatures(this.features));
     this.visible = true; // whether this individual viz layer is shown on the map (user eye-toggle)
     this.fieldOptions = this._listLayerFieldOptions();
 
@@ -1186,6 +1188,7 @@ class VisualizedLayer {
     this.sourceRef.mapLayerGroup.addLayer(layer);
   }
 
+  // TODO
   redrawLayerOnFeaturesUpdate(updatedFeatures) {
     this.features = updatedFeatures;
     this.removeLayerFromMap(this.layer);
@@ -1544,12 +1547,14 @@ class VisualizedLayer {
     this._symbolLayer.clearLayers();
     this.sourceRef.mapLayerGroup.removeLayer(this._symbolLayer);
     this._symbolLayer = null;
+    // Restore pointer events on base layer paths (were disabled while in pie chart mode).
+    this.layer.eachLayer((fl) => { if (fl._path) fl._path.style.pointerEvents = ''; });
   }
 
   _styleMarkersAsPieCharts(field, palette, size, opacity) {
     // Full teardown of existing _symbolLayer, so Leaflet properly removes zoom-animation listeners on old markers.
     this._clearSymbolLayer();
-    this._symbolLayer = L.layerGroup();
+    this._symbolLayer = markRaw(L.layerGroup());
     this._symbolLayer.addTo(this.sourceRef.mapLayerGroup);
 
     // NICE TO HAVE: cache allLabels to avoid recalculating on each style change.
@@ -1586,8 +1591,11 @@ class VisualizedLayer {
       return ((Math.log1p(sum) - Math.log1p(minSum)) / (Math.log1p(maxSum) - Math.log1p(minSum))) * (rMax - rMin) + rMin;
     };
 
-    // Hide markers from the base layer so only the pie chart markers are visible.
-    this.layer.eachLayer((fl) => fl.setStyle({ opacity: 0, fillOpacity: 0, stroke: false }));
+    // Hide base layer visually and disable pointer events so underlying layers remain interactive.
+    this.layer.eachLayer((fl) => {
+      fl.setStyle({ opacity: 0, fillOpacity: 0, stroke: false });
+      if (fl._path) fl._path.style.pointerEvents = 'none';
+    });
 
     this.layer.eachLayer((featureLayer) => {
       const feature = featureLayer.feature;
@@ -1597,6 +1605,7 @@ class VisualizedLayer {
       const radius = calcRadius(feature.id);
       if (radius <= 0) return;
 
+      // TODO: also get polyline midpoint
       // Points use their own location; polygons use their bounds centroid (computed client-side).
       const center = feature.geometry.type.includes('Point')
         ? featureLayer.getLatLng()
@@ -1614,7 +1623,7 @@ class VisualizedLayer {
         };
       });
 
-      const pieChart = new L.PieChartMarker(
+      const pieChart = markRaw(new L.PieChartMarker(
         center,
         {
           radius,
@@ -1629,7 +1638,7 @@ class VisualizedLayer {
           rotation: -90,
           pane: VisualizedLayer.customMapPane,
         }
-      );
+      ));
       this._symbolLayer.addLayer(pieChart);
       pieChart._featureId = feature.id; // required by _showHidePieChartLabels to look up the feature
     });
