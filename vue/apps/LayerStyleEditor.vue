@@ -11,14 +11,19 @@
       </a-col>
       <a-col>
         <a-dropdown trigger="click">
-          <a-button type="primary" size="small" :disabled="isLoading" :loading="isLoading" @click.prevent
+          <a-button
+            type="primary"
+            size="small"
+            :disabled="isLoading"
+            :loading="isLoading"
+            @click.prevent
             >Style Layer</a-button
           >
           <template #overlay>
             <a-menu>
-              <template v-if="datasources.some(ds => ds.visible)">
+              <template v-if="datasources.some((ds) => ds.visible)">
                 <a-menu-item-group
-                  v-for="datasource in datasources.filter(ds => ds.visible)"
+                  v-for="datasource in datasources.filter((ds) => ds.visible)"
                   :key="datasource.id"
                   :title="datasource.name"
                 >
@@ -52,22 +57,21 @@
           v-for="(vizLayer, idx) in visualizedLayers"
           :key="idx"
           :header="vizLayer.name"
-          style="background: #FAFAFA; border-bottom: 1px solid #d9d9d9;"
+          style="background: #fafafa; border-bottom: 1px solid #d9d9d9"
         >
           <a-col class="layer-info-col">
-            <a-typography-text strong>
-              Source
-            </a-typography-text>
+            <a-typography-text strong> Source </a-typography-text>
             <a-col :span="15">
               {{ vizLayer.sourceRef.name }}
             </a-col>
           </a-col>
           <a-col class="layer-info-col">
             <a-row style="align-items: center">
-              <a-typography-text strong>
-                Field
-              </a-typography-text>
-              <a-tooltip title="Type to search a field for styling. Reference fields load their values on selection." placement="right">
+              <a-typography-text strong> Field </a-typography-text>
+              <a-tooltip
+                title="Type to search a field for styling. Reference fields load their values on selection."
+                placement="right"
+              >
                 <a-button size="small" type="text">
                   <component
                     :is="InfoCircleOutlined"
@@ -79,7 +83,11 @@
             <a-tree-select
               :value="vizLayer.style.field"
               :tree-data="vizLayer.fieldTree"
-              :tree-default-expanded-keys="['__attributes__', '__costInformation__', '__KPIs__']"
+              :tree-default-expanded-keys="[
+                '__attributes__',
+                '__costInformation__',
+                '__KPIs__',
+              ]"
               :loading="vizLayer.loadingRefSchema || vizLayer.loadingRefField"
               style="width: 100%"
               :show-search="true"
@@ -95,9 +103,7 @@
             style="width: 100%"
           >
             <a-col class="layer-info-col">
-              <a-typography-text strong>
-                Style options
-              </a-typography-text>
+              <a-typography-text strong> Style options </a-typography-text>
               <a-row>
                 <a-segmented
                   v-model:value="vizLayer.style.styleType"
@@ -119,40 +125,45 @@
                 </a-segmented>
               </a-row>
             </a-col>
-            <a-col 
+            <a-col
               v-if="vizLayer.style.paint.color.mode === ColorMode.FIXED"
               class="layer-info-col"
             >
-              <a-typography-text strong>
-                Color
-              </a-typography-text>
+              <a-typography-text strong> Color </a-typography-text>
               <input
                 type="color"
                 :value="vizLayer.style.paint.color.value"
                 @input="(e) => vizLayer.onSelectColor(e.target.value)"
-                style="width: 100%; height: 35px; cursor: pointer; border: none;"
+                style="width: 100%; height: 35px; cursor: pointer; border: none"
               />
             </a-col>
-            <a-col 
+            <a-col
               v-if="vizLayer.style.paint.color.mode !== ColorMode.FIXED"
               class="layer-info-col"
             >
-              <a-typography-text strong>
-                Color palette
-              </a-typography-text>
+              <a-typography-text strong> Color palette </a-typography-text>
               <a-select
                 :value="vizLayer.style.paint.color.palette"
                 style="width: 100%"
                 @change="(palette) => vizLayer.onSelectPalette(palette)"
               >
                 <a-select-option
-                  v-for="option in VisualizedLayer.colorPalettes[vizLayer.style.paint.color.mode]"
+                  v-for="option in VisualizedLayer.colorPalettes[
+                    vizLayer.style.paint.color.mode
+                  ]"
                   :key="option.value"
                   :value="option.value"
                 >
                   <div
-                    v-if="vizLayer.style.paint.color.mode === ColorMode.GRADIENT"
-                    :style="{ background: toCssGradient(option.sample), height: '35px', width: '100%', borderRadius: '2px' }"
+                    v-if="
+                      vizLayer.style.paint.color.mode === ColorMode.GRADIENT
+                    "
+                    :style="{
+                      background: toCssGradient(option.sample),
+                      height: '35px',
+                      width: '100%',
+                      borderRadius: '2px',
+                    }"
                   />
                   <a-row v-else>
                     <a-col
@@ -174,16 +185,29 @@
             <a-col v-if="vizLayer.legend" class="layer-info-col">
               <a-typography-text strong>Legend</a-typography-text>
               <!-- Categorical legend -->
-              <template v-if="[ColorMode.CATEGORICAL, StyleType.PIE_CHART].includes(vizLayer.legend.type)">
-                <div style="max-height: 250px; overflow-y: auto;">
+              <template
+                v-if="
+                  [ColorMode.CATEGORICAL, StyleType.PIE_CHART].includes(
+                    vizLayer.legend.type,
+                  )
+                "
+              >
+                <div style="max-height: 250px; overflow-y: auto">
                   <div
                     v-for="entry in vizLayer.legend.entries"
                     :key="entry.label"
-                    style="display: flex; align-items: center; gap: 6px; padding: 2px 0"
+                    style="
+                      display: flex;
+                      align-items: center;
+                      gap: 6px;
+                      padding: 2px 0;
+                    "
                   >
                     <span
                       :style="{
-                        backgroundColor: entry.color.startsWith('#') ? entry.color : `#${entry.color}`,
+                        backgroundColor: entry.color.startsWith('#')
+                          ? entry.color
+                          : `#${entry.color}`,
                         width: '14px',
                         height: '14px',
                         display: 'inline-block',
@@ -191,7 +215,9 @@
                         flexShrink: 0,
                       }"
                     />
-                    <a-typography-text style="font-size: small">{{ entry.label }}</a-typography-text>
+                    <a-typography-text style="font-size: small">{{
+                      entry.label
+                    }}</a-typography-text>
                   </div>
                 </div>
               </template>
@@ -205,16 +231,30 @@
                     width: '100%',
                   }"
                 />
-                <div style="display: flex; justify-content: space-between; margin-top: 2px">
-                  <a-typography-text style="font-size: small">{{ fmtNl(vizLayer.legend.min) }}</a-typography-text>
-                  <a-typography-text style="font-size: small">{{ fmtNl(vizLayer.legend.max) }}</a-typography-text>
+                <div
+                  style="
+                    display: flex;
+                    justify-content: space-between;
+                    margin-top: 2px;
+                  "
+                >
+                  <a-typography-text style="font-size: small">{{
+                    fmtNl(vizLayer.legend.min)
+                  }}</a-typography-text>
+                  <a-typography-text style="font-size: small">{{
+                    fmtNl(vizLayer.legend.max)
+                  }}</a-typography-text>
                 </div>
               </template>
             </a-col>
-            <a-col class="layer-info-col" v-if="!vizLayer.isPolygon || vizLayer.style.styleType === StyleType.PIE_CHART">
-              <a-typography-text strong>
-                Size
-              </a-typography-text>
+            <a-col
+              class="layer-info-col"
+              v-if="
+                !vizLayer.isPolygon ||
+                vizLayer.style.styleType === StyleType.PIE_CHART
+              "
+            >
+              <a-typography-text strong> Size </a-typography-text>
               <a-slider
                 :value="vizLayer.style.paint.symbol.size.value"
                 :min="vizLayer.style.paint.symbol.size.minSize"
@@ -224,9 +264,7 @@
               />
             </a-col>
             <a-col class="layer-info-col">
-              <a-typography-text strong>
-                Opacity
-              </a-typography-text>
+              <a-typography-text strong> Opacity </a-typography-text>
               <a-slider
                 :value="vizLayer.style.paint.opacity"
                 :min="0"
@@ -236,27 +274,23 @@
               />
             </a-col>
             <a-row
-              v-if="!vizLayer.isPolyline && vizLayer.style.styleType !== StyleType.PIE_CHART"
+              v-if="
+                !vizLayer.isPolyline &&
+                vizLayer.style.styleType !== StyleType.PIE_CHART
+              "
               class="layer-info-row"
             >
-              <a-typography-text strong>
-                Show outline
-              </a-typography-text>
+              <a-typography-text strong> Show outline </a-typography-text>
               <a-col :span="2">
                 <a-switch
                   :checked="vizLayer.style.paint.stroke.visible"
                   size="small"
-                  @change="
-                    (visible) =>
-                      vizLayer.onToggleShowStroke(visible)
-                  "
+                  @change="(visible) => vizLayer.onToggleShowStroke(visible)"
                 />
               </a-col>
             </a-row>
             <a-row class="layer-info-row">
-              <a-typography-text strong>
-                Show label
-              </a-typography-text>
+              <a-typography-text strong> Show label </a-typography-text>
               <a-col :span="2">
                 <a-switch
                   :checked="vizLayer.style.paint.label.visible"
@@ -267,24 +301,23 @@
             </a-row>
             <template v-if="vizLayer.style.paint.label.visible">
               <a-row class="layer-info-row" style="padding-left: 16px">
-                <a-typography-text>
-                  Show on hover
-                </a-typography-text>
+                <a-typography-text> Show on hover </a-typography-text>
                 <a-col :span="2">
                   <a-switch
                     :checked="!vizLayer.style.paint.label.permanent"
                     size="small"
-                    @change="(hoverOnly) => vizLayer.onToggleLabelPermanent(!hoverOnly)"
+                    @change="
+                      (hoverOnly) => vizLayer.onToggleLabelPermanent(!hoverOnly)
+                    "
                   />
                 </a-col>
               </a-row>
               <a-row
                 v-if="vizLayer.style.styleType !== StyleType.PIE_CHART"
-                class="layer-info-row" style="padding-left: 16px"
+                class="layer-info-row"
+                style="padding-left: 16px"
               >
-                <a-typography-text>
-                  Show 'No data' labels
-                </a-typography-text>
+                <a-typography-text> Show 'No data' labels </a-typography-text>
                 <a-col :span="2">
                   <a-switch
                     :checked="vizLayer.style.paint.label.showNullValues"
@@ -378,7 +411,7 @@
       title="Add layer style to favorites"
       :existing-groups="savedStyleGroups"
       name-placeholder="e.g. Style demand asset power"
-      @save="({name, group}) => onConfirmSaveStyle({name, group})"
+      @save="({ name, group }) => onConfirmSaveStyle({ name, group })"
       @cancel="onCancelSaveStyleModal"
     />
     <!-- Load layer style modal -->
@@ -386,7 +419,12 @@
       v-model:open="showLoadStyleModal"
       title="Load layer style from favorites"
       :items="savedStyles"
-      :label-formatter="(s) => s.lastUpdate ? `${s.name} (${new Date(s.lastUpdate).toLocaleString()})` : s.name"
+      :label-formatter="
+        (s) =>
+          s.lastUpdate
+            ? `${s.name} (${new Date(s.lastUpdate).toLocaleString()})`
+            : s.name
+      "
       @load="(id) => onConfirmLoadStyle(id)"
       @delete-item="(id) => onDeleteSavedStyle(id)"
       @delete-group="(groupName) => onDeleteSavedStyleGroup(groupName)"
@@ -410,7 +448,7 @@ import {
   FolderOpenOutlined,
   InfoCircleOutlined,
   StarOutlined,
-  PieChartOutlined
+  PieChartOutlined,
 } from "@ant-design/icons-vue";
 import SaveFavoritesModal from "@/components/modals/SaveFavoritesModal.vue";
 import LoadFavoritesModal from "@/components/modals/LoadFavoritesModal.vue";
@@ -427,19 +465,27 @@ import {
   ColorMode,
   SizeMode,
   PaletteName,
-} from "@/utils/spatialVisualization";
+} from "@/utils/layerStyle";
 import { useESDLProjects } from "@/composables/esdlProjects";
-import { useEsdlLayers, collectAllLayers, groupByLevels } from "@/composables/esdlLayers";
+import {
+  useEsdlLayers,
+  collectAllLayers,
+  groupByLevels,
+} from "@/composables/esdlLayers";
 
 const { getAllVariants } = useESDLProjects();
 const { enabledEsdlIdList, isEsdlLoaded } = useEsdlLayers();
 
 const toCssGradient = (colors) => {
-  const stops = colors.map(c => c.startsWith('#') ? c : `#${c}`).join(', ');
+  const stops = colors.map((c) => (c.startsWith("#") ? c : `#${c}`)).join(", ");
   return `linear-gradient(to right, ${stops})`;
 };
 
-const fmtNl = (n) => n.toLocaleString('nl-NL', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+const fmtNl = (n) =>
+  n.toLocaleString("nl-NL", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
 
 // to prevent stuck popup on UI
 const removeTooltipPopup = () => {
@@ -464,10 +510,13 @@ onMounted(async () => {
   console.debug("Mount Layer Style Editor component.");
   await fetchLayerStyles();
   // Initialize datasources for ESDLs already fully loaded at mount time
-  for (const esId of enabledEsdlIdList.value.filter(id => isEsdlLoaded(id))) {
+  for (const esId of enabledEsdlIdList.value.filter((id) => isEsdlLoaded(id))) {
     const es = window.esdl_list?.[esId];
     if (es) {
-      datasources.value = [...datasources.value, new EsdlLayerSource(esId, es.title)];
+      datasources.value = [
+        ...datasources.value,
+        new EsdlLayerSource(esId, es.title),
+      ];
     }
   }
 });
@@ -480,17 +529,20 @@ onUnmounted(() => {
 // Create datasource when an ESDL becomes fully loaded (ADD_ESDL_OBJECTS and other mandatory messages
 // arrive after enableEsdl fires from area_layer, so we must wait for isEsdlLoaded).
 watch(
-  () => enabledEsdlIdList.value.filter(id => isEsdlLoaded(id)),
+  () => enabledEsdlIdList.value.filter((id) => isEsdlLoaded(id)),
   (loadedIds) => {
     for (const esId of loadedIds) {
-      if (!datasources.value.find(ds => ds.id === esId)) {
+      if (!datasources.value.find((ds) => ds.id === esId)) {
         const es = window.esdl_list?.[esId];
         if (es) {
-          datasources.value = [...datasources.value, new EsdlLayerSource(esId, es.title)];
+          datasources.value = [
+            ...datasources.value,
+            new EsdlLayerSource(esId, es.title),
+          ];
         }
       }
     }
-  }
+  },
 );
 
 // Watch enabled ESDL list to show/hide/dispose datasources based on project state.
@@ -498,27 +550,27 @@ watch(
   () => [...enabledEsdlIdList.value],
   (newIds, oldIds) => {
     const prevIds = oldIds ?? [];
-    const addedIds = newIds.filter(id => !prevIds.includes(id));
-    const removedIds = prevIds.filter(id => !newIds.includes(id));
-    const projectEsIds = new Set(getAllVariants().map(v => v.es_id));
+    const addedIds = newIds.filter((id) => !prevIds.includes(id));
+    const removedIds = prevIds.filter((id) => !newIds.includes(id));
+    const projectEsIds = new Set(getAllVariants().map((v) => v.es_id));
 
     for (const esId of addedIds) {
-      const existing = datasources.value.find(ds => ds.id === esId);
+      const existing = datasources.value.find((ds) => ds.id === esId);
       if (existing) existing.setVisible(true);
       // Creation is handled by the loading watch above
     }
 
     for (const esId of removedIds) {
-      const ds = datasources.value.find(d => d.id === esId);
+      const ds = datasources.value.find((d) => d.id === esId);
       if (!ds) continue;
       if (projectEsIds.has(esId)) {
         ds.setVisible(false);
       } else {
         ds.dispose();
-        datasources.value = datasources.value.filter(d => d.id !== esId);
+        datasources.value = datasources.value.filter((d) => d.id !== esId);
       }
     }
-  }
+  },
 );
 
 // -------------------------------------------------- //
@@ -529,7 +581,7 @@ const savedStyles = ref([]);
 
 const fetchLayerStyles = async () => {
   try {
-    const styles = await fetchData("spatial_visualization/get_layer_styles");
+    const styles = await fetchData("layer_style/get_layer_styles");
     savedStyles.value = styles;
   } catch (error) {
     console.error(error);
@@ -547,7 +599,7 @@ const fetchLayerStyles = async () => {
 const persistLayerStyles = async (updatedStyles, previousStyles) => {
   savedStyles.value = updatedStyles;
   try {
-    const saved = await fetchData("spatial_visualization/save_layer_styles", {
+    const saved = await fetchData("layer_style/save_layer_styles", {
       styles: updatedStyles,
     });
     savedStyles.value = saved;
@@ -561,9 +613,9 @@ const persistLayerStyles = async (updatedStyles, previousStyles) => {
 const showSaveStyleModal = ref(false);
 const vizLayerToSaveStyle = ref(undefined);
 
-const savedStyleGroups = computed(() =>
-  [...new Set(savedStyles.value.map((s) => s.group).filter(Boolean))]
-);
+const savedStyleGroups = computed(() => [
+  ...new Set(savedStyles.value.map((s) => s.group).filter(Boolean)),
+]);
 
 const showLoadStyleModal = ref(false);
 const vizLayerToLoadStyle = ref(undefined);
@@ -680,7 +732,7 @@ const onConfirmLoadStyle = async (id) => {
 // -------------------------------------------------- //
 
 const isLoading = computed(() => {
-  return datasources.value.find(ds => ds.loading === true) ? true : false; 
+  return datasources.value.find((ds) => ds.loading === true) ? true : false;
 });
 
 /**
@@ -825,11 +877,10 @@ class DataSource {
  * It fetches and enriches ESDL asset and area features with attribute values from the backend.
  */
 class EsdlLayerSource extends DataSource {
-  
   /** Category of ESDL entity a VisualizedLayer's features originate from. */
   static SourceType = Object.freeze({
-    ASSET: 'ESDL Asset',
-    AREA:  'ESDL Area',
+    ASSET: "ESDL Asset",
+    AREA: "ESDL Area",
   });
 
   constructor(id, name) {
@@ -840,8 +891,12 @@ class EsdlLayerSource extends DataSource {
     this.sources = Object.fromEntries([...assetEntries, ...areaEntries]);
     // Tracks SourceType per sourceKey.
     this._sourceTypeByKey = {
-      ...Object.fromEntries(assetEntries.map(([key]) => [key, EsdlLayerSource.SourceType.ASSET])),
-      ...Object.fromEntries(areaEntries.map(([key]) => [key, EsdlLayerSource.SourceType.AREA])),
+      ...Object.fromEntries(
+        assetEntries.map(([key]) => [key, EsdlLayerSource.SourceType.ASSET]),
+      ),
+      ...Object.fromEntries(
+        areaEntries.map(([key]) => [key, EsdlLayerSource.SourceType.AREA]),
+      ),
     };
   }
 
@@ -855,12 +910,13 @@ class EsdlLayerSource extends DataSource {
    */
   async addAsGeoJsonSource(sourceKey) {
     const layerFeatures = this.sources[sourceKey];
-    const isArea = this.getSourceType(sourceKey) === EsdlLayerSource.SourceType.AREA;
+    const isArea =
+      this.getSourceType(sourceKey) === EsdlLayerSource.SourceType.AREA;
 
     // First pass: compute geometry and objectId synchronously — no field fetching yet.
     const rawFeatures = layerFeatures.map((f) => {
       const g = f.toGeoJSON();
-      const objectId = isArea ? f.id.replace(/ \(\d+ of \d+\)$/, '') : f.id;
+      const objectId = isArea ? f.id.replace(/ \(\d+ of \d+\)$/, "") : f.id;
       // g.id retains the suffixed piece id for grouping; _objectId is the real ESDL id used after merge.
       g.id = f.id;
       g._objectId = objectId;
@@ -875,31 +931,35 @@ class EsdlLayerSource extends DataSource {
     }
 
     // Second pass: fetch fields once per unique objectId, not once per polygon piece.
-    const featurePromises = [...byObjectId.entries()].map(async ([objectId, pieces]) => {
-      const fields = await getEsdlObjectFields(this.id, objectId);
-      const properties = {};
-      fields.forEach((attr) => { properties[attr.name] = attr.value; });
+    const featurePromises = [...byObjectId.entries()].map(
+      async ([objectId, pieces]) => {
+        const fields = await getEsdlObjectFields(this.id, objectId);
+        const properties = {};
+        fields.forEach((attr) => {
+          properties[attr.name] = attr.value;
+        });
 
-      // Polygon feature
-      if (pieces.length === 1) {
-        pieces[0].id = objectId;
-        pieces[0]["_fields"] = fields;
-        pieces[0].properties = properties;
-        return pieces[0];
-      } else {
-        // Reassemble split Polygon pieces into a single MultiPolygon feature.
-        return {
-          ...pieces[0],
-          id: objectId,
-          _fields: fields,
-          properties,
-          geometry: {
-            type: 'MultiPolygon',
-            coordinates: pieces.map(p => p.geometry.coordinates),
-          },
-        };
-      }
-    });
+        // Polygon feature
+        if (pieces.length === 1) {
+          pieces[0].id = objectId;
+          pieces[0]["_fields"] = fields;
+          pieces[0].properties = properties;
+          return pieces[0];
+        } else {
+          // Reassemble split Polygon pieces into a single MultiPolygon feature.
+          return {
+            ...pieces[0],
+            id: objectId,
+            _fields: fields,
+            properties,
+            geometry: {
+              type: "MultiPolygon",
+              coordinates: pieces.map((p) => p.geometry.coordinates),
+            },
+          };
+        }
+      },
+    );
 
     const geoJsonFeatureCollection = await Promise.all(featurePromises);
 
@@ -952,12 +1012,17 @@ class EsdlLayerSource extends DataSource {
    * @returns {Array<[string, Object[]]>} [sourceKey, layers[]] pairs, to be merged into `this.sources`.
    */
   _getEsdlAreaLevels() {
-    const areaFeatureGroup = this._getEsdlFeatureGroupLayer(this.id, "area_layer");
+    const areaFeatureGroup = this._getEsdlFeatureGroupLayer(
+      this.id,
+      "area_layer",
+    );
     const allAreaLayers = collectAllLayers(areaFeatureGroup); // TODO: review and check
     const levels = groupByLevels(allAreaLayers);
 
     return levels.map((levelLayers, idx) => {
-      const scopes = new Set(levelLayers.map((l) => l.feature?.properties?.scope).filter(Boolean));
+      const scopes = new Set(
+        levelLayers.map((l) => l.feature?.properties?.scope).filter(Boolean),
+      );
       let sourceKey = `Area L${idx + 1}`;
       if (scopes.size === 1) {
         sourceKey += ` (${[...scopes][0]})`;
@@ -976,27 +1041,29 @@ class VisualizedLayer {
   // NICE TO HAVE: custom icons
   // Supported style types
   static StyleTypes = Object.freeze({
-    [FieldType.BOOLEAN]: [{
-      value: StyleType.CATEGORICAL_COLOR,
-      payload: {
-        label: "Categorical Color",
-        icon: AppstoreOutlined,
-      }
-    }],
+    [FieldType.BOOLEAN]: [
+      {
+        value: StyleType.CATEGORICAL_COLOR,
+        payload: {
+          label: "Categorical Color",
+          icon: AppstoreOutlined,
+        },
+      },
+    ],
     [FieldType.STRING]: [
       {
         value: StyleType.SINGLE_COLOR,
         payload: {
           label: "Single Color",
           icon: BgColorsOutlined,
-        }
+        },
       },
       {
         value: StyleType.CATEGORICAL_COLOR,
         payload: {
           label: "Categorical Color",
           icon: AppstoreOutlined,
-        }
+        },
       },
     ],
     [FieldType.NUMBER]: [
@@ -1005,21 +1072,21 @@ class VisualizedLayer {
         payload: {
           label: "Size",
           icon: ExpandAltOutlined,
-        }
+        },
       },
       {
         value: StyleType.GRADIENT_COLOR,
         payload: {
           label: "Gradient Color",
           icon: BarChartOutlined,
-        }
+        },
       },
       {
         value: StyleType.COLOR_AND_SIZE,
         payload: {
           label: "Color and Size",
           icon: DotChartOutlined,
-        }
+        },
       },
     ],
     [FieldType.ARRAY]: [
@@ -1028,9 +1095,9 @@ class VisualizedLayer {
         payload: {
           label: "Pie Chart",
           icon: PieChartOutlined,
-        }
+        },
       },
-    ]
+    ],
   });
 
   static colorPalettes = {
@@ -1091,7 +1158,7 @@ class VisualizedLayer {
           value: 10,
           minSize: 1,
           maxSize: 20,
-        }
+        },
       },
       stroke: {
         visible: false,
@@ -1151,10 +1218,12 @@ class VisualizedLayer {
   styleGeoJsonFeatures(features) {
     const layer = L.geoJSON(features, {
       style: function (feature) {
-        const isPolygon = feature.geometry.type.includes('Polygon');
+        const isPolygon = feature.geometry.type.includes("Polygon");
         return setLeafletFeatureStyle(
           feature.geometry.type,
-          isPolygon ? { opacity: VisualizedLayer.defaultPolygonOpacity, stroke: true } : {},
+          isPolygon
+            ? { opacity: VisualizedLayer.defaultPolygonOpacity, stroke: true }
+            : {},
         );
       },
       pointToLayer: function (feature, latlng) {
@@ -1200,12 +1269,14 @@ class VisualizedLayer {
   toggleLayer(event) {
     event.stopPropagation();
     if (this.visible) {
-      if (this._symbolLayer) this.sourceRef.mapLayerGroup.removeLayer(this._symbolLayer);
+      if (this._symbolLayer)
+        this.sourceRef.mapLayerGroup.removeLayer(this._symbolLayer);
       this.sourceRef.mapLayerGroup.removeLayer(this.layer);
       this.visible = false;
     } else {
       this.sourceRef.mapLayerGroup.addLayer(this.layer);
-      if (this._symbolLayer) this.sourceRef.mapLayerGroup.addLayer(this._symbolLayer);
+      if (this._symbolLayer)
+        this.sourceRef.mapLayerGroup.addLayer(this._symbolLayer);
       this.visible = true;
     }
   }
@@ -1228,11 +1299,14 @@ class VisualizedLayer {
     if (this.refSchema.length > 0 || this.loadingRefSchema) return;
     this.loadingRefSchema = true;
     try {
-      this.refSchema = await getRefFieldSchema(this.sourceRef.id, this._objectIds());
+      this.refSchema = await getRefFieldSchema(
+        this.sourceRef.id,
+        this._objectIds(),
+      );
       this.fieldTree = this._buildFieldTree();
     } catch (error) {
-      console.error('Failed to load reference field schema:', error);
-      displayNotification('error', 'Failed to load reference field schema.');
+      console.error("Failed to load reference field schema:", error);
+      displayNotification("error", "Failed to load reference field schema.");
     } finally {
       this.loadingRefSchema = false;
     }
@@ -1258,15 +1332,24 @@ class VisualizedLayer {
   get styleTypeOptions() {
     const options = VisualizedLayer.StyleTypes[this.style.fieldType] ?? [];
     if (!this.isPolygon) return options;
-    return options.filter((opt) => opt.value !== StyleType.SIZE && opt.value !== StyleType.COLOR_AND_SIZE);
+    return options.filter(
+      (opt) =>
+        opt.value !== StyleType.SIZE && opt.value !== StyleType.COLOR_AND_SIZE,
+    );
   }
 
   get isPolygon() {
-    return this.features[0].geometry.type.includes('Polygon') || this.features[0].geometry.type.includes('MultiPolygon');
+    return (
+      this.features[0].geometry.type.includes("Polygon") ||
+      this.features[0].geometry.type.includes("MultiPolygon")
+    );
   }
 
   get isPolyline() {
-    return this.features[0].geometry.type.includes('LineString') || this.features[0].geometry.type.includes('MultiLineString');
+    return (
+      this.features[0].geometry.type.includes("LineString") ||
+      this.features[0].geometry.type.includes("MultiLineString")
+    );
   }
 
   _objectIds() {
@@ -1276,9 +1359,19 @@ class VisualizedLayer {
   _buildFieldTree() {
     const attributes = this.fieldOptions
       .filter((opt) => !opt.refPath)
-      .map((opt) => ({ value: opt.value, label: opt.label, disabled: opt.disabled, isLeaf: true }));
+      .map((opt) => ({
+        value: opt.value,
+        label: opt.label,
+        disabled: opt.disabled,
+        isLeaf: true,
+      }));
     return [
-      { value: '__attributes__', label: 'Attributes', selectable: false, children: attributes },
+      {
+        value: "__attributes__",
+        label: "Attributes",
+        selectable: false,
+        children: attributes,
+      },
       ...this.refSchema,
     ];
   }
@@ -1296,8 +1389,13 @@ class VisualizedLayer {
     try {
       // Needed so a restored saved style can resolve its label without a prior browse.
       await this.loadRefSchema();
-      const displayLabel = this.findRefSchemaNode(path)?.display || label || path;
-      const result = await getRefFieldValues(this.sourceRef.id, this._objectIds(), path);
+      const displayLabel =
+        this.findRefSchemaNode(path)?.display || label || path;
+      const result = await getRefFieldValues(
+        this.sourceRef.id,
+        this._objectIds(),
+        path,
+      );
 
       const firstEntry = Object.values(result).find((r) => r !== null);
       if (!firstEntry) {
@@ -1329,7 +1427,7 @@ class VisualizedLayer {
       this.loadedRefPaths[path] = jsType;
     } catch (error) {
       console.error(`Failed to load reference field '${path}':`, error);
-      displayNotification('error', 'Failed to load reference field values.');
+      displayNotification("error", "Failed to load reference field values.");
     } finally {
       this.loadingRefField = false;
     }
@@ -1339,7 +1437,7 @@ class VisualizedLayer {
   // ----------- Event handlers ------------- //
   // ---------------------------------------- //
 
-  async onSelectField (field) {
+  async onSelectField(field) {
     // Reference fields only exist as schema nodes until picked; their values load on first selection.
     if (!this.fieldOptions.find((f) => f.value === field)) {
       await this.loadRefField(field);
@@ -1357,7 +1455,9 @@ class VisualizedLayer {
   }
 
   preSelectStyleTypeOnFieldSelection() {
-    if (Object.keys(VisualizedLayer.StyleTypes).includes(this.style.fieldType)) {
+    if (
+      Object.keys(VisualizedLayer.StyleTypes).includes(this.style.fieldType)
+    ) {
       this.style.styleType = this.styleTypeOptions[0]?.value;
       this.preSelectColorOnStyleTypeChange();
       // Overwrite opacity for array type for pie chart style.
@@ -1371,7 +1471,7 @@ class VisualizedLayer {
     }
   }
 
-  onSelectStyleType (type) {
+  onSelectStyleType(type) {
     this.style.styleType = type;
 
     this.preSelectColorOnStyleTypeChange();
@@ -1383,19 +1483,26 @@ class VisualizedLayer {
       this.style.styleType === StyleType.SINGLE_COLOR ||
       this.style.styleType === StyleType.SIZE
     ) {
-      this.style.paint.color.value = VisualizedLayer.defaultStyle.paint.color.value;
+      this.style.paint.color.value =
+        VisualizedLayer.defaultStyle.paint.color.value;
     } else if (
       this.style.styleType === StyleType.CATEGORICAL_COLOR ||
       this.style.styleType === StyleType.GRADIENT_COLOR ||
       this.style.styleType === StyleType.COLOR_AND_SIZE
     ) {
-      if (this.style.fieldType === FieldType.STRING || this.style.fieldType === FieldType.BOOLEAN) {
-        this.style.paint.color.palette = VisualizedLayer.colorPalettes[ColorMode.CATEGORICAL][0].value;
+      if (
+        this.style.fieldType === FieldType.STRING ||
+        this.style.fieldType === FieldType.BOOLEAN
+      ) {
+        this.style.paint.color.palette =
+          VisualizedLayer.colorPalettes[ColorMode.CATEGORICAL][0].value;
       } else if (this.style.fieldType === FieldType.NUMBER) {
-        this.style.paint.color.palette = VisualizedLayer.colorPalettes[ColorMode.GRADIENT][0].value;
+        this.style.paint.color.palette =
+          VisualizedLayer.colorPalettes[ColorMode.GRADIENT][0].value;
       }
     } else if (this.style.styleType === StyleType.PIE_CHART) {
-      this.style.paint.color.palette = VisualizedLayer.colorPalettes[ColorMode.CATEGORICAL][0].value;
+      this.style.paint.color.palette =
+        VisualizedLayer.colorPalettes[ColorMode.CATEGORICAL][0].value;
     }
   }
 
@@ -1441,7 +1548,7 @@ class VisualizedLayer {
 
   onLabelOffsetChange(axis, value) {
     const offset = [...this.style.paint.label.offset];
-    offset[axis === 'x' ? 0 : 1] = value ?? 0;
+    offset[axis === "x" ? 0 : 1] = value ?? 0;
     this.style.paint.label.offset = offset;
     this.applyStyle();
   }
@@ -1467,7 +1574,10 @@ class VisualizedLayer {
     // Derive paint modes from fieldType + styleType.
     const { fieldType } = updated;
     if (fieldType === FieldType.BOOLEAN || fieldType === FieldType.STRING) {
-      updated.paint.color.mode = updated.styleType === StyleType.CATEGORICAL_COLOR ? ColorMode.CATEGORICAL : ColorMode.FIXED;
+      updated.paint.color.mode =
+        updated.styleType === StyleType.CATEGORICAL_COLOR
+          ? ColorMode.CATEGORICAL
+          : ColorMode.FIXED;
       updated.paint.symbol.size.mode = SizeMode.FIXED;
     } else if (fieldType === FieldType.NUMBER) {
       if (updated.styleType === StyleType.SIZE) {
@@ -1505,7 +1615,12 @@ class VisualizedLayer {
 
     // Special handling for Distribution KPIs piechart
     if (this.style.styleType === StyleType.PIE_CHART) {
-      this._styleMarkersAsPieCharts(field, paint.color.palette, paint.symbol.size.value, paint.opacity);
+      this._styleMarkersAsPieCharts(
+        field,
+        paint.color.palette,
+        paint.symbol.size.value,
+        paint.opacity,
+      );
       this._showHidePieChartLabels(field, paint.label);
       return;
     }
@@ -1526,7 +1641,11 @@ class VisualizedLayer {
     if (paint.symbol.size.mode === SizeMode.FIXED) {
       this._styleMarkerSize(paint.symbol.size.value, paint.stroke.weight);
     } else if (paint.symbol.size.mode === SizeMode.GRADUATED) {
-      this._styleMarkerSizeOnNumericalFieldValue(field, paint.symbol.size.value, paint.stroke.weight);
+      this._styleMarkerSizeOnNumericalFieldValue(
+        field,
+        paint.symbol.size.value,
+        paint.stroke.weight,
+      );
     }
 
     // Apply opacity, stroke, labels
@@ -1542,12 +1661,17 @@ class VisualizedLayer {
   _clearSymbolLayer() {
     if (!this._symbolLayer) return;
     // Close tooltips before removing to avoid orphaned zoom-animation listeners.
-    this._symbolLayer.eachLayer((layer) => { layer.closeTooltip(); layer.unbindTooltip(); });
+    this._symbolLayer.eachLayer((layer) => {
+      layer.closeTooltip();
+      layer.unbindTooltip();
+    });
     this._symbolLayer.clearLayers();
     this.sourceRef.mapLayerGroup.removeLayer(this._symbolLayer);
     this._symbolLayer = null;
     // Restore pointer events on base layer paths (were disabled while in pie chart mode).
-    this.layer.eachLayer((fl) => { if (fl._path) fl._path.style.pointerEvents = ''; });
+    this.layer.eachLayer((fl) => {
+      if (fl._path) fl._path.style.pointerEvents = "";
+    });
   }
 
   _styleMarkersAsPieCharts(field, palette, size, opacity) {
@@ -1565,7 +1689,9 @@ class VisualizedLayer {
     });
     const labelList = [...allLabels].sort();
     const colorscale = generateColorscale(palette, labelList.length);
-    const colorByLabel = Object.fromEntries(labelList.map((l, i) => [l, colorscale[i]]));
+    const colorByLabel = Object.fromEntries(
+      labelList.map((l, i) => [l, colorscale[i]]),
+    );
 
     // NICE TO HAVE: cache featureSums to avoid recalculating on each style change.
     // Compute each feature's distribution sum to drive proportional radius scaling.
@@ -1587,13 +1713,18 @@ class VisualizedLayer {
       const sum = featureSums.get(id);
       if (!sum) return 0;
       if (minSum === maxSum) return rMax;
-      return ((Math.log1p(sum) - Math.log1p(minSum)) / (Math.log1p(maxSum) - Math.log1p(minSum))) * (rMax - rMin) + rMin;
+      return (
+        ((Math.log1p(sum) - Math.log1p(minSum)) /
+          (Math.log1p(maxSum) - Math.log1p(minSum))) *
+          (rMax - rMin) +
+        rMin
+      );
     };
 
     // Hide base layer visually and disable pointer events so underlying layers remain interactive.
     this.layer.eachLayer((fl) => {
       fl.setStyle({ opacity: 0, fillOpacity: 0, stroke: false });
-      if (fl._path) fl._path.style.pointerEvents = 'none';
+      if (fl._path) fl._path.style.pointerEvents = "none";
     });
 
     this.layer.eachLayer((featureLayer) => {
@@ -1606,7 +1737,7 @@ class VisualizedLayer {
 
       // TODO: also get polyline midpoint
       // Points use their own location; polygons use their bounds centroid (computed client-side).
-      const center = feature.geometry.type.includes('Point')
+      const center = feature.geometry.type.includes("Point")
         ? featureLayer.getLatLng()
         : featureLayer.getBounds().getCenter();
       const data = {};
@@ -1617,14 +1748,13 @@ class VisualizedLayer {
         chartOptions[label] = {
           fillColor: colorByLabel[label],
           displayText: function (value) {
-            return typeof value === 'number' ? fmtNl(value) : value;
-          }
+            return typeof value === "number" ? fmtNl(value) : value;
+          },
         };
       });
 
-      const pieChart = markRaw(new L.PieChartMarker(
-        center,
-        {
+      const pieChart = markRaw(
+        new L.PieChartMarker(center, {
           radius,
           fillOpacity: opacity ?? 1.0,
           opacity: opacity ?? 1.0,
@@ -1636,8 +1766,8 @@ class VisualizedLayer {
           stroke: null,
           rotation: -90,
           pane: VisualizedLayer.customMapPane,
-        }
-      ));
+        }),
+      );
       this._symbolLayer.addLayer(pieChart);
       pieChart._featureId = feature.id; // required by _showHidePieChartLabels to look up the feature
     });
@@ -1668,15 +1798,17 @@ class VisualizedLayer {
         lines.push(`<b>Total: ${fmtNl(total)}</b>`);
 
         // Bind custom tooltip to the PieChartMarker with the aggregated data.
-        pieChart.bindTooltip(lines.join('<br>'), {
+        pieChart.bindTooltip(lines.join("<br>"), {
           permanent: label.permanent,
-          direction: 'top',
+          direction: "top",
           offset: label.offset,
           opacity: 0.8,
         });
 
         // Strip DVF's per-slice popup so only the custom _showHidePieChartLabels tooltip is shown.
-        pieChart.eachLayer((slice) => { slice.off('mouseover').off('mouseout'); });
+        pieChart.eachLayer((slice) => {
+          slice.off("mouseover").off("mouseout");
+        });
 
         if (label.permanent) pieChart.openTooltip();
       });
@@ -1693,7 +1825,9 @@ class VisualizedLayer {
   _styleMarkerSize(size, strokeWeight) {
     this.layer.setStyle({
       radius: size,
-      weight: this.isPolyline ? size * VisualizedLayer.radiusToWeight : strokeWeight
+      weight: this.isPolyline
+        ? size * VisualizedLayer.radiusToWeight
+        : strokeWeight,
     });
   }
 
@@ -1723,9 +1857,12 @@ class VisualizedLayer {
       if (label.visible && featureLayer.feature?.properties) {
         const fieldValue = featureLayer.feature.properties[selectedField];
         if (fieldValue === null && !label.showNullValues) return;
-        const popupContent = fieldValue !== null
-          ? (typeof fieldValue === 'number' ? fmtNl(fieldValue) : `${fieldValue}`)
-          : "No data";
+        const popupContent =
+          fieldValue !== null
+            ? typeof fieldValue === "number"
+              ? fmtNl(fieldValue)
+              : `${fieldValue}`
+            : "No data";
         featureLayer.bindTooltip(popupContent, {
           permanent: label.permanent,
           direction: "top",
@@ -1742,7 +1879,9 @@ class VisualizedLayer {
     if (fieldUniqueValues.length) {
       const colorscale = generateColorscale(palette, fieldUniqueValues.length);
       this.layer.setStyle((feature) => {
-        const idx = fieldUniqueValues.findIndex((val) => val === feature.properties[field]);
+        const idx = fieldUniqueValues.findIndex(
+          (val) => val === feature.properties[field],
+        );
         const markerColor = colorscale[idx % colorscale.length];
         return { fillColor: markerColor, color: markerColor };
       });
@@ -1799,7 +1938,9 @@ class VisualizedLayer {
         const isPolyline = feature.geometry.type.includes("LineString");
         return {
           radius: size,
-          weight: isPolyline ? size * VisualizedLayer.radiusToWeight : strokeWeight,
+          weight: isPolyline
+            ? size * VisualizedLayer.radiusToWeight
+            : strokeWeight,
         };
       });
     } else {
@@ -1851,7 +1992,6 @@ class VisualizedLayer {
 </script>
 
 <style scoped>
-
 :deep(.ant-segmented-item),
 :deep(.ant-segmented-item::selection) {
   height: 100%;
@@ -1867,5 +2007,4 @@ class VisualizedLayer {
 .layer-info-col {
   padding-bottom: 8px;
 }
-
 </style>

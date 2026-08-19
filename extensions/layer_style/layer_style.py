@@ -16,6 +16,7 @@ logger = log.get_logger(__name__)
 
 LAYER_VISUALIZATION_SETTINGS = "LAYER_VISUALIZATION"
 
+
 def _walk(obj, steps: List[dict], pattern: List[dict]) -> Iterator[Any]:
     """Yield every object reached from obj by following steps, filtered by the parallel pattern.
 
@@ -44,13 +45,19 @@ def _walk(obj, steps: List[dict], pattern: List[dict]) -> Iterator[Any]:
             continue
         if allowed and child.eClass.name not in allowed:
             continue
-        if key_attr is not None and wanted is not None and getattr(child, key_attr, None) != wanted:
+        if (
+            key_attr is not None
+            and wanted is not None
+            and getattr(child, key_attr, None) != wanted
+        ):
             continue
         yield from _walk(child, steps[1:], pattern[1:])
 
 
 def _build_path(ref_group: str, steps: List[dict], attr: Optional[str]) -> str:
-    return json.dumps({"ref_group": ref_group, "steps": steps, "attr": attr}, sort_keys=True)
+    return json.dumps(
+        {"ref_group": ref_group, "steps": steps, "attr": attr}, sort_keys=True
+    )
 
 
 def _parse_path(path: str):
@@ -65,53 +72,60 @@ class RefFieldSchemaRequest:
     es_id: str
     object_ids: List[str]
 
+
 @dataclass()
 class RefFieldValuesRequest:
     es_id: str
     object_ids: List[str]
     path: str
-class SpatialVisualization:
-    def __init__(self, flask_app: Flask, socket: SocketIO, settings_storage: SettingsStorage):
+
+
+class LayerStyleEditor:
+    def __init__(
+        self, flask_app: Flask, socket: SocketIO, settings_storage: SettingsStorage
+    ):
         self.flask_app = flask_app
         self.socketio = socket
         self.settings_storage = settings_storage
         self.register()
 
     def register(self):
-        logger.info("Registering SpatialVisualization extension")
+        logger.info("Registering LayerStyleEditor extension")
 
-        @self.socketio.on("spatial_visualization/object_fields", namespace="/esdl")
+        @self.socketio.on("layer_style/object_fields", namespace="/esdl")
         def _get_esdl_object_fields(params: Dict):
             return self.get_esdl_object_attributes(params["es_id"], params["object_id"])
 
-        @self.socketio.on("spatial_visualization/ref_field_schema", namespace="/esdl")
+        @self.socketio.on("layer_style/ref_field_schema", namespace="/esdl")
         def _get_ref_field_schema(params: Dict) -> dict:
             req = RefFieldSchemaRequest(**params)
             return self.get_ref_schema(req.es_id, req.object_ids)
 
-        @self.socketio.on("spatial_visualization/ref_field_values", namespace="/esdl")
+        @self.socketio.on("layer_style/ref_field_values", namespace="/esdl")
         def _get_ref_field_values(params: Dict) -> dict:
             req = RefFieldValuesRequest(**params)
             return self.get_ref_field_values(req.es_id, req.object_ids, req.path)
 
-        @self.socketio.on("spatial_visualization/get_layer_styles", namespace="/esdl")
+        @self.socketio.on("layer_style/get_layer_styles", namespace="/esdl")
         def _get_layer_styles():
             return self.get_layer_styles()
 
-        @self.socketio.on("spatial_visualization/save_layer_styles", namespace="/esdl")
+        @self.socketio.on("layer_style/save_layer_styles", namespace="/esdl")
         def _save_layer_styles(params: Dict):
-            if not isinstance(params, dict) or not isinstance(params.get('styles'), list):
+            if not isinstance(params, dict) or not isinstance(
+                params.get("styles"), list
+            ):
                 logger.error(f"Invalid request body for save_layer_styles: {params}")
                 return None
-            return self.save_layer_styles(params['styles'])
-    
+            return self.save_layer_styles(params["styles"])
+
     def get_layer_styles(self) -> Optional[List[dict]]:
         """
         Fetches the saved layer styles for the currently logged in user.
 
         :return: The list of saved layer styles, or None if they could not be fetched.
         """
-        user = get_session('user-email')
+        user = get_session("user-email")
         if user is None:
             logger.warning("No active user session found; cannot fetch layer styles.")
             return None
@@ -119,12 +133,16 @@ class SpatialVisualization:
         try:
             styles: List[dict] = []
             if self.settings_storage.has_user(user, LAYER_VISUALIZATION_SETTINGS):
-                user_settings = self.settings_storage.get_user(user, LAYER_VISUALIZATION_SETTINGS)
-                if user_settings and user_settings.get('layer_styles') is not None:
-                    styles = user_settings.get('layer_styles')
+                user_settings = self.settings_storage.get_user(
+                    user, LAYER_VISUALIZATION_SETTINGS
+                )
+                if user_settings and user_settings.get("layer_styles") is not None:
+                    styles = user_settings.get("layer_styles")
             return styles
         except Exception as e:
-            logger.error(f"An error occurred while fetching layer styles for {user}: {e}")
+            logger.error(
+                f"An error occurred while fetching layer styles for {user}: {e}"
+            )
             return None
 
     def save_layer_styles(self, styles: List[dict]) -> Optional[List[dict]]:
@@ -135,13 +153,15 @@ class SpatialVisualization:
 
         :return: The persisted list of layer styles, or None if they could not be saved.
         """
-        user = get_session('user-email')
+        user = get_session("user-email")
         if user is None:
             logger.warning("No active user session found; cannot save layer styles.")
             return None
 
         try:
-            self.settings_storage.set_user(user, LAYER_VISUALIZATION_SETTINGS, {"layer_styles": styles})
+            self.settings_storage.set_user(
+                user, LAYER_VISUALIZATION_SETTINGS, {"layer_styles": styles}
+            )
             return styles
         except Exception as e:
             logger.error(f"An error occurred while saving layer styles for {user}: {e}")
@@ -149,7 +169,7 @@ class SpatialVisualization:
 
     def _get_attributes(self, obj) -> list:
         return [
-            {'name': a['name'], 'type': a['type'], 'value': a['value']}
+            {"name": a["name"], "type": a["type"], "value": a["value"]}
             for a in ESDLEcore.get_asset_attributes(obj)
         ]
 
@@ -160,7 +180,9 @@ class SpatialVisualization:
             attributes = self._get_attributes(obj)
             return attributes
         except KeyError:
-            logger.error(f"Error getting object with ES id {es_id} and object id: {object_id}")
+            logger.error(
+                f"Error getting object with ES id {es_id} and object id: {object_id}"
+            )
             return []
 
     def _objects_by_id(self, es_id: str, object_ids: List[str]) -> Dict[str, Any]:
@@ -175,7 +197,7 @@ class SpatialVisualization:
 
     def get_ref_schema(self, es_id: str, object_ids: List[str]) -> dict:
         """
-        Return a reference field schema as a tree (dict) for the given ESDL objects 
+        Return a reference field schema as a tree (dict) for the given ESDL objects
         that can be displayed in frontend dropdown menu.
         """
         objects = self._objects_by_id(es_id, object_ids)
@@ -209,8 +231,16 @@ class SpatialVisualization:
             if ref_cost_info is None:
                 continue
 
-            for f in sorted(ref_cost_info.eClass.eAllStructuralFeatures(), key=lambda x: x.name):
-                if isinstance(f, EReference) and not f.many and f.containment and not (f.eOpposite and f.eOpposite.containment):
+            # TODO: replace with get_asset_references?
+            for f in sorted(
+                ref_cost_info.eClass.eAllStructuralFeatures(), key=lambda x: x.name
+            ):
+                if (
+                    isinstance(f, EReference)
+                    and not f.many
+                    and f.containment
+                    and not (f.eOpposite and f.eOpposite.containment)
+                ):
                     containment_refs.append(f)
 
             for c_ref in containment_refs:
@@ -226,16 +256,28 @@ class SpatialVisualization:
                         continue
 
                     collected_attrs = []
-                    for attr in sorted(child.eClass.eAllStructuralFeatures(), key=lambda x: x.name):
+                    # TODO: replace with get_asset_attributes?
+                    for attr in sorted(
+                        child.eClass.eAllStructuralFeatures(), key=lambda x: x.name
+                    ):
                         if isinstance(attr, EAttribute) and (attr.name in query_attrs):
                             # Only record attrs present on at least one instance; unset means the path doesn't exist in this model.
                             if child.eIsSet(attr.name):
-                                collected_attrs.append({
-                                    "attr": attr.name,
-                                    "attrType": attr.eType.name,
-                                    # Path token used to fetch the value of this attr on any object.
-                                    "path": _build_path("cost_information", [{"ref": "costInformation"}, {"ref": c_ref.name}], attr.name),
-                                })
+                                collected_attrs.append(
+                                    {
+                                        "attr": attr.name,
+                                        "attrType": attr.eType.name,
+                                        # Path token used to fetch the value of this attr on any object.
+                                        "path": _build_path(
+                                            "cost_information",
+                                            [
+                                                {"ref": "costInformation"},
+                                                {"ref": c_ref.name},
+                                            ],
+                                            attr.name,
+                                        ),
+                                    }
+                                )
                     if c_ref.name not in result:
                         result[c_ref.name] = []
                     # Merge attrs seen on any object; different objects may have different subsets set.
@@ -249,7 +291,7 @@ class SpatialVisualization:
     def _collect_kpi_schema(self, objects) -> dict:
         """
         Walk KPIs on each object and return {path_key: {ecoreType}} for each supported KPI found across all objects.
-        
+
         TODO: return KPI unit in schema?
         """
         result: Dict[str, dict] = {}
@@ -261,7 +303,9 @@ class SpatialVisualization:
             for kpi in ref_kpis.kpi:
                 if kpi is None:
                     continue
-                path = json.dumps({"type": kpi.eClass.name, "name": kpi.name}, sort_keys=True)
+                path = json.dumps(
+                    {"type": kpi.eClass.name, "name": kpi.name}, sort_keys=True
+                )
                 if path in result:
                     continue
                 if isinstance(kpi, esdl.DistributionKPI):
@@ -275,7 +319,9 @@ class SpatialVisualization:
 
         return result
 
-    def get_ref_field_values(self, es_id: str, object_ids: List[str], path: str) -> dict:
+    def get_ref_field_values(
+        self, es_id: str, object_ids: List[str], path: str
+    ) -> dict:
         """Map of { objectId: { value, type } | None } for the ref field identified by `path`."""
         ref_group, steps, attr = _parse_path(path)
         if not steps or not attr:
@@ -285,9 +331,15 @@ class SpatialVisualization:
                 kpi_cls = esdl.getEClassifier(kpi_info.get("type"))
                 if kpi_cls is not None:
                     if issubclass(kpi_cls, esdl.DistributionKPI):
-                        return self._get_distribution_kpi_values(es_id, object_ids, kpi_info["name"])
-                    if issubclass(kpi_cls, (esdl.IntKPI, esdl.DoubleKPI, esdl.StringKPI)):
-                        return self._get_scalar_kpi_values(es_id, object_ids, kpi_info["name"])
+                        return self._get_distribution_kpi_values(
+                            es_id, object_ids, kpi_info["name"]
+                        )
+                    if issubclass(
+                        kpi_cls, (esdl.IntKPI, esdl.DoubleKPI, esdl.StringKPI)
+                    ):
+                        return self._get_scalar_kpi_values(
+                            es_id, object_ids, kpi_info["name"]
+                        )
             except (json.JSONDecodeError, KeyError):
                 pass
             return {}
@@ -310,7 +362,9 @@ class SpatialVisualization:
 
         return result
 
-    def _get_scalar_kpi_values(self, es_id: str, object_ids: List[str], kpi_name: str) -> dict:
+    def _get_scalar_kpi_values(
+        self, es_id: str, object_ids: List[str], kpi_name: str
+    ) -> dict:
         """Map of { objectId: { value, type: EcoreTypeName } | None } for IntKPI, DoubleKPI, or StringKPI."""
         result: Dict[str, Any] = {oid: None for oid in object_ids}
 
@@ -337,7 +391,9 @@ class SpatialVisualization:
 
         return result
 
-    def _get_distribution_kpi_values(self, es_id: str, object_ids: List[str], kpi_name: str) -> dict:
+    def _get_distribution_kpi_values(
+        self, es_id: str, object_ids: List[str], kpi_name: str
+    ) -> dict:
         """Map of { objectId: { value: [{label, value}], type: 'distribution' } | None } for a DistributionKPI."""
         result: Dict[str, Any] = {oid: None for oid in object_ids}
 
@@ -352,9 +408,10 @@ class SpatialVisualization:
                     break
                 dist = kpi.distribution
                 if isinstance(dist, esdl.StringLabelDistribution):
-                    items = [{"label": si.label, "value": si.value} for si in dist.stringItem]
+                    items = [
+                        {"label": si.label, "value": si.value} for si in dist.stringItem
+                    ]
                     result[object_id] = {"value": items, "type": "distribution"}
                 break
 
         return result
-
