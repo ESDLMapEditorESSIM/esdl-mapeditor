@@ -1657,12 +1657,12 @@ class VisualizedLayer {
         pieChart.unbindTooltip();
         if (!label.visible) {
           return;
-        };
+        }
         const feature = this.features.find((f) => f.id === pieChart._featureId);
         const items = feature?.properties[field];
         if (!Array.isArray(items)) {
           return;
-        };
+        }
 
         const lines = items.map((i) => `${i.label}: ${fmtNl(i.value ?? 0)}`);
         const total = items.reduce((acc, i) => acc + (i.value ?? 0), 0);
