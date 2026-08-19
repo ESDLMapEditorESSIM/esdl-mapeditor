@@ -19,6 +19,8 @@ const enabledEsdlIdList = ref([]);
 
 const esdlLoadingStatus = ref({});
 const esdlLoaderIds = new Map();
+// finishEsdlLoad deletes esdlLoadingStatus entries, so track completion separately for isEsdlLoaded.
+const completedEsdlIds = new Set();
 
 const {hideEsdlLayerFromMap, showEsdlLayerOnMap} = useEsdlLayerMapActions();
 const {startLoader, stopLoader} = useLoader();
@@ -229,7 +231,8 @@ function addEsdlLoadingStatus(esId, status) {
  * @returns {boolean}
  */
 function isEsdlLoaded(esId) {
-    return MANDATORY_ESDL_LOADING_MESSAGES.every((messageName) => esdlLoadingStatus.value[esId]?.has(messageName));
+    return completedEsdlIds.has(esId) ||
+           MANDATORY_ESDL_LOADING_MESSAGES.every((messageName) => esdlLoadingStatus.value[esId]?.has(messageName));
 }
 
 /**
@@ -237,6 +240,7 @@ function isEsdlLoaded(esId) {
  * @param esId
  */
 function finishEsdlLoad(esId) {
+    completedEsdlIds.add(esId);
     const loaderId = esdlLoaderIds.get(esId);
     if (loaderId !== undefined) {
         stopLoader(loaderId);
@@ -249,6 +253,7 @@ function finishEsdlLoad(esId) {
  * Clear all active ESDL loads.
  */
 function clearEsdlLoadingStatus() {
+    completedEsdlIds.clear();
     for (const loaderId of esdlLoaderIds.values()) {
         stopLoader(loaderId);
     }
@@ -343,6 +348,7 @@ function setupSubscription() {
         }
         stopLoader(LoaderScopes.ESDL);
         esdlLoadingStatus.value[esId] = new Set();
+        completedEsdlIds.delete(esId); // reset on reload so isEsdlLoaded is false until the new load completes
         esdlLoaderIds.set(esId, startLoader());
         console.debug("Started loading ESDL with ID " + esId);
     });
