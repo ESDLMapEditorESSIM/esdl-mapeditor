@@ -1125,7 +1125,7 @@ const graphConfigTreeData = computed(() => {
     children: configs.map((c) => ({
       key: `config:${c.id}`,
       value: `config:${c.id}`,
-      title: `${c.isTemplate ? "[Template] " : ""}${c.name} (${dayjs(c.lastUpdate).format(dateTimeFormat)})`,
+      title: `${c.name} (${dayjs(c.lastUpdate).format(dateTimeFormat)})`,
       isLeaf: true,
     })),
   }));

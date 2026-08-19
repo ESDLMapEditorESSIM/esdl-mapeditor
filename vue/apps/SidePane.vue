@@ -37,7 +37,7 @@
     </ul>
     <div id="tab-content" :class="{side_pane_hidden: !showSidePane}">
       <LayersView v-if="isActiveTab('WMS_Layers')" />
-      <!-- v-show keeps LayerStudio mounted across tab switches, so LayerStudio inside it can stay mounted. -->
+      <!-- v-show keeps LayerStyleEditor mounted across tab switches, so LayerStyleEditor inside it can stay mounted. -->
       <VisibleLayersView v-show="isActiveTab('visible_layers')" />
       <ProjectView v-if="isActiveTab('Project')" />
       <LiveModelInterfaceView v-if="isActiveTab('live_model_interfaces')" />

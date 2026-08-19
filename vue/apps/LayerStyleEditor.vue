@@ -1,13 +1,13 @@
 <template>
   <a-space
-    id="layer-studio"
+    id="layer-style-editor"
     direction="vertical"
     style="width: 100%; padding-top: 20px; height: 100%"
   >
     <!-- HEADER -->
     <a-row type="flex" justify="space-between" align="middle">
       <a-col>
-        <h3>Layer Visual Editor</h3>
+        <h3>Layer Style Editor</h3>
       </a-col>
       <a-col>
         <a-dropdown trigger="click">
@@ -461,7 +461,7 @@ const datasources = ref([]);
 const activeVizLayerKeys = ref([]);
 
 onMounted(async () => {
-  console.debug("Mount Layer Studio component.");
+  console.debug("Mount Layer Style Editor component.");
   await fetchLayerStyles();
   // Initialize datasources for ESDLs already fully loaded at mount time
   for (const esId of enabledEsdlIdList.value.filter(id => isEsdlLoaded(id))) {
@@ -473,7 +473,7 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  console.debug("Unmount Layer Studio component.");
+  console.debug("Unmount Layer Style Editor component.");
   datasources.value.forEach((ds) => ds.dispose());
 });
 
@@ -1360,6 +1360,10 @@ class VisualizedLayer {
     if (Object.keys(VisualizedLayer.StyleTypes).includes(this.style.fieldType)) {
       this.style.styleType = this.styleTypeOptions[0]?.value;
       this.preSelectColorOnStyleTypeChange();
+      // Overwrite opacity for array type for pie chart style.
+      if (this.style.fieldType === FieldType.ARRAY) {
+        this.style.paint.opacity = 1.0;
+      }
     } else {
       console.warn(
         `No supported style type for ${this.style.field} [${this.style.fieldType}]`,
@@ -1487,11 +1491,6 @@ class VisualizedLayer {
     updated.paint.opacity = this.style.paint.opacity;
     updated.paint.stroke = { ...this.style.paint.stroke };
     updated.paint.label = { ...this.style.paint.label };
-
-    // Overwrite opacity and stroke for array type for pie chart style.
-    if (fieldType === FieldType.ARRAY) {
-      updated.paint.opacity = 1.0;
-    }
 
     return updated;
   }
