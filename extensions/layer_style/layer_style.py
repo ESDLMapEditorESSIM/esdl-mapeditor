@@ -70,7 +70,8 @@ class RefFieldValuesRequest:
     es_id: str
     object_ids: List[str]
     path: str
-class SpatialVisualization:
+
+class LayerStyleEditor:
     def __init__(self, flask_app: Flask, socket: SocketIO, settings_storage: SettingsStorage):
         self.flask_app = flask_app
         self.socketio = socket
@@ -78,27 +79,27 @@ class SpatialVisualization:
         self.register()
 
     def register(self):
-        logger.info("Registering SpatialVisualization extension")
+        logger.info("Registering LayerStyleEditor extension")
 
-        @self.socketio.on("spatial_visualization/object_fields", namespace="/esdl")
+        @self.socketio.on("layer_style/object_fields", namespace="/esdl")
         def _get_esdl_object_fields(params: Dict):
             return self.get_esdl_object_attributes(params["es_id"], params["object_id"])
 
-        @self.socketio.on("spatial_visualization/ref_field_schema", namespace="/esdl")
+        @self.socketio.on("layer_style/ref_field_schema", namespace="/esdl")
         def _get_ref_field_schema(params: Dict) -> dict:
             req = RefFieldSchemaRequest(**params)
             return self.get_ref_schema(req.es_id, req.object_ids)
 
-        @self.socketio.on("spatial_visualization/ref_field_values", namespace="/esdl")
+        @self.socketio.on("layer_style/ref_field_values", namespace="/esdl")
         def _get_ref_field_values(params: Dict) -> dict:
             req = RefFieldValuesRequest(**params)
             return self.get_ref_field_values(req.es_id, req.object_ids, req.path)
 
-        @self.socketio.on("spatial_visualization/get_layer_styles", namespace="/esdl")
+        @self.socketio.on("layer_style/get_layer_styles", namespace="/esdl")
         def _get_layer_styles():
             return self.get_layer_styles()
 
-        @self.socketio.on("spatial_visualization/save_layer_styles", namespace="/esdl")
+        @self.socketio.on("layer_style/save_layer_styles", namespace="/esdl")
         def _save_layer_styles(params: Dict):
             if not isinstance(params, dict) or not isinstance(params.get('styles'), list):
                 logger.error(f"Invalid request body for save_layer_styles: {params}")

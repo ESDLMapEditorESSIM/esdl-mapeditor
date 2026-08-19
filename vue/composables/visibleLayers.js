@@ -21,7 +21,7 @@
 import {constructWfsLayerUrl, updateGlobalServiceLayerList, useWmsLayers, showLayer, hideLayer} from "./wmsLayers";
 import {useEsdlLayerMapActions} from "./esdlLayerMapActions";
 import {useSocketIO} from "./socketio";
-import { setLeafletFeatureStyle } from "../utils/spatialVisualization";
+import { setLeafletFeatureStyle } from "../utils/layerStyle";
 import {useVisibleLayerState} from "./visibleLayerState";
 import {useServiceLayerFeaturePopup} from "./serviceLayerFeaturePopup";
 

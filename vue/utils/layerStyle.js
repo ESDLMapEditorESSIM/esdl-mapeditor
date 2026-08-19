@@ -73,7 +73,7 @@ const parseFieldValue = (value, type) => {
 
 const getEsdlObjectFields = async(esId, objectId) => {
     try {
-      const attributes = await fetchData('spatial_visualization/object_fields', { es_id: esId, object_id: objectId });
+      const attributes = await fetchData('layer_style/object_fields', { es_id: esId, object_id: objectId });
 
       return attributes.map((attr) => {
         const jsType = mapEcoreTypeToJsType(attr.type);
@@ -105,7 +105,7 @@ const getRefFieldSchema = async (esId, objectIds) => {
     object_ids: objectIds,
   };
   try {
-    const data = await fetchData('spatial_visualization/ref_field_schema', refFieldSchemaRequest);
+    const data = await fetchData('layer_style/ref_field_schema', refFieldSchemaRequest);
     const nodes = [];
 
     // Parse costInformation dict into a-tree-select nodes.
@@ -175,7 +175,7 @@ const getRefFieldValues = async (esId, objectIds, path) => {
     object_ids: objectIds,
     path: path,
   };
-  const data = await fetchData('spatial_visualization/ref_field_values', refFieldValuesRequest);
+  const data = await fetchData('layer_style/ref_field_values', refFieldValuesRequest);
   // data: { objectId: { value: string | [{label,value}] | null, type: EcoreTypeName | 'distribution' } | null }
 
   const result = {};
