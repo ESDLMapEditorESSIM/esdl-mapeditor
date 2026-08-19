@@ -19,6 +19,8 @@ const enabledEsdlIdList = ref([]);
 
 const esdlLoadingStatus = ref({});
 const esdlLoaderIds = new Map();
+// finishEsdlLoad deletes esdlLoadingStatus entries, so track completion separately for isEsdlLoaded.
+const completedEsdlIds = new Set();
 
 const {hideEsdlLayerFromMap, showEsdlLayerOnMap} = useEsdlLayerMapActions();
 const {startLoader, stopLoader} = useLoader();
@@ -30,22 +32,6 @@ export function useEsdlLayers() {
      * Get all currently active ESDL layers. This is a object with as keys the ID of the layer.
      */
     const getEsdlLayers = () => ref(window.esdl_list);
-
-    /**
-     * Get ESDL Leaflet FeatureGroup layer by energy system ID and layer name.
-     * TODO: Check if needed after rve-poc merge.
-     *
-     * @param {string} esId Energy system ID
-     * @param {string} layerName Layer name defined in multi_esdl.js
-     * @returns {Object} Leaflet FeatureGroup layer object.
-     */
-    const getEsdlFeatureGroupLayer = (esId, layerName) => window.get_layers(esId, layerName);
-
-    /**
-     * Remove ESDL layer by ID.
-     * TODO: Check if needed after rve-poc merge.
-     */
-    const removeEsdlLayer = (id) => window.remove_esdl_layer(id);
 
     /**
      * Get the ID of the active ESDL layer.
@@ -199,8 +185,6 @@ export function useEsdlLayers() {
     return {
         getEsdlLayers,
         clearEsdlLayers,
-        getEsdlFeatureGroupLayer,
-        removeEsdlLayer,
         getActiveEsdlLayerId,
         disableAllEsdls,
         enableEsdl,
@@ -247,7 +231,8 @@ function addEsdlLoadingStatus(esId, status) {
  * @returns {boolean}
  */
 function isEsdlLoaded(esId) {
-    return MANDATORY_ESDL_LOADING_MESSAGES.every((messageName) => esdlLoadingStatus.value[esId]?.has(messageName));
+    return completedEsdlIds.has(esId) ||
+           MANDATORY_ESDL_LOADING_MESSAGES.every((messageName) => esdlLoadingStatus.value[esId]?.has(messageName));
 }
 
 /**
@@ -255,6 +240,7 @@ function isEsdlLoaded(esId) {
  * @param esId
  */
 function finishEsdlLoad(esId) {
+    completedEsdlIds.add(esId);
     const loaderId = esdlLoaderIds.get(esId);
     if (loaderId !== undefined) {
         stopLoader(loaderId);
@@ -267,6 +253,7 @@ function finishEsdlLoad(esId) {
  * Clear all active ESDL loads.
  */
 function clearEsdlLoadingStatus() {
+    completedEsdlIds.clear();
     for (const loaderId of esdlLoaderIds.values()) {
         stopLoader(loaderId);
     }
@@ -279,7 +266,7 @@ function clearEsdlLoadingStatus() {
  * Recursively collect sublayers of a given layer.
  * @param layer - The layer to collect sublayers from.
  */
-function collectAllLayers(layer) {
+export function collectAllLayers(layer) {
     if (typeof layer.eachLayer !== 'function') {
         return [layer];
     }
@@ -293,7 +280,7 @@ function collectAllLayers(layer) {
     return result;
 }
 
-function groupByLevels(descendants) {
+export function groupByLevels(descendants) {
     const byId = new Map(descendants.map(d => [d.id, d]));
     const allIds = new Set(byId.keys());
 
@@ -361,6 +348,7 @@ function setupSubscription() {
         }
         stopLoader(LoaderScopes.ESDL);
         esdlLoadingStatus.value[esId] = new Set();
+        completedEsdlIds.delete(esId); // reset on reload so isEsdlLoaded is false until the new load completes
         esdlLoaderIds.set(esId, startLoader());
         console.debug("Started loading ESDL with ID " + esId);
     });

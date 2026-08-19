@@ -28,6 +28,7 @@ from extensions.external_models.external_models import ExternalModels
 from extensions.external_models.external_models_storage import ExternalModelsStorage
 from extensions.heatnetwork import HeatNetwork
 from extensions.ibis import IBISBedrijventerreinen
+from extensions.layer_style.layer_style import LayerStyleEditor
 from extensions.mapeditor_settings import MapEditorSettings
 from extensions.ownership.ownership import Ownership
 from extensions.pdtoolsuite_workflow.cost_information import CostInformation
@@ -40,7 +41,6 @@ from extensions.residential_area.residential_area import ResidentialArea
 from extensions.settings_storage import SettingsStorage
 from extensions.shapefile_converter import ShapefileConverter
 from extensions.spatial_operations import SpatialOperations
-from extensions.spatial_visualization.spatial_visualization import SpatialVisualization
 from extensions.time_dimension import TimeDimension
 from extensions.toast_notifications import ToastNotifications
 from extensions.tooltip_info import TooltipInfo
@@ -137,7 +137,7 @@ def register_extensions(
     ApplicationContextExtension(app, socketio, settings_storage)
     ResidentialArea(app, socketio, settings_storage)
     Ownership(app)
-    SpatialVisualization(app)
+    LayerStyleEditor(app, socketio, settings_storage)
     AssetConstraint(app)
     data_manager = DataManager(app, socketio, settings_storage)
     ExternalModels(app, socketio, models_storage, toast_notifications)

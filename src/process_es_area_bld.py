@@ -375,6 +375,7 @@ def find_area_info_KPIs(area_list, this_area):
     area_properties = {
         "id": area_id,
         "name": area_name,
+        "scope": area_scope.name,
         "KPIs": geojson_KPIs,
         "dist_KPIs": geojson_dist_kpis
     }
@@ -441,6 +442,7 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, sho
         area_geojson_properties = {
             "id": area_id,
             "name": area_name,
+            "scope": area_scope.name,
             "KPIs": geojson_KPIs,
             "dist_KPIs": geojson_dist_kpis,
             "parent_area_id": parent_area.id if parent_area else None,
@@ -501,6 +503,7 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, sho
                 area_list.append(shape_polygon.get_geojson_feature({
                     "id": area_id + area_id_number,
                     "name": boundary_wgs['name'],
+                    "scope": area_scope.name,
                     "KPIs": geojson_KPIs,
                     "dist_KPIs": geojson_dist_kpis,
                     "geometry_type": boundary_wgs['geom']['type'],

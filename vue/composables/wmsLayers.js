@@ -21,7 +21,7 @@
  *
  */
 import {ref, toValue} from "vue";
-import { setLeafletFeatureStyle } from "../utils/spatialVisualization";
+import { setLeafletFeatureStyle } from "../utils/layerStyle";
 import {useServiceLayerFeaturePopup} from "./serviceLayerFeaturePopup";
 import {useVisibleLayerState} from "./visibleLayerState";
 

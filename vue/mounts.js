@@ -133,7 +133,6 @@ export function mountApp(component, elementSelector) {
     app.use(Switch);
     app.use(Tabs);
     app.use(Table);
-    app.use(Tabs);
     app.use(Tag);
     app.use(Tooltip);
     app.use(Timeline);
