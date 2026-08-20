@@ -229,7 +229,7 @@ class AssetConstraint:
             new_constraints.append(esdl_constraint)
 
         asset.constraint.clear()
-        asset.constraint = new_constraints
+        asset.constraint.extend(new_constraints)
 
     def _handle_profile_constraint(
         self, es_id: str, constraintMsg: ProfileConstraintMsg

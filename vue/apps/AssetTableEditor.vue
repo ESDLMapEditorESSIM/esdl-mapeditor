@@ -31,7 +31,6 @@
       :source="rows"
       :columns="columns"
       :editors="gridEditors"
-      :row-headers="rowHeaders"
       :auto-size-column="{
         mode: 'autoSizeOnTextOverlap',
       }"
@@ -43,6 +42,21 @@
   </div>
   <h3 v-else-if="isLoading">Loading...</h3>
   <h3 v-else>Please select an asset type from the select menu above.</h3>
+
+  <a-modal
+    v-model:open="constraintModalVisible"
+    title="Asset Constraints"
+    width="750px"
+    :footer="null"
+    :destroy-on-close="true"
+    @cancel="onConstraintModalClose"
+  >
+    <AssetConstraint
+      :es-id="constraintModalEsId"
+      :object-id="constraintModalAssetId"
+      :embedded-view="true"
+    />
+  </a-modal>
 </template>
 
 <script setup>
@@ -55,6 +69,8 @@ import VGrid, {
 import SelectGridAnt from "@/components/revogrid/SelectGridAnt.vue";
 import SelectGridAntViewer from "@/components/revogrid/SelectGridAntViewer.vue";
 import SelectGridPlain from "@/components/revogrid/SelectGridPlain.vue";
+import AssetConstraint from "@/apps/AssetConstraint.vue";
+
 
 const asset_list = ref([]);
 const asset_types_list = ref([]);
@@ -91,6 +107,25 @@ const get_asset_data = async (asset_type) => {
         col_info['editor'] = "select_grid_ant";
         col_info['cellTemplate'] = VGridVueTemplate(SelectGridAntViewer);
       }
+
+      // Constraint count columns
+      if (col_info['prop'] && col_info['prop'].endsWith('.count') && col_info['prop'].startsWith('constraint.')) {
+        col_info['cellTemplate'] = (h, props) => {
+          const count = parseInt(props.model[props.prop] || '0');
+          const text = count === 0 ? '0 | + Add' : `${count} | \u270E Edit`;
+          return h('a', {
+            style: { color: '#1890ff', cursor: 'pointer', fontSize: '12px', whiteSpace: 'nowrap' },
+            onmousedown: (e) => { e.stopPropagation(); openConstraintModal(props.model.id); },
+          }, text);
+        };
+      }
+      // Constraint field columns: readonly when no constraint defined on the asset
+      if (col_info['constraintType'] && !col_info['readonly']) {
+        const ctype = col_info['constraintType'];
+        col_info['readonly'] = (params) => {
+          return parseInt(params.model[`constraint.${ctype}.count`] || '0') === 0;
+        };
+      }
     }
     rows.value = table_editor_info['row_info']
   } else {
@@ -107,7 +142,6 @@ function selected_asset_changed(asset_type) {
   get_asset_data(asset_type);
 }
 
-// const rowHeaders = ref({ size: 100 });
 const gridEditors = ref({
   select_grid_ant: VGridVueEditor(SelectGridAnt),
   select_grid_plain: VGridVueEditor(SelectGridPlain),
@@ -250,6 +284,25 @@ function hide_jquery_ui_popup() {
 
 const columns = ref([]);
 const rows = ref([]);
+
+// Constraint modal state
+const constraintModalVisible = ref(false);
+const constraintModalEsId = ref('');
+const constraintModalAssetId = ref('');
+
+function openConstraintModal(assetId) {
+  constraintModalAssetId.value = assetId;
+  constraintModalEsId.value = window.active_layer_id;
+  constraintModalVisible.value = true;
+}
+
+function onConstraintModalClose() {
+  constraintModalVisible.value = false;
+  if (selected_asset_type.value) {
+    isLoading.value = true;
+    get_asset_data(selected_asset_type.value);
+  }
+}
 
 </script>
 

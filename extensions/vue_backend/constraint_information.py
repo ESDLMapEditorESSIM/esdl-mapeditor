@@ -62,9 +62,13 @@ def get_constraint_type_counts(asset_info_list):
     return max_counts
 
 
+MAX_CONSTRAINT_COLUMNS = 1
+
+
 def get_constraint_column_info(asset_info_list):
     """
     Generate column definitions for constraints in the table editor.
+    Capped to MAX_CONSTRAINT_COLUMNS instances per type; a count column indicates overflow.
 
     :param asset_info_list: list of asset info dicts
     :return: list of column dicts for the revogrid datagrid
@@ -75,18 +79,33 @@ def get_constraint_column_info(asset_info_list):
     for ctype, max_count in constraint_meta.items():
         fields = CONSTRAINT_FIELDS.get(ctype, ['name'])
         readonly = ctype in READONLY_CONSTRAINT_TYPES
-        for idx in range(max_count):
+        display_count = min(max_count, MAX_CONSTRAINT_COLUMNS)
+
+        # Count column first so users see it before the field columns
+        columns.append({
+            'name': f"{ctype} count",
+            'prop': f"constraint.{ctype}.count",
+            'readonly': True,
+            'autoSize': True,
+        })
+
+        for idx in range(display_count):
             for field in fields:
                 column = {
                     'name': f"{ctype}[{idx}].{field}",
                     'prop': f"constraint.{ctype}.{idx}.{field}",
                     'readonly': readonly,
+                    'constraintType': ctype,
                 }
-                if field in ('name', 'attributeReference'):
+                if field == 'name':
+                    column['autoSize'] = True
+                if field.startswith('range.'):
                     column['autoSize'] = True
                 if ctype == 'PipeDiameterConstraint' and field in ('minimum', 'maximum'):
                     column['options'] = PIPE_DIAMETER_OPTIONS
+                    column['autoSize'] = True
                 columns.append(column)
+
     return columns
 
 
@@ -128,6 +147,7 @@ def set_constraint_attr(asset, prop, value):
 def get_constraint_row_data(asset_attr_info, constraint_meta):
     """
     Populate constraint cell values for a single asset row.
+    Only the first instance per type is shown; count field indicates total.
 
     :param asset_attr_info: single asset info dict (with 'constraint_information' key)
     :param constraint_meta: dict from get_constraint_type_counts
@@ -138,15 +158,20 @@ def get_constraint_row_data(asset_attr_info, constraint_meta):
     for c in asset_attr_info.get('constraint_information', []):
         constraint_by_type.setdefault(c['type'], []).append(c)
 
-    for ctype, max_count in constraint_meta.items():
+    for ctype in constraint_meta:
         fields = CONSTRAINT_FIELDS.get(ctype, ['name'])
         instances = constraint_by_type.get(ctype, [])
-        for idx in range(max_count):
+        display_count = min(len(instances), MAX_CONSTRAINT_COLUMNS)
+
+        for idx in range(MAX_CONSTRAINT_COLUMNS):
             for field in fields:
                 prop = f"constraint.{ctype}.{idx}.{field}"
-                if idx < len(instances):
+                if idx < display_count:
                     val = instances[idx].get(field, '')
                     row[prop] = val if val is not None else ''
                 else:
                     row[prop] = ''
+
+        row[f"constraint.{ctype}.count"] = str(len(instances))
+
     return row
