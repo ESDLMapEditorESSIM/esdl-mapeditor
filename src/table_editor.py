@@ -28,7 +28,9 @@ import src.log as log
 from extensions.vue_backend.cost_information import _change_cost_unit
 from extensions.vue_backend.constraint_information import (
     get_constraint_type_counts, get_constraint_column_info, get_constraint_row_data,
+    set_constraint_attr,
 )
+from extensions.toast_notifications import ToastNotifications, ToastNotification, NotificationPlacement, NotificationType as ToastLevel
 from utils.utils import camelCaseToWords, str2float
 
 logger = log.get_logger(__name__)
@@ -85,6 +87,23 @@ class TableEditor:
 
             self.set_cost_attr(asset, attr, value)
 
+        @self.socketio.on('change_constraint_attr', namespace='/esdl')
+        def change_constraint_attr(info):
+            pm = get_project_manager()
+            active_es_id = get_session('active_es_id')
+            asset = pm.get_by_id(active_es_id, info['id'])
+            try:
+                set_constraint_attr(asset, info['prop'], info['value'])
+            except Exception as e:
+                error_msg = f'Error setting constraint {info["prop"]} on {asset.name}: {e}'
+                logger.error(error_msg)
+                ToastNotifications.send(ToastNotification(
+                    title="Constraint Error",
+                    description=error_msg,
+                    type=ToastLevel.ERROR,
+                    placement=NotificationPlacement.BOTTOM_RIGHT,
+                ))
+
         @self.socketio.on('change_multiple_attributes', namespace='/esdl')
         def change_multiple_attributes(info):
             changed_attr_list = info['changed_attr_list']
@@ -121,13 +140,26 @@ class TableEditor:
                                 asset.eSet(param_name, parsed_value)
 
                     else:
-                        try:
-                            self.set_cost_attr(asset, mutation['attr'], mutation['value'])
-                        except AttributeError as e:
-                            logger.error('Error setting cost attribute {} of {} to {}, caused by {}'.format(param_name,
-                                                                                                            asset.name,
-                                                                                                            param_value,
-                                                                                                            str(e)))
+                        if param_name.startswith('constraint.'):
+                            try:
+                                set_constraint_attr(asset, param_name, param_value)
+                            except Exception as e:
+                                error_msg = f'Error setting constraint {param_name} on {asset.name}: {e}'
+                                logger.error(error_msg)
+                                ToastNotifications.send(ToastNotification(
+                                    title="Constraint Error",
+                                    description=error_msg,
+                                    type=ToastLevel.ERROR,
+                                    placement=NotificationPlacement.BOTTOM_RIGHT,
+                                ))
+                        else:
+                            try:
+                                self.set_cost_attr(asset, mutation['attr'], mutation['value'])
+                            except AttributeError as e:
+                                logger.error('Error setting cost attribute {} of {} to {}, caused by {}'.format(param_name,
+                                                                                                                asset.name,
+                                                                                                                param_value,
+                                                                                                                str(e)))
                 except Exception as e:
                     logger.error('Error setting attribute {} of {} to {}, unknown attribute'.format(param_name,
                                                                                                     asset.name,

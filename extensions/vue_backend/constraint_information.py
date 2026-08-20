@@ -90,6 +90,41 @@ def get_constraint_column_info(asset_info_list):
     return columns
 
 
+def set_constraint_attr(asset, prop, value):
+    """
+    Set a constraint field on an asset.
+    Prop format: 'constraint.<Type>.<index>.<field>'
+    """
+    from uuid import uuid4
+
+    parts = prop.split('.')
+    ctype = parts[1]
+    idx = int(parts[2])
+    field = '.'.join(parts[3:])
+
+    matching = [c for c in asset.constraint if c.eClass.name == ctype]
+    if idx >= len(matching):
+        raise IndexError(
+            f"Asset '{asset.name}' has no {ctype} at index {idx}. "
+            f"Add constraints via Object Properties \u2192 Constraints panel first."
+        )
+    constraint = matching[idx]
+
+    if field == 'name':
+        constraint.name = value
+    elif field == 'attributeReference':
+        constraint.attributeReference = value
+    elif ctype == 'RangedConstraint' and field.startswith('range.'):
+        range_attr = field.split('.')[1]
+        if not constraint.range:
+            constraint.range = esdl.Range(id=str(uuid4()))
+        setattr(constraint.range, range_attr, float(value) if value != '' else 0.0)
+    elif ctype == 'PipeDiameterConstraint' and field in ('minimum', 'maximum'):
+        setattr(constraint, field, esdl.PipeDiameterEnum.from_string(value))
+    else:
+        raise ValueError(f"Unsupported constraint field: {prop}")
+
+
 def get_constraint_row_data(asset_attr_info, constraint_meta):
     """
     Populate constraint cell values for a single asset row.

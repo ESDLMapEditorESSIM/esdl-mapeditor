@@ -17,7 +17,7 @@
 <template>
   <a-select
     v-model:value="selected_asset_type"
-    style="width: 100%"
+    style="width: 100%; padding-top: 16px;"
     :options="asset_types_list"
     @change="selected_asset_changed"
     @popupScroll="hide_jquery_ui_popup()"
@@ -140,6 +140,18 @@ function check_cost_info(attr) {
   return false;
 }
 
+function check_constraint_info(attr) {
+  return attr.startsWith('constraint.');
+}
+
+function change_constraint_attribute(id, prop, value) {
+  window.socket.emit("change_constraint_attr", {
+    id: id,
+    prop: prop,
+    value: value,
+  });
+}
+
 function change_cost_attribute(id, attr, value) {
   // console.log("change_cost_attr", attr, value);
   window.socket.emit("change_cost_attr", {
@@ -187,6 +199,8 @@ function process_changes(e) {
     if ('id' in changes.model) {
       if (check_cost_info(changes['prop'])) {
         change_cost_attribute(changes.model['id'], changes['prop'], changes['val']);
+      } else if (check_constraint_info(changes['prop'])) {
+        change_constraint_attribute(changes.model['id'], changes['prop'], changes['val']);
       } else {
         change_basic_attribute(changes.model['id'], changes['prop'], changes['val']);
       }
