@@ -26,6 +26,11 @@ from extensions.session_manager import get_session, get_project_manager
 from extensions.settings_storage import SettingsStorage
 import src.log as log
 from extensions.vue_backend.cost_information import _change_cost_unit
+from extensions.vue_backend.constraint_information import (
+    get_constraint_type_counts, get_constraint_column_info, get_constraint_row_data,
+    set_constraint_attr,
+)
+from extensions.toast_notifications import ToastNotifications, ToastNotification, NotificationPlacement, NotificationType as ToastLevel
 from utils.utils import camelCaseToWords, str2float
 
 logger = log.get_logger(__name__)
@@ -82,6 +87,23 @@ class TableEditor:
 
             self.set_cost_attr(asset, attr, value)
 
+        @self.socketio.on('change_constraint_attr', namespace='/esdl')
+        def change_constraint_attr(info):
+            pm = get_project_manager()
+            active_es_id = get_session('active_es_id')
+            asset = pm.get_by_id(active_es_id, info['id'])
+            try:
+                set_constraint_attr(asset, info['prop'], info['value'])
+            except Exception as e:
+                error_msg = f'Error setting constraint {info["prop"]} on {asset.name}: {e}'
+                logger.error(error_msg)
+                ToastNotifications.send(ToastNotification(
+                    title="Constraint Error",
+                    description=error_msg,
+                    type=ToastLevel.ERROR,
+                    placement=NotificationPlacement.BOTTOM_RIGHT,
+                ))
+
         @self.socketio.on('change_multiple_attributes', namespace='/esdl')
         def change_multiple_attributes(info):
             changed_attr_list = info['changed_attr_list']
@@ -118,13 +140,26 @@ class TableEditor:
                                 asset.eSet(param_name, parsed_value)
 
                     else:
-                        try:
-                            self.set_cost_attr(asset, mutation['attr'], mutation['value'])
-                        except AttributeError as e:
-                            logger.error('Error setting cost attribute {} of {} to {}, caused by {}'.format(param_name,
-                                                                                                            asset.name,
-                                                                                                            param_value,
-                                                                                                            str(e)))
+                        if param_name.startswith('constraint.'):
+                            try:
+                                set_constraint_attr(asset, param_name, param_value)
+                            except Exception as e:
+                                error_msg = f'Error setting constraint {param_name} on {asset.name}: {e}'
+                                logger.error(error_msg)
+                                ToastNotifications.send(ToastNotification(
+                                    title="Constraint Error",
+                                    description=error_msg,
+                                    type=ToastLevel.ERROR,
+                                    placement=NotificationPlacement.BOTTOM_RIGHT,
+                                ))
+                        else:
+                            try:
+                                self.set_cost_attr(asset, mutation['attr'], mutation['value'])
+                            except AttributeError as e:
+                                logger.error('Error setting cost attribute {} of {} to {}, caused by {}'.format(param_name,
+                                                                                                                asset.name,
+                                                                                                                param_value,
+                                                                                                                str(e)))
                 except Exception as e:
                     logger.error('Error setting attribute {} of {} to {}, unknown attribute'.format(param_name,
                                                                                                     asset.name,
@@ -145,21 +180,6 @@ class TableEditor:
                 if ci['name'] in set_ci:
                     new_cost_information.append(ci)
             asset['cost_information'] = new_cost_information
-
-    def get_constraint_types(self, asset_info_list):
-        """
-        Collect the ordered list of unique constraint type names that appear
-        in at least one asset, preserving first-seen order.
-
-        :param asset_info_list: list with all attribute information of all assets
-        :return: ordered list of unique constraint type name strings
-        """
-        seen_types = []
-        for asset in asset_info_list:
-            for c in asset.get('constraint_information', []):
-                if c['type'] not in seen_types:
-                    seen_types.append(c['type'])
-        return seen_types
 
     def set_cost_attr(self, asset: Asset, attr_name, value):
         # print(f"request semaphore {asset.id}:{attr_name}-{value}")
@@ -245,14 +265,7 @@ class TableEditor:
                 column['ref'] = 'costInformation.' + ci['name'] + '_unit'
                 column_info.append(column)
 
-            # Asset constraint is for display only, and not support for editing yet.
-            for ct in self.get_constraint_types(asset_info_list):
-                column = dict()
-                column['name'] = ct + '.name'
-                column['prop'] = 'constraint.' + ct
-                column['readonly'] = True
-                column['autoSize'] = True
-                column_info.append(column)
+            column_info.extend(get_constraint_column_info(asset_info_list))
 
         return column_info
 
@@ -293,11 +306,8 @@ class TableEditor:
                     row[ca['name']] = ''
                     row[ca['name'] + '_unit'] = ''
 
-            constraint_by_type = {}
-            for c in asset_attr_info.get('constraint_information', []):
-                constraint_by_type.setdefault(c['type'], []).append(c['name'])
-            for ct, names in constraint_by_type.items():
-                row['constraint.' + ct] = ', '.join(names)
+            constraint_meta = get_constraint_type_counts(asset_info_list)
+            row.update(get_constraint_row_data(asset_attr_info, constraint_meta))
 
             row_info.append(row)
 

@@ -25,8 +25,8 @@ from extensions.asset_constraint.asset_constraint_message import (
     PipeDiameterConstraintMsg,
 )
 from extensions.profiles import Profiles
+from extensions.session_manager import get_project_manager, get_session
 from esdl.processing.ESDLEcore import get_asset_attributes, get_asset_references
-from extensions.session_manager import get_project_manager
 
 import src.log as log
 
@@ -106,18 +106,63 @@ class AssetConstraint:
             "refs": refs
         }
 
+    # All supported constraint types
+    ALL_CONSTRAINT_TYPES = [ct.value for ct in ConstraintType]
+
+    # Default attribute references applicable to most asset types
+    DEFAULT_ATTRIBUTE_REFERENCES = ['power', 'capacity', 'volume', 'aggregationCount', 'diameter']
+
+    MODEL_CONTEXT_CONFIG = {
+        "CHESS": {
+            "constraint_types": {
+                "HeatProducer": [ConstraintType.RANGED.value, ConstraintType.PROFILE.value],
+                "ResidualHeatSource": [ConstraintType.RANGED.value, ConstraintType.PROFILE.value],
+                "HeatPump": [ConstraintType.RANGED.value],
+                "GasHeater": [ConstraintType.RANGED.value],
+                "ElectricBoiler": [ConstraintType.RANGED.value],
+                "GeothermalSource": [ConstraintType.RANGED.value],
+                "HeatStorage": [ConstraintType.RANGED.value],
+                "ATES": [ConstraintType.RANGED.value],
+                "HeatExchange": [ConstraintType.RANGED.value],
+                "Pipe": [ConstraintType.PIPEDIAMETER.value],
+            },
+            "attribute_references": {
+                "HeatProducer": ["power"],
+                "ResidualHeatSource": ["power"],
+                "HeatPump": ["power"],
+                "GasHeater": ["power"],
+                "ElectricBoiler": ["power"],
+                "GeothermalSource": ["aggregationCount"],
+                "HeatStorage": ["volume"],
+                "ATES": ["aggregationCount"],
+                "HeatExchange": ["capacity"],
+                "Pipe": ["diameter"],
+            },
+            "disabled_fields": {
+                "_default": ["range.min_value", "range.mid_value", "minimum"],
+            },
+            "notification": {
+                "state_is_OPTIONAL": "This asset state is OPTIONAL. Please define a constraint to specify its operational bounds.",
+                "state_is_ENABLED": "This asset state is ENABLED. Defined constraints won't be used and can be removed."
+            }
+        }
+    }
+
     def get_asset_constraint(
         self, es_id: str, asset_id: str
-    ) -> List[ProfileConstraintMsg | RangedConstraintMsg | PipeDiameterConstraintMsg]:
+    ) -> dict:
         """
-        Get and return a list of ProfileConstraint or RangedConstraint of the asset.
+        Get constraints for the asset along with available options for the UI.
         """
 
         pm = get_project_manager()
         asset: esdl.Asset = pm.get_by_id(es_id, asset_id)
+        asset_state = asset.state if asset and asset.eIsSet('state') else None
         asset_constraints: List[ProfileConstraintMsg | RangedConstraintMsg | PipeDiameterConstraintMsg] = []
 
+        asset_type = ''
         if asset:
+            asset_type = asset.eClass.name
             constraints = asset.constraint
             for c in constraints:
                 if isinstance(c, esdl.ProfileConstraint):
@@ -131,7 +176,44 @@ class AssetConstraint:
 
                 asset_constraints.append(constraint_msg)
 
-        return asset_constraints
+        model_context = get_session('mapeditor_model_context')
+        context_config = self.MODEL_CONTEXT_CONFIG.get(model_context) if model_context else None
+
+        return {
+            'constraints': asset_constraints,
+            'available_constraint_types': self._derive_available_constraint_types(asset_type, context_config),
+            'available_attribute_references': self._derive_attribute_reference(asset_type, context_config),
+            'disabled_fields': self._derive_disabled_fields(asset_type, context_config),
+            'notification': self._derive_notification(asset_type, asset_state, asset_constraints, context_config),
+        }
+
+    def _derive_available_constraint_types(self, asset_type: str, context_config: dict | None) -> List[str]:
+        if context_config:
+            return context_config.get("constraint_types", {}).get(asset_type, self.ALL_CONSTRAINT_TYPES)
+        return self.ALL_CONSTRAINT_TYPES
+
+    def _derive_attribute_reference(self, asset_type: str, context_config: dict | None) -> List[str]:
+        if context_config:
+            return context_config.get("attribute_references", {}).get(asset_type, self.DEFAULT_ATTRIBUTE_REFERENCES)
+        return self.DEFAULT_ATTRIBUTE_REFERENCES
+
+    def _derive_disabled_fields(self, asset_type: str, context_config: dict | None) -> List[str]:
+        if context_config:
+            disabled = context_config.get("disabled_fields", {})
+            return disabled.get(asset_type, disabled.get("_default", []))
+        return []
+
+    def _derive_notification(self, asset_type: str, asset_state, asset_constraints: list, context_config: dict | None) -> str | None:
+        if not context_config:
+            return None
+        if asset_type not in context_config.get("constraint_types", {}):
+            return None
+        notifications = context_config.get('notification', {})
+        if asset_state == esdl.AssetStateEnum.OPTIONAL and len(asset_constraints) == 0:
+            return notifications.get('state_is_OPTIONAL')
+        if asset_state == esdl.AssetStateEnum.ENABLED and len(asset_constraints) > 0:
+            return notifications.get('state_is_ENABLED')
+        return None
 
     def _get_profile_constraint_msg(
         self, constraint: esdl.ProfileConstraint
@@ -229,7 +311,7 @@ class AssetConstraint:
             new_constraints.append(esdl_constraint)
 
         asset.constraint.clear()
-        asset.constraint = new_constraints
+        asset.constraint.extend(new_constraints)
 
     def _handle_profile_constraint(
         self, es_id: str, constraintMsg: ProfileConstraintMsg

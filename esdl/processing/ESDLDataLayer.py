@@ -26,6 +26,7 @@ from extensions.profiles import Profiles
 from extensions.vue_backend.messages.DLA_sector_message import SectorMessage
 from extensions.vue_backend.object_properties import get_object_properties_info
 from extensions.vue_backend.cost_information import get_cost_information, _create_cost_qau
+from extensions.vue_backend.constraint_information import get_constraint_information
 from extensions.vue_backend.table_data import get_table_data, set_table_data
 from extensions.vue_backend.messages.DLA_table_data_message import DLA_table_data_request, DLA_table_data_response, \
     DLA_set_table_data_request
@@ -130,16 +131,7 @@ class ESDLDataLayer:
             cat_attrs = model_context.categorize_object_attributes_and_references(asset, attrs, refs)
 
             cost_information = get_cost_information(asset)
-            # Collects partial constraint information of an ESDL asset to be displayed in the Table Editor
-            constraint_information = [
-                {
-                    'type': c.eClass.name,
-                    'name': c.name or '',
-                    'description': c.description or '',
-                    'attributeReference': c.attributeReference or '',
-                }
-                for c in asset.constraint
-            ] if hasattr(asset, 'constraint') else []
+            constraint_information = get_constraint_information(asset)
 
             attrs_per_asset_list.append({
                 "attributes": cat_attrs,
