@@ -117,48 +117,60 @@ const updateInputState = () => {
 
 const updateData = async (data) => {
   // console.debug("Updating data", data)
-  if (data != null) {
+  if (data && stepParams.value.config.data_from_variable){
+      data = data[stepParams.value.config.data_from_variable];
+  }
+  if (data) {
     let choices;
     // Choices data can be found as an attribute in a dict or is directly returned as a list
-    if ("choices_attr" in stepParams.value.config) {
+    if (stepParams.value.config.choices_attr) {
       choices = data[stepParams.value.config.choices_attr];
     } else {
       choices = data;
+    }
+    if (choices == null) {
+      return;
     }
     if (!Array.isArray(choices)) {
       choices = Object.values(choices);
     }
 
+    choicesByValue = new Map();
     options.value = choices.map((choice) => {
-      const label_list = stepParams.value.config.label_fields
-          .map((label_field) => {
-            if (typeof label_field === "string") {
-              return getattrd(choice, label_field);
-            } else {
-              const label = label_field.label;
-              const default_value = label_field.default;
-              const value = choice[label];
-              const value_map = label_field.map;
-              if (value_map && value in value_map) {
-                return value_map[value];
-              } else if (default_value) {
-                return default_value;
+      let label;
+      let value;
+      if (stepParams.value.config.label_fields && stepParams.value.config.value_field){
+        const label_list = stepParams.value.config.label_fields
+            .map((label_field) => {
+              if (typeof label_field === "string") {
+                return getattrd(choice, label_field);
               } else {
-                console.warn("Value not found in value_map: ", value, value_map);
-                return value;
+                const label = label_field.label;
+                const default_value = label_field.default;
+                const value = choice[label];
+                const value_map = label_field.map;
+                if (value_map && value in value_map) {
+                  return value_map[value];
+                } else if (default_value) {
+                  return default_value;
+                } else {
+                  console.warn("Value not found in value_map: ", value, value_map);
+                  return value;
+                }
               }
-            }
-          }).filter((value) => value);
-      const label = label_list.join(" - ");
+            }).filter((value) => value);
+        label = label_list.join(" - ");
+        value = choice[stepParams.value.config.value_field];
+      } else{
+        label = choice;
+        value = choice
+      }
+      choicesByValue.set(value, choice);
       return {
         label: label,
-        value: choice[stepParams.value.config.value_field],
+        value: value,
       };
     });
-    // Index all choices by value, so we can store them in the state entirely.
-    choicesByValue = new Map(
-        choices.map((choice) => [choice[stepParams.value.config.value_field], choice])
-    );
   }
 
   if (!(stepParams.value.data.output_wrapper_variable in form.value)) {

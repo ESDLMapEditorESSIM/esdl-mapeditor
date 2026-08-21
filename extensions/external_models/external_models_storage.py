@@ -57,6 +57,7 @@ class RunStatus(Enum):
     """Run status options."""
 
     SUBMITTED = "SUBMITTED"
+    QUEUED = "QUEUED"
     RUNNING = "RUNNING"
     SUCCEEDED = "SUCCEEDED"
     SUCC_PEND = "SUCC_PEND"
