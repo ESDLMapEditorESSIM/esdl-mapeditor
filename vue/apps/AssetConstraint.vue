@@ -91,9 +91,9 @@
               <a-select
                 v-model:value="formData.type"
                 :options="
-                  Object.entries(ConstraintType).map(([_, label]) => ({
-                    value: label,
-                    label: label,
+                  availableConstraintTypes.map((ct) => ({
+                    value: ct,
+                    label: ct,
                   }))
                 "
                 :disabled="currentConstraint !== null"
@@ -155,6 +155,7 @@
                 <a-button
                   v-else
                   block
+                  :disabled="isFieldDisabled('maximum')"
                   @click="openProfileModal(ProfileTag.MAX)"
                 >
                   Add maximum
@@ -186,6 +187,7 @@
                 <a-button
                   v-else
                   block
+                  :disabled="isFieldDisabled('minimum')"
                   @click="openProfileModal(ProfileTag.MIN)"
                 >
                   Add minimum
@@ -219,6 +221,7 @@
                       v-model:value="formData.range.min_value"
                       style="width: 100%"
                       :step="0.1"
+                      :disabled="isFieldDisabled('range.min_value')"
                     />
                   </a-form-item>
                   <a-form-item label="Mid-value">
@@ -226,6 +229,7 @@
                       v-model:value="formData.range.mid_value"
                       style="width: 100%"
                       :step="0.1"
+                      :disabled="isFieldDisabled('range.mid_value')"
                     />
                   </a-form-item>
                   <a-form-item label="Maximum">
@@ -233,6 +237,7 @@
                       v-model:value="formData.range.max_value"
                       style="width: 100%"
                       :step="0.1"
+                      :disabled="isFieldDisabled('range.max_value')"
                     />
                   </a-form-item>
                 </a-space>
@@ -248,6 +253,7 @@
                     value: option,
                     label: option
                   })) || []"
+                  :disabled="isFieldDisabled('maximum')"
                   @mouseleave="removeTooltipPopup"
                 />
               </a-form-item>
@@ -258,6 +264,7 @@
                     value: option,
                     label: option
                   })) || []"
+                  :disabled="isFieldDisabled('minimum')"
                   @mouseleave="removeTooltipPopup"
                 />
               </a-form-item>
@@ -340,17 +347,13 @@ const ProfileTag = Object.freeze({
   MIN: "Minimum",
 });
 
-// Default to support power; can be extended or made dynamic in the future.
-const attributeReferenceOptions = [
-    { value: "power", label: "power" },
-    { value: "capacity", label: "capacity" },
-    { value: "volume", label: "volume" },
-    { value: "aggregationCount", label: "aggregationCount" }
-];
 
 // State
 const activeEsdlId = ref(null);
 const assetId = ref(null);
+
+const attributeReferenceOptions = ref([]);
+const availableConstraintTypes = ref([]);
 
 const activeSegment = ref(SegmentOptions.CONSTRAINTS);
 
@@ -359,6 +362,9 @@ const activeProfileTag = ref(null);
 const activeProfile = ref(null);
 
 const currentConstraint = ref(null);
+
+// This controls which fields are disabled in the form based on the backend response.
+const disabledFields = ref([]);
 
 const initProfileConstraintForm = {
   id: null,
@@ -393,7 +399,7 @@ const initPipeDiameterConstraintForm = {
   type: ConstraintType.PIPEDIAMETER,
   maximum: null,
   minimum: null,
-}
+};
 
 // Form state (default to Profile Constraint)
 const formData = reactive({ ...initProfileConstraintForm });
@@ -462,6 +468,10 @@ const getNewEmptyConstraint = async (constraintType) => {
   }
 }
 
+const isFieldDisabled = (fieldName) => {
+  return disabledFields.value.includes(fieldName);
+};
+
 const getAssetConstraint = async (esId, assetId) => {
   try {
     const response = await fetch(`/asset_constraint/${esId}/${assetId}`);
@@ -471,8 +481,28 @@ const getAssetConstraint = async (esId, assetId) => {
       displayNotification(NotificationType.ERROR, "An error occurred when loading the asset constraints.");
       return;
     }
-    const assetConstraints = await response.json();
-    constraints.value = [...assetConstraints];
+    const data = await response.json();
+    constraints.value = [...data.constraints];
+
+    // Update UI state based on the backend response
+
+    availableConstraintTypes.value = data.available_constraint_types;
+    // Default form to first available constraint type
+    if (availableConstraintTypes.value.length > 0 && !currentConstraint.value) {
+      formData.type = availableConstraintTypes.value[0];
+      await resetForm();
+    }
+    attributeReferenceOptions.value = data.available_attribute_references.map(
+      (attr) => ({ value: attr, label: attr })
+    );
+    if (attributeReferenceOptions.value.length === 1) {
+      formData.attributeReference = attributeReferenceOptions.value[0].value;
+    }
+    disabledFields.value = data.disabled_fields || [];
+
+    if (data.notification) {
+      displayNotification(NotificationType.WARNING, data.notification);
+    }
   } catch (error) {
     console.error(error);
     displayNotification(NotificationType.ERROR, "An error occurred when loading the asset constraints.");
@@ -541,6 +571,10 @@ const resetForm = async () => {
   });
 
   Object.assign(formData, {...newForm});
+
+  if (attributeReferenceOptions.value.length === 1) {
+    formData.attributeReference = attributeReferenceOptions.value[0].value;
+  }
 };
 
 const onSelectConstraintType = () => {
