@@ -56,7 +56,7 @@ from src.process_es_area_bld import (
     get_area_id_from_mapeditor_id,
     call_process_energy_system,
 )
-from src.tno.shared.util import get_nested_dict_value
+from src.tno.shared.util import get_nested_dict_value, response_error_message
 from utils.datetime_utils import parse_date
 from src.tno.projects.duplicate_detection import DuplicatePrompt, find_duplicate_variant_collection, generate_renamed_esdl_string
 
@@ -512,9 +512,13 @@ class ESDLServices:
                         + " with text: "
                         + str(url_response.text),
                     )
-                else:
-                    logger.warning("Error running ESDL service ", input_data)
+                    return [(False, response_error_message(url_response), None)]
+                logger.warning("Error running ESDL service ", input_data)
                 return [(False, str(input_data), None)]
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+            target = urllib.parse.urlparse(url).netloc or url
+            logger.warning(f"Could not reach ESDL service at '{target}': {e}")
+            return [(False, f"The service at '{target}' is not reachable.", None)]
         except Exception:
             logger.exception("Error accessing external ESDL service.")
             return [(False, None, None)]

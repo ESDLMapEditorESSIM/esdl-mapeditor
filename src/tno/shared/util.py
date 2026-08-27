@@ -12,6 +12,40 @@
 #  Manager:
 #      TNO
 import re
+from urllib.parse import urlparse
+
+import requests
+
+MAX_ERROR_MESSAGE_LINES = 10
+"""Maximum number of lines of a remote error message that is shown to the user."""
+
+
+def response_error_message(response: requests.Response) -> str:
+    """
+    Build a readable error message for a failed response, stating which service it came from.
+
+    :param response: The failed response.
+    :return: The error message.
+    """
+    target = urlparse(response.url).netloc or response.url
+    detail = None
+    try:
+        body = response.json()
+    except ValueError:
+        body = None
+    if isinstance(body, dict):
+        # 'detail' is what FastAPI-based services put their HTTPException message in.
+        for key in ("detail", "message", "error"):
+            if isinstance(body.get(key), str):
+                detail = body[key]
+                break
+    if not detail:
+        detail = response.text or response.reason or str(response.status_code)
+
+    lines = detail.strip().splitlines()
+    if len(lines) > MAX_ERROR_MESSAGE_LINES:
+        lines = lines[:MAX_ERROR_MESSAGE_LINES] + ["..."]
+    return f"From '{target}':\n" + "\n".join(lines)
 
 
 def get_nested_dict_value(dictionary: dict, nested_key: str) -> any:

@@ -286,7 +286,6 @@ class WorkflowStep:
         error_message = ""
         query_finished = False
         try:
-            logger.info(url)
             resp = requests.get(url)
 
             if resp.status_code == 200:
@@ -426,30 +425,34 @@ class WorkflowEngine:
                 if init_data["type"] == "esdl_service":
                     esdl_service_ok, esdl_service_result, _ = self.esdl_services.call_esdl_service(init_data)[0]
 
-                    if not esdl_service_result:
-                        raise RuntimeError("Error calling service")
-                    esdl_service_result["model_run_doc"]["is_owner"] = (
-                        esdl_service_result["model_run_doc"]["user"] == user_email
-                    )
-                    if esdl_service_ok:
-                        emit(
-                            "wfe_update_model_run",
-                            esdl_service_result["model_run_doc"],
-                            namespace="/esdl",
-                        )
-
-                        sequence_data.run_id = esdl_service_result["model_run_doc"]["run_id"]
-                        sequence_data.model_job_id = esdl_service_result["model_run_doc"]["model_job_id"]
-                    else:
+                    if not esdl_service_ok or not isinstance(esdl_service_result, dict):
                         logger.error(f"Error running esdl service with data: '{init_data}")
+                        # On failure the service result is the error message, if the service returned one.
+                        description = (
+                            esdl_service_result
+                            if isinstance(esdl_service_result, str)
+                            else "The external service could not be started"
+                        )
                         self.toast_notifications.send(
                             ToastNotification(
                                 title=f"An error occurred during run '{run_name}'.",
-                                description="The external service could not be started",
+                                description=description,
                                 type=NotificationType.ERROR,
                             )
                         )
                         return None
+
+                    esdl_service_result["model_run_doc"]["is_owner"] = (
+                        esdl_service_result["model_run_doc"]["user"] == user_email
+                    )
+                    emit(
+                        "wfe_update_model_run",
+                        esdl_service_result["model_run_doc"],
+                        namespace="/esdl",
+                    )
+
+                    sequence_data.run_id = esdl_service_result["model_run_doc"]["run_id"]
+                    sequence_data.model_job_id = esdl_service_result["model_run_doc"]["model_job_id"]
                 else:
                     logger.error(f"Type '{init_data['type']}' not implemented for the workflow engine.")
                     return None

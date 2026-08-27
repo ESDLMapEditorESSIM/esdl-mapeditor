@@ -22,6 +22,7 @@ import requests
 from flask import Flask, jsonify, request
 from flask_socketio import SocketIO
 from typing import List
+from urllib.parse import urlparse
 
 import esdl
 from extensions.esdl_drive.api import (
@@ -37,6 +38,7 @@ from extensions.session_manager import get_project_manager, get_session
 from extensions.settings_storage import SettingsStorage
 from src.log import get_logger
 from src.process_es_area_bld import process_energy_system
+from src.tno.shared.util import response_error_message
 
 logger = get_logger(__name__)
 
@@ -44,6 +46,34 @@ DEFAULT_TIMEOUT = 30
 """Default timeout for workflow proxy requests."""
 
 WORKFLOW_SETTINGS_NAME = "workflows"
+
+
+def unreachable_service_response(url: str, exception: Exception):
+    """Build a 502 response explaining that the remote service could not be reached."""
+    parsed = urlparse(url)
+    target = parsed.netloc or url
+    if isinstance(exception, requests.exceptions.Timeout):
+        message = (
+            f"The service at '{target}' did not respond within {DEFAULT_TIMEOUT} seconds. "
+            "Please try again later or check whether the service is running."
+        )
+    else:
+        message = (
+            f"The service at '{target}' is not reachable. "
+            "Please check whether the service is running and reachable from the MapEditor."
+        )
+    logger.warning("Could not reach %s: %s", target, exception)
+    return jsonify({"message": message}), 502
+
+
+def proxy_response(r: requests.Response):
+    """Relay a remote response, preserving any error message the service returned."""
+    if not r.ok:
+        return jsonify({"detail": response_error_message(r)}), r.status_code
+    try:
+        return jsonify(r.json()), r.status_code
+    except ValueError:
+        return jsonify([]), r.status_code
 
 
 class Workflow:
@@ -80,14 +110,13 @@ class Workflow:
             headers = (
                 {"Authorization": f"Bearer {jwt_token}"} if with_jwt_token else None
             )
-            r = requests.options(
-                url, params=other_args, headers=headers, timeout=DEFAULT_TIMEOUT
-            )
             try:
-                resp_json = r.json()
-            except Exception:
-                resp_json = []
-            return jsonify(resp_json), r.status_code
+                r = requests.options(
+                    url, params=other_args, headers=headers, timeout=DEFAULT_TIMEOUT
+                )
+            except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+                return unreachable_service_response(url, e)
+            return proxy_response(r)
 
         @self.flask_app.route("/workflow/get_data")
         def get_data():
@@ -107,14 +136,13 @@ class Workflow:
                 if value == "session.email":  # assumes email in query or url param
                     other_args[key] = email
             url = url.format(**other_args)
-            r = requests.get(
-                url, headers=headers, params=other_args, timeout=DEFAULT_TIMEOUT
-            )
             try:
-                resp_json = r.json()
-            except Exception:
-                resp_json = []
-            return jsonify(resp_json), r.status_code
+                r = requests.get(
+                    url, headers=headers, params=other_args, timeout=DEFAULT_TIMEOUT
+                )
+            except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+                return unreachable_service_response(url, e)
+            return proxy_response(r)
 
         @self.flask_app.route("/workflow/download_file", methods=["POST"])
         def download_file():
@@ -134,9 +162,12 @@ class Workflow:
 
             request_params = request.json.get("request_params")
             url = url.format(**request_params)
-            r = requests.post(
-                url, json=request_params, headers=headers, timeout=DEFAULT_TIMEOUT
-            )
+            try:
+                r = requests.post(
+                    url, json=request_params, headers=headers, timeout=DEFAULT_TIMEOUT
+                )
+            except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+                return unreachable_service_response(url, e)
             if r.status_code == 200:
                 # Get the filename from the header.
                 parsed_header = cgi.parse_header(r.headers["Content-Disposition"])[-1]
@@ -145,7 +176,7 @@ class Workflow:
                 result = base64.b64encode(r.content).decode()
                 return jsonify({"base64file": result, "filename": filename}), 200
             else:
-                return jsonify([]), r.status_code
+                return proxy_response(r)
 
         @self.flask_app.route("/workflow/post_data", methods=["POST"])
         def post_data():
@@ -169,15 +200,14 @@ class Workflow:
 
             request_params = request.json.get("request_params")
             body = request.json.get("body")
-            r = requests.post(
-                url, params=request_params, json=body, headers=headers, timeout=DEFAULT_TIMEOUT
-            )
-
             try:
-                resp_json = r.json()
-            except Exception:
-                resp_json = []
-            return jsonify(resp_json), r.status_code
+                r = requests.post(
+                    url, params=request_params, json=body, headers=headers, timeout=DEFAULT_TIMEOUT
+                )
+            except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+                return unreachable_service_response(url, e)
+
+            return proxy_response(r)
 
         @self.socketio.on("/workflow/list", namespace="/esdl")
         def list_workflows():

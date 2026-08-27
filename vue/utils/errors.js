@@ -6,6 +6,6 @@
  * @param {*} e 
  */
 export function genericErrorHandler(e) {
-    alert("An error has occurred: " + e);
+    alert("An error has occurred:\n" + e);
     console.error(e);
 }
