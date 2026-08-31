@@ -1907,6 +1907,7 @@ const onSyncBtnClick = async () => {
         );
       }
     }
+    resetMenuToDefault();
     await updateDatasets();
   } catch (error) {
     console.error(error);
@@ -1915,10 +1916,6 @@ const onSyncBtnClick = async () => {
       `An error occurred while synchronizing metadata: ${error}`,
     );
   } finally {
-    // Reset selection
-    resetMenuToDefault();
-    datasetSelected.value = datasetOptions.value.map((option) => option.value);
-
     isSyncingMetaData.value = false;
   }
 };
