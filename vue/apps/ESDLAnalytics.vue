@@ -666,6 +666,67 @@
                       @change="onSelectDisplayOptions"
                     />
                   </a-row>
+                  <a-row style="align-items: center; padding-top: 12px">
+                    <a-typography-paragraph
+                      style="padding-left: 8px; margin-bottom: 0px"
+                    >
+                      Show non-zero legend items only
+                    </a-typography-paragraph>
+                    <a-switch
+                      v-model:checked="showNonZeroLegendItems"
+                      size="small"
+                      style="position: absolute; right: 0px"
+                      @change="onSelectDisplayOptions"
+                    />
+                  </a-row>
+                  <a-row style="padding-top: 12px">
+                    <a-typography-paragraph
+                      style="padding-left: 8px; margin-bottom: 4px"
+                    >
+                      Sort legend
+                    </a-typography-paragraph>
+                    <a-space>
+                      <a-button
+                        size="small"
+                        :type="legendSort === 'none' ? 'primary' : 'default'"
+                        @click="setLegendSort('none')"
+                      >
+                        Original
+                      </a-button>
+                      <a-button
+                        size="small"
+                        :type="legendSort === 'alphabetical' ? 'primary' : 'default'"
+                        @click="setLegendSort('alphabetical')"
+                      >
+                        Alphabetical
+                        <component
+                          v-if="legendSort === 'alphabetical'"
+                          :is="
+                            legendSortDirection === 'ascending'
+                              ? SortAscendingOutlined
+                              : SortDescendingOutlined
+                          "
+                          style="vertical-align: 0.1rem"
+                        />
+                      </a-button>
+                      <a-button
+                        size="small"
+                        :type="legendSort === 'value' ? 'primary' : 'default'"
+                        @click="setLegendSort('value')"
+                      >
+                        Value
+                        <component
+                          v-if="legendSort === 'value'"
+                          :is="
+                            legendSortDirection === 'ascending'
+                              ? ArrowUpOutlined
+                              : ArrowDownOutlined
+                          "
+                          style="vertical-align: 0.1rem"
+                        />
+                      </a-button>
+                    </a-space>
+                  </a-row>
                 </a-col>
                 <!------------------------------------------->
                 <!------------- Dataset handler ------------->
@@ -789,6 +850,8 @@
 <script setup>
 import { computed, defineProps, h, onMounted, onUnmounted, ref } from "vue";
 import {
+  ArrowDownOutlined,
+  ArrowUpOutlined,
   AreaChartOutlined,
   BarChartOutlined,
   DeleteOutlined,
@@ -802,6 +865,8 @@ import {
   MenuUnfoldOutlined,
   UploadOutlined,
   SaveOutlined,
+  SortAscendingOutlined,
+  SortDescendingOutlined,
   StarOutlined,
   SyncOutlined,
   TableOutlined,
@@ -815,6 +880,7 @@ import {
   normalizePlotlyDateTimeStr,
 } from "@/utils/profileVisualization";
 import { displayNotification, NotificationType } from "@/utils/notification";
+import { formatNumber } from "@/utils/utils";
 import dayjs from "dayjs";
 import minMax from "dayjs/plugin/minMax";
 import VueJsTree from "@/components/jstree/VueJsTree.vue";
@@ -933,6 +999,15 @@ const groupStackOptions = [
   { label: "Stack data (totals)", value: 1 },
   { label: "Stack data (percentage)", value: 2 },
 ];
+const legendSortOptions = [
+  { label: "Original", value: "none" },
+  { label: "Alphabetical", value: "alphabetical" },
+  { label: "Value", value: "value" },
+];
+const legendSortDirectionOptions = [
+  { label: "Ascending", value: "ascending" },
+  { label: "Descending", value: "descending" },
+];
 
 const maxGroupbySelectedCount = 2;
 
@@ -964,6 +1039,9 @@ const initOptions = {
   dataGrouping: 1,
   showSingleTooltip: false,
   showBarNumbers: false,
+  showNonZeroLegendItems: false,
+  legendSort: "none",
+  legendSortDirection: "ascending",
   paletteSelected: colorPalettes[0],
   autoHistogramBinSize: true,
   histogramBinWidth: null,
@@ -1026,6 +1104,15 @@ const filterSelected = ref(appliedOptions.filterSelected);
 const dataGrouping = ref(appliedOptions.dataGrouping);
 const showSingleTooltip = ref(appliedOptions.showSingleTooltip);
 const showBarNumbers = ref(appliedOptions.showBarNumbers);
+const showNonZeroLegendItems = ref(
+  appliedOptions.showNonZeroLegendItems ??
+    appliedOptions.hideZeroValueLegendItems ??
+    false,
+);
+const legendSort = ref(appliedOptions.legendSort ?? initOptions.legendSort);
+const legendSortDirection = ref(
+  appliedOptions.legendSortDirection ?? initOptions.legendSortDirection,
+);
 const paletteSelected = ref(appliedOptions.paletteSelected);
 const autoHistogramBinSize = ref(appliedOptions.autoHistogramBinSize);
 const histogramBinWidth = ref(appliedOptions.histogramBinWidth);
@@ -1061,6 +1148,9 @@ const getOptions = () => {
     dataGrouping: dataGrouping.value,
     showSingleTooltip: showSingleTooltip.value,
     showBarNumbers: showBarNumbers.value,
+    showNonZeroLegendItems: showNonZeroLegendItems.value,
+    legendSort: legendSort.value,
+    legendSortDirection: legendSortDirection.value,
     paletteSelected: paletteSelected.value,
     autoHistogramBinSize: autoHistogramBinSize.value,
     histogramBinWidth: histogramBinWidth.value,
@@ -1236,6 +1326,13 @@ const applyConfig = async (graphConfig) => {
   dataGrouping.value = graphConfig.dataGrouping;
   showSingleTooltip.value = graphConfig.showSingleTooltip;
   showBarNumbers.value = graphConfig.showBarNumbers;
+  showNonZeroLegendItems.value =
+    graphConfig.showNonZeroLegendItems ??
+    graphConfig.hideZeroValueLegendItems ??
+    false;
+  legendSort.value = graphConfig.legendSort ?? initOptions.legendSort;
+  legendSortDirection.value =
+    graphConfig.legendSortDirection ?? initOptions.legendSortDirection;
   paletteSelected.value = graphConfig.paletteSelected;
   autoHistogramBinSize.value = graphConfig.autoHistogramBinSize;
   histogramBinWidth.value = graphConfig.histogramBinWidth;
@@ -1361,15 +1458,14 @@ const onSelectPalette = () => {
   updateTrace();
 };
 
-const onSelectDataset = () => {
+const onSelectDataset = async () => {
   // Resets selected variable, groupby, and filter to the default state.
   variableSelected.value = null;
   groupbySelected.value = [];
   filterSelected.value = [];
 
-  updateVariables().then(() => {
-    updateTrace();
-  });
+  await updateVariables();
+  await updateTrace();
 };
 
 const onSelectVariable = (_, value) => {
@@ -1452,6 +1548,19 @@ const onChartTypeBtnClick = (value) => {
 };
 
 const onSelectDisplayOptions = () => {
+  updateTrace();
+};
+
+const setLegendSort = (sort) => {
+  if (sort === "none") {
+    legendSort.value = sort;
+  } else if (legendSort.value === sort) {
+    legendSortDirection.value =
+      legendSortDirection.value === "ascending" ? "descending" : "ascending";
+  } else {
+    legendSort.value = sort;
+    legendSortDirection.value = "ascending";
+  }
   updateTrace();
 };
 
@@ -1559,13 +1668,16 @@ const onSelectProfileIntervalAggFunc = () => {
   updateTrace();
 };
 
-onMounted(() => {
+onMounted(async () => {
   console.info("Initializing ESDL Analytics");
 
   fetchUserGraphConfigs();
 
   getESDLProject(); // Get project data with variant hierarchy
-  updateDatasets();
+  await updateDatasets(props.options === null);
+  if (props.options !== null && currentTrace.value.length) {
+    await updateTrace();
+  }
 });
 
 onUnmounted(() => {
@@ -1805,6 +1917,7 @@ const onSyncBtnClick = async () => {
   } finally {
     // Reset selection
     resetMenuToDefault();
+    datasetSelected.value = datasetOptions.value.map((option) => option.value);
 
     isSyncingMetaData.value = false;
   }
@@ -1863,6 +1976,9 @@ const resetMenuToDefault = () => {
   dataGrouping.value = initOptions.dataGrouping;
   showSingleTooltip.value = initOptions.showSingleTooltip;
   showBarNumbers.value = initOptions.showBarNumbers;
+  showNonZeroLegendItems.value = initOptions.showNonZeroLegendItems;
+  legendSort.value = initOptions.legendSort;
+  legendSortDirection.value = initOptions.legendSortDirection;
   paletteSelected.value = initOptions.paletteSelected;
   autoHistogramBinSize.value = initOptions.autoHistogramBinSize;
   histogramBinWidth.value = initOptions.histogramBinWidth;
@@ -1873,7 +1989,7 @@ const resetMenuToDefault = () => {
  *
  * @returns {Promise<void>} A promise that resolves when the datasets have been fetched and the options updated.
  */
-const updateDatasets = async () => {
+const updateDatasets = async (selectAll = true) => {
   console.debug("Fetching DataManager datasets");
   try {
     const datasets = await fetchData("datamanager/datasets");
@@ -1883,8 +1999,15 @@ const updateDatasets = async () => {
         label: `${d.name}`,
         uniqueDsId: `${d.es_id}_${d.name}`,
       }));
+      if (selectAll) {
+        datasetSelected.value = datasetOptions.value.map(
+          (option) => option.value,
+        );
+        await onSelectDataset();
+      }
     } else {
       datasetOptions.value = [];
+      datasetSelected.value = [];
     }
   } catch (error) {
     console.error(error);
@@ -2125,6 +2248,32 @@ const disabledDate = (current) => {
   }
 };
 
+const sortLegend = (traces) => {
+  if (legendSort.value === "none") {
+    return;
+  }
+
+  const sortedTraces = [...traces].sort((first, second) => {
+    if (legendSort.value === "alphabetical") {
+      const alphabeticalOrder = String(first.name).localeCompare(
+        String(second.name),
+      );
+      return legendSortDirection.value === "ascending"
+        ? alphabeticalOrder
+        : -alphabeticalOrder;
+    }
+    const total = (trace) =>
+      trace.y.reduce((sum, value) => sum + (Number(value) || 0), 0);
+    const valueOrder = total(first) - total(second);
+    return legendSortDirection.value === "ascending"
+      ? valueOrder
+      : -valueOrder;
+  });
+  sortedTraces.forEach((trace, index) => {
+    trace.legendrank = index;
+  });
+};
+
 /**
  * Configures profile line chart traces and layout for visualization.
  *
@@ -2153,7 +2302,9 @@ const profileTraceHandler = (traces) => {
     t.type = isAggregated ? "bar" : "scatter";
     t.mode = isAggregated ? null : "lines";
     t.text =
-      isAggregated && showBarNumbers.value ? t.y.map((y) => y.toFixed(1)) : "";
+      isAggregated && showBarNumbers.value
+        ? t.y.map(formatNumber)
+        : "";
     t.marker = { color: colorscale[idx % colorscale.length] };
     // Display the additional groupby aggregated profile data with dot lines
     if (isGroupbyAggregated && !isAggregated && t["isGroupbyAggregated"]) {
@@ -2170,6 +2321,7 @@ const profileTraceHandler = (traces) => {
       t.yaxis = `y${axisId + 1}`;
     }
   });
+  sortLegend(traces);
 
   const profileLayout = {
     title: variableSelected.value,
@@ -2212,12 +2364,20 @@ const barChartTraceHandler = (traces) => {
   const colorscale = generateColorscale(paletteSelected.value, traces.length);
   traces.forEach((t, idx) => {
     t.type = "bar";
-    t.text = showBarNumbers.value ? t.y.map((y) => y.toFixed(1)) : "";
+    const hasNonZeroValue = t.y.some((value) => value !== 0);
+    t.text = showBarNumbers.value
+      ? t.y.map(formatNumber)
+      : "";
+    t.showlegend =
+      !showNonZeroLegendItems.value || hasNonZeroValue;
+    t.hoverinfo =
+      showNonZeroLegendItems.value && !hasNonZeroValue ? "skip" : "all";
     t.marker = { color: colorscale[idx % colorscale.length] };
     if (t.name.length >= 25) {
       t.name = t.name.replace(new RegExp(`(.{1,${25}})`, "g"), "$1<br>");
     }
   });
+  sortLegend(traces);
 
   const barChartLayout = {
     title: variableSelected.value,

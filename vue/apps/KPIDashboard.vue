@@ -160,8 +160,9 @@
   <!-- Opens a modal to add or edit ESDL Analytics -->
   <a-modal
     v-model:open="esdlAnalyticsModalOpen"
-    width="75%"
-    :body-style="{height: '60vh'}"
+    width="95%"
+    :style="{ top: '16px' }"
+    :body-style="{height: '90vh'}"
     :destroy-on-close="true"
     :ok-text="esdlAnalyticsEditingId !== null ? 'Update' : 'Add'"
     @ok="esdlAnalyticsEditingId !== null ? addUpdatedAnalyticsPanelToDash() : addNewAnalyticsPanelToDash()"
