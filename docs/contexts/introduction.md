@@ -40,6 +40,7 @@ See `docs/contexts/application-contexts.md` for field-level details and an examp
 
 Activity contexts are narrower, user-facing tasks such as "Place windmills" or "Load ETM data". They can enable WMS
 layers, toggle ESDL layers, add context menu actions, show toasts, and optionally open workflows or call a JS function.
+They can also be limited to specific application contexts.
 
 Implementation info:
 - Stored in MongoDB collection `activity_contexts` (see `src/tno/mongo/models.py`).

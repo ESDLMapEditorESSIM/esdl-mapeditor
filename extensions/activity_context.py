@@ -15,9 +15,8 @@ from dataclasses import asdict
 
 from bson import json_util
 from flask import Flask, jsonify, request
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO
 import src.log as log
-from extensions.session_manager import get_session
 from extensions.settings_storage import SettingsStorage
 from src.roles import mapeditor_admin_required
 from src.tno.mongo.core import get_database
@@ -55,7 +54,16 @@ class ActivityContextExtension:
             # Get the actual activity contexts by querying mongodb for all entries with the given ids.
             db = get_database()
             # Find all activity contexts with the given ids, and also get all contexts with global set to True
-            activity_contexts = db.activity_contexts.find({"$or": [{"activity_id": {"$in": context_ids}}, {"is_global": True}]})
+            context_filter = {"$or": [{"activity_id": {"$in": context_ids}}, {"is_global": True}]}
+            application_id = request.args.get("application_id")
+            if application_id:
+                context_filter = {
+                    "$and": [
+                        context_filter,
+                        {"$or": [{"application_ids": None}, {"application_ids": application_id}]},
+                    ]
+                }
+            activity_contexts = db.activity_contexts.find(context_filter)
             json_result = json_util.dumps(activity_contexts)
             return json_result
 

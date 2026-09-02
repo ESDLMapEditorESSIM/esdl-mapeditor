@@ -47,6 +47,7 @@ const { addBuildingContextMenuItem, removeBuildingContextMenuItem } = useEsdlBui
  * @property {string} name - The name of the activity context.
  * @property {string|null} workflow - The workflow to activate.
  * @property {boolean|null} is_global - If true, the context is shown to all users.
+ * @property {string[]|null} application_ids - Application contexts in which this activity is available.
  * @property {boolean|null} clear_area_context_menu - If true, all existing options will be removed (and restored later)
  * @property {string|null} js_function - The JS function to execute when the context is activated.
  * @property {string[]|null} wms_layers - The WMS layers to activate.
@@ -257,8 +258,12 @@ const {hideEsdlLayerAllEsdls, showEsdlLayerAllEsdls} = useEsdlLayers();
         activeActivityContext.value = {};
     }
 
-    const fetchActivityContexts = async () => {
-        const response = await fetch('/context/activities')
+    const fetchActivityContexts = async (applicationId = null) => {
+        let url = '/context/activities';
+        if (applicationId) {
+            url += `?application_id=${encodeURIComponent(applicationId)}`;
+        }
+        const response = await fetch(url)
         return await response.json()
     }
 

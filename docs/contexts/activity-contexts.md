@@ -12,6 +12,9 @@ This example shows how to enable a WMS layer plus a map context menu service:
 {
   "activity_id": "rve_wind",
   "name": "Place windmills",
+  "application_ids": [
+    "rve"
+  ],
   "is_global": true,
   "disable_esdl_layers": [
     "kpi_layer",
@@ -58,7 +61,7 @@ Success: the new document is returned by the GET endpoint.
 
 Success: the context is listed by `GET /context/activities`.
 
-In the future, this should be managed also through application contexts.
+Activity contexts can be limited to application contexts with `application_ids`. Without this field, they are available in every application context.
 
 ## Field reference
 
@@ -66,6 +69,7 @@ All fields are optional unless stated otherwise.
 
 - `activity_id` (string, required): Unique identifier used for selection and admin endpoints.
 - `name` (string, required): Label shown in the UI.
+- `application_ids` (string[]): Application context IDs in which this activity is shown. If omitted or `null`, the activity is shown in every application context.
 - `workflow` (string): Name of a workflow in `window.esdl_services_information` to open when the context is activated.
 - `is_global` (boolean): If true, the context is visible to all users.
 - `js_function` (string): Name of a global JS function (on `window`) to call on activation. Try to prefer using workflows.

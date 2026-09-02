@@ -63,6 +63,8 @@ class ActivityContext:
     context_menu_js_functions: list[ActivityContextMenuJsFunction] | None
     # Text to show in an alert when activating this context.
     toast_text: str | None
+    # Limit this activity to these application contexts. If omitted, it is available in all application contexts.
+    application_ids: list[str] | None = None
     # _id: ObjectId | None = None
 
     def to_json(self):

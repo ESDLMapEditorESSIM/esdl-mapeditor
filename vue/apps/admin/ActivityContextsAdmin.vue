@@ -4,6 +4,7 @@
     <a-space direction="vertical">
       <a-input v-model:value="newActivityContextID" type="text" placeholder="ID" />
       <a-input v-model:value="newActivityContextName" type="text" placeholder="Name" />
+      <a-textarea v-model:value="newApplicationIds" :rows="2" placeholder="Application IDs (comma-separated)" />
       <a-textarea v-model:value="newWmsLayers" :rows="4" placeholder="WMS layers (comma-separated)" />
       <a-textarea v-model:value="newDisableEsdlLayers" :rows="4" placeholder="Disable ESDL layers (comma-separated)" />
       <a-input v-model:value="newWorkflow" type="text" placeholder="Workflow" />
@@ -27,6 +28,11 @@
           <a v-for="layer in record.wms_layers" :key="layer">{{ layer }}</a>
         </a-space>
       </template>
+      <template v-else-if="column.key === 'application_ids'">
+        <a-space direction="vertical">
+          <a v-for="applicationId in record.application_ids" :key="applicationId">{{ applicationId }}</a>
+        </a-space>
+      </template>
       <template v-else-if="column.key === 'is_global'">
         <a-checkbox :checked="record.is_global" disabled />
       </template>
@@ -44,6 +50,7 @@ const addMode = ref(false);
 const activityContexts = ref([]);
 const newActivityContextID = ref('');
 const newActivityContextName = ref('');
+const newApplicationIds = ref('');
 const newWmsLayers = ref('');
 const newDisableEsdlLayers = ref('');
 const newWorkflow = ref('');
@@ -67,6 +74,11 @@ const columns = [
     title: 'Name',
     dataIndex: 'name',
     key: 'name',
+  },
+  {
+    title: 'Application IDs',
+    dataIndex: 'application_ids',
+    key: 'application_ids',
   },
   {
     title: 'WMS Layers',
@@ -115,6 +127,10 @@ const saveActivityContext = async () => {
   // If newWmsLayers is not an empty string, convert it to list of strings.
   const wmsLayers = newWmsLayers.value ? newWmsLayers.value.split(',') : [];
   const disableEsdlLayers = newDisableEsdlLayers.value ? newDisableEsdlLayers.value.split(',') : [];
+  let applicationIds = null;
+  if (newApplicationIds.value) {
+    applicationIds = newApplicationIds.value.split(',').map(applicationId => applicationId.trim());
+  }
   const workflow = newWorkflow.value || null;
   const jsFunction = newJsFunction.value || null;
   const isGlobal = newIsGlobal.value;
@@ -133,6 +149,7 @@ const saveActivityContext = async () => {
       context_menu_js_functions: [],
       workflow: workflow,
       js_function: jsFunction,
+      application_ids: applicationIds,
       is_global: isGlobal,
     })
   })
@@ -144,6 +161,7 @@ const saveActivityContext = async () => {
   addMode.value = false;
   newActivityContextID.value = '';
   newActivityContextName.value = '';
+  newApplicationIds.value = '';
   newWmsLayers.value = '';
   await get_activity_contexts();
 }
