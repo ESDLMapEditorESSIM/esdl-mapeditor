@@ -1227,8 +1227,10 @@ function bring_KPI_layer_to_front(es_id) {
 // ------------------------------------------------------------------------------------------------------------
 //  Add geojson data contained in building_data to the building map layer
 // ------------------------------------------------------------------------------------------------------------
-function set_building_contextmenu(layer, id) {
+function set_building_contextmenu(layer, id, es_id) {
     layer.id = id;
+    layer.esid = es_id;
+    layer.mapeditor_layer_type = 'building';
     if (!layer.name && layer.feature && layer.feature.properties && layer.feature.properties.name) {
         layer.name = layer.feature.properties.name;
     }
@@ -1264,14 +1266,21 @@ function set_building_contextmenu(layer, id) {
     });
 
     select_assets.add_asset_handler(layer);
+    window.PubSubManager.broadcast('ADD_BUILDING_TO_LAYER', {
+        es_id: es_id,
+        id: id,
+        feature: layer.feature,
+        layer: layer
+    });
 }
 
 /**
  * Add layer of type building to the map.
  * 
+ * @param {*} es_id
  * @param {*} building_data 
  */
-function add_building_layer(building_data) {
+function add_building_layer(es_id, building_data) {
     geojson_building_layer = L.geoJson(building_data, {
         style: style_building,
         onEachFeature: function(feature, layer) {
@@ -1298,12 +1307,10 @@ function add_building_layer(building_data) {
                 layer.on('mouseout', resetHighlightBuilding);
             }
             if (feature.properties && feature.properties.id) {
-                layer.mapeditor_layer_type = 'building';
-                window.PubSubManager.broadcast('ADD_BUILDING_TO_LAYER', { id: feature.properties.id, feature: feature, layer: layer });
-                set_building_contextmenu(layer, feature.properties.id);
+                set_building_contextmenu(layer, feature.properties.id, es_id);
             }
         }
-    }).addTo(get_layers(active_layer_id, 'bld_layer'));
+    }).addTo(get_layers(es_id, 'bld_layer'));
 }
 
 // Ewoud's attempts to get context menus working with GeoJSON layers:
@@ -1665,15 +1672,18 @@ function update_area_legend() {
 /**
  * Add all buildings to the map with the KPI legend.
  * 
+ * @param {*} es_id
  * @param {*} geojson_building_data 
  */
-function add_building_geojson_layer_with_legend(geojson_building_data) {
+function add_building_geojson_layer_with_legend(es_id, geojson_building_data) {
     //console.log(geojson_building_data);
     building_KPIs = {};
     preprocess_layer_data("building", geojson_building_data, building_KPIs);
-    set_building_kpi_list(active_layer_id, building_KPIs);
-    update_building_legend();
-    add_building_layer(geojson_building_data);
+    set_building_kpi_list(es_id, building_KPIs);
+    if (es_id === active_layer_id) {
+        update_building_legend();
+    }
+    add_building_layer(es_id, geojson_building_data);
 }
 
 function update_building_legend() {
@@ -1760,7 +1770,7 @@ function add_geojson_listener(socket, map) {
         // This code was commented out with the above command, but is required for the BAG service
         if (layer == 'bld_layer') {
             geojson_building_data = message['geojson']; // store for redraw based on other property
-            add_building_geojson_layer_with_legend(geojson_building_data);
+            add_building_geojson_layer_with_legend(message['es_id'] || active_layer_id, geojson_building_data);
         }
 
         if (layer == 'pot_layer') {
