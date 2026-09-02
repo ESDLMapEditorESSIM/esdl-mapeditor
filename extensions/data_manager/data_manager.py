@@ -90,6 +90,14 @@ def physical_q_to_str(qau: esdl.QuantityAndUnitType):
     else:
         return "Unknown"
 
+
+def kpi_variable_name(kpi: esdl.KPI, qau: esdl.QuantityAndUnitType) -> str:
+    """Use the KPI name when no quantity and unit metadata is available."""
+    if qau.physicalQuantity == esdl.PhysicalQuantityEnum.UNDEFINED:
+        return f'KPI - {kpi.name}'
+    return f'KPI - {physical_q_to_str(qau)} [{unit_to_string(qau)}]'
+
+
 def filter_none(input_list: Sequence) -> List:
     return [x for x in input_list if x is not None]
 
@@ -621,7 +629,7 @@ class DataManager:
                 update_kpi_metadata(eobj, d)
                 qau = check_qau(eobj.quantityAndUnit)
                 d.value, qau = convert_to_target_energy_unit(eobj.value, qau, target_energy_qau)
-                variable_name = f'KPI - {physical_q_to_str(qau)} [{unit_to_string(qau)}]'
+                variable_name = kpi_variable_name(eobj, qau)
                 d.labels["KPI name"] = eobj.name
 
             elif isinstance(eobj, esdl.IntKPI):
@@ -630,7 +638,7 @@ class DataManager:
                 update_kpi_metadata(eobj, d)
                 qau = check_qau(eobj.quantityAndUnit)
                 d.value, qau = convert_to_target_energy_unit(float(eobj.value), qau, target_energy_qau)
-                variable_name = f'KPI - {physical_q_to_str(qau)} [{unit_to_string(qau)}]'
+                variable_name = kpi_variable_name(eobj, qau)
                 d.labels["KPI name"] = eobj.name
             elif isinstance(eobj, esdl.StringItem):
                 # part of DistributionKPI

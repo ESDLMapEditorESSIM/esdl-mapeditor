@@ -451,9 +451,18 @@ function create_array_area_legendClassesDiv(kpi) {
 function create_range_building_legendClassesDiv(kpi) {
     let result = '';
     for (var i = 0; i < building_legend_ranges.length; i++) {
+        var separator = '+';
+        var endValue = '';
+        if (i !== building_legend_ranges.length - 1) {
+            separator = '&ndash;';
+            endValue = '<span class="building_legend_range_value">' + building_legend_ranges[i + 1] + '</span>';
+        }
         result +=
-            '<i style="background:' + get_building_range_colors(building_legend_ranges[i]) + '"></i> ' +
-            building_legend_ranges[i] + ((i != building_legend_ranges.length-1) ? ' <b>&ndash;</b> ' + building_legend_ranges[i + 1] + '<br>' : '+');
+            '<div class="building_legend_range">' +
+            '<i style="background:' + get_building_range_colors(building_legend_ranges[i]) + '"></i>' +
+            '<span class="building_legend_range_value">' + building_legend_ranges[i] + '</span>' +
+            '<b>' + separator + '</b>' + endValue +
+            '</div>';
     }
     return result;
 }
@@ -1531,25 +1540,62 @@ function update_area_layer(esdl_layer_id, area_kpi_list) {
 // ------------------------------------------------------------------------------------------------------------
 //  Generate the complete Legend DIV
 // ------------------------------------------------------------------------------------------------------------
+function humanizeKPIName(kpiName) {
+    var unitLabels = {
+        eur: 'EUR',
+        eur_jaar: 'EUR/jaar',
+        gj: 'GJ',
+        kw: 'kW',
+        kwh: 'kWh',
+        m2: 'm²',
+        m3: 'm³',
+        mw: 'MW',
+        mwh: 'MWh',
+        jaar: 'jaar'
+    };
+    var unitMatch = kpiName.match(/_(eur_jaar|eur|gj|kwh|kw|mwh|mw|m2|m3|jaar)$/i);
+    var nameWithoutUnit = kpiName;
+    var unit;
+    if (unitMatch) {
+        nameWithoutUnit = kpiName.slice(0, -unitMatch[0].length);
+        unit = unitLabels[unitMatch[1].toLowerCase()];
+    }
+
+    var name = _.capitalize(_.startCase(nameWithoutUnit).toLowerCase());
+    name = name.replace(/\b(\d+) c\b/g, '$1 °C');
+    if (unit) {
+        name += ' (' + unit + ')';
+    }
+    return name;
+}
+
 function createBuildingLegendDiv(choice) {
-    var legendDiv = L.DomUtil.create('div', 'info legend');
+    var legendDiv = L.DomUtil.create('div', 'info legend building_legend');
     legendDiv.oncontextmenu = L.DomEvent.stopPropagation;
-    var legendTitleDiv = L.DomUtil.create('div', 'legend_title', legendDiv);
-    legendTitleDiv.innerHTML += 'Building Legend';
+    L.DomEvent.disableScrollPropagation(legendDiv);
+    var legendTitleDiv = L.DomUtil.create('div', 'legend_title building_legend_title', legendDiv);
+    legendTitleDiv.innerHTML = 'Building Legend';
+    var legendCloseButton = L.DomUtil.create('button', 'building_legend_close', legendTitleDiv);
+    legendCloseButton.type = 'button';
+    legendCloseButton.innerHTML = '&times;';
+    legendCloseButton.setAttribute('aria-label', 'Hide building legend');
+    L.DomEvent.on(legendCloseButton, 'click', toggle_building_legend_visibility);
 
     var selectorDiv = L.DomUtil.create('div', 'legend_select', legendDiv);
-    var selectText = '<select style="z-index:1000;" onchange="selectBuildingKPI(this.value);">';
-    for (bkpi in building_KPIs) {
-       if (bkpi === choice) {
-           selectText += '<option value="'+bkpi+'" selected>'+bkpi+'</option>';
-       } else {
-           selectText += '<option value="'+bkpi+'">'+bkpi+'</option>';
-       }
+    var kpiSelect = L.DomUtil.create('select', 'building_legend_select', selectorDiv);
+    kpiSelect.style.zIndex = 1000;
+    L.DomEvent.on(kpiSelect, 'change', function() {
+        selectBuildingKPI(this.value);
+    });
+    for (var bkpi in building_KPIs) {
+        var option = L.DomUtil.create('option', '', kpiSelect);
+        option.value = bkpi;
+        option.textContent = humanizeKPIName(bkpi);
+        option.title = bkpi;
+        option.selected = bkpi === choice;
     }
-    selectText += '</select>';
-    selectorDiv.innerHTML = selectText;
 
-    buildingLegendClassesDiv = L.DomUtil.create('div', 'info legend', legendDiv);
+    buildingLegendClassesDiv = L.DomUtil.create('div', 'info legend building_legend_classes', legendDiv);
     buildingLegendClassesDiv.innerHTML = create_building_legendClassesDiv(choice);
     return legendDiv;
 }
