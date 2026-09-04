@@ -13,11 +13,6 @@ image:
   name: gcr.io/kaniko-project/executor:v1.24.0-debug
   entrypoint: [""]
 
-before_script:
-  # This section remains exactly the same
-  - mkdir -p /kaniko/.docker
-  - echo "{\"auths\":{\"$REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
-
 # ______    __    __   __   __       _______
 #|   _  \  |  |  |  | |  | |  |     |       \
 #|  |_)  | |  |  |  | |  | |  |     |  .--.  |
@@ -29,6 +24,9 @@ build-mapeditor:
   stage: build
   variables:
     IMAGE: $IMAGE_BASE/esdl-mapeditor
+  before_script:
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"$REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
   script:
     - /kaniko/executor
       --context $CI_PROJECT_DIR
@@ -43,6 +41,9 @@ build-mapeditor-gunicorn:
   stage: build
   variables:
     IMAGE: $IMAGE_BASE/esdl-mapeditor
+  before_script:
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"$REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
   script:
     - /kaniko/executor
       --context $CI_PROJECT_DIR
@@ -63,6 +64,9 @@ build-mapeditor-gunicorn:
 test-mapeditor:
   stage: test
   image: $IMAGE_BASE/esdl-mapeditor:$TAG
+  variables:                                                                                                                               
+    DOCKER_AUTH_CONFIG: >-                                                                                                                 
+      {"auths":{"ci.tno.nl":{"username":"${CI_REGISTRY_USER}","password":"${CI_REGISTRY_PASSWORD}"}}}
   except:
     variables:
       - $SKIP_TESTS == "true"
