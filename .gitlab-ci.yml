@@ -1,6 +1,3 @@
-# ASCII art brought to you by:
-# http://patorjk.com/software/taag/#p=display&f=Star%20Wars&t=Type%20Something%20
-
 stages:
   - build
   - test
@@ -11,13 +8,15 @@ variables:
   REGISTRY: ci.tno.nl
   IMAGE_BASE: ci.tno.nl/geis/esdl-mapeditor
 
-image: docker:20.10
-
-services:
-  - docker:20.10-dind
+# Switch to Google's public stable debug image tag
+image: 
+  name: gcr.io/kaniko-project/executor:v1.24.0-debug
+  entrypoint: [""]
 
 before_script:
-  - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $REGISTRY
+  # This section remains exactly the same
+  - mkdir -p /kaniko/.docker
+  - echo "{\"auths\":{\"$REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
 
 # ______    __    __   __   __       _______
 #|   _  \  |  |  |  | |  | |  |     |       \
@@ -31,30 +30,28 @@ build-mapeditor:
   variables:
     IMAGE: $IMAGE_BASE/esdl-mapeditor
   script:
-    - docker pull $IMAGE:$BRANCH || true
-    - docker build --build-arg git_commit=$TAG . -f docker/Dockerfile-uwsgi --cache-from $IMAGE:$BRANCH -t $IMAGE:$TAG -t $IMAGE:$BRANCH
-    - docker push $IMAGE:$TAG
-    - docker push $IMAGE:$BRANCH
+    - /kaniko/executor
+      --context $CI_PROJECT_DIR
+      --dockerfile docker/Dockerfile-uwsgi
+      --build-arg git_commit=$TAG
+      --cache=true
+      --cache-repo $IMAGE/cache
+      --destination $IMAGE:$TAG
+      --destination $IMAGE:$BRANCH
 
 build-mapeditor-gunicorn:
   stage: build
   variables:
     IMAGE: $IMAGE_BASE/esdl-mapeditor
   script:
-    - docker pull $IMAGE:$BRANCH-gunicorn || true
-    - docker build --build-arg git_commit=$TAG . -f docker/Dockerfile-gunicorn --cache-from $IMAGE:$BRANCH-gunicorn -t $IMAGE:$TAG-gunicorn -t $IMAGE:$BRANCH-gunicorn
-    - docker push $IMAGE:$TAG-gunicorn
-    - docker push $IMAGE:$BRANCH-gunicorn
-
-#build-mapeditor-uwsgi:
-#  stage: build
-#  variables:
-#    IMAGE: $IMAGE_BASE/esdl-mapeditor-uwsgi
-#  script:
-#    - docker pull $IMAGE:$BRANCH || true
-#    - docker build --build-arg git_commit=$TAG . -f docker/Dockerfile-uwsgi-yarn --cache-from $IMAGE:$BRANCH -t $IMAGE:$TAG -t $IMAGE:$BRANCH
-#    - docker push $IMAGE:$TAG
-#    - docker push $IMAGE:$BRANCH
+    - /kaniko/executor
+      --context $CI_PROJECT_DIR
+      --dockerfile docker/Dockerfile-gunicorn
+      --build-arg git_commit=$TAG
+      --cache=true
+      --cache-repo $IMAGE/cache
+      --destination $IMAGE:$TAG-gunicorn
+      --destination $IMAGE:$BRANCH-gunicorn
 
 #.___________. _______     _______.___________.
 #|           ||   ____|   /       |           |
@@ -65,12 +62,11 @@ build-mapeditor-gunicorn:
 
 test-mapeditor:
   stage: test
-  variables:
-    IMAGE: $IMAGE_BASE/esdl-mapeditor
+  image: $IMAGE_BASE/esdl-mapeditor:$TAG
   except:
     variables:
       - $SKIP_TESTS == "true"
   retry: 1
   allow_failure: true
   script:
-    - docker run --entrypoint "/bin/sh" $IMAGE:$TAG tests-entrypoint.sh
+    - ./tests-entrypoint.sh
