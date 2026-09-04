@@ -696,6 +696,8 @@
                 window.PubSubManager.broadcast('ESDL_LOAD_FAILED', message);
             });
 
+            socket.on('import_received_esdl', import_received_esdl);
+
             socket.on('create_new_esdl_layer', function(message) {
                 title = message['title'];
                 es_id = message['es_id'];
