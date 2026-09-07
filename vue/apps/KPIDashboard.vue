@@ -161,8 +161,8 @@
   <a-modal
     v-model:open="esdlAnalyticsModalOpen"
     width="95%"
-    :style="{ top: '16px' }"
-    :body-style="{height: '90vh'}"
+    :style="{ top: '7vh' }"
+    :body-style="{height: '80vh'}"
     :destroy-on-close="true"
     :ok-text="esdlAnalyticsEditingId !== null ? 'Update' : 'Add'"
     @ok="esdlAnalyticsEditingId !== null ? addUpdatedAnalyticsPanelToDash() : addNewAnalyticsPanelToDash()"

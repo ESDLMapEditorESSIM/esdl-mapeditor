@@ -666,7 +666,10 @@
                       @change="onSelectDisplayOptions"
                     />
                   </a-row>
-                  <a-row style="align-items: center; padding-top: 12px">
+                  <a-row
+                    v-if="!isProfileVariable"
+                    style="align-items: center; padding-top: 12px"
+                  >
                     <a-typography-paragraph
                       style="padding-left: 8px; margin-bottom: 0px"
                     >
@@ -679,53 +682,46 @@
                       @change="onSelectDisplayOptions"
                     />
                   </a-row>
-                  <a-row style="padding-top: 12px">
+                  <a-row
+                    v-if="chartType !== 'hist'"
+                    style="padding-top: 12px"
+                  >
                     <a-typography-paragraph
                       style="padding-left: 8px; margin-bottom: 4px"
                     >
                       Sort legend
                     </a-typography-paragraph>
-                    <a-space>
-                      <a-button
-                        size="small"
-                        :type="legendSort === 'none' ? 'primary' : 'default'"
-                        @click="setLegendSort('none')"
-                      >
-                        Original
-                      </a-button>
-                      <a-button
-                        size="small"
-                        :type="legendSort === 'alphabetical' ? 'primary' : 'default'"
-                        @click="setLegendSort('alphabetical')"
-                      >
-                        Alphabetical
-                        <component
-                          v-if="legendSort === 'alphabetical'"
-                          :is="
-                            legendSortDirection === 'ascending'
-                              ? SortAscendingOutlined
-                              : SortDescendingOutlined
-                          "
-                          style="vertical-align: 0.1rem"
-                        />
-                      </a-button>
-                      <a-button
-                        size="small"
-                        :type="legendSort === 'value' ? 'primary' : 'default'"
-                        @click="setLegendSort('value')"
-                      >
-                        Value
-                        <component
-                          v-if="legendSort === 'value'"
-                          :is="
-                            legendSortDirection === 'ascending'
-                              ? ArrowUpOutlined
-                              : ArrowDownOutlined
-                          "
-                          style="vertical-align: 0.1rem"
-                        />
-                      </a-button>
-                    </a-space>
+                    <a-segmented
+                      v-model:value="legendSort"
+                      :options="legendSortOptions"
+                      style="width: 100%"
+                      size="small"
+                      block
+                    >
+                      <template #label="{ value, payload = {} }">
+                        <div @click="setLegendSort(value)">
+                          {{ payload.label }}
+                          <component
+                            v-if="legendSort === value && value === LegendSortType.ALPHABETICAL"
+                            :is="
+                              legendSortDirection === SortDirection.ASCENDING
+                                ? SortAscendingOutlined
+                                : SortDescendingOutlined
+                            "
+                            style="vertical-align: 0.1rem"
+                          />
+                          <component
+                            v-if="legendSort === value && value === LegendSortType.VALUE"
+                            :is="
+                              legendSortDirection === SortDirection.ASCENDING
+                                ? ArrowUpOutlined
+                                : ArrowDownOutlined
+                            "
+                            style="vertical-align: 0.1rem"
+                          />
+                        </div>
+                      </template>
+                    </a-segmented>
                   </a-row>
                 </a-col>
                 <!------------------------------------------->
@@ -999,15 +995,20 @@ const groupStackOptions = [
   { label: "Stack data (totals)", value: 1 },
   { label: "Stack data (percentage)", value: 2 },
 ];
+const LegendSortType = Object.freeze({
+  NONE: "none",
+  ALPHABETICAL: "alphabetical",
+  VALUE: "value",
+});
 const legendSortOptions = [
-  { label: "Original", value: "none" },
-  { label: "Alphabetical", value: "alphabetical" },
-  { label: "Value", value: "value" },
+  { value: LegendSortType.NONE, payload: { label: "Original" } },
+  { value: LegendSortType.ALPHABETICAL, payload: { label: "A-Z" } },
+  { value: LegendSortType.VALUE, payload: { label: "Value" } },
 ];
-const legendSortDirectionOptions = [
-  { label: "Ascending", value: "ascending" },
-  { label: "Descending", value: "descending" },
-];
+const SortDirection = Object.freeze({
+  ASCENDING: "ascending",
+  DESCENDING: "descending",
+});
 
 const maxGroupbySelectedCount = 2;
 
@@ -1040,8 +1041,8 @@ const initOptions = {
   showSingleTooltip: false,
   showBarNumbers: false,
   showNonZeroLegendItems: false,
-  legendSort: "none",
-  legendSortDirection: "ascending",
+  legendSort: LegendSortType.NONE,
+  legendSortDirection: SortDirection.ASCENDING,
   paletteSelected: colorPalettes[0],
   autoHistogramBinSize: true,
   histogramBinWidth: null,
@@ -1105,9 +1106,7 @@ const dataGrouping = ref(appliedOptions.dataGrouping);
 const showSingleTooltip = ref(appliedOptions.showSingleTooltip);
 const showBarNumbers = ref(appliedOptions.showBarNumbers);
 const showNonZeroLegendItems = ref(
-  appliedOptions.showNonZeroLegendItems ??
-    appliedOptions.hideZeroValueLegendItems ??
-    false,
+  appliedOptions.showNonZeroLegendItems ?? false,
 );
 const legendSort = ref(appliedOptions.legendSort ?? initOptions.legendSort);
 const legendSortDirection = ref(
@@ -1326,10 +1325,7 @@ const applyConfig = async (graphConfig) => {
   dataGrouping.value = graphConfig.dataGrouping;
   showSingleTooltip.value = graphConfig.showSingleTooltip;
   showBarNumbers.value = graphConfig.showBarNumbers;
-  showNonZeroLegendItems.value =
-    graphConfig.showNonZeroLegendItems ??
-    graphConfig.hideZeroValueLegendItems ??
-    false;
+  showNonZeroLegendItems.value = graphConfig.showNonZeroLegendItems ?? false;
   legendSort.value = graphConfig.legendSort ?? initOptions.legendSort;
   legendSortDirection.value =
     graphConfig.legendSortDirection ?? initOptions.legendSortDirection;
@@ -1552,14 +1548,16 @@ const onSelectDisplayOptions = () => {
 };
 
 const setLegendSort = (sort) => {
-  if (sort === "none") {
+  if (sort === LegendSortType.NONE) {
     legendSort.value = sort;
   } else if (legendSort.value === sort) {
     legendSortDirection.value =
-      legendSortDirection.value === "ascending" ? "descending" : "ascending";
+      legendSortDirection.value === SortDirection.ASCENDING
+        ? SortDirection.DESCENDING
+        : SortDirection.ASCENDING;
   } else {
     legendSort.value = sort;
-    legendSortDirection.value = "ascending";
+    legendSortDirection.value = SortDirection.ASCENDING;
   }
   updateTrace();
 };
@@ -1984,6 +1982,8 @@ const resetMenuToDefault = () => {
 /**
  * Asynchronously fetches DataManager datasets and updates the dataset options.
  *
+ * @param {boolean} selectAll Whether to select all fetched datasets and refresh the dependent
+ *                            variable/trace state; defaults to true.
  * @returns {Promise<void>} A promise that resolves when the datasets have been fetched and the options updated.
  */
 const updateDatasets = async (selectAll = true) => {
@@ -2245,24 +2245,30 @@ const disabledDate = (current) => {
   }
 };
 
+/**
+ * Sorts the legend display order of the given traces by setting each trace's `legendrank`.
+ * No-op when legendSort is NONE.
+ *
+ * @param {Array} traces An array of trace objects whose legend order should be updated.
+ */
 const sortLegend = (traces) => {
-  if (legendSort.value === "none") {
+  if (legendSort.value === LegendSortType.NONE) {
     return;
   }
 
   const sortedTraces = [...traces].sort((first, second) => {
-    if (legendSort.value === "alphabetical") {
+    if (legendSort.value === LegendSortType.ALPHABETICAL) {
       const alphabeticalOrder = String(first.name).localeCompare(
         String(second.name),
       );
-      return legendSortDirection.value === "ascending"
+      return legendSortDirection.value === SortDirection.ASCENDING
         ? alphabeticalOrder
         : -alphabeticalOrder;
     }
     const total = (trace) =>
       trace.y.reduce((sum, value) => sum + (Number(value) || 0), 0);
     const valueOrder = total(first) - total(second);
-    return legendSortDirection.value === "ascending"
+    return legendSortDirection.value === SortDirection.ASCENDING
       ? valueOrder
       : -valueOrder;
   });
@@ -2325,7 +2331,8 @@ const profileTraceHandler = (traces) => {
     xaxis: { automargin: true },
     hovermode: showSingleTooltip.value ? "closest" : "x unified",
     hoversubplots: "axis",
-    legend: { groupclick: "toggleitem" },
+    // Plotly reverses legend order by default for stacked/relative barmodes; keep it matching legendrank.
+    legend: { groupclick: "toggleitem", traceorder: "normal" },
     grid: grid,
     barmode:
       isAggregated && [1, 2].includes(dataGrouping.value)
@@ -2391,6 +2398,8 @@ const barChartTraceHandler = (traces) => {
     hovermode: showSingleTooltip.value ? "closest" : "x unified",
     barmode: [1, 2].includes(dataGrouping.value) ? "stack" : "group",
     barnorm: dataGrouping.value === 2 ? "percent" : "",
+    // Plotly reverses legend order by default for stacked/relative barmodes; keep it matching legendrank.
+    legend: { traceorder: "normal" },
     showlegend: true,
     autosize: true,
   };
