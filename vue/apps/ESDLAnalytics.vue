@@ -2246,6 +2246,20 @@ const disabledDate = (current) => {
 };
 
 /**
+ * Inserts a <br> line break every maxLineLength characters so long labels wrap.
+ *
+ * @param {string} text The label text to wrap.
+ * @param {number} [maxLineLength=25] The maximum number of characters per line before wrapping.
+ * @returns {string} The wrapped label, or the original text if it's already within maxLineLength.
+ */
+const wrapLongLabel = (text, maxLineLength = 25) => {
+  const str = String(text);
+  return str.length >= maxLineLength
+    ? str.replace(new RegExp(`(.{1,${maxLineLength}})`, "g"), "$1<br>")
+    : str;
+};
+
+/**
  * Sorts the legend display order of the given traces by setting each trace's `legendrank`.
  * No-op when legendSort is NONE.
  *
@@ -2314,8 +2328,9 @@ const profileTraceHandler = (traces) => {
       t.line = { dash: "dot" };
     }
 
-    if (t.name.length >= 25) {
-      t.name = t.name.replace(new RegExp(`(.{1,${25}})`, "g"), "$1<br>");
+    t.name = wrapLongLabel(t.name);
+    if (t.legendgrouptitle?.text) {
+      t.legendgrouptitle.text = wrapLongLabel(t.legendgrouptitle.text);
     }
 
     const axisId = subplotGroups.findIndex((g) => g === t["legendgroup"]);
@@ -2377,9 +2392,7 @@ const barChartTraceHandler = (traces) => {
     t.hoverinfo =
       showNonZeroLegendItems.value && !hasNonZeroValue ? "skip" : "all";
     t.marker = { color: colorscale[idx % colorscale.length] };
-    if (t.name.length >= 25) {
-      t.name = t.name.replace(new RegExp(`(.{1,${25}})`, "g"), "$1<br>");
-    }
+    t.name = wrapLongLabel(t.name);
   });
   sortLegend(traces);
 
@@ -2387,8 +2400,12 @@ const barChartTraceHandler = (traces) => {
     title: variableSelected.value,
     xaxis: {
       type: "multicategory",
-      automargin: true,
+      // automargin off + a fixed bottom margin keeps long labels from shrinking the plot area;
+      // labels exceeding it are clipped (see .plotly-plot overflow) instead of growing the margin.
+      automargin: false,
     },
+    // Caps the x-axis label area so the data/bars always keep most of the plot's height.
+    margin: { b: 100 },
     yaxis: {
       title: variableOptions.value[variableSelected.value].unit,
       automargin: true,
@@ -2461,8 +2478,9 @@ const histTraceHandler = (traces) => {
       t.xbins = { size: histogramBinWidth.value };
     }
     t.marker = { color: colorscale[idx % colorscale.length], opacity: 0.75 };
-    if (t.name.length >= 25) {
-      t.name = t.name.replace(new RegExp(`(.{1,${25}})`, "g"), "$1<br>");
+    t.name = wrapLongLabel(t.name);
+    if (t.legendgrouptitle?.text) {
+      t.legendgrouptitle.text = wrapLongLabel(t.legendgrouptitle.text);
     }
   });
 
