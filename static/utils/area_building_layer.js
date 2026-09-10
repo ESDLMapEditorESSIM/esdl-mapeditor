@@ -452,9 +452,18 @@ function create_array_area_legendClassesDiv(kpi) {
 function create_range_building_legendClassesDiv(kpi) {
     let result = '';
     for (var i = 0; i < building_legend_ranges.length; i++) {
+        var separator = '+';
+        var endValue = '';
+        if (i !== building_legend_ranges.length - 1) {
+            separator = '&ndash;';
+            endValue = '<span class="building_legend_range_value">' + building_legend_ranges[i + 1] + '</span>';
+        }
         result +=
-            '<i style="background:' + get_building_range_colors(building_legend_ranges[i]) + '"></i> ' +
-            building_legend_ranges[i] + ((i != building_legend_ranges.length-1) ? ' <b>&ndash;</b> ' + building_legend_ranges[i + 1] + '<br>' : '+');
+            '<div class="building_legend_range">' +
+            '<i style="background:' + get_building_range_colors(building_legend_ranges[i]) + '"></i>' +
+            '<span class="building_legend_range_value">' + building_legend_ranges[i] + '</span>' +
+            '<b>' + separator + '</b>' + endValue +
+            '</div>';
     }
     return result;
 }
@@ -1228,8 +1237,10 @@ function bring_KPI_layer_to_front(es_id) {
 // ------------------------------------------------------------------------------------------------------------
 //  Add geojson data contained in building_data to the building map layer
 // ------------------------------------------------------------------------------------------------------------
-function set_building_contextmenu(layer, id) {
+function set_building_contextmenu(layer, id, es_id) {
     layer.id = id;
+    layer.esid = es_id;
+    layer.mapeditor_layer_type = 'building';
     if (!layer.name && layer.feature && layer.feature.properties && layer.feature.properties.name) {
         layer.name = layer.feature.properties.name;
     }
@@ -1265,14 +1276,21 @@ function set_building_contextmenu(layer, id) {
     });
 
     select_assets.add_asset_handler(layer);
+    window.PubSubManager.broadcast('ADD_BUILDING_TO_LAYER', {
+        es_id: es_id,
+        id: id,
+        feature: layer.feature,
+        layer: layer
+    });
 }
 
 /**
  * Add layer of type building to the map.
  * 
+ * @param {*} es_id
  * @param {*} building_data 
  */
-function add_building_layer(building_data) {
+function add_building_layer(es_id, building_data) {
     geojson_building_layer = L.geoJson(building_data, {
         style: style_building,
         onEachFeature: function(feature, layer) {
@@ -1299,12 +1317,10 @@ function add_building_layer(building_data) {
                 layer.on('mouseout', resetHighlightBuilding);
             }
             if (feature.properties && feature.properties.id) {
-                layer.mapeditor_layer_type = 'building';
-                window.PubSubManager.broadcast('ADD_BUILDING_TO_LAYER', { id: feature.properties.id, feature: feature, layer: layer });
-                set_building_contextmenu(layer, feature.properties.id);
+                set_building_contextmenu(layer, feature.properties.id, es_id);
             }
         }
-    }).addTo(get_layers(active_layer_id, 'bld_layer'));
+    }).addTo(get_layers(es_id, 'bld_layer'));
 }
 
 // Ewoud's attempts to get context menus working with GeoJSON layers:
@@ -1525,25 +1541,62 @@ function update_area_layer(esdl_layer_id, area_kpi_list) {
 // ------------------------------------------------------------------------------------------------------------
 //  Generate the complete Legend DIV
 // ------------------------------------------------------------------------------------------------------------
+function humanizeKPIName(kpiName) {
+    var unitLabels = {
+        eur: 'EUR',
+        eur_jaar: 'EUR/jaar',
+        gj: 'GJ',
+        kw: 'kW',
+        kwh: 'kWh',
+        m2: 'm²',
+        m3: 'm³',
+        mw: 'MW',
+        mwh: 'MWh',
+        jaar: 'jaar'
+    };
+    var unitMatch = kpiName.match(/_(eur_jaar|eur|gj|kwh|kw|mwh|mw|m2|m3|jaar)$/i);
+    var nameWithoutUnit = kpiName;
+    var unit;
+    if (unitMatch) {
+        nameWithoutUnit = kpiName.slice(0, -unitMatch[0].length);
+        unit = unitLabels[unitMatch[1].toLowerCase()];
+    }
+
+    var name = _.capitalize(_.startCase(nameWithoutUnit).toLowerCase());
+    name = name.replace(/\b(\d+) c\b/g, '$1 °C');
+    if (unit) {
+        name += ' (' + unit + ')';
+    }
+    return name;
+}
+
 function createBuildingLegendDiv(choice) {
-    var legendDiv = L.DomUtil.create('div', 'info legend');
+    var legendDiv = L.DomUtil.create('div', 'info legend building_legend');
     legendDiv.oncontextmenu = L.DomEvent.stopPropagation;
-    var legendTitleDiv = L.DomUtil.create('div', 'legend_title', legendDiv);
-    legendTitleDiv.innerHTML += 'Building Legend';
+    L.DomEvent.disableScrollPropagation(legendDiv);
+    var legendTitleDiv = L.DomUtil.create('div', 'legend_title building_legend_title', legendDiv);
+    legendTitleDiv.innerHTML = 'Building Legend';
+    var legendCloseButton = L.DomUtil.create('button', 'building_legend_close', legendTitleDiv);
+    legendCloseButton.type = 'button';
+    legendCloseButton.innerHTML = '&times;';
+    legendCloseButton.setAttribute('aria-label', 'Hide building legend');
+    L.DomEvent.on(legendCloseButton, 'click', toggle_building_legend_visibility);
 
     var selectorDiv = L.DomUtil.create('div', 'legend_select', legendDiv);
-    var selectText = '<select style="z-index:1000;" onchange="selectBuildingKPI(this.value);">';
-    for (bkpi in building_KPIs) {
-       if (bkpi === choice) {
-           selectText += '<option value="'+bkpi+'" selected>'+bkpi+'</option>';
-       } else {
-           selectText += '<option value="'+bkpi+'">'+bkpi+'</option>';
-       }
+    var kpiSelect = L.DomUtil.create('select', 'building_legend_select', selectorDiv);
+    kpiSelect.style.zIndex = 1000;
+    L.DomEvent.on(kpiSelect, 'change', function() {
+        selectBuildingKPI(this.value);
+    });
+    for (var bkpi in building_KPIs) {
+        var option = L.DomUtil.create('option', '', kpiSelect);
+        option.value = bkpi;
+        option.textContent = humanizeKPIName(bkpi);
+        option.title = bkpi;
+        option.selected = bkpi === choice;
     }
-    selectText += '</select>';
-    selectorDiv.innerHTML = selectText;
 
-    buildingLegendClassesDiv = L.DomUtil.create('div', 'info legend', legendDiv);
+    buildingLegendClassesDiv = L.DomUtil.create('div', 'info legend building_legend_classes', legendDiv);
     buildingLegendClassesDiv.innerHTML = create_building_legendClassesDiv(choice);
     return legendDiv;
 }
@@ -1678,15 +1731,18 @@ function update_area_legend() {
 /**
  * Add all buildings to the map with the KPI legend.
  * 
+ * @param {*} es_id
  * @param {*} geojson_building_data 
  */
-function add_building_geojson_layer_with_legend(geojson_building_data) {
+function add_building_geojson_layer_with_legend(es_id, geojson_building_data) {
     //console.log(geojson_building_data);
     building_KPIs = {};
     preprocess_layer_data("building", geojson_building_data, building_KPIs);
-    set_building_kpi_list(active_layer_id, building_KPIs);
-    update_building_legend();
-    add_building_layer(geojson_building_data);
+    set_building_kpi_list(es_id, building_KPIs);
+    if (es_id === active_layer_id) {
+        update_building_legend();
+    }
+    add_building_layer(es_id, geojson_building_data);
 }
 
 function update_building_legend() {
@@ -1773,7 +1829,7 @@ function add_geojson_listener(socket, map) {
         // This code was commented out with the above command, but is required for the BAG service
         if (layer == 'bld_layer') {
             geojson_building_data = message['geojson']; // store for redraw based on other property
-            add_building_geojson_layer_with_legend(geojson_building_data);
+            add_building_geojson_layer_with_legend(message['es_id'] || active_layer_id, geojson_building_data);
         }
 
         if (layer == 'pot_layer') {

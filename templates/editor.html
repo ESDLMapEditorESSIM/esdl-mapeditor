@@ -318,7 +318,7 @@
 
         function set_building_handlers(marker) {
             let asset_id = marker.id
-            set_building_contextmenu(marker, asset_id);
+            set_building_contextmenu(marker, asset_id, marker.esid);
 
             marker.on('dragend', function(e) {
                 var marker = e.target;
@@ -696,6 +696,8 @@
                 window.PubSubManager.broadcast('ESDL_LOAD_FAILED', message);
             });
 
+            socket.on('import_received_esdl', import_received_esdl);
+
             socket.on('create_new_esdl_layer', function(message) {
                 title = message['title'];
                 es_id = message['es_id'];
@@ -897,7 +899,7 @@
                     }
                 }
 
-                add_building_geojson_layer_with_legend(geojson_list);
+                add_building_geojson_layer_with_legend(es_id, geojson_list);
                 set_leaflet_sizes();
                 window.PubSubManager.broadcast('ADD_BUILDING_OBJECTS', options);
             });

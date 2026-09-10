@@ -19,6 +19,23 @@ function send_accept_esdl() {
     socket.emit('command', {'cmd': 'accept_received_esdl'});
 }
 
+function send_deny_esdl() {
+    socket.emit('command', {'cmd': 'deny_received_esdl'});
+}
+
+function import_received_esdl(message) {
+    const esdl_bytes = new TextEncoder().encode(decodeURIComponent(message['esdl']));
+    let binary_esdl = '';
+    for (let offset = 0; offset < esdl_bytes.length; offset += 8192) {
+        binary_esdl += String.fromCharCode(...esdl_bytes.subarray(offset, offset + 8192));
+    }
+    const file_info = {
+        file: 'data:application/octet-stream;base64,' + btoa(binary_esdl),
+        filename: message['filename']
+    };
+    import_esdl_content(file_info);
+}
+
 function received_esdl_window(message) {
     sender = message["sender"];
     descr = message["descr"];
@@ -35,7 +52,7 @@ function received_esdl_window(message) {
 
     sidebar_ctr.innerHTML += '<p>Would you like to accept this?</p>';
     sidebar_ctr.innerHTML += '<button id="accept_esdl" onclick="sidebar.hide();send_accept_esdl();">Yes</button>';
-    sidebar_ctr.innerHTML += '<button id="deny_esdl" onclick="sidebar.hide();">No</button>';
+    sidebar_ctr.innerHTML += '<button id="deny_esdl" onclick="sidebar.hide();send_deny_esdl();">No</button>';
 
     sidebar.show();
 }

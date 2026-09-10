@@ -3018,22 +3018,14 @@ def process_command(message, stack: UndoRedoCommandStack):
         if received_esdls:
             for received_esdl in received_esdls:
                 filename = 'ESDL from '+received_esdl['sender']
-                pm = get_project_manager()
+                emit('import_received_esdl', {
+                    'filename': filename,
+                    'esdl': received_esdl['esdl'],
+                })
+            esdl_api.remove_esdls_for_user(user_email)
 
-                try:
-                    variant, parse_info = pm.add_energy_system(StringURI(filename, urllib.parse.unquote(received_esdl['esdl'])))
-                    es = pm.get_energy_system(variant)
-                    if len(parse_info) > 0:
-                        info = ''
-                        for line in parse_info:
-                            info += line + "\n"
-                        send_alert("Warnings while opening {}:\n\n{}".format(filename, info))
-
-                    call_process_energy_system.submit(force_update_es_id=es.id)  # run in seperate thread
-                    esdl_api.remove_esdls_for_user(user_email)
-                except Exception as e:
-                    logger.exception("Error loading {}: {}".format(filename, e))
-                    send_alert('Error interpreting ESDL from file - Exception: ' + str(e))
+    if message['cmd'] == 'deny_received_esdl':
+        esdl_api.remove_esdls_for_user(get_session('user-email'))
 
     if message['cmd'] == 'rename_energysystem':
         #TODO PM: handle?

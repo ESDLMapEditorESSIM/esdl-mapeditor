@@ -75,6 +75,24 @@ function load_esdl_files(event) {
 }
 
 
+function import_esdl_content(file_info) {
+    const import_esdl_url = window.resource_uri + '/esdl_file_io';
+    window.show_loader();
+    $.ajax({
+        url: import_esdl_url,
+        type: 'POST',
+        data: { file_info: [file_info], is_import: true },
+        success: function (response) {
+            window.hide_loader();
+            if (response && (response.status === 'pending_prompt' || response.status === 'error_prompt_sent')) {
+                return;
+            }
+            window.socket.emit('process_loaded_energysystems');
+        },
+        error: handle_esdl_file_upload_error,
+    });
+}
+
 function import_esdl_helper(event) {
     const files = [];
     for (let file_nr=0; file_nr<event.target.files.length; file_nr++) {

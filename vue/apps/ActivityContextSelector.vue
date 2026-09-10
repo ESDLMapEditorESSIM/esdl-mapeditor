@@ -31,11 +31,13 @@
 </template>
 
 <script setup>
-import {onMounted, ref, watch} from 'vue';
+import {nextTick, onMounted, ref, watch} from 'vue';
 import {useActivityContext} from '@/composables/activityContext';
+import {useApplicationContext} from '@/composables/applicationContext';
 import {MessageNames, PubSubManager} from "@/bridge";
 
 const {activeActivityContext, activateActivityContext, clearActivityContext, fetchActivityContexts} = useActivityContext();
+const {activeApplicationContext} = useApplicationContext();
 
 const selected_context = ref("");
 const activityContexts = ref([]);
@@ -52,18 +54,50 @@ const initializeSelectmenu = () => {
   isInitialized.value = true;
 };
 
-const updateSelectmenuValue = async (value) => {
+const updateSelectmenuValue = (value) => {
   $("#activity_context").val(value).selectmenu("refresh");
 };
 
-onMounted(async () => {
-  activityContexts.value = await fetchActivityContexts();
-  if (activityContexts.value.length > 0) {
-    initializeSelectmenu();
-  } else {
-    $("#activity_context").hide();
+const refreshSelectmenu = async () => {
+  await nextTick();
+  const selectMenu = $("#activity_context");
+  if (!isInitialized.value) {
+    if (activityContexts.value.length > 0) {
+      selectMenu.show();
+      initializeSelectmenu();
+    } else {
+      selectMenu.hide();
+    }
+    return;
   }
-});
+
+  selectMenu.selectmenu("refresh");
+  if (activityContexts.value.length > 0) {
+    selectMenu.selectmenu("widget").show();
+    updateSelectmenuValue(activeActivityContext.value?.activity_id || "");
+  } else {
+    selectMenu.selectmenu("widget").hide();
+  }
+};
+
+const loadActivityContexts = async () => {
+  const applicationId = activeApplicationContext.value.application_id;
+  const contexts = await fetchActivityContexts(applicationId);
+  if (activeApplicationContext.value.application_id !== applicationId) {
+    return;
+  }
+
+  activityContexts.value = contexts;
+  const activeActivityId = activeActivityContext.value?.activity_id;
+  if (activeActivityId && !contexts.some(context => context.activity_id === activeActivityId)) {
+    clearActivityContext();
+  }
+  await refreshSelectmenu();
+};
+
+onMounted(loadActivityContexts);
+
+watch(() => activeApplicationContext.value.application_id, loadActivityContexts);
 
 watch(() => activeActivityContext.value, (newValue) => {
   if (isInitialized.value) {
@@ -81,7 +115,7 @@ function handleChange(e) {
     }
 }
 
-PubSubManager.subscribe(MessageNames.KEY_ESCAPE, (name, msg) => {
+PubSubManager.subscribe(MessageNames.KEY_ESCAPE, () => {
   clearActivityContext();
 });
 
