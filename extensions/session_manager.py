@@ -82,7 +82,7 @@ EXCLUDE_PERSISTENCE_SESSION_KEYS = [
 #     set_session(ESH_KEY, esh)
 
 
-def get_project_manager() -> ProjectManager | None:
+def get_project_manager() -> ProjectManager:
     """
     Retrieve the ProjectManager from the session for the currently logged in user, or create a brand new one.
     """

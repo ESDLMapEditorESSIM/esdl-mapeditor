@@ -790,7 +790,6 @@ class ESDLServices:
                 logger.error("Service was expected to give back a profile")
                 return False, None, None
         elif result_config["action"] == "add_profile_values":
-            es_edit = esh.get_energy_system(es_id=active_es_id)
             json_input_data = json.loads(input_data)
             if "results" in json_input_data:
                 profile_values = json_input_data["results"]

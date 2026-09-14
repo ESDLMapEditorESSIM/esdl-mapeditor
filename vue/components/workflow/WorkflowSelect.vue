@@ -91,7 +91,16 @@ const onSubmit = async () => {
     return;
   }
 
-  const output = !value ? null : mode.value === "multiple" ? value.map(item => choicesByValue.get(item)) : choicesByValue.get(value);
+  let output = null;
+  if (value) {
+    if (stepParams.value.config.output_value_only) {
+      output = value;
+    } else if (mode.value === "multiple") {
+      output = value.map(item => choicesByValue.get(item));
+    } else {
+      output = choicesByValue.get(value);
+    }
+  }
   await sendOutputData(
       stepParams.value.data, output, () => goToStep(stepParams.value.nextStep)
   );
@@ -176,6 +185,9 @@ const updateData = async (data) => {
   if (!(stepParams.value.data.output_wrapper_variable in form.value)) {
     if (mode.value === "multiple") {
       form.value = [];
+      if (stepParams.value.config.select_all) {
+        form.value[stepParams.value.data.output_wrapper_variable] = options.value.map(option => option.value);
+      }
     } else {
       form.value = {};
       form.value[stepParams.value.data.output_wrapper_variable] = "";
