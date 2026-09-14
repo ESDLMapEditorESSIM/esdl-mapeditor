@@ -1059,6 +1059,10 @@
                 window.PubSubManager.broadcast('CARRIER_LIST', carr_list);
             });
 
+            socket.on('plans', function(message) {
+                window.PubSubManager.broadcast('PLANS', message);
+            });
+
             socket.on('sector_list', function(sect_list) {
                 set_sector_list(sect_list['es_id'], sect_list['sector_list']);
             });

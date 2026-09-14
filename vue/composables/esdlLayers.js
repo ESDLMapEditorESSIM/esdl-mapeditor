@@ -13,6 +13,7 @@ import {MessageNames, PubSubManager} from "@/bridge";
 import {LoaderScopes, useLoader} from "@/composables/loader";
 import {displayNotification} from "@/utils/notification";
 import {useEsdlLayerMapActions} from "./esdlLayerMapActions";
+import {PLAN_LAYER_NAME, usePlans} from "@/composables/plans";
 
 /** @type {import('vue').Ref<string[]>} */
 const enabledEsdlIdList = ref([]);
@@ -27,6 +28,7 @@ const {startLoader, stopLoader} = useLoader();
 
 export function useEsdlLayers() {
     const {createVisibleLayerGroup, removeVisibleLayerGroup, hideVisibleLayer, showVisibleLayer} = useVisibleLayers();
+    const {getPlans} = usePlans();
 
     /**
      * Get all currently active ESDL layers. This is a object with as keys the ID of the layer.
@@ -73,6 +75,9 @@ export function useEsdlLayers() {
         const sublayers = [];
 
         Object.entries(es.layers).reverse().forEach(([esLayerName, esdl_layer]) => {
+            if (esLayerName === PLAN_LAYER_NAME && getPlans(es_id).length === 0) {
+                return;
+            }
             esdl_layer.eachLayer(function (sublayer) {
                 // Handle logical groups. Add each logical group as their own sublayer, and descend recursively
                 if (sublayer.options.group_name) {
@@ -127,7 +132,7 @@ export function useEsdlLayers() {
             /** @type {import('@/composables/visibleLayers').VisibleLayer} */
             const visibleEsdlLayer = {
                 id: `${es_id}_${esLayerName}`,
-                visible: true,
+                visible: esLayerName !== PLAN_LAYER_NAME,
                 description: esLayerName,
                 es_id: es_id,
                 es: es,
@@ -206,6 +211,7 @@ export function useEsdlLayers() {
 const MANDATORY_ESDL_LOADING_MESSAGES = [
     MessageNames.CREATE_NEW_ESDL_LAYER,
     MessageNames.CARRIER_LIST,
+    MessageNames.PLANS,
     MessageNames.ADD_BUILDING_OBJECTS,
     MessageNames.ADD_ESDL_OBJECTS,
     MessageNames.AREA_BLD_LIST,

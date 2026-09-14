@@ -120,7 +120,7 @@ const addLayerToVisibleLayerGroup = (layer, groupId = WMS_LAYERS_GROUP_NAME) => 
     }
     if (layer.id in layerVisibilityCache.value) {
         layer.visible = layerVisibilityCache.value[layer.id];
-    } else {
+    } else if (layer.visible === undefined) {
         layer.visible = true;
     }
 

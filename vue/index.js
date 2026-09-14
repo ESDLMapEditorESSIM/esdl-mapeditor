@@ -50,6 +50,7 @@ import ToggleShowServicesToolbar from '@/components/toolbars/ToggleShowServicesT
 import {useObject} from '@/composables/ObjectID';
 import {useAssetFeedbackList} from '@/composables/assetFeedback';
 import ActiveLongProcess from '@/components/progress/ActiveProcess.vue'
+import PlanControl from "@/components/leaflet/PlanControl.vue";
 import SidePane from "@/apps/SidePane.vue"
 // import ToggleActiveLongProcess from './components/progress/ToggleActiveLongProcess'
 import {useTooltipInfo} from './composables/TooltipInfo';
@@ -231,6 +232,7 @@ window.show_new_release_notes = () => {
 
 createVueLControl(ServicesToolbar, {position: 'topleft'});
 mountApp(ToggleShowServicesToolbar, '#vue_toggle_show_services_toolbar')
+createVueLControl(PlanControl, {position: "topright"});
 
 const {undoRedoMapEditorDialog, showUndoRedoControl} = useUndoRedo();
 const mapEditorDialog = createVueMapEditorDialog(UndoRedoControl, {
