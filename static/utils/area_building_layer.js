@@ -25,6 +25,7 @@ var building_color_method = 'building type';
 
 var areaLegend;             // the leaflet control
 var buildingLegend;         // the leaflet control
+var show_area_legend = true;
 var show_building_legend = true;
 
 var areaLegendChoice;                // will be initialized with the first KPI
@@ -1686,6 +1687,18 @@ function removeAreaLegend() {
     }
 }
 
+function toggle_area_legend_visibility() {
+    if (show_area_legend) {
+        $('#menu_option_area_legend').removeClass("ui-icon-check ui-icon");
+        show_area_legend = false;
+        removeAreaLegend();
+    } else {
+        $('#menu_option_area_legend').addClass("ui-icon-check ui-icon");
+        show_area_legend = true;
+        update_area_legend();
+    }
+}
+
 function add_area_geojson_layer_with_legend(geojson_area_data) {
     const kpi_list = preprocess_layer_data("area", geojson_area_data, {});
     area_KPIs = kpi_list;
@@ -1705,7 +1718,7 @@ function update_area_legend() {
         }
 
         removeAreaLegend();
-        if (!jQuery.isEmptyObject(area_KPIs)) {
+        if (!jQuery.isEmptyObject(area_KPIs) && show_area_legend) {
             areaLegend = L.control({position: 'bottomright'});
             areaLegend.onAdd = function (map) {
             return createAreaLegendDiv(area_legend_choice);
