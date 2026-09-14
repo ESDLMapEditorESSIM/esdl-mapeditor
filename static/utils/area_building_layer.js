@@ -1574,9 +1574,9 @@ function createBuildingLegendDiv(choice) {
     var legendDiv = L.DomUtil.create('div', 'info legend building_legend');
     legendDiv.oncontextmenu = L.DomEvent.stopPropagation;
     L.DomEvent.disableScrollPropagation(legendDiv);
-    var legendTitleDiv = L.DomUtil.create('div', 'legend_title building_legend_title', legendDiv);
+    var legendTitleDiv = L.DomUtil.create('div', 'legend_title map_control_title', legendDiv);
     legendTitleDiv.innerHTML = 'Building Legend';
-    var legendCloseButton = L.DomUtil.create('button', 'building_legend_close', legendTitleDiv);
+    var legendCloseButton = L.DomUtil.create('button', 'map_control_close', legendTitleDiv);
     legendCloseButton.type = 'button';
     legendCloseButton.innerHTML = '&times;';
     legendCloseButton.setAttribute('aria-label', 'Hide building legend');
@@ -1605,8 +1605,13 @@ function createAreaLegendDiv(choice) {
     var legendDiv = L.DomUtil.create('div', 'info legend');
     legendDiv.id = areaLegendDivId;
     legendDiv.oncontextmenu = L.DomEvent.stopPropagation;
-    var legendTitleDiv = L.DomUtil.create('div', 'legend_title', legendDiv);
-    legendTitleDiv.innerHTML += 'Area Legend';
+    var legendTitleDiv = L.DomUtil.create('div', 'legend_title map_control_title', legendDiv);
+    legendTitleDiv.innerHTML = 'Area Legend';
+    var legendCloseButton = L.DomUtil.create('button', 'map_control_close', legendTitleDiv);
+    legendCloseButton.type = 'button';
+    legendCloseButton.innerHTML = '&times;';
+    legendCloseButton.setAttribute('aria-label', 'Hide area legend');
+    L.DomEvent.on(legendCloseButton, 'click', toggle_area_legend_visibility);
 
     var selectorDiv = L.DomUtil.create('div', 'legend_select', legendDiv);
     var selectText = '<select id="areaLegendSelect" style="z-index:1000;" onchange="selectAreaKPI(this.value);">';
