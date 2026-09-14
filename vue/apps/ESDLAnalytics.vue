@@ -666,6 +666,79 @@
                       @change="onSelectDisplayOptions"
                     />
                   </a-row>
+                  <a-row
+                    v-if="!isProfileVariable"
+                    style="align-items: center; padding-top: 12px"
+                  >
+                    <a-typography-paragraph
+                      style="padding-left: 8px; margin-bottom: 0px"
+                    >
+                      Show non-zero legend items only
+                    </a-typography-paragraph>
+                    <a-switch
+                      v-model:checked="showNonZeroLegendItems"
+                      size="small"
+                      style="position: absolute; right: 0px"
+                      @change="onSelectDisplayOptions"
+                    />
+                  </a-row>
+                  <a-row
+                    v-if="chartType === 'chart' && !isProfileVariable"
+                    style="align-items: center; padding-top: 12px"
+                  >
+                    <a-typography-paragraph
+                      style="padding-left: 8px; margin-bottom: 0px"
+                    >
+                      Show full x-axis labels
+                    </a-typography-paragraph>
+                    <a-switch
+                      v-model:checked="showFullXAxisLabels"
+                      size="small"
+                      style="position: absolute; right: 0px"
+                      @change="onSelectDisplayOptions"
+                    />
+                  </a-row>
+                  <a-row
+                    v-if="chartType !== 'hist'"
+                    style="padding-top: 12px"
+                  >
+                    <a-typography-paragraph
+                      style="padding-left: 8px; margin-bottom: 4px"
+                    >
+                      Sort legend
+                    </a-typography-paragraph>
+                    <a-segmented
+                      v-model:value="legendSort"
+                      :options="legendSortOptions"
+                      style="width: 100%"
+                      size="small"
+                      block
+                    >
+                      <template #label="{ value, payload = {} }">
+                        <div @click="setLegendSort(value)">
+                          {{ payload.label }}
+                          <component
+                            v-if="legendSort === value && value === LegendSortType.ALPHABETICAL"
+                            :is="
+                              legendSortDirection === SortDirection.ASCENDING
+                                ? SortAscendingOutlined
+                                : SortDescendingOutlined
+                            "
+                            style="vertical-align: 0.1rem"
+                          />
+                          <component
+                            v-if="legendSort === value && value === LegendSortType.VALUE"
+                            :is="
+                              legendSortDirection === SortDirection.ASCENDING
+                                ? ArrowUpOutlined
+                                : ArrowDownOutlined
+                            "
+                            style="vertical-align: 0.1rem"
+                          />
+                        </div>
+                      </template>
+                    </a-segmented>
+                  </a-row>
                 </a-col>
                 <!------------------------------------------->
                 <!------------- Dataset handler ------------->
@@ -789,6 +862,8 @@
 <script setup>
 import { computed, defineProps, h, onMounted, onUnmounted, ref } from "vue";
 import {
+  ArrowDownOutlined,
+  ArrowUpOutlined,
   AreaChartOutlined,
   BarChartOutlined,
   DeleteOutlined,
@@ -802,6 +877,8 @@ import {
   MenuUnfoldOutlined,
   UploadOutlined,
   SaveOutlined,
+  SortAscendingOutlined,
+  SortDescendingOutlined,
   StarOutlined,
   SyncOutlined,
   TableOutlined,
@@ -815,6 +892,7 @@ import {
   normalizePlotlyDateTimeStr,
 } from "@/utils/profileVisualization";
 import { displayNotification, NotificationType } from "@/utils/notification";
+import { formatNumber } from "@/utils/utils";
 import dayjs from "dayjs";
 import minMax from "dayjs/plugin/minMax";
 import VueJsTree from "@/components/jstree/VueJsTree.vue";
@@ -933,6 +1011,20 @@ const groupStackOptions = [
   { label: "Stack data (totals)", value: 1 },
   { label: "Stack data (percentage)", value: 2 },
 ];
+const LegendSortType = Object.freeze({
+  NONE: "none",
+  ALPHABETICAL: "alphabetical",
+  VALUE: "value",
+});
+const legendSortOptions = [
+  { value: LegendSortType.NONE, payload: { label: "Original" } },
+  { value: LegendSortType.ALPHABETICAL, payload: { label: "A-Z" } },
+  { value: LegendSortType.VALUE, payload: { label: "Value" } },
+];
+const SortDirection = Object.freeze({
+  ASCENDING: "ascending",
+  DESCENDING: "descending",
+});
 
 const maxGroupbySelectedCount = 2;
 
@@ -964,6 +1056,10 @@ const initOptions = {
   dataGrouping: 1,
   showSingleTooltip: false,
   showBarNumbers: false,
+  showNonZeroLegendItems: false,
+  showFullXAxisLabels: false,
+  legendSort: LegendSortType.NONE,
+  legendSortDirection: SortDirection.ASCENDING,
   paletteSelected: colorPalettes[0],
   autoHistogramBinSize: true,
   histogramBinWidth: null,
@@ -1026,6 +1122,14 @@ const filterSelected = ref(appliedOptions.filterSelected);
 const dataGrouping = ref(appliedOptions.dataGrouping);
 const showSingleTooltip = ref(appliedOptions.showSingleTooltip);
 const showBarNumbers = ref(appliedOptions.showBarNumbers);
+const showNonZeroLegendItems = ref(
+  appliedOptions.showNonZeroLegendItems ?? false,
+);
+const showFullXAxisLabels = ref(appliedOptions.showFullXAxisLabels ?? false);
+const legendSort = ref(appliedOptions.legendSort ?? initOptions.legendSort);
+const legendSortDirection = ref(
+  appliedOptions.legendSortDirection ?? initOptions.legendSortDirection,
+);
 const paletteSelected = ref(appliedOptions.paletteSelected);
 const autoHistogramBinSize = ref(appliedOptions.autoHistogramBinSize);
 const histogramBinWidth = ref(appliedOptions.histogramBinWidth);
@@ -1061,6 +1165,10 @@ const getOptions = () => {
     dataGrouping: dataGrouping.value,
     showSingleTooltip: showSingleTooltip.value,
     showBarNumbers: showBarNumbers.value,
+    showNonZeroLegendItems: showNonZeroLegendItems.value,
+    showFullXAxisLabels: showFullXAxisLabels.value,
+    legendSort: legendSort.value,
+    legendSortDirection: legendSortDirection.value,
     paletteSelected: paletteSelected.value,
     autoHistogramBinSize: autoHistogramBinSize.value,
     histogramBinWidth: histogramBinWidth.value,
@@ -1236,6 +1344,11 @@ const applyConfig = async (graphConfig) => {
   dataGrouping.value = graphConfig.dataGrouping;
   showSingleTooltip.value = graphConfig.showSingleTooltip;
   showBarNumbers.value = graphConfig.showBarNumbers;
+  showNonZeroLegendItems.value = graphConfig.showNonZeroLegendItems ?? false;
+  showFullXAxisLabels.value = graphConfig.showFullXAxisLabels ?? false;
+  legendSort.value = graphConfig.legendSort ?? initOptions.legendSort;
+  legendSortDirection.value =
+    graphConfig.legendSortDirection ?? initOptions.legendSortDirection;
   paletteSelected.value = graphConfig.paletteSelected;
   autoHistogramBinSize.value = graphConfig.autoHistogramBinSize;
   histogramBinWidth.value = graphConfig.histogramBinWidth;
@@ -1361,15 +1474,14 @@ const onSelectPalette = () => {
   updateTrace();
 };
 
-const onSelectDataset = () => {
+const onSelectDataset = async () => {
   // Resets selected variable, groupby, and filter to the default state.
   variableSelected.value = null;
   groupbySelected.value = [];
   filterSelected.value = [];
 
-  updateVariables().then(() => {
-    updateTrace();
-  });
+  await updateVariables();
+  await updateTrace();
 };
 
 const onSelectVariable = (_, value) => {
@@ -1452,6 +1564,21 @@ const onChartTypeBtnClick = (value) => {
 };
 
 const onSelectDisplayOptions = () => {
+  updateTrace();
+};
+
+const setLegendSort = (sort) => {
+  if (sort === LegendSortType.NONE) {
+    legendSort.value = sort;
+  } else if (legendSort.value === sort) {
+    legendSortDirection.value =
+      legendSortDirection.value === SortDirection.ASCENDING
+        ? SortDirection.DESCENDING
+        : SortDirection.ASCENDING;
+  } else {
+    legendSort.value = sort;
+    legendSortDirection.value = SortDirection.ASCENDING;
+  }
   updateTrace();
 };
 
@@ -1559,13 +1686,16 @@ const onSelectProfileIntervalAggFunc = () => {
   updateTrace();
 };
 
-onMounted(() => {
+onMounted(async () => {
   console.info("Initializing ESDL Analytics");
 
   fetchUserGraphConfigs();
 
   getESDLProject(); // Get project data with variant hierarchy
-  updateDatasets();
+  await updateDatasets(props.options === null);
+  if (props.options !== null && currentTrace.value.length) {
+    await updateTrace();
+  }
 });
 
 onUnmounted(() => {
@@ -1795,6 +1925,7 @@ const onSyncBtnClick = async () => {
         );
       }
     }
+    resetMenuToDefault();
     await updateDatasets();
   } catch (error) {
     console.error(error);
@@ -1803,9 +1934,6 @@ const onSyncBtnClick = async () => {
       `An error occurred while synchronizing metadata: ${error}`,
     );
   } finally {
-    // Reset selection
-    resetMenuToDefault();
-
     isSyncingMetaData.value = false;
   }
 };
@@ -1863,6 +1991,10 @@ const resetMenuToDefault = () => {
   dataGrouping.value = initOptions.dataGrouping;
   showSingleTooltip.value = initOptions.showSingleTooltip;
   showBarNumbers.value = initOptions.showBarNumbers;
+  showNonZeroLegendItems.value = initOptions.showNonZeroLegendItems;
+  showFullXAxisLabels.value = initOptions.showFullXAxisLabels;
+  legendSort.value = initOptions.legendSort;
+  legendSortDirection.value = initOptions.legendSortDirection;
   paletteSelected.value = initOptions.paletteSelected;
   autoHistogramBinSize.value = initOptions.autoHistogramBinSize;
   histogramBinWidth.value = initOptions.histogramBinWidth;
@@ -1871,9 +2003,11 @@ const resetMenuToDefault = () => {
 /**
  * Asynchronously fetches DataManager datasets and updates the dataset options.
  *
+ * @param {boolean} selectAll Whether to select all fetched datasets and refresh the dependent
+ *                            variable/trace state; defaults to true.
  * @returns {Promise<void>} A promise that resolves when the datasets have been fetched and the options updated.
  */
-const updateDatasets = async () => {
+const updateDatasets = async (selectAll = true) => {
   console.debug("Fetching DataManager datasets");
   try {
     const datasets = await fetchData("datamanager/datasets");
@@ -1883,8 +2017,15 @@ const updateDatasets = async () => {
         label: `${d.name}`,
         uniqueDsId: `${d.es_id}_${d.name}`,
       }));
+      if (selectAll) {
+        datasetSelected.value = datasetOptions.value.map(
+          (option) => option.value,
+        );
+        await onSelectDataset();
+      }
     } else {
       datasetOptions.value = [];
+      datasetSelected.value = [];
     }
   } catch (error) {
     console.error(error);
@@ -2126,6 +2267,52 @@ const disabledDate = (current) => {
 };
 
 /**
+ * Inserts a <br> line break every maxLineLength characters so long labels wrap.
+ *
+ * @param {string} text The label text to wrap.
+ * @param {number} [maxLineLength=25] The maximum number of characters per line before wrapping.
+ * @returns {string} The wrapped label, or the original text if it's already within maxLineLength.
+ */
+const wrapLongLabel = (text, maxLineLength = 25) => {
+  const str = String(text);
+  return str.length >= maxLineLength
+    ? str.replace(new RegExp(`(.{1,${maxLineLength}})`, "g"), "$1<br>")
+    : str;
+};
+
+/**
+ * Sorts the legend display order of the given traces by setting each trace's `legendrank`.
+ * No-op when legendSort is NONE.
+ *
+ * @param {Array} traces An array of trace objects whose legend order should be updated.
+ */
+const sortLegend = (traces) => {
+  if (legendSort.value === LegendSortType.NONE) {
+    return;
+  }
+
+  const sortedTraces = [...traces].sort((first, second) => {
+    if (legendSort.value === LegendSortType.ALPHABETICAL) {
+      const alphabeticalOrder = String(first.name).localeCompare(
+        String(second.name),
+      );
+      return legendSortDirection.value === SortDirection.ASCENDING
+        ? alphabeticalOrder
+        : -alphabeticalOrder;
+    }
+    const total = (trace) =>
+      trace.y.reduce((sum, value) => sum + (Number(value) || 0), 0);
+    const valueOrder = total(first) - total(second);
+    return legendSortDirection.value === SortDirection.ASCENDING
+      ? valueOrder
+      : -valueOrder;
+  });
+  sortedTraces.forEach((trace, index) => {
+    trace.legendrank = index;
+  });
+};
+
+/**
  * Configures profile line chart traces and layout for visualization.
  *
  * @param {Array} traces An array of trace objects to be configured for profile line chart visualization.
@@ -2153,15 +2340,18 @@ const profileTraceHandler = (traces) => {
     t.type = isAggregated ? "bar" : "scatter";
     t.mode = isAggregated ? null : "lines";
     t.text =
-      isAggregated && showBarNumbers.value ? t.y.map((y) => y.toFixed(1)) : "";
+      isAggregated && showBarNumbers.value
+        ? t.y.map(formatNumber)
+        : "";
     t.marker = { color: colorscale[idx % colorscale.length] };
     // Display the additional groupby aggregated profile data with dot lines
     if (isGroupbyAggregated && !isAggregated && t["isGroupbyAggregated"]) {
       t.line = { dash: "dot" };
     }
 
-    if (t.name.length >= 25) {
-      t.name = t.name.replace(new RegExp(`(.{1,${25}})`, "g"), "$1<br>");
+    t.name = wrapLongLabel(t.name);
+    if (t.legendgrouptitle?.text) {
+      t.legendgrouptitle.text = wrapLongLabel(t.legendgrouptitle.text);
     }
 
     const axisId = subplotGroups.findIndex((g) => g === t["legendgroup"]);
@@ -2170,13 +2360,15 @@ const profileTraceHandler = (traces) => {
       t.yaxis = `y${axisId + 1}`;
     }
   });
+  sortLegend(traces);
 
   const profileLayout = {
     title: variableSelected.value,
     xaxis: { automargin: true },
     hovermode: showSingleTooltip.value ? "closest" : "x unified",
     hoversubplots: "axis",
-    legend: { groupclick: "toggleitem" },
+    // Plotly reverses legend order by default for stacked/relative barmodes; keep it matching legendrank.
+    legend: { groupclick: "toggleitem", traceorder: "normal" },
     grid: grid,
     barmode:
       isAggregated && [1, 2].includes(dataGrouping.value)
@@ -2212,19 +2404,29 @@ const barChartTraceHandler = (traces) => {
   const colorscale = generateColorscale(paletteSelected.value, traces.length);
   traces.forEach((t, idx) => {
     t.type = "bar";
-    t.text = showBarNumbers.value ? t.y.map((y) => y.toFixed(1)) : "";
+    const hasNonZeroValue = t.y.some((value) => value !== 0);
+    t.text = showBarNumbers.value
+      ? t.y.map(formatNumber)
+      : "";
+    t.showlegend =
+      !showNonZeroLegendItems.value || hasNonZeroValue;
+    t.hoverinfo =
+      showNonZeroLegendItems.value && !hasNonZeroValue ? "skip" : "all";
     t.marker = { color: colorscale[idx % colorscale.length] };
-    if (t.name.length >= 25) {
-      t.name = t.name.replace(new RegExp(`(.{1,${25}})`, "g"), "$1<br>");
-    }
+    t.name = wrapLongLabel(t.name);
   });
+  sortLegend(traces);
 
   const barChartLayout = {
     title: variableSelected.value,
     xaxis: {
       type: "multicategory",
-      automargin: true,
+      // Controlled by showFullXAxisLabels to toggle automargin on/off.
+      // When off, a fixed bottom margin keeps long labels from shrinking the plot area
+      automargin: showFullXAxisLabels.value,
     },
+    // Caps the x-axis label area so the data/bars always keep most of the plot's height, unless the user opted to see full labels.
+    ...(!showFullXAxisLabels.value && { margin: { b: 100 } }),
     yaxis: {
       title: variableOptions.value[variableSelected.value].unit,
       automargin: true,
@@ -2234,6 +2436,8 @@ const barChartTraceHandler = (traces) => {
     hovermode: showSingleTooltip.value ? "closest" : "x unified",
     barmode: [1, 2].includes(dataGrouping.value) ? "stack" : "group",
     barnorm: dataGrouping.value === 2 ? "percent" : "",
+    // Plotly reverses legend order by default for stacked/relative barmodes; keep it matching legendrank.
+    legend: { traceorder: "normal" },
     showlegend: true,
     autosize: true,
   };
@@ -2295,8 +2499,9 @@ const histTraceHandler = (traces) => {
       t.xbins = { size: histogramBinWidth.value };
     }
     t.marker = { color: colorscale[idx % colorscale.length], opacity: 0.75 };
-    if (t.name.length >= 25) {
-      t.name = t.name.replace(new RegExp(`(.{1,${25}})`, "g"), "$1<br>");
+    t.name = wrapLongLabel(t.name);
+    if (t.legendgrouptitle?.text) {
+      t.legendgrouptitle.text = wrapLongLabel(t.legendgrouptitle.text);
     }
   });
 

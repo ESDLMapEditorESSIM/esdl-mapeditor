@@ -150,6 +150,8 @@ $(document).on("esdlAnalyticsIsClosed kpiDashboardIsClosed", (_, data) => {
 <style>
 .plotly-plot {
 	height: 90%;
+	/* Clips axis labels that exceed the layout's fixed margin instead of letting them overflow the container. */
+	overflow: hidden;
 }
 
 .with-data {
