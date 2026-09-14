@@ -212,7 +212,7 @@ def _get_buildings_in_active_es() -> List[esdl.GenericBuilding]:
     es = pm.get_active_energy_system()
     area = es.instance[0].area
     buildings: List[esdl.GenericBuilding] = []
-    for asset in area.asset:
+    for asset in area.eAllContents():
         if isinstance(asset, esdl.GenericBuilding):
             buildings.append(asset)
     buildings.sort(key=lambda building: building.name)
