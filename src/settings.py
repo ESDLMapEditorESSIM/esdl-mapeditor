@@ -14,6 +14,7 @@
 
 import os
 from dotenv import load_dotenv
+from sqlalchemy import URL
 
 load_dotenv()
 print('Starting application with {} settings'.format(os.environ.get("SETTINGS_TITLE", "NO")))
@@ -55,14 +56,22 @@ POSTGRES_PORT = os.environ.get('POSTGRES_PORT', '5432')
 POSTGRES_USER = os.environ.get('POSTGRES_USER', 'data_manager')
 POSTGRES_PASSWORD = os.environ.get('POSTGRES_PASSWORD', 'password')
 POSTGRES_DB = os.environ.get('POSTGRES_DB', 'data_manager')
-POSTGRES_DB_URI = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
-
 SQLITE_DB_NAME = os.environ.get('SQLITE_DB_NAME', 'data_manager.db')
-
 DB_DRIVER_TYPE = os.environ.get('DB_DRIVER_TYPE', 'sqlite')
-DEFAULT_DRIVER_URI = POSTGRES_DB_URI if DB_DRIVER_TYPE == 'postgresql' else f"sqlite:///{SQLITE_DB_NAME}"
 
-SQLALCHEMY_DATABASE_URI = os.environ.get('SQLALCHEMY_DATABASE_URI', DEFAULT_DRIVER_URI)
+SQLALCHEMY_DATABASE_URI = os.environ.get('SQLALCHEMY_DATABASE_URI')
+if SQLALCHEMY_DATABASE_URI is None:
+    if DB_DRIVER_TYPE == 'postgresql':
+        SQLALCHEMY_DATABASE_URI = URL.create(
+            'postgresql+psycopg',
+            username=POSTGRES_USER,
+            password=POSTGRES_PASSWORD,
+            host=POSTGRES_HOST,
+            port=int(POSTGRES_PORT),
+            database=POSTGRES_DB,
+        ).render_as_string(hide_password=False)
+    else:
+        SQLALCHEMY_DATABASE_URI = f"sqlite:///{SQLITE_DB_NAME}"
 
 settings_storage_config = {
     "host": os.environ.get('SETTINGS_STORAGE_HOST', None),  # "mongo",
