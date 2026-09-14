@@ -683,6 +683,22 @@
                     />
                   </a-row>
                   <a-row
+                    v-if="chartType === 'chart' && !isProfileVariable"
+                    style="align-items: center; padding-top: 12px"
+                  >
+                    <a-typography-paragraph
+                      style="padding-left: 8px; margin-bottom: 0px"
+                    >
+                      Show full x-axis labels
+                    </a-typography-paragraph>
+                    <a-switch
+                      v-model:checked="showFullXAxisLabels"
+                      size="small"
+                      style="position: absolute; right: 0px"
+                      @change="onSelectDisplayOptions"
+                    />
+                  </a-row>
+                  <a-row
                     v-if="chartType !== 'hist'"
                     style="padding-top: 12px"
                   >
@@ -1041,6 +1057,7 @@ const initOptions = {
   showSingleTooltip: false,
   showBarNumbers: false,
   showNonZeroLegendItems: false,
+  showFullXAxisLabels: false,
   legendSort: LegendSortType.NONE,
   legendSortDirection: SortDirection.ASCENDING,
   paletteSelected: colorPalettes[0],
@@ -1108,6 +1125,7 @@ const showBarNumbers = ref(appliedOptions.showBarNumbers);
 const showNonZeroLegendItems = ref(
   appliedOptions.showNonZeroLegendItems ?? false,
 );
+const showFullXAxisLabels = ref(appliedOptions.showFullXAxisLabels ?? false);
 const legendSort = ref(appliedOptions.legendSort ?? initOptions.legendSort);
 const legendSortDirection = ref(
   appliedOptions.legendSortDirection ?? initOptions.legendSortDirection,
@@ -1148,6 +1166,7 @@ const getOptions = () => {
     showSingleTooltip: showSingleTooltip.value,
     showBarNumbers: showBarNumbers.value,
     showNonZeroLegendItems: showNonZeroLegendItems.value,
+    showFullXAxisLabels: showFullXAxisLabels.value,
     legendSort: legendSort.value,
     legendSortDirection: legendSortDirection.value,
     paletteSelected: paletteSelected.value,
@@ -1326,6 +1345,7 @@ const applyConfig = async (graphConfig) => {
   showSingleTooltip.value = graphConfig.showSingleTooltip;
   showBarNumbers.value = graphConfig.showBarNumbers;
   showNonZeroLegendItems.value = graphConfig.showNonZeroLegendItems ?? false;
+  showFullXAxisLabels.value = graphConfig.showFullXAxisLabels ?? false;
   legendSort.value = graphConfig.legendSort ?? initOptions.legendSort;
   legendSortDirection.value =
     graphConfig.legendSortDirection ?? initOptions.legendSortDirection;
@@ -1972,6 +1992,7 @@ const resetMenuToDefault = () => {
   showSingleTooltip.value = initOptions.showSingleTooltip;
   showBarNumbers.value = initOptions.showBarNumbers;
   showNonZeroLegendItems.value = initOptions.showNonZeroLegendItems;
+  showFullXAxisLabels.value = initOptions.showFullXAxisLabels;
   legendSort.value = initOptions.legendSort;
   legendSortDirection.value = initOptions.legendSortDirection;
   paletteSelected.value = initOptions.paletteSelected;
@@ -2400,12 +2421,12 @@ const barChartTraceHandler = (traces) => {
     title: variableSelected.value,
     xaxis: {
       type: "multicategory",
-      // automargin off + a fixed bottom margin keeps long labels from shrinking the plot area;
-      // labels exceeding it are clipped (see .plotly-plot overflow) instead of growing the margin.
-      automargin: false,
+      // Controlled by showFullXAxisLabels to toggle automargin on/off.
+      // When off, a fixed bottom margin keeps long labels from shrinking the plot area
+      automargin: showFullXAxisLabels.value,
     },
-    // Caps the x-axis label area so the data/bars always keep most of the plot's height.
-    margin: { b: 100 },
+    // Caps the x-axis label area so the data/bars always keep most of the plot's height, unless the user opted to see full labels.
+    ...(!showFullXAxisLabels.value && { margin: { b: 100 } }),
     yaxis: {
       title: variableOptions.value[variableSelected.value].unit,
       automargin: true,
