@@ -60,18 +60,17 @@ SQLITE_DB_NAME = os.environ.get('SQLITE_DB_NAME', 'data_manager.db')
 DB_DRIVER_TYPE = os.environ.get('DB_DRIVER_TYPE', 'sqlite')
 
 SQLALCHEMY_DATABASE_URI = os.environ.get('SQLALCHEMY_DATABASE_URI')
-if SQLALCHEMY_DATABASE_URI is None:
-    if DB_DRIVER_TYPE == 'postgresql':
-        SQLALCHEMY_DATABASE_URI = URL.create(
-            'postgresql+psycopg',
-            username=POSTGRES_USER,
-            password=POSTGRES_PASSWORD,
-            host=POSTGRES_HOST,
-            port=int(POSTGRES_PORT),
-            database=POSTGRES_DB,
-        ).render_as_string(hide_password=False)
-    else:
-        SQLALCHEMY_DATABASE_URI = f"sqlite:///{SQLITE_DB_NAME}"
+if DB_DRIVER_TYPE == 'postgresql' and SQLALCHEMY_DATABASE_URI is None:
+    SQLALCHEMY_DATABASE_URI = URL.create(
+        'postgresql+psycopg',
+        username=POSTGRES_USER,
+        password=POSTGRES_PASSWORD,
+        host=POSTGRES_HOST,
+        port=int(POSTGRES_PORT),
+        database=POSTGRES_DB,
+    ).render_as_string(hide_password=False)
+else:
+    SQLALCHEMY_DATABASE_URI = f"sqlite:///{SQLITE_DB_NAME}"
 
 settings_storage_config = {
     "host": os.environ.get('SETTINGS_STORAGE_HOST', None),  # "mongo",
