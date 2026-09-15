@@ -587,6 +587,13 @@ class DataManager:
         data_list: List[BaseModel] = []
         variables: Dict[str, Variable] = {}
 
+        plan_by_asset_id = {}
+        for group in es.group:
+            for member in group.member:
+                if isinstance(member, esdl.Plan):
+                    for element in member.element:
+                        plan_by_asset_id[element.id] = member.name or member.id
+
         year = datetime.now().year
         first_instance: esdl.Instance = es.instance[0]
         if first_instance.date:
@@ -735,6 +742,16 @@ class DataManager:
                 #variable_name = eobj.name if hasattr(eobj, 'name') else None
                 #logger.debug(f"Ignoring {eobj.eClass.name}")
                 continue
+
+            # Use the nearest owning asset with a Plan, including enclosing buildings.
+            d.labels = d.labels if d.labels is not None else {}
+            d.labels['Plan'] = 'none'
+            asset = eobj
+            while asset is not None and not isinstance(asset, esdl.Area):
+                if isinstance(asset, esdl.Asset) and asset.id in plan_by_asset_id:
+                    d.labels['Plan'] = plan_by_asset_id[asset.id]
+                    break
+                asset = asset.eContainer()
 
             # Process asset ownership label
             if isinstance(eobj, esdl.Asset):
@@ -1275,6 +1292,7 @@ class DataManager:
                 query = query.where(preprocess_column(col).in_(values))
 
         df = pd.read_sql_query(query.statement, session.get_bind())
+        df = df.replace({float('nan'): None})
 
         if chart_type == ChartType.TABLE:
             traces = self.process_table_trace(df)

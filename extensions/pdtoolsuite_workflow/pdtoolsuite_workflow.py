@@ -15,6 +15,7 @@ import json
 
 import cgi
 from collections import defaultdict
+from math import isfinite, isnan
 
 import base64
 from flask import Flask, jsonify, request
@@ -36,6 +37,13 @@ DEFAULT_TIMEOUT = 30
 
 KWH_TO_MJ_FACTOR = 3.6
 ENERGY_GAS_MJ_PER_M3 = 31.7
+
+
+def _json_safe_value(value: Union[int, float, str, None]) -> Union[int, float, str, None]:
+    if isinstance(value, float) and not isfinite(value):
+        return None
+
+    return value
 
 
 class PDToolsuiteWorkflow:
@@ -65,21 +73,40 @@ class PDToolsuiteWorkflow:
             building_dicts: list[dict] = []
             for building in buildings:
                 kpi_dict = _building_kpis_to_dict(building)
-                kpis_value_dict: dict[str, Union[int, float, str]] = {}
+                kpis_value_dict: dict[str, Union[int, float, str, None]] = {}
                 for kpi_name, kpi in kpi_dict.items():
-                    kpis_value_dict[kpi_name] = kpi.value
+                    value = kpi.value
+                    if isinstance(value, float) and isnan(value):
+                        value = 0.0
+
+                    kpis_value_dict[kpi_name] = _json_safe_value(value)
                 energy_assets_type_dict = _building_energy_assets_to_type_dict(building)
                 heatpumps: list[esdl.HeatPump] = cast(list[esdl.HeatPump], energy_assets_type_dict.get("HeatPump"))
                 if heatpumps:
                     heatpump_efficiency = heatpumps[0].COP
                 else:
                     heatpump_efficiency = None
+
+                residual_heat_sources = [
+                    dict(
+                        carrier_id=port.carrier.id,
+                        carrier_name=port.carrier.name,
+                        min_temperature=_json_safe_value(source.minTemperature),
+                        max_temperature=_json_safe_value(source.maxTemperature),
+                    )
+                    for source in building.asset
+                    if isinstance(source, esdl.ResidualHeatSource)
+                    for port in source.port
+                    if isinstance(port, esdl.OutPort) and isinstance(port.carrier, esdl.HeatCommodity)
+                ]
+
                 building_dict = dict(
                     id=building.id,
                     name=building.name,
                     address=building.address,
                     kpis=kpis_value_dict,
-                    heatpump_efficiency=heatpump_efficiency,
+                    heatpump_efficiency=_json_safe_value(heatpump_efficiency),
+                    residual_heat_sources=residual_heat_sources,
                 )
                 building_dicts.append(building_dict)
 

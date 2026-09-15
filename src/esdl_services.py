@@ -444,6 +444,7 @@ class ESDLServices:
             url_response = None
             input_data = None
             if url:
+                timeout = (10, 660)
                 if service["http_method"] == "get":
                     if service["type"].endswith("json") or (
                         "body_config" in service and service["body_config"]["type"] == "json"
@@ -451,9 +452,9 @@ class ESDLServices:
                         kwargs = {"json": body}
                     else:
                         kwargs = {}
-                    url_response = requests.get(url, headers=headers, **kwargs)
+                    url_response = requests.get(url, headers=headers, timeout=timeout, **kwargs)
                 elif service["http_method"] == "delete":
-                    url_response = requests.delete(url, headers=headers)
+                    url_response = requests.delete(url, headers=headers, timeout=timeout)
                 elif service["http_method"] == "post":
                     if service["type"].endswith("json") or (
                         "body_config" in service and service["body_config"]["type"] == "json"
@@ -463,7 +464,7 @@ class ESDLServices:
                         if isinstance(body, str):
                             body = body.encode("utf-8")
                         kwargs = {"data": body}
-                    url_response = requests.post(url, headers=headers, **kwargs)
+                    url_response = requests.post(url, headers=headers, timeout=timeout, **kwargs)
                 else:
                     # Should not happen, there should always be a method.
                     return [(False, None, None)]
@@ -515,7 +516,11 @@ class ESDLServices:
                     return [(False, response_error_message(url_response), None)]
                 logger.warning("Error running ESDL service ", input_data)
                 return [(False, str(input_data), None)]
-        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+        except requests.exceptions.Timeout:
+            target = urllib.parse.urlparse(url).netloc or url
+            logger.warning(f"ESDL service at '{target}' timed out")
+            return [(False, f"The service at '{target}' timed out. Please try again.", None)]
+        except requests.exceptions.ConnectionError as e:
             target = urllib.parse.urlparse(url).netloc or url
             logger.warning(f"Could not reach ESDL service at '{target}': {e}")
             return [(False, f"The service at '{target}' is not reachable.", None)]
