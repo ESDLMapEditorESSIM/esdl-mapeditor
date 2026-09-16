@@ -33,7 +33,7 @@ from esdl.processing.string_uri import StringURI
 from esdl.undo import UndoRedoCommandStack
 from esdl.undo_wrapper import undo_record_changes
 from esdl.processing import ESDLAsset, ESDLGeometry
-from esdlproject.ProjectManager import ProjectManager, load_external_string
+from esdlproject.ProjectManager import ProjectManager, eobject_to_string, load_external_string
 from extensions.prompt_manager import PromptManager
 from esdl.units.parser import build_qau_from_unit_string
 from extensions.external_models.external_models_storage import (
@@ -945,6 +945,11 @@ class ESDLServices:
         model_short_name: str,
     ) -> Tuple[bool, str | dict | None, dict | None]:
         """Apply an ESDL result and build backend actions."""
+        if result_config.get("profiles") == "influxdb" or service.get("body_config", {}).get("profiles") == "inline":
+            es, _ = load_external_string(esdl_string=esdl_response, name=service["name"])
+            if any(isinstance(item, esdl.TimeSeriesProfile) for item in es.eAllContents()):
+                ESDLFileImport.convert_inline_to_influx(es)
+                esdl_response = eobject_to_string(es)
         variant, parse_info = pm.add_energy_system(StringURI(service["name"], esdl_response))
         pm.set_active_variant(variant)
         update_visualization_options(pm.get_active_energy_system())
