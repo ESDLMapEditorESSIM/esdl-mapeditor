@@ -20,6 +20,7 @@ from enum import Enum
 from typing import Any, TypedDict, List, Dict, Optional, Sequence, Iterable, Tuple
 
 import pandas as pd
+from click import get_current_context
 from flask import Flask
 from flask_socketio import SocketIO
 from pandas import DataFrame
@@ -431,7 +432,10 @@ class DataManager:
         # init database
         with self.flask_app.app_context():
             db_driver_type = get_db_driver_type()
-            if db_driver_type == DriverType.SQLITE:
+            if get_current_context(silent=True) is not None:
+                # CLI startup shouldn't reset existing DataManager data.
+                create_db_tables()
+            elif db_driver_type == DriverType.SQLITE:
                 drop_db(db_url=self.flask_app.config["SQLALCHEMY_DATABASE_URI"],
                         app_instance_path=self.flask_app.instance_path)
                 create_db(self.flask_app.config["SQLALCHEMY_DATABASE_URI"])
