@@ -498,9 +498,11 @@
                         v-model:value="histogramBinWidth"
                         :min="0"
                         :step="0.1"
+                        :precision="1"
                         size="small"
                         style="position: absolute; right: 0px; width: 100px"
-                        @change="onHistogramBinWidthChange"
+                        @press-enter="onHistogramBinWidthChange"
+                        @blur="onHistogramBinWidthChange"
                       />
                     </a-row>
                   </a-col>
@@ -2283,6 +2285,13 @@ const generateColorscale = (palette, numColors) => {
  */
 const histTraceHandler = (traces) => {
   const colorscale = generateColorscale(paletteSelected.value, traces.length);
+
+  // Without an explicit start, Plotly centers bins on data values (e.g. -0.5 to 0.5) rather than
+  // aligning edges to whole numbers (e.g. 0 to 1); anchor to the floored min across all traces instead.
+  const allValues = traces.flatMap((t) => t.y);
+  const minValue = allValues.reduce((min, v) => (v < min ? v : min), Infinity);
+  const binStart = allValues.length ? Math.floor(minValue) : 0;
+
   traces.forEach((t, idx) => {
     t.type = "histogram";
     // bingroup forces Plotly to compute identical bin edges across all traces
@@ -2290,9 +2299,10 @@ const histTraceHandler = (traces) => {
     // Plotly histogram bins t.x values; profile values are in t.y, so swap them
     t.x = t.y;
     delete t.y;
+    t.xbins = { start: binStart };
     // Custom bin width: pass to Plotly's xbins if user has disabled auto
     if (!autoHistogramBinSize.value && histogramBinWidth.value !== null) {
-      t.xbins = { size: histogramBinWidth.value };
+      t.xbins.size = histogramBinWidth.value;
     }
     t.marker = { color: colorscale[idx % colorscale.length], opacity: 0.75 };
     if (t.name.length >= 25) {

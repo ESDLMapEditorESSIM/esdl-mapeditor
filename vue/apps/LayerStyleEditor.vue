@@ -1245,10 +1245,7 @@ class VisualizedLayer {
   removeLayerFromMap(layer) {
     if (this.sourceRef.mapLayerGroup.hasLayer(layer)) {
       // Remove existing tooltips to avoid them lingering on the map.
-      layer.eachLayer((featureLayer) => {
-        featureLayer.closeTooltip();
-        featureLayer.unbindTooltip();
-      });
+      this._clearFeatureLabels(layer);
       this.sourceRef.mapLayerGroup.removeLayer(layer);
     }
   }
@@ -1615,6 +1612,8 @@ class VisualizedLayer {
 
     // Special handling for Distribution KPIs piechart
     if (this.style.styleType === StyleType.PIE_CHART) {
+      // Clear any existing feature labels on the base layer before applying pie chart styling.
+      this._clearFeatureLabels(this.layer);
       this._styleMarkersAsPieCharts(
         field,
         paint.color.palette,
@@ -1661,10 +1660,7 @@ class VisualizedLayer {
   _clearSymbolLayer() {
     if (!this._symbolLayer) return;
     // Close tooltips before removing to avoid orphaned zoom-animation listeners.
-    this._symbolLayer.eachLayer((layer) => {
-      layer.closeTooltip();
-      layer.unbindTooltip();
-    });
+    this._clearFeatureLabels(this._symbolLayer);
     this._symbolLayer.clearLayers();
     this.sourceRef.mapLayerGroup.removeLayer(this._symbolLayer);
     this._symbolLayer = null;
@@ -1871,6 +1867,14 @@ class VisualizedLayer {
         });
         if (label.permanent) featureLayer.openTooltip();
       }
+    });
+  }
+
+  /** Closes and unbinds layerGroup featureLayer tooltips. */
+  _clearFeatureLabels(layerGroup) {
+    layerGroup.eachLayer((featureLayer) => {
+      featureLayer.closeTooltip();
+      featureLayer.unbindTooltip();
     });
   }
 
