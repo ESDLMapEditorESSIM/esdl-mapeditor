@@ -136,6 +136,7 @@ const getRefFieldSchema = async (esId, objectIds) => {
               display: `Cost Information > ${refName} > ${a.attr}`,
               attrType: a.attrType,
               type: jsType,
+              unit: a.unit ?? null,
               disabled: !Object.values(FieldType).includes(jsType),
               isLeaf: true,
             };
@@ -174,6 +175,7 @@ const getRefFieldSchema = async (esId, objectIds) => {
           label: `${kpiInfo.name} [${jsType}]`,
           display: `KPIs > ${kpiInfo.name}`,
           type: jsType,
+          unit: meta?.unit ?? null,
           disabled: !Object.values(FieldType).includes(jsType),
           isLeaf: true,
         };

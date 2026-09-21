@@ -239,10 +239,12 @@
                   "
                 >
                   <a-typography-text style="font-size: small">{{
-                    fmtNl(vizLayer.legend.min)
+                    fmtNl(vizLayer.legend.min) +
+                    (vizLayer.unit ? ` ${vizLayer.unit}` : "")
                   }}</a-typography-text>
                   <a-typography-text style="font-size: small">{{
-                    fmtNl(vizLayer.legend.max)
+                    fmtNl(vizLayer.legend.max) +
+                    (vizLayer.unit ? ` ${vizLayer.unit}` : "")
                   }}</a-typography-text>
                 </div>
               </template>
@@ -1416,6 +1418,7 @@ class VisualizedLayer {
             type: jsType,
             refPath: path,
             refLabel: displayLabel,
+            unit: this.findRefSchemaNode(path)?.unit ?? null,
             disabled: !Object.values(FieldType).includes(jsType),
           },
         ];
@@ -1743,9 +1746,10 @@ class VisualizedLayer {
         data[label] = item?.value ?? 0;
         chartOptions[label] = {
           fillColor: colorByLabel[label],
-          displayText: function (value) {
-            return typeof value === "number" ? fmtNl(value) : value;
-          },
+          displayText: (value) =>
+            typeof value === "number"
+              ? `${fmtNl(value)}${this._unitSuffix()}`
+              : value,
         };
       });
 
@@ -1789,9 +1793,11 @@ class VisualizedLayer {
           return;
         }
 
-        const lines = items.map((i) => `${i.label}: ${fmtNl(i.value ?? 0)}`);
+        const lines = items.map(
+          (i) => `${i.label}: ${fmtNl(i.value ?? 0)}${this._unitSuffix()}`,
+        );
         const total = items.reduce((acc, i) => acc + (i.value ?? 0), 0);
-        lines.push(`<b>Total: ${fmtNl(total)}</b>`);
+        lines.push(`<b>Total: ${fmtNl(total)}${this._unitSuffix()}</b>`);
 
         // Bind custom tooltip to the PieChartMarker with the aggregated data.
         pieChart.bindTooltip(lines.join("<br>"), {
@@ -1856,7 +1862,7 @@ class VisualizedLayer {
         const popupContent =
           fieldValue !== null
             ? typeof fieldValue === "number"
-              ? fmtNl(fieldValue)
+              ? `${fmtNl(fieldValue)}${this._unitSuffix()}`
               : `${fieldValue}`
             : "No data";
         featureLayer.bindTooltip(popupContent, {
@@ -1876,6 +1882,19 @@ class VisualizedLayer {
       featureLayer.closeTooltip();
       featureLayer.unbindTooltip();
     });
+  }
+
+  /** ` ${unit}` when the current field has a known unit, otherwise ''. */
+  _unitSuffix() {
+    return this.unit ? ` ${this.unit}` : "";
+  }
+
+  /** Display unit for the current field, which is derived from fieldOptions.*/
+  get unit() {
+    return (
+      this.fieldOptions.find((opt) => opt.value === this.style.field)?.unit ??
+      null
+    );
   }
 
   _styleMarkerColorOnCategorizedFieldValue(field, palette) {
