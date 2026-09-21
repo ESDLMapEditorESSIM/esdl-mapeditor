@@ -33,7 +33,7 @@ from esdl.processing.string_uri import StringURI
 from esdl.undo import UndoRedoCommandStack
 from esdl.undo_wrapper import undo_record_changes
 from esdl.processing import ESDLAsset, ESDLGeometry
-from esdlproject.ProjectManager import ProjectManager, load_external_string
+from esdlproject.ProjectManager import ProjectManager, eobject_to_string, load_external_string
 from extensions.prompt_manager import PromptManager
 from esdl.units.parser import build_qau_from_unit_string
 from extensions.external_models.external_models_storage import (
@@ -444,6 +444,7 @@ class ESDLServices:
             url_response = None
             input_data = None
             if url:
+                timeout = (10, 660)
                 if service["http_method"] == "get":
                     if service["type"].endswith("json") or (
                         "body_config" in service and service["body_config"]["type"] == "json"
@@ -451,9 +452,9 @@ class ESDLServices:
                         kwargs = {"json": body}
                     else:
                         kwargs = {}
-                    url_response = requests.get(url, headers=headers, **kwargs)
+                    url_response = requests.get(url, headers=headers, timeout=timeout, **kwargs)
                 elif service["http_method"] == "delete":
-                    url_response = requests.delete(url, headers=headers)
+                    url_response = requests.delete(url, headers=headers, timeout=timeout)
                 elif service["http_method"] == "post":
                     if service["type"].endswith("json") or (
                         "body_config" in service and service["body_config"]["type"] == "json"
@@ -463,7 +464,7 @@ class ESDLServices:
                         if isinstance(body, str):
                             body = body.encode("utf-8")
                         kwargs = {"data": body}
-                    url_response = requests.post(url, headers=headers, **kwargs)
+                    url_response = requests.post(url, headers=headers, timeout=timeout, **kwargs)
                 else:
                     # Should not happen, there should always be a method.
                     return [(False, None, None)]
@@ -515,7 +516,11 @@ class ESDLServices:
                     return [(False, response_error_message(url_response), None)]
                 logger.warning("Error running ESDL service ", input_data)
                 return [(False, str(input_data), None)]
-        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+        except requests.exceptions.Timeout:
+            target = urllib.parse.urlparse(url).netloc or url
+            logger.warning(f"ESDL service at '{target}' timed out")
+            return [(False, f"The service at '{target}' timed out. Please try again.", None)]
+        except requests.exceptions.ConnectionError as e:
             target = urllib.parse.urlparse(url).netloc or url
             logger.warning(f"Could not reach ESDL service at '{target}': {e}")
             return [(False, f"The service at '{target}' is not reachable.", None)]
@@ -790,7 +795,6 @@ class ESDLServices:
                 logger.error("Service was expected to give back a profile")
                 return False, None, None
         elif result_config["action"] == "add_profile_values":
-            es_edit = esh.get_energy_system(es_id=active_es_id)
             json_input_data = json.loads(input_data)
             if "results" in json_input_data:
                 profile_values = json_input_data["results"]
@@ -941,6 +945,11 @@ class ESDLServices:
         model_short_name: str,
     ) -> Tuple[bool, str | dict | None, dict | None]:
         """Apply an ESDL result and build backend actions."""
+        if result_config.get("profiles") == "influxdb" or service.get("body_config", {}).get("profiles") == "inline":
+            es, _ = load_external_string(esdl_string=esdl_response, name=service["name"])
+            if any(isinstance(item, esdl.TimeSeriesProfile) for item in es.eAllContents()):
+                ESDLFileImport.convert_inline_to_influx(es)
+                esdl_response = eobject_to_string(es)
         variant, parse_info = pm.add_energy_system(StringURI(service["name"], esdl_response))
         pm.set_active_variant(variant)
         update_visualization_options(pm.get_active_energy_system())

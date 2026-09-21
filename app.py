@@ -3132,7 +3132,7 @@ def query_esdl_services(params):
         logger.exception("Exception when querying ESDL service")
         esdl_service_ok = False
         esdl_service_result = str(exc)
-        results = [esdl_service_ok, esdl_service_result, None]
+        results = [(esdl_service_ok, esdl_service_result, None)]
         logger.error("ESDL Services call error: " + esdl_service_result)
 
     for result in results:
@@ -3161,6 +3161,7 @@ def query_esdl_services(params):
                 if status_code == 401:
                     message += " Please refresh the page."
             send_alert(message)
+            continue
 
         # If call_esdl_service results indicate a certain EnergySystem MUST be (re-)processed, force it here
         force_update_es_id = None

@@ -433,11 +433,18 @@ h6 {
     overflow-wrap: anywhere;
 }
 
-.building_legend_range {
-    align-items: center;
+.building_legend_classes:has(> .building_legend_range) {
     column-gap: 6px;
     display: grid;
-    grid-template-columns: 17px minmax(0, 1fr) auto minmax(0, 1fr);
+    grid-template-columns: 17px max-content auto max-content;
+    justify-content: start;
+}
+
+.building_legend_range {
+    align-items: center;
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
 }
 
 .building_legend_range i {
@@ -451,13 +458,13 @@ h6 {
     white-space: nowrap;
 }
 
-.building_legend_title {
+.map_control_title {
     align-items: center;
     display: flex;
     justify-content: space-between;
 }
 
-.building_legend_close {
+.map_control_close {
     background: transparent;
     border: 0;
     color: #555;
@@ -467,8 +474,8 @@ h6 {
     padding: 0;
 }
 
-.building_legend_close:hover,
-.building_legend_close:focus {
+.map_control_close:hover,
+.map_control_close:focus {
     color: #000;
 }
 

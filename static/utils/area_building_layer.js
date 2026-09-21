@@ -25,6 +25,7 @@ var building_color_method = 'building type';
 
 var areaLegend;             // the leaflet control
 var buildingLegend;         // the leaflet control
+var show_area_legend = true;
 var show_building_legend = true;
 
 var areaLegendChoice;                // will be initialized with the first KPI
@@ -1573,9 +1574,9 @@ function createBuildingLegendDiv(choice) {
     var legendDiv = L.DomUtil.create('div', 'info legend building_legend');
     legendDiv.oncontextmenu = L.DomEvent.stopPropagation;
     L.DomEvent.disableScrollPropagation(legendDiv);
-    var legendTitleDiv = L.DomUtil.create('div', 'legend_title building_legend_title', legendDiv);
+    var legendTitleDiv = L.DomUtil.create('div', 'legend_title map_control_title', legendDiv);
     legendTitleDiv.innerHTML = 'Building Legend';
-    var legendCloseButton = L.DomUtil.create('button', 'building_legend_close', legendTitleDiv);
+    var legendCloseButton = L.DomUtil.create('button', 'map_control_close', legendTitleDiv);
     legendCloseButton.type = 'button';
     legendCloseButton.innerHTML = '&times;';
     legendCloseButton.setAttribute('aria-label', 'Hide building legend');
@@ -1604,8 +1605,13 @@ function createAreaLegendDiv(choice) {
     var legendDiv = L.DomUtil.create('div', 'info legend');
     legendDiv.id = areaLegendDivId;
     legendDiv.oncontextmenu = L.DomEvent.stopPropagation;
-    var legendTitleDiv = L.DomUtil.create('div', 'legend_title', legendDiv);
-    legendTitleDiv.innerHTML += 'Area Legend';
+    var legendTitleDiv = L.DomUtil.create('div', 'legend_title map_control_title', legendDiv);
+    legendTitleDiv.innerHTML = 'Area Legend';
+    var legendCloseButton = L.DomUtil.create('button', 'map_control_close', legendTitleDiv);
+    legendCloseButton.type = 'button';
+    legendCloseButton.innerHTML = '&times;';
+    legendCloseButton.setAttribute('aria-label', 'Hide area legend');
+    L.DomEvent.on(legendCloseButton, 'click', toggle_area_legend_visibility);
 
     var selectorDiv = L.DomUtil.create('div', 'legend_select', legendDiv);
     var selectText = '<select id="areaLegendSelect" style="z-index:1000;" onchange="selectAreaKPI(this.value);">';
@@ -1686,6 +1692,18 @@ function removeAreaLegend() {
     }
 }
 
+function toggle_area_legend_visibility() {
+    if (show_area_legend) {
+        $('#menu_option_area_legend').removeClass("ui-icon-check ui-icon");
+        show_area_legend = false;
+        removeAreaLegend();
+    } else {
+        $('#menu_option_area_legend').addClass("ui-icon-check ui-icon");
+        show_area_legend = true;
+        update_area_legend();
+    }
+}
+
 function add_area_geojson_layer_with_legend(geojson_area_data) {
     const kpi_list = preprocess_layer_data("area", geojson_area_data, {});
     area_KPIs = kpi_list;
@@ -1705,7 +1723,7 @@ function update_area_legend() {
         }
 
         removeAreaLegend();
-        if (!jQuery.isEmptyObject(area_KPIs)) {
+        if (!jQuery.isEmptyObject(area_KPIs) && show_area_legend) {
             areaLegend = L.control({position: 'bottomright'});
             areaLegend.onAdd = function (map) {
             return createAreaLegendDiv(area_legend_choice);

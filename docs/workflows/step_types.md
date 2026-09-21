@@ -45,6 +45,8 @@ The `select` step lets the user select (a) value(s) from a dropdown.
 - `label_fields`: list of key names, the values of these keys in the option object (see input data) will be concatenated
   with a `_` to form the label shown to the user.
 - `value_field`: key of a unique field in each option by which to identify the selected option(s).
+- `select_all`: boolean flag to select all options when the step is first loaded in multiple selection mode.
+- `output_value_only`: return the selected `value_field` value(s) instead of the complete option object(s).
 
 #### required input data
 
@@ -53,7 +55,8 @@ The required input consists of a list of object with key-value pairs. The values
 #### output data
 
 The object from the input data list which is selected by the user. In the `multiple` mode the output will be a list of
-selected objects (possibly empty).
+selected objects (possibly empty). When `output_value_only` is enabled, only the selected `value_field` values are
+returned.
 
 Example config:
 

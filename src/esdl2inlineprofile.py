@@ -211,6 +211,7 @@ def convert_esdl_profiles(
         es: EnergySystem,
         profiles_settings: dict[str, object],
 ) -> EnergySystem:
+    """Convert port profiles in all areas, including assets inside buildings."""
     esi: EnergySystemInformation = es.energySystemInformation
 
     # Remove all InfluxDBProfiles from the global profiles list
@@ -223,9 +224,10 @@ def convert_esdl_profiles(
 
     handled_profiles: dict[str, TimeSeriesProfile] = {}
 
-    # Convert profiles for each port in each asset in each building
-    for asset in es.instance[0].area.asset:
-        convert_asset_profiles(asset, esi, handled_profiles, profiles_settings)
+    for area in es.eAllContents():
+        if isinstance(area, esdl.Area):
+            for asset in area.asset:
+                convert_asset_profiles(asset, esi, handled_profiles, profiles_settings)
     logger.info("Finished converting ESDL to in-line profiles")
     return es
 
@@ -287,6 +289,8 @@ def convert_profile_for_port(
             timeseries_profile = prof_manager.get_esdl_timeseries_profile()
             timeseries_profile.name = prof.name
             timeseries_profile.profileType = prof.profileType
+            if prof.profileQuantityAndUnit is not None:
+                timeseries_profile.profileQuantityAndUnit = prof.profileQuantityAndUnit.deepcopy()
             esi.profiles.profile.append(timeseries_profile)
             handled_profiles[prof.name] = timeseries_profile
             logger.info(f"Converted InfluxDBProfile '{prof.name}' to TimeSeriesProfile")

@@ -1183,6 +1183,8 @@ def process_energy_system(force_update_es_id=None, zoom=True, only_process_es_id
                     if es.id == active_es.id:
                         emit('set_active_layer_id', es.id)
 
+                    emit('plans', {'es_id': es.id, 'plans': ESDLEnergySystem.get_plan_list(es)})
+
                     es_instance: esdl.Instance = es.instance[0]
                     top_area: esdl.Area = es_instance.area
                     find_boundaries_in_ESDL(top_area, es.id)  # also adds coordinates to assets if possible

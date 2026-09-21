@@ -104,6 +104,7 @@ const esdlLayerNameMap = {
   "connection_layer": "Connections",
   "kpi_layer": "KPIs",
   "notes_layer": "Notes",
+  "plan_layer": "Plans",
   "pot_layer": "Potentials",
   "sim_layer": "Simulation results",
 };

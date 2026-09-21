@@ -1059,6 +1059,10 @@
                 window.PubSubManager.broadcast('CARRIER_LIST', carr_list);
             });
 
+            socket.on('plans', function(message) {
+                window.PubSubManager.broadcast('PLANS', message);
+            });
+
             socket.on('sector_list', function(sect_list) {
                 set_sector_list(sect_list['es_id'], sect_list['sector_list']);
             });
@@ -1711,6 +1715,12 @@
                                         <a class="dropdown-item" href="#" onclick="toggle_building_legend_visibility();">
                                             <div id="menu_option_building_legend" class="menu-icon ui-icon ui-icon-check">&nbsp;</div>
                                             Show building legend
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="#" onclick="toggle_area_legend_visibility();">
+                                            <div id="menu_option_area_legend" class="menu-icon ui-icon ui-icon-check">&nbsp;</div>
+                                            Show area legend
                                         </a>
                                     </li>
                                     <li id="vue_toggle_show_asset_draw_toolbar"></li>
