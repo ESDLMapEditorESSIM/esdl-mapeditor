@@ -9,10 +9,21 @@ from pyecore.ecore import EAttribute, EReference
 import esdl
 import esdl.processing.ESDLEcore as ESDLEcore
 import src.log as log
+from esdl.units.parser import unit_to_string
 from extensions.session_manager import get_project_manager, get_session
 from extensions.settings_storage import SettingsStorage
 
 logger = log.get_logger(__name__)
+
+
+def _qau_to_unit_string(qau) -> Optional[str]:
+    """Resolve a QuantityAndUnit(Reference) to its unit display string, e.g. 'MW'."""
+    if qau is None:
+        return None
+    if isinstance(qau, esdl.QuantityAndUnitReference):
+        qau = qau.reference
+    unit_str = unit_to_string(qau) if qau else None
+    return unit_str
 
 LAYER_VISUALIZATION_SETTINGS = "LAYER_VISUALIZATION"
 
@@ -256,6 +267,8 @@ class LayerStyleEditor:
                         continue
 
                     collected_attrs = []
+                    # SingleValue (StaticProfile) carries its unit on profileQuantityAndUnit.
+                    unit = _qau_to_unit_string(getattr(child, "profileQuantityAndUnit", None))
                     # TODO: replace with get_asset_attributes?
                     for attr in sorted(
                         child.eClass.eAllStructuralFeatures(), key=lambda x: x.name
@@ -267,6 +280,7 @@ class LayerStyleEditor:
                                     {
                                         "attr": attr.name,
                                         "attrType": attr.eType.name,
+                                        "unit": unit,
                                         # Path token used to fetch the value of this attr on any object.
                                         "path": _build_path(
                                             "cost_information",
@@ -289,11 +303,7 @@ class LayerStyleEditor:
         return result
 
     def _collect_kpi_schema(self, objects) -> dict:
-        """
-        Walk KPIs on each object and return {path_key: {ecoreType}} for each supported KPI found across all objects.
-
-        TODO: return KPI unit in schema?
-        """
+        """Walk KPIs on each object and return {path_key: {ecoreType, unit}} for each supported KPI found across all objects."""
         result: Dict[str, dict] = {}
 
         for obj in objects:
@@ -308,14 +318,15 @@ class LayerStyleEditor:
                 )
                 if path in result:
                     continue
+                unit = _qau_to_unit_string(getattr(kpi, "quantityAndUnit", None))
                 if isinstance(kpi, esdl.DistributionKPI):
-                    result[path] = {"ecoreType": "distribution"}
+                    result[path] = {"ecoreType": "distribution", "unit": unit}
                 elif isinstance(kpi, esdl.IntKPI):
-                    result[path] = {"ecoreType": "EInt"}
+                    result[path] = {"ecoreType": "EInt", "unit": unit}
                 elif isinstance(kpi, esdl.DoubleKPI):
-                    result[path] = {"ecoreType": "EDouble"}
+                    result[path] = {"ecoreType": "EDouble", "unit": unit}
                 elif isinstance(kpi, esdl.StringKPI):
-                    result[path] = {"ecoreType": "EString"}
+                    result[path] = {"ecoreType": "EString", "unit": unit}
 
         return result
 
