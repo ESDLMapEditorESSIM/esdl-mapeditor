@@ -124,6 +124,10 @@
               v-model:objectIDs="currentObjectIDs"
             />
           </a-collapse-panel>
+          <a-collapse-panel key="KPI" header="KPI">
+            <span v-if="multipleAssetsSelected">Select a single asset to view its KPIs.</span>
+            <KPIView v-else :kpi-info="obj_properties.kpi_information" />
+          </a-collapse-panel>
           <a-collapse-panel key="Constraints" header="Constraints">
             <AssetConstraint 
               :es-id="activeEsdlId"
@@ -171,6 +175,7 @@ import FancyNumberEdit from "@/components/forms/FancyNumberEdit.vue";
 import AssetConstraint from "@/apps/AssetConstraint.vue";
 import PortsEdit from "@/components/forms/PortsEdit.vue";
 import CostInformationView from "@/components/forms/CostInformationView.vue";
+import KPIView from "@/components/forms/KPIView.vue";
 import ReferenceViewer from "@/components/forms/ReferenceViewer.vue";
 import { useObject } from "@/composables/ObjectID";
 import { useEsdlLayers } from "@/composables/esdlLayers";
@@ -180,7 +185,7 @@ import spinner from "@/components/Spinner.vue";
 const { getActiveEsdlLayerId } = useEsdlLayers();
 
 const { currentObjectID } = useObject();
-const ignoredRefs = ['port', 'costInformation', 'constraint', 'geometry'];
+const ignoredRefs = ['port', 'costInformation', 'KPIs', 'constraint', 'geometry'];
 
 export default {
   name: "ObjectProperties",
@@ -190,6 +195,7 @@ export default {
     AssetConstraint,
     PortsEdit,
     CostInformationView,
+    KPIView,
     ReferenceViewer,
     spinner,
   },
