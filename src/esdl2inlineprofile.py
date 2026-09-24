@@ -35,8 +35,7 @@ class ESDL2InlineProfile:
             # TODO: I don't know why copy.deepcopy(es) does not work. Maybe it works in a later version of pyesdl?
             # es_copy = copy.deepcopy(es)
             es_string = pm.energy_system_to_string(es.id)
-            es_copy, parse_info = load_external_string(es_string, name=f"{es.name} - In-line Profiles")
-            es_copy.name = get_session('es_filename') or (es.name or "Untitled EnergySystem") + " - In-line Profiles"
+            es_copy, parse_info = load_external_string(es_string, name=es.name or "Untitled EnergySystem")
             # es_copy.id = str(uuid4())
 
             with self.flask_app.app_context():
@@ -68,8 +67,7 @@ class ESDL2InlineProfile:
         pm = get_project_manager()
         es = pm.get_energy_system_by_id(es_id)
         es_string = pm.energy_system_to_string(es_id)
-        es_copy, parse_info = load_external_string(es_string, name=f"{es.name} - In-line Profiles")
-        es_copy.name = get_session('es_filename') or (es.name or "Untitled EnergySystem") + " - In-line Profiles"
+        es_copy, parse_info = load_external_string(es_string, name=es.name or "Untitled EnergySystem")
         profiles_settings = Profiles.get_instance().get_profiles_settings()
         es_converted = self.convert_esdl_profiles(es_copy, profiles_settings)
         return es_converted
@@ -200,8 +198,7 @@ def copy_and_convert_esdl_profiles(
     pm = get_project_manager()
     es = pm.get_energy_system_by_id(es_id=es_id)
     es_string = pm.energy_system_to_string(es_id=es_id)
-    es_copy, parse_info = load_external_string(es_string, name=f"{es.name} - In-line Profiles")
-    es_copy.name = get_session('es_filename') or (es.name or "Untitled EnergySystem") + " - In-line Profiles"
+    es_copy, parse_info = load_external_string(es_string, name=es.name or "Untitled EnergySystem")
     profiles_settings = Profiles.get_instance().get_profiles_settings()
     es_converted = convert_esdl_profiles(es_copy, profiles_settings)
     return es_converted
