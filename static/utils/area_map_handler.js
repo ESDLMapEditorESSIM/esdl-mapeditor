@@ -127,6 +127,15 @@ function add_area_map_handlers(socket, map) {
                     return;
                 }
 
+                // TODO: persisting edited MultiPolygon geometry back to the ESDL model is not yet
+                // implemented (backend has no MultiPolygon shape-editing endpoint yet). Skip saving
+                // instead of sending bogus coordinates / crashing on the center calculation below.
+                if (!L.LineUtil.isFlat(layer.getLatLngs()[0])) {
+                    console.warn('Saving edited MultiPolygon geometry is not supported yet (WIP), changes are not persisted.', layer);
+                    alert('Editing MultiPolygon geometry is a work in progress: your changes will not be saved into the ESDL file.');
+                    return;
+                }
+
                 // Find marker belonging to Polygon and recalculate center
                 // esdl_objects = esdl_layer.getLayers();
                 console.log('new coords', layer.getLatLngs());

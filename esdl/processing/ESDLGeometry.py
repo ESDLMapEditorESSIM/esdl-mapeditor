@@ -314,7 +314,44 @@ def calculate_polygon_center(polygon):
         x += (p1.lat + p2.lat - 2 * first.lat) * f
         y += (p1.lon + p2.lon - 2 * first.lon) * f
     f = twice_area * 3
+    if f == 0:
+        # degenerate/self-intersecting ring (signed area is 0): fall back to a simple average of its points
+        avg_lat = sum(p.lat for p in pts) / len(pts)
+        avg_lon = sum(p.lon for p in pts) / len(pts)
+        return avg_lat, avg_lon
     return x / f + first.lat, y / f + first.lon
+
+
+def calculate_multipolygon_center(multipolygon):
+    """
+    Calculates the centeriod of the sub-polygon with the largest exterior area of a MultiPolygon
+    :param multipolygon: esdl.MultiPolygon
+    :return: (lat, lon) tuple of the largest sub-polygon's centroid
+    """
+    def exterior_area(polygon):
+        # unsigned shoelace area of the exterior ring, in degree^2 (not a real geographic area, see note below),
+        # only used to compare relative sizes between sub-polygons
+        pts = list(polygon.exterior.point)
+        # guards against degenerate rings: fewer than 3 points can't enclose an area
+        if len(pts) < 3:
+            return 0.0
+        # ensures the ring is closed (first point == last point)
+        if pts[0].lat != pts[-1].lat or pts[0].lon != pts[-1].lon:
+            pts.append(pts[0])
+        area = 0.0
+        for i in range(len(pts) - 1):
+            p1, p2 = pts[i], pts[i + 1]
+            area += p1.lon * p2.lat - p2.lon * p1.lat
+        return abs(area) / 2.0
+
+    largest_polygon = multipolygon.polygon[0]
+    largest_area = exterior_area(largest_polygon)
+    for polygon in multipolygon.polygon[1:]:
+        area = exterior_area(polygon)
+        if area > largest_area:
+            largest_polygon = polygon
+            largest_area = area
+    return calculate_polygon_center(largest_polygon)
 
 
 def remove_latlng_annotation_in_array(coords):

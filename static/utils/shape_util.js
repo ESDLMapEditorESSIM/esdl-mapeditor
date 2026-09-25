@@ -51,7 +51,48 @@ function calculate_array_polygon_center(pts) {
         y += (p1[1] + p2[1] - 2 * first[1]) * f;
     }
     f = twicearea * 3;
-    return [x/f + first[0], y/f + first[1]];
+    var center = [x/f + first[0], y/f + first[1]];
+    if (!isFinite(center[0]) || !isFinite(center[1])) {
+        // degenerate/self-intersecting ring (signed area is ~0): fall back to a simple average of its points
+        center = calculate_average_point(pts);
+    }
+    return center;
+}
+
+// simple (non-weighted) average of an array of [x, y] points, used as a fallback centroid
+function calculate_average_point(pts) {
+    var sumX = 0, sumY = 0;
+    for (var i = 0; i < pts.length; i++) {
+        sumX += pts[i][0];
+        sumY += pts[i][1];
+    }
+    return [sumX / pts.length, sumY / pts.length];
+}
+
+// unsigned shoelace area of a ring of [x, y] points, only used to compare relative sizes
+function calculate_ring_area(ring) {
+    var area = 0;
+    var n = ring.length;
+    for (var i = 0; i < n; i++) {
+        var p1 = ring[i], p2 = ring[(i + 1) % n];
+        area += p1[0] * p2[1] - p2[0] * p1[1];
+    }
+    return Math.abs(area) / 2;
+}
+
+// picks the centroid of the sub-polygon with the largest exterior area (rings[i][0]) as the multipolygon's center
+// coords: array of sub-polygons, each an array of rings (index 0 = exterior, rest = holes)
+function calculate_multipolygon_center(coords) {
+    let largest_exterior = coords[0][0];
+    let largest_area = calculate_ring_area(largest_exterior);
+    for (let i = 1; i < coords.length; i++) {
+        let area = calculate_ring_area(coords[i][0]);
+        if (area > largest_area) {
+            largest_exterior = coords[i][0];
+            largest_area = area;
+        }
+    }
+    return calculate_array_polygon_center(largest_exterior.slice());
 }
 
 // calculates the centeriod of a polygon

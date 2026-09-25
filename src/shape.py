@@ -17,6 +17,7 @@ import json
 from shapely import wkt, wkb, to_geojson
 from shapely.geometry import Point, LineString, Polygon, MultiPolygon, GeometryCollection, shape
 from shapely.ops import transform
+from shapely.validation import explain_validity
 import esdl
 import pyproj
 
@@ -128,6 +129,19 @@ class Shape:
 
     def get_wkt(self):
         return self.shape.wkt
+
+    def is_valid(self):
+        """
+        Returns whether the loaded shape is a valid geometry (per the OGC Simple Features rules), e.g. no
+        self-intersections and holes properly contained within the exterior.
+        """
+        return self.shape.is_valid
+
+    def explain_validity(self):
+        """
+        Returns a human-readable reason why the loaded shape is invalid, or "Valid Geometry" if it is valid.
+        """
+        return explain_validity(self.shape)
 
     def get_geojson_feature(self, properties={}):
         geojson_geometry_str = to_geojson(self.shape)
@@ -280,6 +294,17 @@ class ShapePolygon(Shape):
             pol.interior.append(interior)
         return pol
 
+    def get_leaflet_rings(self):
+        """
+        Returns this polygon's rings as [lat, lon] point lists (unclosed, i.e. without a last point
+        repeating the first), the coordinate format used by Leaflet.
+        Ring 0 is the exterior, the rest (if any) are interior holes.
+        """
+        rings = [list(self.shape.exterior.coords)[:-1]]
+        for interior in self.shape.interiors:
+            rings.append(list(interior.coords)[:-1])
+        return [[[lat, lon] for lon, lat in ring] for ring in rings]
+
 
 class ShapeMultiPolygon(Shape):
     def __init__(self, shape_input):
@@ -315,7 +340,23 @@ class ShapeMultiPolygon(Shape):
                 "Incorrect instantiation of a Shapely MultiPolygon with leaflet coordinates")
 
     def get_esdl(self):
-        raise Exception("Not implemented yet, MultiPolygon is not a frequent ESDL geometry")
+        mp = esdl.MultiPolygon()
+        for p in self.shape.geoms:
+            mp.polygon.append(ShapePolygon(p).get_esdl())
+        return mp
+
+    def get_leaflet_coords(self):
+        """
+        Returns a list of sub-polygons, each a list of rings ([lat, lon] point lists; ring 0 is the
+        exterior, the rest are holes), the coordinate format used by Leaflet.
+        """
+        return [ShapePolygon(p).get_leaflet_rings() for p in self.shape.geoms]
+
+    def get_polygon_list_esdl(self):
+        """
+        Returns a list of esdl.Polygon, one per sub-polygon of the loaded MultiPolygon shape.
+        """
+        return [ShapePolygon(p).get_esdl() for p in self.shape.geoms]
 
 
 class ShapeGeometryCollection(Shape):

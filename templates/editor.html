@@ -1406,6 +1406,7 @@
             var selected_asset = select_box.options[select_box.selectedIndex].value;
 
             var line_assets = ["ElectricityCable", "Pipe"];
+            // TODO: support multi-polygon assets
             var polygon_assets = ["PVPark", "WindPark"];
             if (line_assets.includes(selected_asset)) {
                 if (menu_id == 'asset_menu') update_line_asset_menu(selected_asset);

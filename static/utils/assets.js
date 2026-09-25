@@ -611,17 +611,18 @@ function add_asset(es_bld_id, asset_info, exposed_port_asset_id, carrier_info_ma
     // exposed_port_asset_id points to the container asset when this asset is contained in a building or compoundAsset
     // Format of asset_info
     // 0         1          2     3   4           5          6      7      8        9           10
-    // 'point'   asset      name  id  class_name  [lat,lon]  attrs  state  [ports]  capability  extra_attrs
-    // 'line'    asset      name  id  class_name  [...]      attrs  state  [ports]
-    // 'polygon' asset      name  id  class_name  [...]      attrs  state  [ports]  capability  extra_attrs
-    // 'point'   potential  name  id  class_name  [lat,lon]
-    // 'polygon' potential  name  id  class_name  [...]
+    // 'point'        asset      name  id  class_name  [lat,lon]  attrs  state  [ports]  capability  extra_attrs
+    // 'line'         asset      name  id  class_name  [...]      attrs  state  [ports]
+    // 'polygon'      asset      name  id  class_name  [...]      attrs  state  [ports]  capability  extra_attrs
+    // 'multipolygon' asset      name  id  class_name  [[[...],..],..] attrs  state  [ports]  capability  extra_attrs  (per sub-polygon: [exterior, ...holes])
+    // 'point'        potential  name  id  class_name  [lat,lon]
+    // 'polygon'      potential  name  id  class_name  [...]
     let classname = '';
     let layer_name = get_asset_layer_name(asset_info[1]);
     let layer_id = exposed_port_asset_id || es_bld_id;
     let extra_attrs = null;
     if ((asset_info[0] === 'point' && asset_info[1] === 'asset' && asset_info[4] !== 'Joint') ||
-        (asset_info[0] === 'polygon' && asset_info[1] === 'asset' )) {
+        ((asset_info[0] === 'polygon' || asset_info[0] === 'multipolygon') && asset_info[1] === 'asset' )) {
         classname = 'circle ' + asset_info[9];
         if (!exposed_port_asset_id) classname = 'zoom '+classname;
         extra_attrs = asset_info[10];
@@ -711,7 +712,8 @@ function add_asset(es_bld_id, asset_info, exposed_port_asset_id, carrier_info_ma
                     { permanent: true, className: 'marker-tooltip' });
         }
     }
-    if (asset_info[0] === 'polygon' || (asset_info[0] === 'point' && asset_info[1] === 'asset' && 'surfaceArea' in asset_info[6])) {
+    if (asset_info[0] === 'polygon' || asset_info[0] === 'multipolygon' ||
+        (asset_info[0] === 'point' && asset_info[1] === 'asset' && 'surfaceArea' in asset_info[6])) {
         // If an asset has an esdl.Point geometry and a surfaceArea attribute, draw it as a circle.
         var coords = asset_info[5]
         let polygon_color;
@@ -723,7 +725,12 @@ function add_asset(es_bld_id, asset_info, exposed_port_asset_id, carrier_info_ma
         var polygon;
         if (asset_info[0] === 'polygon') {
             polygon = L.polygon(coords, {color: polygon_color, weight: 3, draggable:true, title: title});
-        } else {
+        } 
+        else if (asset_info[0] === 'multipolygon') {
+            // coords is an array of sub-polygons, each an array of rings (exterior + holes); L.polygon renders both levels natively
+            polygon = L.polygon(coords, {color: polygon_color, weight: 3, draggable:true, title: title});
+        }
+        else {
             let radius = Math.sqrt(asset_info[6]['surfaceArea'] / Math.PI)
             polygon = L.circle(coords, {radius: radius, color: polygon_color, weight: 3, draggable:true, title: title});
         }
@@ -764,6 +771,8 @@ function add_asset(es_bld_id, asset_info, exposed_port_asset_id, carrier_info_ma
         var polygon_center = coords;        // Take the point location as a center or
         if (asset_info[0] === 'polygon') {   // if its a polygon, calculate the center
             polygon_center = calculate_array_polygon_center(coords);
+        } else if (asset_info[0] === 'multipolygon') {
+            polygon_center = calculate_multipolygon_center(coords);
         }
         // todo make assets with polygon draggable (needs difficult updates in backend)
         var marker = L.marker(polygon_center, {icon: divicon, title: '', riseOnHover: true /*, draggable:true */});
