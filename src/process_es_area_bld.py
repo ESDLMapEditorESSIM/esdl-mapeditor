@@ -298,7 +298,7 @@ def create_building_KPIs(building):
 
     if building.KPIs:
         for kpi in building.KPIs.kpi:
-            if is_valid_kpi_value(kpi.value):
+            if not isinstance(kpi, esdl.DistributionKPI) and is_valid_kpi_value(kpi.value):
                 KPIs[kpi.name] = kpi.value
 
     return KPIs
@@ -337,7 +337,7 @@ def process_area_KPI_information(area_KPIs, area_geometry):
                         'value': kpi.value,
                         'unit': unit
                     }
-            else:
+            elif isinstance(kpi.distribution, esdl.StringLabelDistribution):
                 distribution_kpis[kpi.name] = {"type": "distributionKPI",
                                                "value": [],
                                                "unit": unit}
@@ -739,6 +739,9 @@ def process_building(pm: ProjectManager, es_id, asset_list, building_list, area_
         geometry = building.geometry
         # TODO: this function call doesn't work for a CompoundAsset
         bld_KPIs = create_building_KPIs(building)
+        bld_dist_KPIs = {}
+        if not bld_editor:
+            _, bld_dist_KPIs = process_area_KPI_information(building.KPIs, geometry)
 
         # Collect extra attributes that might be required to draw specific icons, ...
         extra_attributes = add_extra_attributes(building)
@@ -747,12 +750,12 @@ def process_building(pm: ProjectManager, es_id, asset_list, building_list, area_
             if isinstance(geometry, esdl.Point):
                 building_list.append(
                     ['point', building.name, building.id, type(building).__name__, [geometry.lat, geometry.lon],
-                     building_has_assets, bld_KPIs, extra_attributes, port_list])
+                     building_has_assets, bld_KPIs, extra_attributes, port_list, bld_dist_KPIs])
                 bld_coord = (geometry.lat, geometry.lon)
             elif isinstance(geometry, esdl.Polygon):
                 boundary = ESDLGeometry.create_boundary_from_geometry(geometry)
                 building_list.append(['polygon', building.name, building.id, type(building).__name__,
-                                      boundary['coordinates'], building_has_assets, bld_KPIs, extra_attributes, port_list])
+                                      boundary['coordinates'], building_has_assets, bld_KPIs, extra_attributes, port_list, bld_dist_KPIs])
                 bld_coord = ESDLGeometry.calculate_polygon_center(geometry)
     elif building.containingBuilding:       # BuildingUnit
         bld_geom = building.containingBuilding.geometry

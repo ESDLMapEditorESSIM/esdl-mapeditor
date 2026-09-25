@@ -190,7 +190,8 @@ function create_new_esdl_layer(es_id, title) {
         area_legend_choice: null,
         area_dist_kpis_ranges: {},
         building_kpi_list: null,
-        building_legend_choice: null
+        building_legend_choice: null,
+        building_marker_resize: 1.0
     };
 
     esdl_list[es_id] = esdl_list_item;

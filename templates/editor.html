@@ -798,9 +798,9 @@
 
             socket.on('add_building_objects', function(options) {
                 // Format of list items
-                // 0         1           2         3                    4                             5                   6     7             8
-                // 'point'   asset.name  asset.id  type(asset).__name__ [shape['lat'], shape['lng']]] building_has_assets KPIs  extra_attrs   port_list
-                // 'polygon' asset.name  asset.id  type(asset).__name__ coords                        building_has_assets KPIs  extra_attrs   port_list
+                // 0         1           2         3                    4                             5                   6     7             8          9
+                // 'point'   asset.name  asset.id  type(asset).__name__ [shape['lat'], shape['lng']]] building_has_assets KPIs  extra_attrs   port_list  dist_KPIs
+                // 'polygon' asset.name  asset.id  type(asset).__name__ coords                        building_has_assets KPIs  extra_attrs   port_list  dist_KPIs
 
                 // hide_loader();
                 //console.log(options);
@@ -849,6 +849,19 @@
                         set_marker_port_handlers(marker);  // for exposed port assets
                         add_object_to_layer(es_id, 'esdl_layer', marker);
                     }
+                    if (list[i][0] === 'point' && Object.keys(list[i][9] || {}).length > 0) {
+                        geojson_list.push({
+                            type: 'Feature',
+                            geometry: {type: 'Point', coordinates: [list[i][4][1], list[i][4][0]]},
+                            properties: {
+                                id: list[i][2],
+                                name: list[i][1],
+                                type: list[i][3],
+                                KPIs: list[i][6],
+                                dist_KPIs: list[i][9]
+                            }
+                        });
+                    }
                     if (list[i][0] === 'polygon') {
                         // var coords = list[i][4];
                         // var polygon = L.polygon(coords, {color: 'black', weight: 1, draggable:true, title: title});
@@ -872,7 +885,8 @@
                                 "id": list[i][2],
                                 "name": list[i][1],
                                 "type": list[i][3],
-                                "KPIs": KPIs
+                                "KPIs": KPIs,
+                                "dist_KPIs": list[i][9] || {}
                             }
                         });
 
@@ -1865,7 +1879,7 @@
 
     map.on('zoomend', function() {
         set_leaflet_sizes();                /* Markers, joints, and lines */
-        resize_all_area_pie_charts();
+        resize_all_pie_charts();
     });
 
     // handle contextmenu in some corner cases. See port_handlers.js when right-clicking on a port to show context menu
