@@ -123,7 +123,6 @@
                   mode="multiple"
                   style="width: 100%"
                   @change="onSelectDataset"
-                  @mouseleave="removeTooltipPopup"
                 />
               </a-row>
             </a-tab-pane>
@@ -218,7 +217,6 @@
                       :dropdown-match-select-width="false"
                       style="width: 100%"
                       placeholder="Select a saved graph configuration"
-                      @mouseleave="removeTooltipPopup"
                     >
                       <template #title="nodeData">
                         <span
@@ -270,7 +268,6 @@
                     "
                     style="width: 100%"
                     @change="onSelectVariable"
-                    @mouseleave="removeTooltipPopup"
                   />
                   <span
                     v-if="
@@ -331,7 +328,6 @@
                     mode="multiple"
                     style="width: 100%"
                     @change="onSelectGroupBy"
-                    @mouseleave="removeTooltipPopup"
                   />
                   <span
                     v-if="
@@ -385,7 +381,6 @@
                     allow-clear
                     multiple
                     @change="onSelectFilters"
-                    @mouseleave="removeTooltipPopup"
                   />
                   <br />
                 </a-row>
@@ -908,11 +903,6 @@ const loadingIcon = h(LoadingOutlined, {
   style: { fontSize: "5rem" },
   spin: true,
 });
-
-// to prevent stuck popup on UI
-const removeTooltipPopup = () => {
-  window.jquery(".ui-tooltip-content").parents("div").remove();
-};
 
 const props = defineProps({
   options: {

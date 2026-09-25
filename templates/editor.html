@@ -1491,7 +1491,10 @@
         }
 
         $(function() {
-            $(document).tooltip();
+            $(document).tooltip({
+                items: '[title]:not([disabled]):not(.ant-select, .ant-select *, .ant-select-dropdown, .ant-select-dropdown *, ' +
+                    '.ant-cascader, .ant-cascader *, .ant-cascader-dropdown, .ant-cascader-dropdown *)'
+            });
         });
 
         function show_or_hide_kpicharts_bar(object) {

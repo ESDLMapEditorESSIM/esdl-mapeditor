@@ -70,7 +70,6 @@
         :filter-option="filter_select"
         placeholder="Filter EDR assets on..."
         style="width: 100%"
-        @popup-scroll="hide_jquery_ui_popup()"
       />
     </div>
     <div>
@@ -84,7 +83,6 @@
         :filter-option="filter_select"
         placeholder="Filter EDR assets on..."
         style="width: 100%"
-        @popup-scroll="hide_jquery_ui_popup()"
       />
     </div>
 
@@ -98,7 +96,6 @@
         :filter-option="filter_select"
         placeholder="Select an asset from the EDR"
         style="width: 100%"
-        @popup-scroll="hide_jquery_ui_popup()"
       />
     </div>
 
@@ -252,9 +249,6 @@ export default {
     buildResultInfo: function () {
       let result = {};
       return result;
-    },
-    hide_jquery_ui_popup: function () {
-      window.jquery(".ui-tooltip-content").parents('div').remove();
     },
     filterOnExperimental: function (e) {
       // The tags experimental and final should be mutually exclusive

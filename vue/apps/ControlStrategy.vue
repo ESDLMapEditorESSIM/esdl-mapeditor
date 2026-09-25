@@ -101,7 +101,6 @@
             :options="db_profiles"
             placeholder="Select a profile"
             style="width: 100%"
-            @popupScroll="hide_jquery_ui_popup()"
           />
         </a-space>
         <!------------------------------------>
@@ -439,9 +438,6 @@ export default {
       }
   
       return profile_info;
-    },
-    hide_jquery_ui_popup: function() {
-      window.jquery(".ui-tooltip-content").parents('div').remove();
     },
   }
 };

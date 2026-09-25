@@ -37,7 +37,6 @@
       style="width: 300px"
       :options="buildingDropdownOptions"
       @change="onSelectBuilding"
-      @popup-scroll="hide_jquery_ui_popup()"
     />
     <a-button type="default" @click="selectAll"> Select all</a-button>
     <hr>
@@ -430,10 +429,6 @@ const subscriptionId = PubSubManager.subscribe(MessageNames.SELECT_ACTIVE_LAYER,
   doGetData();
 });
 onUnmounted(() => PubSubManager.unsubscribe(subscriptionId));
-
-function hide_jquery_ui_popup() {
-  window.jquery(".ui-tooltip-content").parents('div').remove();
-}
 </script>
 
 <style scoped>
