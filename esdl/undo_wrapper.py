@@ -28,7 +28,10 @@ from flask_socketio import emit
 
 from esdl.undo import ChangeContext
 from extensions.session_manager import get_project_manager
+from src.log import get_logger
 from src.tno.undoredo.types import serialize_command_stack
+
+logger = get_logger(__name__)
 
 
 def undo_record_changes(label: str, change_context: ChangeContext = None):
@@ -50,7 +53,11 @@ def undo_record_changes(label: str, change_context: ChangeContext = None):
                 if 'stack' in inspect.getfullargspec(fn).args:
                     kwargs['stack'] = stack # Optionally inject the stack into the wrapped function fn
                 result = fn(*args, **kwargs)
-            emit('update_undo_redo_stack', serialize_command_stack(stack))
+            try:
+                emit('update_undo_redo_stack', serialize_command_stack(stack))
+            except Exception:
+                # Notify only, don't fail the wrapped operation.
+                logger.exception("Failed to serialize/emit undo/redo stack")
             return result
         return wrapped_record_changes
     return internal_recording
