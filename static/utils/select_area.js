@@ -18,32 +18,33 @@
 class SelectAreas {
     constructor() {
         this.select_mode = false;
+        // Selected areas is a list of ESDL area IDs (so without "(1 of 3)"
         this.selected_areas = [];
     }
 
     /**
-     * Find the Leaflet layer for a selected area.
+     * Find the Leaflet layers for a selected area.
      * @param {string} area_id
      * @returns {L.Layer|undefined}
      */
-    find_selected_area(area_id) {
-        let area_leaflet_obj = find_layer_by_id(active_layer_id, 'area_layer', area_id);
-        if (Array.isArray(area_leaflet_obj)) {
-            area_leaflet_obj = area_leaflet_obj[1];
-        }
-        return area_leaflet_obj;
+    find_selected_areas(area_id) {
+        let areas_leaflet_obj = find_areas_by_id(active_layer_id, area_id);
+        return areas_leaflet_obj;
     }
 
     deselect_all_areas() {
         while (this.selected_areas.length) {
             let area_id = this.selected_areas[0];
-            let area_leaflet_obj = this.find_selected_area(area_id);
-            if (area_leaflet_obj === undefined) {
+            let areas_leaflet_obj = this.find_selected_areas(area_id);
+            if (areas_leaflet_obj === undefined) {
                 // make sure we don't end up in an endless loop...
                 this.selected_areas.splice(this.selected_areas.indexOf(area_id), 1);
             } else {
-                this.toggle_selected(area_leaflet_obj);
-                this.enable_context_menu_items(area_leaflet_obj);
+                // Call toggle with first element from list. toggle_selected will handle all layers
+                this.toggle_selected(areas_leaflet_obj[0]);
+                for (let area in areas_leaflet_obj) {
+                    this.enable_context_menu_items(area);
+                }
             }
         }
         this.select_mode = false;
@@ -70,8 +71,8 @@ class SelectAreas {
         return this.selected_areas;
     }
 
-    add_to_selected_list(area_leaflet_obj) {
-        this.selected_areas.push(area_leaflet_obj.id);
+    add_to_selected_list(areas_leaflet_obj, mapeditor_area_id) {
+        this.selected_areas.push(mapeditor_area_id);
         // filter out duplicates as the current approach might fail in some corner cases
         this.selected_areas = this.selected_areas.filter((v, i, a) => a.indexOf(v) === i);
         //this.disable_context_menu_items(area_leaflet_obj);
@@ -79,63 +80,84 @@ class SelectAreas {
         // only disable context menu when more than 1 is selected
         if (this.selected_areas.length == 2) {
             // when the second is selected also disable the context menus of the first selected area
-            let first_selected_area = this.find_selected_area(this.selected_areas[0]);
-            if (first_selected_area !== undefined) {
-                this.disable_context_menu_items(first_selected_area);
+            let first_selected_areas = this.find_selected_areas(this.selected_areas[0]);
+            if (first_selected_areas !== undefined) {
+                for (let i = 0; i < first_selected_areas.length; i++) {
+                    this.disable_context_menu_items(first_selected_areas[i]);
+                }
             }
             // disable context menus for second area
-            this.disable_context_menu_items(area_leaflet_obj);
+            for (let i = 0; i < areas_leaflet_obj.length; i++) {
+                this.disable_context_menu_items(areas_leaflet_obj[i]);
+            }
         } else if (this.selected_areas.length > 2) {
-            this.disable_context_menu_items(area_leaflet_obj);
+            for (let i = 0; i < areas_leaflet_obj.length; i++) {
+                this.disable_context_menu_items(areas_leaflet_obj[i]);
+            }
         }
 
         console.log(this.selected_areas);
     }
 
-    remove_from_selected_list(area_leaflet_obj) {
-        let index = this.selected_areas.indexOf(area_leaflet_obj.id)
+    remove_from_selected_list(areas_leaflet_obj, mapeditor_area_id) {
+        let index = this.selected_areas.indexOf(mapeditor_area_id)
         this.selected_areas.splice(index, 1);
-        if (this.selected_areas.length == 0)
+        if (this.selected_areas.length === 0)
             this.select_mode = false;
-        this.enable_context_menu_items(area_leaflet_obj);
+        for (let i=0; i<areas_leaflet_obj.length; i++) {
+            this.enable_context_menu_items(areas_leaflet_obj[i]);
+        }
     }
 
     toggle_selected(area_leaflet_obj) {
+        // Can be called with area ID "... (1 of 3)" or with only "..." and then it will still handle all layers
         // console.log("area was selected: ", area_leaflet_obj.name, area_leaflet_obj.selected, area_leaflet_obj);
-        if (!area_leaflet_obj.selected) {
+
+        let area_id_without_cntr = get_area_id_from_mapeditor_id(area_leaflet_obj.id);
+        let areas = find_areas_by_id(active_layer_id, area_id_without_cntr);
+
+        if (!areas[0].selected) {
             this.select_mode = true;
-            area_leaflet_obj.selected = true;
-            this.add_to_selected_list(area_leaflet_obj);
+            for (let i=0; i<areas.length; i++) {
+                areas[i].selected = true;
+            }
+            this.add_to_selected_list(areas, area_id_without_cntr);
         } else {
-            area_leaflet_obj.selected = false;
-            this.remove_from_selected_list(area_leaflet_obj);
+            for (let i=0; i<areas.length; i++) {
+                areas[i].selected = false;
+            }
+            this.remove_from_selected_list(areas, area_id_without_cntr);
         }
-        console.log("area is now selected: ", area_leaflet_obj.selected);
-        if (area_leaflet_obj.feature && area_leaflet_obj.setStyle) {
-            if (area_leaflet_obj.selected) {
-                // area_leaflet_obj.selectedStyle = {
-                //     weight: area_leaflet_obj.options.weight,
-                //     color: area_leaflet_obj.options.color,
-                //     dashArray: area_leaflet_obj.options.dashArray,
-                //     fillOpacity: area_leaflet_obj.options.fillOpacity
-                // };
-                setSelectedAreaStyle(area_leaflet_obj)
-                // saveStyle(area_leaflet_obj);
-            // } else if (area_leaflet_obj.selectedStyle) {
-            //     area_leaflet_obj.setStyle(area_leaflet_obj.selectedStyle);
-            //     delete area_leaflet_obj.selectedStyle;
-            // }
-            } else {
-                restoreStyle(area_leaflet_obj);
+        // console.log("area is now selected: ", area_leaflet_obj.selected);
+        for (let i=0; i<areas.length; i++) {
+            if (areas[i].feature && areas[i].setStyle) {
+                if (areas[i].selected) {
+                    // area_leaflet_obj.selectedStyle = {
+                    //     weight: area_leaflet_obj.options.weight,
+                    //     color: area_leaflet_obj.options.color,
+                    //     dashArray: area_leaflet_obj.options.dashArray,
+                    //     fillOpacity: area_leaflet_obj.options.fillOpacity
+                    // };
+                    setSelectedAreaStyle(areas[i])
+                    // saveStyle(area_leaflet_obj);
+                // } else if (area_leaflet_obj.selectedStyle) {
+                //     area_leaflet_obj.setStyle(area_leaflet_obj.selectedStyle);
+                //     delete area_leaflet_obj.selectedStyle;
+                // }
+                } else {
+                    restoreStyle(areas[i]);
+                }
             }
         }
+
+        let areas2 = find_areas_by_id(active_layer_id, area_id_without_cntr);
     }
 
     add_area_handler(area_leaflet_obj) {
         area_leaflet_obj.on('click', function(e) {
             // console.log("test")
             if (e.originalEvent.ctrlKey || e.originalEvent.metaKey) {
-                console.log("area ctrl-clicked!")
+                // console.log("area ctrl-clicked!")
                 select_areas.select_mode = true;
                 select_areas.toggle_selected(e.target);
 
@@ -163,7 +185,7 @@ class SelectAreas {
 
             // Support for services that can run on multiple selected areas
             let extra_options = option['extra_options'] || {};
-            let multiple_areas_support = extra_options['multiple_areas_support'] || false;
+            let multiple_areas_support = extra_options['allow_multiple'] || false;
             if (multiple_areas_support) {
                 option['disabled'] = false;
             }

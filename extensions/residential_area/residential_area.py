@@ -356,6 +356,7 @@ class ResidentialArea:
 
         except Exception as e:
             print('Error accessing EDR API: ' + str(e))
+            # TODO: Fix, this function is always/sometimes called outside of the request context.
             send_alert('Error accessing EDR API: ' + str(e))
             return None
 

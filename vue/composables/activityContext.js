@@ -81,7 +81,9 @@ function addContextMenuJsFunctions(activityContext) {
                 if (activityContext.clear_area_context_menu) {
                     saveAreaContextMenuState();
                 }
-                addAreaContextMenuItem(contextMenuJsFunction.title, contextMenuJsFunction.icon, window[contextMenuJsFunction.js_function]);
+                let allow_multiple = contextMenuJsFunction.allow_multiple || false;
+                addAreaContextMenuItem(contextMenuJsFunction.title, contextMenuJsFunction.icon, window[contextMenuJsFunction.js_function],
+                    allow_multiple);
                 enabledAreaContextMenus.value.push(contextMenuJsFunction.title);
             } else if (contextMenuJsFunction.location === "map") {
                 console.warn("Context menu js function with location 'map' is not yet supported")

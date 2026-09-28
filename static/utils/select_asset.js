@@ -168,7 +168,7 @@ class SelectAssets {
     add_asset_handler(asset_leaflet_obj) {
         asset_leaflet_obj.on('click', function(e) {
             if (e.originalEvent.ctrlKey || e.originalEvent.metaKey) {
-                console.log("Asset ctrl-clicked!")
+                // console.log("Asset ctrl-clicked!")
                 select_assets.select_mode = true;
                 select_assets.toggle_selected(e.target);
 
