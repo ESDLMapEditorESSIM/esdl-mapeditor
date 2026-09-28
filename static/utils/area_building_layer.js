@@ -25,6 +25,7 @@ var building_color_method = 'building type';
 
 var areaLegend;             // the leaflet control
 var buildingLegend;         // the leaflet control
+var show_area_legend = true;
 var show_building_legend = true;
 
 var areaLegendChoice;                // will be initialized with the first KPI
@@ -92,7 +93,7 @@ function flatten_area_list(layer_data) {
  * @param group_name name of the group of layers (can be null for area layers that are not part of a group)
  */
 function calculate_area_KPI_ranges_for_group(area_data, group_name) {
-    // distKPIsRange will be used as a reference in create_area_dist_KPIs_pie_chart()
+    // distKPIsRange will be used as a reference in create_dist_KPIs_pie_chart()
     // to compute relative pie chart radius for the area feature.
     const distKPIsRange = calcDistKPIsSumRangeFromFeatures(area_data);
     let dist_kpis_ranges = get_area_dist_kpis_ranges(active_layer_id);
@@ -401,13 +402,13 @@ function create_floorArea_legendClassesDiv() {
 }
 
 function create_distribution_legendClassesDiv(kpi) {
-    let result = '';
-    for (var i = 0; i < kpi["names"].length; i++) {
-        result +=
-            '<i style="background:' + pie_chart_color_list[i] + '"></i> ' +
-            kpi["names"][i] + ' <br />';
-    }
-    return result;
+    const legend = document.createElement('div');
+    kpi.names.forEach((name, index) => {
+        const swatch = document.createElement('i');
+        swatch.style.background = pie_chart_color_list[index % pie_chart_color_list.length];
+        legend.append(swatch, document.createTextNode(' ' + name + ' '), document.createElement('br'));
+    });
+    return legend.innerHTML;
 }
 
 function create_buildingYear_legendClassesDiv() {
@@ -451,9 +452,18 @@ function create_array_area_legendClassesDiv(kpi) {
 function create_range_building_legendClassesDiv(kpi) {
     let result = '';
     for (var i = 0; i < building_legend_ranges.length; i++) {
+        var separator = '+';
+        var endValue = '';
+        if (i !== building_legend_ranges.length - 1) {
+            separator = '&ndash;';
+            endValue = '<span class="building_legend_range_value">' + building_legend_ranges[i + 1] + '</span>';
+        }
         result +=
-            '<i style="background:' + get_building_range_colors(building_legend_ranges[i]) + '"></i> ' +
-            building_legend_ranges[i] + ((i != building_legend_ranges.length-1) ? ' <b>&ndash;</b> ' + building_legend_ranges[i + 1] + '<br>' : '+');
+            '<div class="building_legend_range">' +
+            '<i style="background:' + get_building_range_colors(building_legend_ranges[i]) + '"></i>' +
+            '<span class="building_legend_range_value">' + building_legend_ranges[i] + '</span>' +
+            '<b>' + separator + '</b>' + endValue +
+            '</div>';
     }
     return result;
 }
@@ -875,6 +885,21 @@ function calcPieChartRadius(kpiItemsSum, kpiSumMin, kpiSumMax, resizeFactor=1.0)
     return r;
 }
 
+/** Keep building pies at readable pixel sizes, independent of the map's initial zoom. */
+function calcBuildingPieChartRadius(kpiItemsSum, kpiSumMin, kpiSumMax, resizeFactor=1.0) {
+    const minRadius = 8;
+    const maxRadius = 20;
+    if (kpiItemsSum <= 0) {
+        return 0;
+    }
+    if (kpiSumMin === kpiSumMax) {
+        return maxRadius * resizeFactor;
+    }
+    const relativeSize = (Math.log1p(kpiItemsSum) - Math.log1p(kpiSumMin)) /
+        (Math.log1p(kpiSumMax) - Math.log1p(kpiSumMin));
+    return (minRadius + relativeSize * (maxRadius - minRadius)) * resizeFactor;
+}
+
 
 /**
  *
@@ -885,8 +910,11 @@ function calcPieChartRadius(kpiItemsSum, kpiSumMin, kpiSumMax, resizeFactor=1.0)
  *                                 If not given, the pie chart is created based on the area feature dist_KPIs property.
  * @param {Object} refDistKPIsRange KPIs range used as a reference to compute relative pie chart radius.
  * @param {number} [resizeFactor=1.0] Resize the pie chart radius when given. Default to 1.
+ * @param {string} pane Leaflet pane in which to draw the charts.
+ * @param {function} calcRadius Radius calculation for area or building charts.
  */
-function create_area_dist_KPIs_pie_chart(esdl_layer_id, ar, refAreaDistKPIs, refDistKPIsRange, resizeFactor=1.0) {
+function create_dist_KPIs_pie_chart(esdl_layer_id, ar, refAreaDistKPIs, refDistKPIsRange, resizeFactor=1.0,
+    pane='overlayPane', calcRadius=calcPieChartRadius) {
     if (ar.properties.dist_KPIs && Object.keys(ar.properties.dist_KPIs).length) {
         const distKPIs = Object.keys(ar.properties.dist_KPIs);
 
@@ -894,6 +922,9 @@ function create_area_dist_KPIs_pie_chart(esdl_layer_id, ar, refAreaDistKPIs, ref
         distKPIs.forEach((KPI) => {
             let distKPI = ar.properties.dist_KPIs[KPI];
             const unit = distKPI.unit;
+            if (!distKPI.location) {
+                return;
+            }
 
             let r = 0;
             const kpiItemsSum = calcDistKPIItemsSum(distKPI);
@@ -903,7 +934,7 @@ function create_area_dist_KPIs_pie_chart(esdl_layer_id, ar, refAreaDistKPIs, ref
                 ) {
                     const kpiSumMin = refDistKPIsRange[KPI].min;
                     const kpiSumMax = refDistKPIsRange[KPI].max;
-                    r = calcPieChartRadius(kpiItemsSum, kpiSumMin, kpiSumMax, resizeFactor);
+                    r = calcRadius(kpiItemsSum, kpiSumMin, kpiSumMax, resizeFactor);
                 } else {
                     console.error(`Error computing relative pie chart radius of KPI ${KPI} with kpiItemsSum: ${kpiItemsSum}`);
                 }
@@ -912,10 +943,11 @@ function create_area_dist_KPIs_pie_chart(esdl_layer_id, ar, refAreaDistKPIs, ref
             // Pie chart options.
             const pieChartOptions = {
                 radius: r,
+                pane: pane,
                 fillOpacity: 1.0,
                 opacity: 1.0,
-                data: {},
-                chartOptions: {},
+                data: Object.create(null),
+                chartOptions: Object.create(null),
                 weight: 1,
                 // Use the popup method instead of LegendIcon method.
                 usePopup: true,
@@ -940,18 +972,22 @@ function create_area_dist_KPIs_pie_chart(esdl_layer_id, ar, refAreaDistKPIs, ref
 
             chartDataItemNames.forEach((itemName, idx) => {
                 const distKPIItem = distKPI.value.find((item) => item.name === itemName);
-                // If no matching KPI item is found, 0 will be applied as data item value
-                const distKPIItemName = distKPIItem ? distKPIItem.name : itemName;
-                const distKPIItemValue = distKPIItem ? distKPIItem.value : 0;
-            
-                pieChartOptions.data[distKPIItemName] = distKPIItemValue;
-                pieChartOptions.chartOptions[distKPIItemName] = {
-                    fillColor: pie_chart_color_list[idx],
+                // Use zero for labels that are only present in other features.
+                let value = 0;
+                if (distKPIItem) {
+                    value = distKPIItem.value;
+                }
+                // Leaflet DVF inserts the data key and display text into popup HTML.
+                const label = _.escape(itemName);
+                const unitLabel = _.escape(unit);
+                pieChartOptions.data[label] = value;
+                pieChartOptions.chartOptions[label] = {
+                    fillColor: pie_chart_color_list[idx % pie_chart_color_list.length],
                     minValue: 0,
                     maxValue: 10,
                     maxHeight: 10,
                     displayText: function (value) {
-                        return `${value.toFixed(2)} ${unit}`;
+                        return `${value.toFixed(2)} ${unitLabel}`;
                     }
                 };
                 pieChartOptions.rotation = -90;
@@ -978,9 +1014,10 @@ function create_area_dist_KPIs_pie_chart(esdl_layer_id, ar, refAreaDistKPIs, ref
 /**
  * Resizes the KPIs (Pie charts) of all loaded energy systems
  **/
-function resize_all_area_pie_charts() {
-    for (es_id in esdl_list) {
+function resize_all_pie_charts() {
+    for (const es_id in esdl_list) {
         resize_area_pie_charts(es_id);
+        resize_building_pie_charts(es_id);
     }
 }
 
@@ -1021,7 +1058,7 @@ function resize_area_pie_charts(esdl_layer_id) {
                         }
                     }
 
-                    create_area_dist_KPIs_pie_chart(esdl_layer_id, feature, area_KPIs, distKPIsRange, areaMarkerResizeSliderVal);
+                    create_dist_KPIs_pie_chart(esdl_layer_id, feature, area_KPIs, distKPIsRange, areaMarkerResizeSliderVal);
 
                     if (area_legend_choice in feature.properties.dist_KPIs) {
                         let kpi = feature.properties.dist_KPIs[area_legend_choice];
@@ -1100,7 +1137,7 @@ function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
             if (feature.properties.dist_KPIs && Object.keys(feature.properties.dist_KPIs).length != 0) {
                 feature.properties.get_area_color = get_area_range_colors;
 
-                create_area_dist_KPIs_pie_chart(active_layer_id, feature, area_KPIs, distKPIsRange);
+                create_dist_KPIs_pie_chart(active_layer_id, feature, area_KPIs, distKPIsRange);
 
                 // Only show first DistributionKPI if it's also the first KPI in the legend list.
                 let first_kpi_key = Object.keys(area_KPIs)[0];
@@ -1227,8 +1264,10 @@ function bring_KPI_layer_to_front(es_id) {
 // ------------------------------------------------------------------------------------------------------------
 //  Add geojson data contained in building_data to the building map layer
 // ------------------------------------------------------------------------------------------------------------
-function set_building_contextmenu(layer, id) {
+function set_building_contextmenu(layer, id, es_id) {
     layer.id = id;
+    layer.esid = es_id;
+    layer.mapeditor_layer_type = 'building';
     if (!layer.name && layer.feature && layer.feature.properties && layer.feature.properties.name) {
         layer.name = layer.feature.properties.name;
     }
@@ -1264,17 +1303,37 @@ function set_building_contextmenu(layer, id) {
     });
 
     select_assets.add_asset_handler(layer);
+    window.PubSubManager.broadcast('ADD_BUILDING_TO_LAYER', {
+        es_id: es_id,
+        id: id,
+        feature: layer.feature,
+        layer: layer
+    });
 }
 
 /**
  * Add layer of type building to the map.
  * 
+ * @param {*} es_id
  * @param {*} building_data 
  */
-function add_building_layer(building_data) {
+function add_building_layer(es_id, building_data) {
     geojson_building_layer = L.geoJson(building_data, {
         style: style_building,
+        pointToLayer: function(feature, latlng) {
+            // Point buildings keep their existing icon; this layer owns only their KPIs.
+            return L.circleMarker(latlng, {radius: 0, interactive: false});
+        },
         onEachFeature: function(feature, layer) {
+            layer.on('add', function() {
+                set_building_pie_chart_visibility(es_id, feature, true);
+            });
+            layer.on('remove', function() {
+                set_building_pie_chart_visibility(es_id, feature, false);
+            });
+            if (feature.geometry.type === 'Point') {
+                return;
+            }
             if (feature.properties) {
                 let text = "<table>";
                 // Render the KPI's for a popup. These were set in the preprocess_layer_data function.
@@ -1298,12 +1357,56 @@ function add_building_layer(building_data) {
                 layer.on('mouseout', resetHighlightBuilding);
             }
             if (feature.properties && feature.properties.id) {
-                layer.mapeditor_layer_type = 'building';
-                window.PubSubManager.broadcast('ADD_BUILDING_TO_LAYER', { id: feature.properties.id, feature: feature, layer: layer });
-                set_building_contextmenu(layer, feature.properties.id);
+                set_building_contextmenu(layer, feature.properties.id, es_id);
             }
         }
-    }).addTo(get_layers(active_layer_id, 'bld_layer'));
+    }).addTo(get_layers(es_id, 'bld_layer'));
+}
+
+/** Show only the selected building distribution, without changing area pies. */
+function set_building_pie_chart_visibility(es_id, feature, visible) {
+    const choice = get_building_legend_choice(es_id);
+    for (const [name, kpi] of Object.entries(feature.properties.dist_KPIs || {})) {
+        if (!kpi.pieChartMarker) {
+            continue;
+        }
+        if (visible && name === choice) {
+            if (!kpi.pieChartMarkerVisible) {
+                kpi.pieChartMarker.addTo(get_layers(es_id, 'kpi_layer'));
+                kpi.pieChartMarkerVisible = true;
+            }
+        } else if (kpi.pieChartMarkerVisible) {
+            kpi.pieChartMarker.removeFrom(get_layers(es_id, 'kpi_layer'));
+            kpi.pieChartMarkerVisible = false;
+        }
+    }
+}
+
+/** Rebuild building pies after loading or resizing, including non-active ESDLs. */
+function resize_building_pie_charts(es_id) {
+    if (!get_layers(es_id, 'kpi_layer')) {
+        return; // The building contents editor has no map KPI layer.
+    }
+    const layers = [];
+    get_layers(es_id, 'bld_layer').eachLayer(function(group) {
+        group.eachLayer(function(layer) {
+            layers.push(layer);
+        });
+    });
+    const ranges = calcDistKPIsSumRangeFromFeatures(layers.map(layer => layer.feature));
+    const kpis = get_building_kpi_list(es_id);
+    if (Object.keys(ranges).length === 0) {
+        return;
+    }
+    if (!map.getPane('building-kpi-pane')) {
+        // Keep pies above building icons, but below tooltips and popups.
+        map.createPane('building-kpi-pane').style.zIndex = 625;
+    }
+    for (const layer of layers) {
+        create_dist_KPIs_pie_chart(es_id, layer.feature, kpis, ranges,
+            esdl_list[es_id].building_marker_resize, 'building-kpi-pane', calcBuildingPieChartRadius);
+        set_building_pie_chart_visibility(es_id, layer.feature, !!layer._map);
+    }
 }
 
 // Ewoud's attempts to get context menus working with GeoJSON layers:
@@ -1314,6 +1417,10 @@ function add_building_layer(building_data) {
 // ------------------------------------------------------------------------------------------------------------
 function create_building_legendClassesDiv(legendChoice) {
     let kpi = building_KPIs[legendChoice];
+    if (kpi.type === 'distributionKPI') {
+        get_building_color = get_building_default_color;
+        return create_distribution_legendClassesDiv(kpi);
+    }
     if (legendChoice in stdKPIs) {
         color_grades = stdKPIs[legendChoice]["color_grades"];
         get_building_color = stdKPIs[legendChoice]["get_colors"];
@@ -1327,12 +1434,12 @@ function selectBuildingKPI(kpi_name) {
     buildingLegendChoice = kpi_name;
     set_building_legend_choice(active_layer_id, buildingLegendChoice);
 
-    buildingLegendClassesDiv.innerHTML = create_building_legendClassesDiv(buildingLegendChoice);
+    update_building_legend();
 
-    geojson_building_layer.eachLayer(function (layer) {
-        layer.setStyle({
-            fillColor: get_building_color(layer.feature.properties.KPIs[buildingLegendChoice]),
-            color: get_building_color(layer.feature.properties.KPIs[buildingLegendChoice])
+    get_layers(active_layer_id, 'bld_layer').eachLayer(function(group) {
+        group.eachLayer(function(layer) {
+            layer.setStyle(style_building(layer.feature));
+            set_building_pie_chart_visibility(active_layer_id, layer.feature, !!layer._map);
         });
     });
 }
@@ -1524,26 +1631,80 @@ function update_area_layer(esdl_layer_id, area_kpi_list) {
 // ------------------------------------------------------------------------------------------------------------
 //  Generate the complete Legend DIV
 // ------------------------------------------------------------------------------------------------------------
+function humanizeKPIName(kpiName) {
+    var unitLabels = {
+        eur: 'EUR',
+        eur_jaar: 'EUR/jaar',
+        gj: 'GJ',
+        kw: 'kW',
+        kwh: 'kWh',
+        m2: 'm²',
+        m3: 'm³',
+        mw: 'MW',
+        mwh: 'MWh',
+        jaar: 'jaar'
+    };
+    var unitMatch = kpiName.match(/_(eur_jaar|eur|gj|kwh|kw|mwh|mw|m2|m3|jaar)$/i);
+    var nameWithoutUnit = kpiName;
+    var unit;
+    if (unitMatch) {
+        nameWithoutUnit = kpiName.slice(0, -unitMatch[0].length);
+        unit = unitLabels[unitMatch[1].toLowerCase()];
+    }
+
+    var name = _.capitalize(_.startCase(nameWithoutUnit).toLowerCase());
+    name = name.replace(/\b(\d+) c\b/g, '$1 °C');
+    if (unit) {
+        name += ' (' + unit + ')';
+    }
+    return name;
+}
+
 function createBuildingLegendDiv(choice) {
-    var legendDiv = L.DomUtil.create('div', 'info legend');
+    var legendDiv = L.DomUtil.create('div', 'info legend building_legend');
     legendDiv.oncontextmenu = L.DomEvent.stopPropagation;
-    var legendTitleDiv = L.DomUtil.create('div', 'legend_title', legendDiv);
-    legendTitleDiv.innerHTML += 'Building Legend';
+    L.DomEvent.disableScrollPropagation(legendDiv);
+    var legendTitleDiv = L.DomUtil.create('div', 'legend_title map_control_title', legendDiv);
+    legendTitleDiv.innerHTML = 'Building Legend';
+    var legendCloseButton = L.DomUtil.create('button', 'map_control_close', legendTitleDiv);
+    legendCloseButton.type = 'button';
+    legendCloseButton.innerHTML = '&times;';
+    legendCloseButton.setAttribute('aria-label', 'Hide building legend');
+    L.DomEvent.on(legendCloseButton, 'click', toggle_building_legend_visibility);
 
     var selectorDiv = L.DomUtil.create('div', 'legend_select', legendDiv);
-    var selectText = '<select style="z-index:1000;" onchange="selectBuildingKPI(this.value);">';
-    for (bkpi in building_KPIs) {
-       if (bkpi === choice) {
-           selectText += '<option value="'+bkpi+'" selected>'+bkpi+'</option>';
-       } else {
-           selectText += '<option value="'+bkpi+'">'+bkpi+'</option>';
-       }
+    var kpiSelect = L.DomUtil.create('select', 'building_legend_select', selectorDiv);
+    kpiSelect.style.zIndex = 1000;
+    L.DomEvent.on(kpiSelect, 'change', function() {
+        selectBuildingKPI(this.value);
+    });
+    for (var bkpi in building_KPIs) {
+        var option = L.DomUtil.create('option', '', kpiSelect);
+        option.value = bkpi;
+        option.textContent = humanizeKPIName(bkpi);
+        option.title = bkpi;
+        option.selected = bkpi === choice;
     }
-    selectText += '</select>';
-    selectorDiv.innerHTML = selectText;
 
-    buildingLegendClassesDiv = L.DomUtil.create('div', 'info legend', legendDiv);
+    buildingLegendClassesDiv = L.DomUtil.create('div', 'info legend building_legend_classes', legendDiv);
     buildingLegendClassesDiv.innerHTML = create_building_legendClassesDiv(choice);
+    if (building_KPIs[choice].type === 'distributionKPI') {
+        const esId = active_layer_id;
+        const resizeDiv = L.DomUtil.create('div', 'area-marker-resize-container', legendDiv);
+        const label = L.DomUtil.create('label', '', resizeDiv);
+        label.textContent = 'Adjust pie chart size';
+        const slider = L.DomUtil.create('input', 'area-marker-resize-slider', label);
+        slider.type = 'range';
+        slider.min = 0.25;
+        slider.max = 3.0;
+        slider.step = 0.05;
+        slider.value = esdl_list[esId].building_marker_resize;
+        L.DomEvent.disableClickPropagation(slider);
+        L.DomEvent.on(slider, 'input', function(event) {
+            esdl_list[esId].building_marker_resize = Number(event.target.value);
+            resize_building_pie_charts(esId);
+        });
+    }
     return legendDiv;
 }
 
@@ -1551,8 +1712,13 @@ function createAreaLegendDiv(choice) {
     var legendDiv = L.DomUtil.create('div', 'info legend');
     legendDiv.id = areaLegendDivId;
     legendDiv.oncontextmenu = L.DomEvent.stopPropagation;
-    var legendTitleDiv = L.DomUtil.create('div', 'legend_title', legendDiv);
-    legendTitleDiv.innerHTML += 'Area Legend';
+    var legendTitleDiv = L.DomUtil.create('div', 'legend_title map_control_title', legendDiv);
+    legendTitleDiv.innerHTML = 'Area Legend';
+    var legendCloseButton = L.DomUtil.create('button', 'map_control_close', legendTitleDiv);
+    legendCloseButton.type = 'button';
+    legendCloseButton.innerHTML = '&times;';
+    legendCloseButton.setAttribute('aria-label', 'Hide area legend');
+    L.DomEvent.on(legendCloseButton, 'click', toggle_area_legend_visibility);
 
     var selectorDiv = L.DomUtil.create('div', 'legend_select', legendDiv);
     var selectText = '<select id="areaLegendSelect" style="z-index:1000;" onchange="selectAreaKPI(this.value);">';
@@ -1633,6 +1799,18 @@ function removeAreaLegend() {
     }
 }
 
+function toggle_area_legend_visibility() {
+    if (show_area_legend) {
+        $('#menu_option_area_legend').removeClass("ui-icon-check ui-icon");
+        show_area_legend = false;
+        removeAreaLegend();
+    } else {
+        $('#menu_option_area_legend').addClass("ui-icon-check ui-icon");
+        show_area_legend = true;
+        update_area_legend();
+    }
+}
+
 function add_area_geojson_layer_with_legend(geojson_area_data) {
     const kpi_list = preprocess_layer_data("area", geojson_area_data, {});
     area_KPIs = kpi_list;
@@ -1652,7 +1830,7 @@ function update_area_legend() {
         }
 
         removeAreaLegend();
-        if (!jQuery.isEmptyObject(area_KPIs)) {
+        if (!jQuery.isEmptyObject(area_KPIs) && show_area_legend) {
             areaLegend = L.control({position: 'bottomright'});
             areaLegend.onAdd = function (map) {
             return createAreaLegendDiv(area_legend_choice);
@@ -1665,25 +1843,38 @@ function update_area_legend() {
 /**
  * Add all buildings to the map with the KPI legend.
  * 
+ * @param {*} es_id
  * @param {*} geojson_building_data 
  */
-function add_building_geojson_layer_with_legend(geojson_building_data) {
+function add_building_geojson_layer_with_legend(es_id, geojson_building_data) {
     //console.log(geojson_building_data);
     building_KPIs = {};
     preprocess_layer_data("building", geojson_building_data, building_KPIs);
-    set_building_kpi_list(active_layer_id, building_KPIs);
-    update_building_legend();
-    add_building_layer(geojson_building_data);
+    set_building_kpi_list(es_id, building_KPIs);
+    buildingLegendChoice = get_building_legend_choice(es_id);
+    if (!(buildingLegendChoice in building_KPIs)) {
+        buildingLegendChoice = Object.keys(building_KPIs)[0];
+        set_building_legend_choice(es_id, buildingLegendChoice);
+    }
+    if (buildingLegendChoice !== undefined) {
+        create_building_legendClassesDiv(buildingLegendChoice);
+    }
+    if (es_id === active_layer_id) {
+        update_building_legend();
+    }
+    add_building_layer(es_id, geojson_building_data);
+    resize_building_pie_charts(es_id);
 }
 
 function update_building_legend() {
     building_KPIs = get_building_kpi_list(active_layer_id);
     if (building_KPIs) {
         let building_legend_choice = get_building_legend_choice(active_layer_id);
-        if (building_legend_choice == null) {
+        if (!(building_legend_choice in building_KPIs)) {
             building_legend_choice = Object.keys(building_KPIs)[0];  // make the 1st KPI the selected one
             set_building_legend_choice(active_layer_id, building_legend_choice);
         }
+        buildingLegendChoice = building_legend_choice;
 
         removeBuildingLegend();
         if (!jQuery.isEmptyObject(building_KPIs)) {
@@ -1760,7 +1951,7 @@ function add_geojson_listener(socket, map) {
         // This code was commented out with the above command, but is required for the BAG service
         if (layer == 'bld_layer') {
             geojson_building_data = message['geojson']; // store for redraw based on other property
-            add_building_geojson_layer_with_legend(geojson_building_data);
+            add_building_geojson_layer_with_legend(message['es_id'] || active_layer_id, geojson_building_data);
         }
 
         if (layer == 'pot_layer') {

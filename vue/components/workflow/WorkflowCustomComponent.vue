@@ -19,6 +19,7 @@ import {default as DemoCustomComponent} from './custom/DemoCustomComponent.vue';
 import {default as WorkflowFlexScanInspectPhase1} from './custom/pdtoolsuite/flexscan/WorkflowFlexScanInspectPhase1.vue';
 import {default as WorkflowFlexScanImportEPS} from './custom/pdtoolsuite/flexscan/WorkflowFlexScanImportEPS.vue';
 import {default as PDToolsuiteInitEnergyHub} from "@/components/workflow/custom/pdtoolsuite/PDToolsuiteInitEnergyHub.vue";
+import {default as PDToolsuiteHeatNetworkPlan} from "@/components/workflow/custom/pdtoolsuite/PDToolsuiteHeatNetworkPlan.vue";
 import {default as CostInformationGenerateTemplate} from './custom/pdtoolsuite/cost-information/CostInformationGenerateTemplate.vue';
 import {default as CostInformationUploadTemplate} from './custom/pdtoolsuite/cost-information/CostInformationUploadTemplate.vue';
 
@@ -29,6 +30,7 @@ const components = {
   "eps-select-measures": EpsSelectMeasures,
   "eps-custom-measures": EpsCustomMeasures,
   "pdtoolsuite-init-energy-hub": PDToolsuiteInitEnergyHub,
+  "pdtoolsuite-heat-network-plan": PDToolsuiteHeatNetworkPlan,
   "pdtoolsuite-generate-profile-template": PDToolsuiteGenerateProfileTemplate,
   "pdtoolsuite-upload-profiles": PDToolsuiteUploadProfiles,
   "flexscan-inspect-phase1": WorkflowFlexScanInspectPhase1,

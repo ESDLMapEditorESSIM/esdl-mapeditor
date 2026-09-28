@@ -58,6 +58,8 @@ export const displayNotification = (
     description: description,
     placement: placement,
     duration: duration,
+    // Keep line breaks in multi-line messages, e.g. errors relayed from a service.
+    style: { whiteSpace: "pre-line" },
   });
 };
 

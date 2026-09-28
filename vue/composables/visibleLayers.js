@@ -24,6 +24,7 @@ import {useSocketIO} from "./socketio";
 import { setLeafletFeatureStyle } from "../utils/layerStyle";
 import {useVisibleLayerState} from "./visibleLayerState";
 import {useServiceLayerFeaturePopup} from "./serviceLayerFeaturePopup";
+import {MessageNames, PubSubManager} from "@/bridge";
 
 const {socket} = useSocketIO();
 const {hideEsdlLayerFromMap, showEsdlLayerOnMap} = useEsdlLayerMapActions();
@@ -463,6 +464,11 @@ export function useVisibleLayers() {
 
         layerToHide.visible = false;
         layerVisibilityCache.value[layerId] = false;
+        PubSubManager.broadcast(MessageNames.VISIBLE_LAYER_VISIBILITY_CHANGED, {
+            es_id: layerToHide.es_id,
+            layer_id: layerId,
+            visible: false,
+        });
         if (updateMap) {
             updateVisibleLayersOrderOnMap();
         }
@@ -513,6 +519,11 @@ export function useVisibleLayers() {
         }
         layerToShow.visible = true;
         layerVisibilityCache.value[layerId] = true;
+        PubSubManager.broadcast(MessageNames.VISIBLE_LAYER_VISIBILITY_CHANGED, {
+            es_id: layerToShow.es_id,
+            layer_id: layerId,
+            visible: true,
+        });
         if (updateMap) {
             updateVisibleLayersOrderOnMap();
         }

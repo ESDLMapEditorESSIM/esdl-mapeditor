@@ -119,6 +119,38 @@ def get_notes_list(es):
     return notes_list
 
 
+def get_plan_list(es: esdl.EnergySystem) -> list[dict]:
+    """
+    Return the Plans and their referenced elements for an EnergySystem.
+    """
+    plans = []
+    for group in es.group:
+        group_info = {
+            'id': group.id,
+            'name': group.name,
+        }
+        for member in group.member:
+            if not isinstance(member, esdl.Plan):
+                continue
+
+            elements = []
+            for element in member.element:
+                elements.append({
+                    'id': element.id,
+                    'name': element.name,
+                    'type': element.eClass.name,
+                })
+
+            plans.append({
+                'id': member.id,
+                'name': member.name,
+                'description': member.description,
+                'group': group_info,
+                'elements': elements,
+            })
+    return plans
+
+
 def add_sector(es, sector_name, sector_code, sector_descr):
     esi = es.energySystemInformation
     if not esi:

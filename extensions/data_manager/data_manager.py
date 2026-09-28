@@ -20,6 +20,7 @@ from enum import Enum
 from typing import Any, TypedDict, List, Dict, Optional, Sequence, Iterable, Tuple
 
 import pandas as pd
+from click import get_current_context
 from flask import Flask
 from flask_socketio import SocketIO
 from pandas import DataFrame
@@ -89,6 +90,14 @@ def physical_q_to_str(qau: esdl.QuantityAndUnitType):
         return f'{name[0]}{name.lower()[1:]}'
     else:
         return "Unknown"
+
+
+def kpi_variable_name(qau: esdl.QuantityAndUnitType) -> str:
+    """Keep KPIs without quantity metadata in a shared variable."""
+    if qau.physicalQuantity == esdl.PhysicalQuantityEnum.UNDEFINED:
+        return 'KPI []'
+    return f'KPI [{physical_q_to_str(qau)} ({unit_to_string(qau)})]'
+
 
 def filter_none(input_list: Sequence) -> List:
     return [x for x in input_list if x is not None]
@@ -423,7 +432,10 @@ class DataManager:
         # init database
         with self.flask_app.app_context():
             db_driver_type = get_db_driver_type()
-            if db_driver_type == DriverType.SQLITE:
+            if get_current_context(silent=True) is not None:
+                # CLI startup shouldn't reset existing DataManager data.
+                create_db_tables()
+            elif db_driver_type == DriverType.SQLITE:
                 drop_db(db_url=self.flask_app.config["SQLALCHEMY_DATABASE_URI"],
                         app_instance_path=self.flask_app.instance_path)
                 create_db(self.flask_app.config["SQLALCHEMY_DATABASE_URI"])
@@ -579,6 +591,13 @@ class DataManager:
         data_list: List[BaseModel] = []
         variables: Dict[str, Variable] = {}
 
+        plan_by_asset_id = {}
+        for group in es.group:
+            for member in group.member:
+                if isinstance(member, esdl.Plan):
+                    for element in member.element:
+                        plan_by_asset_id[element.id] = member.name or member.id
+
         year = datetime.now().year
         first_instance: esdl.Instance = es.instance[0]
         if first_instance.date:
@@ -621,7 +640,7 @@ class DataManager:
                 update_kpi_metadata(eobj, d)
                 qau = check_qau(eobj.quantityAndUnit)
                 d.value, qau = convert_to_target_energy_unit(eobj.value, qau, target_energy_qau)
-                variable_name = f'KPI - {physical_q_to_str(qau)} [{unit_to_string(qau)}]'
+                variable_name = kpi_variable_name(qau)
                 d.labels["KPI name"] = eobj.name
 
             elif isinstance(eobj, esdl.IntKPI):
@@ -630,7 +649,7 @@ class DataManager:
                 update_kpi_metadata(eobj, d)
                 qau = check_qau(eobj.quantityAndUnit)
                 d.value, qau = convert_to_target_energy_unit(float(eobj.value), qau, target_energy_qau)
-                variable_name = f'KPI - {physical_q_to_str(qau)} [{unit_to_string(qau)}]'
+                variable_name = kpi_variable_name(qau)
                 d.labels["KPI name"] = eobj.name
             elif isinstance(eobj, esdl.StringItem):
                 # part of DistributionKPI
@@ -727,6 +746,16 @@ class DataManager:
                 #variable_name = eobj.name if hasattr(eobj, 'name') else None
                 #logger.debug(f"Ignoring {eobj.eClass.name}")
                 continue
+
+            # Use the nearest owning asset with a Plan, including enclosing buildings.
+            d.labels = d.labels if d.labels is not None else {}
+            d.labels['Plan'] = 'none'
+            asset = eobj
+            while asset is not None and not isinstance(asset, esdl.Area):
+                if isinstance(asset, esdl.Asset) and asset.id in plan_by_asset_id:
+                    d.labels['Plan'] = plan_by_asset_id[asset.id]
+                    break
+                asset = asset.eContainer()
 
             # Process asset ownership label
             if isinstance(eobj, esdl.Asset):
@@ -1267,6 +1296,7 @@ class DataManager:
                 query = query.where(preprocess_column(col).in_(values))
 
         df = pd.read_sql_query(query.statement, session.get_bind())
+        df = df.replace({float('nan'): None})
 
         if chart_type == ChartType.TABLE:
             traces = self.process_table_trace(df)

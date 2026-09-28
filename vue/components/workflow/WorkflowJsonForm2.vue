@@ -134,8 +134,9 @@ const validateEvent = (event) => {
     return;
   }
 
-  let varValue = event.target.value;
-  if (["number", "integer"].includes(schema["properties"][varName]["type"]) && varValue !== "") {
+  const propertyType = schema["properties"][varName]["type"];
+  let varValue = propertyType === "boolean" ? event.target.checked : event.target.value;
+  if (["number", "integer"].includes(propertyType) && varValue !== "") {
     varValue = Number(varValue);
   }
 
@@ -162,6 +163,7 @@ const validateJsonForm = (data) => {
   const validate = ajv.compile(schema);
   const isValid = validate(data) || Object.keys(schema).length === 0;
   setWorkflowStepInputValid(stepParams.value.id, isValid);
+  console.log("jsonforms Validation result:", {isValid, errors: validate.errors});
   return {isValid, errors: validate.errors};
 };
 

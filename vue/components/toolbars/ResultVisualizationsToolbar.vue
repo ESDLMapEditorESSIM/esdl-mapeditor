@@ -3,16 +3,12 @@
     v-if="activeEsdlVisualizationAvailable()"
     class="my-control leaflet-result-visualizations-toolbar"
   >
-    <a-row type="flex" justify="space-between">
-      <a-col>
-        <span><b>Visualization Options</b></span>
-      </a-col>
-      <a-col :span="3">
-        <a-button size="small" type="ghost" @click="handleDismiss">
-          <close-outlined />
-        </a-button>
-      </a-col>
-    </a-row>
+    <div class="map_control_title">
+      <span><b>Visualization Options</b></span>
+      <button type="button" class="map_control_close" aria-label="Hide visualization options" @click="handleDismiss">
+        &times;
+      </button>
+    </div>
     <a-row v-if="activeEsdlParams.message!=null">
       <a-space direction="vertical" align="center">
         <span style="width: 250px; display: inline-block; word-break: break-all;">{{ activeEsdlParams.message }}</span>
@@ -58,7 +54,6 @@
 
 <script setup>
 import {ref, onMounted} from 'vue';
-import {CloseOutlined} from '@ant-design/icons-vue';
 import {MessageNames, PubSubManager} from "@/bridge";
 import {useEsdlLayers} from "@/composables/esdlLayers";
 

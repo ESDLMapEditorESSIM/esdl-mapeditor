@@ -23,7 +23,7 @@
     </a-row>
     <a-row class="analytics-panel-plot-container no-drag">
       <AnalyticsPlot
-        :trace="props.options?.currentTrace || []"
+        :trace="formattedTrace"
         :layout="props.options?.currentLayout || {}"
         @on-relayout="onAnalyticsPlotRelayout"
       />
@@ -32,9 +32,10 @@
 </template>
     
 <script setup>
-import { defineProps } from "vue";
+import { computed, defineProps } from "vue";
 import AnalyticsPlot from "../plot/AnalyticsPlot.vue";
 import { CloseOutlined, FormOutlined } from "@ant-design/icons-vue";
+import { formatNumber } from "@/utils/utils";
 
 const props = defineProps({
 	options: {
@@ -44,6 +45,16 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['onRemove', 'onEdit']);
+
+const formattedTrace = computed(() =>
+  (props.options?.currentTrace || []).map((trace) => ({
+    ...trace,
+    text:
+      props.options?.showBarNumbers && trace.type === "bar"
+        ? trace.y.map(formatNumber)
+        : trace.text,
+  })),
+);
 
 // Skip plot relayout event handling in AnalyticsPanel.
 const onAnalyticsPlotRelayout = () => {

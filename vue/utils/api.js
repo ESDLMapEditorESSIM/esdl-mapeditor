@@ -86,18 +86,39 @@ export function handleErrorResponse(e) {
         if (answer) {
             window.location.reload();
         }
+    } else if (e.message) {
+        genericErrorHandler(e.message);
+    } else if (e.status) {
+        // The backend may explain the failure (e.g. an unreachable service) in the response body.
+        extractResponseMessage(e).then((message) => {
+            genericErrorHandler(
+                message || "Invalid response received - status " + e.status + " " + e.statusText
+            );
+        });
     } else {
-        let message;
-        if (e.message) {
-            message = e.message;
-        } else {
-            if (e.status) {
-                message = "Invalid response received - status " + e.status + " " + e.statusText;
-            } else {
-                message = "An unknown error occurred while retrieving data. If the problem persists, please contact us."
-            }
-        }
-        genericErrorHandler(message);
+        genericErrorHandler(
+            "An unknown error occurred while retrieving data. If the problem persists, please contact us."
+        );
+    }
+}
+
+
+/**
+ * Try to read an error message from a Response body.
+ *
+ * @param response (Response) The failed response.
+ * @returns {Promise<string|null>} The message, or null if none could be determined.
+ */
+async function extractResponseMessage(response) {
+    if (typeof response.json !== "function") {
+        return null;
+    }
+    try {
+        const body = await response.json();
+        // 'detail' is what FastAPI-based services put their HTTPException message in.
+        return body?.detail || body?.message || body?.error || null;
+    } catch (err) {
+        return null;
     }
 }
 

@@ -174,81 +174,81 @@ class WorkflowStep:
 
             # update mongodb
             updated_model_run = self.models_storage.update_model_run(self.sequence_data.run_id, updated_run_values)
-            updated_model_run["is_owner"] = updated_model_run["user"] == self.sequence_data.user_email
-
-            if updated_model_run:
-                # emit to frontend
-                step_progress.status = step_status
-                step_progress.progress_fraction = updated_model_run[PROGRESS_FRACTION]
-                connected_user_client_ids = get_all_session_ids_for_user(self.sequence_data.user_email)
-                if len(connected_user_client_ids) > 0:
-                    for client_id in connected_user_client_ids:
-                        self.socketio.emit(
-                            "wfe_sequence_progress",
-                            {
-                                "wfe_sequence_id": self.sequence_data.id,
-                                "run_name": self.sequence_data.run_name,
-                                "steps_progress": [pr.as_dict() for pr in self.sequence_data.steps_progress],
-                            },
-                            namespace="/esdl",
-                            room=client_id,
-                        )
-                        self.socketio.emit(
-                            "wfe_update_model_run",
-                            updated_model_run,
-                            namespace="/esdl",
-                            room=client_id,
-                        )
-
-                # check if workflow step finished
-                if STATUS in updated_run_values and updated_run_values[STATUS] in [
-                    RunStatus.CANCELLED.value,
-                    RunStatus.ERROR.value,
-                ]:  # on error abort workflow step
-                    logger.warning(
-                        f"Workflow engine sequence for user '{self.sequence_data.user_email}' terminated"
-                        f" with status '{updated_run_values[STATUS]}': sequence '{self.sequence_data.run_id}'."
-                    )
-                    return False
-                elif len(queries_finished) == len(config["query_list"]):  # all queries finished
-                    if STATUS in updated_run_values and updated_run_values[STATUS] in [
-                        RunStatus.SUCCEEDED.value,
-                        RunStatus.SUCC_PEND.value,
-                        RunStatus.SUCC_WARN.value,
-                        RunStatus.NEED_INPUT.value,
-                    ]:
-                        logger.info(
-                            f"Workflow engine sequence for user '{self.sequence_data.user_email}' finished"
-                            f" with status '{updated_run_values[STATUS]}': sequence '{self.sequence_data.run_id}'."
-                        )
-                        return True
-                    elif STATUS not in updated_run_values:
-                        logger.warning(
-                            f"Workflow engine sequence for user '{self.sequence_data.user_email}' finished"
-                            f" without status: sequence '{self.sequence_data.run_id}' aborted."
-                        )
-                        return False
-                    else:
-                        logger.warning(
-                            f"Workflow engine sequence for user '{self.sequence_data.user_email}' finished with status"
-                            f" '{updated_run_values[STATUS]}': sequence '{self.sequence_data.run_id}' aborted."
-                        )
-                        return False
-                elif nr_of_retries * retry_interval_seconds > maximum_wait_seconds:
-                    logger.error(
-                        f"Workflow engine sequence for user '{self.sequence_data.user_email}' terminated: maximum wait"
-                        f" time '{maximum_wait_seconds}' exceeded for step '{self.step_config}'."
-                    )
-                    return False
-                else:
-                    nr_of_retries += 1
-                    time.sleep(retry_interval_seconds)
-            else:
-                logger.error(
+            if not updated_model_run:
+                logger.info(
                     f"Workflow engine sequence for user '{self.sequence_data.user_email}' terminated:"
                     f" model run '{self.sequence_data.run_id}' could not be found."
                 )
                 return False
+
+            updated_model_run["is_owner"] = updated_model_run["user"] == self.sequence_data.user_email
+
+            # emit to frontend
+            step_progress.status = step_status
+            step_progress.progress_fraction = updated_model_run[PROGRESS_FRACTION]
+            connected_user_client_ids = get_all_session_ids_for_user(self.sequence_data.user_email)
+            if len(connected_user_client_ids) > 0:
+                for client_id in connected_user_client_ids:
+                    self.socketio.emit(
+                        "wfe_sequence_progress",
+                        {
+                            "wfe_sequence_id": self.sequence_data.id,
+                            "run_name": self.sequence_data.run_name,
+                            "steps_progress": [pr.as_dict() for pr in self.sequence_data.steps_progress],
+                        },
+                        namespace="/esdl",
+                        room=client_id,
+                    )
+                    self.socketio.emit(
+                        "wfe_update_model_run",
+                        updated_model_run,
+                        namespace="/esdl",
+                        room=client_id,
+                    )
+
+            # check if workflow step finished
+            if STATUS in updated_run_values and updated_run_values[STATUS] in [
+                RunStatus.CANCELLED.value,
+                RunStatus.ERROR.value,
+            ]:  # on error abort workflow step
+                logger.warning(
+                    f"Workflow engine sequence for user '{self.sequence_data.user_email}' terminated"
+                    f" with status '{updated_run_values[STATUS]}': sequence '{self.sequence_data.run_id}'."
+                )
+                return False
+            elif len(queries_finished) == len(config["query_list"]):  # all queries finished
+                if STATUS in updated_run_values and updated_run_values[STATUS] in [
+                    RunStatus.SUCCEEDED.value,
+                    RunStatus.SUCC_PEND.value,
+                    RunStatus.SUCC_WARN.value,
+                    RunStatus.NEED_INPUT.value,
+                ]:
+                    logger.info(
+                        f"Workflow engine sequence for user '{self.sequence_data.user_email}' finished"
+                        f" with status '{updated_run_values[STATUS]}': sequence '{self.sequence_data.run_id}'."
+                    )
+                    return True
+                elif STATUS not in updated_run_values:
+                    logger.warning(
+                        f"Workflow engine sequence for user '{self.sequence_data.user_email}' finished"
+                        f" without status: sequence '{self.sequence_data.run_id}' aborted."
+                    )
+                    return False
+                else:
+                    logger.warning(
+                        f"Workflow engine sequence for user '{self.sequence_data.user_email}' finished with status"
+                        f" '{updated_run_values[STATUS]}': sequence '{self.sequence_data.run_id}' aborted."
+                    )
+                    return False
+            elif nr_of_retries * retry_interval_seconds > maximum_wait_seconds:
+                logger.error(
+                    f"Workflow engine sequence for user '{self.sequence_data.user_email}' terminated: maximum wait"
+                    f" time '{maximum_wait_seconds}' exceeded for step '{self.step_config}'."
+                )
+                return False
+            else:
+                nr_of_retries += 1
+                time.sleep(retry_interval_seconds)
 
     def action_model_run_show_results(self, step_progress: StepProgress, config: list) -> bool:
         model_run_data = self.models_storage.get_model_run(self.sequence_data.run_id)
@@ -286,7 +286,6 @@ class WorkflowStep:
         error_message = ""
         query_finished = False
         try:
-            logger.info(url)
             resp = requests.get(url)
 
             if resp.status_code == 200:
@@ -426,30 +425,34 @@ class WorkflowEngine:
                 if init_data["type"] == "esdl_service":
                     esdl_service_ok, esdl_service_result, _ = self.esdl_services.call_esdl_service(init_data)[0]
 
-                    if not esdl_service_result:
-                        raise RuntimeError("Error calling service")
-                    esdl_service_result["model_run_doc"]["is_owner"] = (
-                        esdl_service_result["model_run_doc"]["user"] == user_email
-                    )
-                    if esdl_service_ok:
-                        emit(
-                            "wfe_update_model_run",
-                            esdl_service_result["model_run_doc"],
-                            namespace="/esdl",
-                        )
-
-                        sequence_data.run_id = esdl_service_result["model_run_doc"]["run_id"]
-                        sequence_data.model_job_id = esdl_service_result["model_run_doc"]["model_job_id"]
-                    else:
+                    if not esdl_service_ok or not isinstance(esdl_service_result, dict):
                         logger.error(f"Error running esdl service with data: '{init_data}")
+                        # On failure the service result is the error message, if the service returned one.
+                        description = (
+                            esdl_service_result
+                            if isinstance(esdl_service_result, str)
+                            else "The external service could not be started"
+                        )
                         self.toast_notifications.send(
                             ToastNotification(
                                 title=f"An error occurred during run '{run_name}'.",
-                                description="The external service could not be started",
+                                description=description,
                                 type=NotificationType.ERROR,
                             )
                         )
                         return None
+
+                    esdl_service_result["model_run_doc"]["is_owner"] = (
+                        esdl_service_result["model_run_doc"]["user"] == user_email
+                    )
+                    emit(
+                        "wfe_update_model_run",
+                        esdl_service_result["model_run_doc"],
+                        namespace="/esdl",
+                    )
+
+                    sequence_data.run_id = esdl_service_result["model_run_doc"]["run_id"]
+                    sequence_data.model_job_id = esdl_service_result["model_run_doc"]["model_job_id"]
                 else:
                     logger.error(f"Type '{init_data['type']}' not implemented for the workflow engine.")
                     return None

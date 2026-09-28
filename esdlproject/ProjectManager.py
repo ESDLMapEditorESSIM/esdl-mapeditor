@@ -872,7 +872,7 @@ class ProjectManager:
 
         NOTE: During pm.save(), the contents of this resource are None.
 
-        :param variant: the variant to get the base variant resource for
+        :param variant: the variant to get the variant collection resource for.
         :return: the resource of the base variant of the given variant
         """
         variant_collection = get_variant_collection(variant)
@@ -1218,9 +1218,9 @@ def eobject_to_string(eobject: EObject, format: ESDLFormat = ESDLFormat.XML, opt
 
 def get_variant_collection(variant: Union[VariantCollection, Variant]) -> VariantCollection | None:
     """
-    Get the base variant of the given variant.
+    Get the variant collection of the given variant.
 
-    :param variant: the variant to get the base variant for
+    :param variant: the variant to get the variant collection for.
     :return: the base variant of the given variant
     """
     if isinstance(variant, VariantCollection):

@@ -56,7 +56,7 @@ def _get_change_object_id(command_stack: UndoRedoCommandStack, change) -> Option
         return None
     try:
         owner = command_stack.resource.resolve(change.ownerFragment)
-    except (AttributeError, KeyError, IndexError):
+    except (AttributeError, KeyError, IndexError, ValueError):
         return None
     if owner is not None and hasattr(owner, "id"):
         return owner.id

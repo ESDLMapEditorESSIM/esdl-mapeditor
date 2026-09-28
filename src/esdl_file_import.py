@@ -198,9 +198,15 @@ class ESDLFileImport:
         )
 
         handled_profiles: Dict[str, esdl.InfluxDBProfile] = {}
+        prof_manager = InfluxDBProfileManager(influxdb_settings)
+        existing_profiles: dict[str, tuple[str, str]] = {}
+        result = prof_manager.influxdb_client.query("SHOW FIELD KEYS")
+        for (measurement_name, _), fields in result.items():
+            for field in fields:
+                field_key = field["fieldKey"]
+                existing_profiles[f"{measurement_name}_{field_key}"] = (measurement_name, field_key)
 
         def _create_influxdb_profile(prof: TimeSeriesProfile, multiplier: float | None = None):
-            prof_manager = InfluxDBProfileManager(influxdb_settings)
             prof_manager.parse_esdl(prof)
             # profile_header[1] should now be prof.name which is a concatenation of measurement and field
             # if this profile was converted from an InfluxDBProfile to TimeSeriesProfile.
@@ -225,17 +231,25 @@ class ESDLFileImport:
                 influx_profile = prof_manager.get_esdl_influxdb_profile(measurement, [field_name], profile_type=prof.profileType)
             # TODO: elif field_name.startswith("KIP_EH_profielen"):
             else:
-                # If the profile is not based on a default profile we need to save it to the database
-                # TODO: we could create a panel for these profiles...
-                field_name = f"{(prof.id or str(uuid.uuid4()))}"
-                prof_manager.profile_header[1] = field_name
-                influx_profile = prof_manager.save_influxdb(
-                    measurement=measurement,
-                    field_names=[prof_manager.profile_header[1]],
-                    profile_type=prof.profileType,
-                )
+                if prof.name in existing_profiles:
+                    measurement, field_name = existing_profiles[prof.name]
+                    influx_profile = prof_manager.get_esdl_influxdb_profile(
+                        measurement, [field_name], profile_type=prof.profileType
+                    )
+                else:
+                    # Unknown profiles need their own series in the database.
+                    # TODO: we could create a panel for these profiles...
+                    field_name = f"{(prof.id or str(uuid.uuid4()))}"
+                    prof_manager.profile_header[1] = field_name
+                    influx_profile = prof_manager.save_influxdb(
+                        measurement=measurement,
+                        field_names=[prof_manager.profile_header[1]],
+                        profile_type=prof.profileType,
+                    )
             influx_profile.name = prof.name  # equal to f"{measurement}_{field_name}" for standard profiles and a UUID for custom profiles
             influx_profile.profileType = prof.profileType
+            if prof.profileQuantityAndUnit is not None:
+                influx_profile.profileQuantityAndUnit = prof.profileQuantityAndUnit.deepcopy()
             if multiplier is not None:
                 influx_profile.multiplier = multiplier
             # Fix to fix temporary fix in profile manager that removes http from host
@@ -248,7 +262,7 @@ class ESDLFileImport:
             port_profiles_add = []
 
             def add_handled_profile(handled_profile: esdl.InfluxDBProfile, multiplier: float):
-                port_profiles_add.append(InfluxDBProfile(
+                influx_profile = InfluxDBProfile(
                     id=str(uuid.uuid4()),
                     name=handled_profile.name,
                     host=handled_profile.host,
@@ -261,7 +275,12 @@ class ESDLFileImport:
                     endDate=handled_profile.endDate,
                     multiplier=multiplier,
                     profileType=handled_profile.profileType,
-                ))
+                )
+                if handled_profile.profileQuantityAndUnit is not None:
+                    quantity = handled_profile.profileQuantityAndUnit.deepcopy()
+                    quantity.id = str(uuid.uuid4())
+                    influx_profile.profileQuantityAndUnit = quantity
+                port_profiles_add.append(influx_profile)
 
             for profile in port.profile:
                 if isinstance(profile, esdl.TimeSeriesProfile):
@@ -317,8 +336,10 @@ class ESDLFileImport:
 
         # Start conversion of the energy system
         # Convert profiles of each asset to InfluxDB profiles
-        for area_asset in inline_es.instance[0].area.asset:
-            _convert_asset_profiles(area_asset)
+        for area in inline_es.eAllContents():
+            if isinstance(area, esdl.Area):
+                for area_asset in area.asset:
+                    _convert_asset_profiles(area_asset)
         # The TimeSeriesProfiles referenced in the assets should all be converted now, so we can remove them
         # (and for sake of completeness add InfluxDBProfiles in their place
         global_timeseries_profiles = [profile for profile in inline_esi.profiles.profile if isinstance(profile, esdl.TimeSeriesProfile)]

@@ -35,8 +35,7 @@ class ESDL2InlineProfile:
             # TODO: I don't know why copy.deepcopy(es) does not work. Maybe it works in a later version of pyesdl?
             # es_copy = copy.deepcopy(es)
             es_string = pm.energy_system_to_string(es.id)
-            es_copy, parse_info = load_external_string(es_string, name=f"{es.name} - In-line Profiles")
-            es_copy.name = get_session('es_filename') or (es.name or "Untitled EnergySystem") + " - In-line Profiles"
+            es_copy, parse_info = load_external_string(es_string, name=es.name or "Untitled EnergySystem")
             # es_copy.id = str(uuid4())
 
             with self.flask_app.app_context():
@@ -68,8 +67,7 @@ class ESDL2InlineProfile:
         pm = get_project_manager()
         es = pm.get_energy_system_by_id(es_id)
         es_string = pm.energy_system_to_string(es_id)
-        es_copy, parse_info = load_external_string(es_string, name=f"{es.name} - In-line Profiles")
-        es_copy.name = get_session('es_filename') or (es.name or "Untitled EnergySystem") + " - In-line Profiles"
+        es_copy, parse_info = load_external_string(es_string, name=es.name or "Untitled EnergySystem")
         profiles_settings = Profiles.get_instance().get_profiles_settings()
         es_converted = self.convert_esdl_profiles(es_copy, profiles_settings)
         return es_converted
@@ -200,8 +198,7 @@ def copy_and_convert_esdl_profiles(
     pm = get_project_manager()
     es = pm.get_energy_system_by_id(es_id=es_id)
     es_string = pm.energy_system_to_string(es_id=es_id)
-    es_copy, parse_info = load_external_string(es_string, name=f"{es.name} - In-line Profiles")
-    es_copy.name = get_session('es_filename') or (es.name or "Untitled EnergySystem") + " - In-line Profiles"
+    es_copy, parse_info = load_external_string(es_string, name=es.name or "Untitled EnergySystem")
     profiles_settings = Profiles.get_instance().get_profiles_settings()
     es_converted = convert_esdl_profiles(es_copy, profiles_settings)
     return es_converted
@@ -211,6 +208,7 @@ def convert_esdl_profiles(
         es: EnergySystem,
         profiles_settings: dict[str, object],
 ) -> EnergySystem:
+    """Convert port profiles in all areas, including assets inside buildings."""
     esi: EnergySystemInformation = es.energySystemInformation
 
     # Remove all InfluxDBProfiles from the global profiles list
@@ -223,9 +221,10 @@ def convert_esdl_profiles(
 
     handled_profiles: dict[str, TimeSeriesProfile] = {}
 
-    # Convert profiles for each port in each asset in each building
-    for asset in es.instance[0].area.asset:
-        convert_asset_profiles(asset, esi, handled_profiles, profiles_settings)
+    for area in es.eAllContents():
+        if isinstance(area, esdl.Area):
+            for asset in area.asset:
+                convert_asset_profiles(asset, esi, handled_profiles, profiles_settings)
     logger.info("Finished converting ESDL to in-line profiles")
     return es
 
@@ -287,6 +286,8 @@ def convert_profile_for_port(
             timeseries_profile = prof_manager.get_esdl_timeseries_profile()
             timeseries_profile.name = prof.name
             timeseries_profile.profileType = prof.profileType
+            if prof.profileQuantityAndUnit is not None:
+                timeseries_profile.profileQuantityAndUnit = prof.profileQuantityAndUnit.deepcopy()
             esi.profiles.profile.append(timeseries_profile)
             handled_profiles[prof.name] = timeseries_profile
             logger.info(f"Converted InfluxDBProfile '{prof.name}' to TimeSeriesProfile")

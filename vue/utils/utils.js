@@ -93,6 +93,12 @@ export const camelCase = (str) => {
     return window.camelCaseToWords(str);
 };
 
+export const formatNumber = (value) =>
+    Number(value).toLocaleString("nl-NL", {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+    });
+
 export const layerHasContextMenuItem = (layer, text) => {
     const result = layer.options.contextmenuItems.filter(function(contextmenuItem) {
         return contextmenuItem.text == text;

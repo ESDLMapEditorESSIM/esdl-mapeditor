@@ -413,6 +413,72 @@ h6 {
     font-weight: bold;
 }
 
+.building_legend {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    max-height: 50vh;
+    max-width: 320px;
+}
+
+.building_legend_select {
+    box-sizing: border-box;
+    max-width: 100%;
+    width: 100%;
+}
+
+.building_legend_classes {
+    min-height: 0;
+    overflow: auto;
+    overflow-wrap: anywhere;
+}
+
+.building_legend_classes:has(> .building_legend_range) {
+    column-gap: 6px;
+    display: grid;
+    grid-template-columns: 17px max-content auto max-content;
+    justify-content: start;
+}
+
+.building_legend_range {
+    align-items: center;
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+}
+
+.building_legend_range i {
+    float: none;
+    margin-right: 0;
+}
+
+.building_legend_range_value {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.map_control_title {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+}
+
+.map_control_close {
+    background: transparent;
+    border: 0;
+    color: #555;
+    cursor: pointer;
+    font: bold 16px/16px Arial, Helvetica, sans-serif;
+    margin-left: 12px;
+    padding: 0;
+}
+
+.map_control_close:hover,
+.map_control_close:focus {
+    color: #000;
+}
+
 .legend_select {
     line-height: 20px;
     color: #000080;

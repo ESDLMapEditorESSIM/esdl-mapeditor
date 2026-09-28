@@ -180,6 +180,7 @@ function create_new_esdl_layer(es_id, title) {
             kpi_layer: L.featureGroup().addTo(map),
             sim_layer: L.featureGroup().addTo(map),
             notes_layer: L.featureGroup().addTo(map),
+            plan_layer: L.featureGroup(),
         },
         sector_list: null,
         carrier_list: null,
@@ -189,7 +190,8 @@ function create_new_esdl_layer(es_id, title) {
         area_legend_choice: null,
         area_dist_kpis_ranges: {},
         building_kpi_list: null,
-        building_legend_choice: null
+        building_legend_choice: null,
+        building_marker_resize: 1.0
     };
 
     esdl_list[es_id] = esdl_list_item;
@@ -275,6 +277,9 @@ function show_esdl_layer_on_map(es_id, layer_name, es_layer_name) {
     if (!layer_name) {
         // Show all base ESDL layers
         for (const lname of Object.keys(es.layers)) {
+            if (lname === 'plan_layer') {
+                continue;
+            }
             show_esdl_layer_on_map(es_id, lname);
         }
         return;
