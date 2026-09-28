@@ -147,7 +147,7 @@ L.Control.ESSIMKPIs = L.Control.extend({
                 options: {
                     title: {
                         display: true,
-                        text: keys[i]
+                        text: formatKPIName(keys[i])
                     },
                     scales: {
                         y: {

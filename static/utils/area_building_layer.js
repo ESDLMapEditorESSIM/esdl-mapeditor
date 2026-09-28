@@ -157,7 +157,7 @@ function preprocess_layer_data(layer_type, layer_data, kpi_list) {
                         if (layer_type === "area" && !get_area_color) { get_area_color = get_area_range_colors; }
                         if (layer_type === "building" && !get_building_color) { get_building_color = get_building_range_colors; }
                         value = parseFloat(KPI_value);
-                        kpi_list[kpi] = { "min": value, "max": value };
+                        kpi_list[kpi] = { "min": value, "max": value, "unit": kpi_obj.unit };
                     } else {
                         if (layer_type === "area" && !get_area_color) { get_area_color = get_area_array_colors; }
                         if (layer_type === "building" && !get_building_color) { get_building_color = get_building_array_colors; }
@@ -191,7 +191,7 @@ function preprocess_layer_data(layer_type, layer_data, kpi_list) {
                     if (layer_type === "area" && !get_area_color) { get_area_color = get_area_range_colors; }
                     if (layer_type === "building" && !get_building_color) { get_building_color = get_building_range_colors; }
                     //value = parseFloat(KPI_value);
-                    kpi_list[kpi] = {"type": "distributionKPI", "names": []};
+                    kpi_list[kpi] = {"type": "distributionKPI", "names": [], "unit": dist_KPIs[kpi].unit};
                     for (let i=0; i<KPI_value.length; i++) {
                         let val = KPI_value[i];
                         kpi_list[kpi]["names"].push(val["name"]);
@@ -1173,7 +1173,7 @@ function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
                     text += "<br><br><table class=\"kpi_table\">";
                     text += "<thead><tr><th>KPI</th><th>Value</th><th>Unit</th></tr></thead><tbody>"
                     for (let key in feature.properties.KPIs) {
-                        text += "<tr><td>" + key + "</td><td align=\"right\">" + format_KPI_value(feature.properties.KPIs[key]['value']) + "</td>";
+                        text += "<tr><td>" + _.escape(formatKPIName(key)) + "</td><td align=\"right\">" + format_KPI_value(feature.properties.KPIs[key]['value']) + "</td>";
                         if (!(feature.properties.KPIs[key]['unit'] === "")) {
                             text += "<td>" + format_KPI_unit(feature.properties.KPIs[key]['unit']) + "</td></tr>";
                         } else {
@@ -1347,7 +1347,7 @@ function add_building_layer(es_id, building_data) {
                     } else {
                         kpi_string = feature.properties.KPIs[key];
                     }
-                    text += "<tr><td>" + key + "</td><td style=\"float:right\">" + kpi_string + "</td></tr>";
+                    text += "<tr><td>" + _.escape(formatKPIName(key)) + "</td><td style=\"float:right\">" + kpi_string + "</td></tr>";
                 }
                 text += "</table>";
 
@@ -1631,35 +1631,6 @@ function update_area_layer(esdl_layer_id, area_kpi_list) {
 // ------------------------------------------------------------------------------------------------------------
 //  Generate the complete Legend DIV
 // ------------------------------------------------------------------------------------------------------------
-function humanizeKPIName(kpiName) {
-    var unitLabels = {
-        eur: 'EUR',
-        eur_jaar: 'EUR/jaar',
-        gj: 'GJ',
-        kw: 'kW',
-        kwh: 'kWh',
-        m2: 'm²',
-        m3: 'm³',
-        mw: 'MW',
-        mwh: 'MWh',
-        jaar: 'jaar'
-    };
-    var unitMatch = kpiName.match(/_(eur_jaar|eur|gj|kwh|kw|mwh|mw|m2|m3|jaar)$/i);
-    var nameWithoutUnit = kpiName;
-    var unit;
-    if (unitMatch) {
-        nameWithoutUnit = kpiName.slice(0, -unitMatch[0].length);
-        unit = unitLabels[unitMatch[1].toLowerCase()];
-    }
-
-    var name = _.capitalize(_.startCase(nameWithoutUnit).toLowerCase());
-    name = name.replace(/\b(\d+) c\b/g, '$1 °C');
-    if (unit) {
-        name += ' (' + unit + ')';
-    }
-    return name;
-}
-
 function createBuildingLegendDiv(choice) {
     var legendDiv = L.DomUtil.create('div', 'info legend building_legend');
     legendDiv.oncontextmenu = L.DomEvent.stopPropagation;
@@ -1681,7 +1652,10 @@ function createBuildingLegendDiv(choice) {
     for (var bkpi in building_KPIs) {
         var option = L.DomUtil.create('option', '', kpiSelect);
         option.value = bkpi;
-        option.textContent = humanizeKPIName(bkpi);
+        option.textContent = formatKPIName(bkpi, building_KPIs[bkpi].unit);
+        if (bkpi in stdKPIs) {
+            option.textContent = formatKPIName(_.startCase(bkpi).toLowerCase());
+        }
         option.title = bkpi;
         option.selected = bkpi === choice;
     }
@@ -1721,16 +1695,19 @@ function createAreaLegendDiv(choice) {
     L.DomEvent.on(legendCloseButton, 'click', toggle_area_legend_visibility);
 
     var selectorDiv = L.DomUtil.create('div', 'legend_select', legendDiv);
-    var selectText = '<select id="areaLegendSelect" style="z-index:1000;" onchange="selectAreaKPI(this.value);">';
-    for (akpi in area_KPIs) {
-        if (akpi === choice) {
-            selectText += '<option value="'+akpi+'" selected>'+akpi+'</option>';
-        } else {
-            selectText += '<option value="'+akpi+'">'+akpi+'</option>';
-        }
+    var kpiSelect = L.DomUtil.create('select', '', selectorDiv);
+    kpiSelect.id = 'areaLegendSelect';
+    kpiSelect.style.zIndex = 1000;
+    L.DomEvent.on(kpiSelect, 'change', function() {
+        selectAreaKPI(this.value);
+    });
+    for (var akpi in area_KPIs) {
+        var option = L.DomUtil.create('option', '', kpiSelect);
+        option.value = akpi;
+        option.textContent = formatKPIName(akpi, area_KPIs[akpi].unit);
+        option.title = akpi;
+        option.selected = akpi === choice;
     }
-    selectText += '</select>';
-    selectorDiv.innerHTML = selectText;
 
     areaLegendClassesDiv = L.DomUtil.create('div', 'info legend', legendDiv);
     areaLegendClassesDiv.innerHTML = create_area_array_or_range_legendClassesDiv(area_KPIs[choice]);

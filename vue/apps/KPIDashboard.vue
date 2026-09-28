@@ -186,6 +186,7 @@ import LoadDashboard from '../components/kpidashboard/LoadDashboard.vue';
 import SaveDashboard from '../components/kpidashboard/SaveDashboard.vue';
 import PlotPanel from "../components/kpidashboard/PlotPanel.vue";
 import AnalyticsPanel from '../components/kpidashboard/AnalyticsPanel.vue';
+import { formatKPIName } from '@/utils/kpi';
 
 const GridItemTypes = Object.freeze({
   ANALYTICS: 'analyticspanel',
@@ -448,14 +449,14 @@ function updateDashboard(esId, kpiScope) {
         i: new_panel_id,
         type: 'sankeypanel',
         options: {
-          'title': kpi_name,
+          'title': formatKPIName(kpi_name),
           'data': kpi_info[0]['flows'],
         },
       });
     } 
     else {
       let chart_options = window.createChartOptions(kpi_info);
-      chart_options.title = kpi_name;
+      chart_options.title = formatKPIName(kpi_name);
       // console.log(chart_options);
 
       layout.value.push({
