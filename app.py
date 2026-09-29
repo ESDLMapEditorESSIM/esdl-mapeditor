@@ -2025,7 +2025,7 @@ def process_command(message, stack: UndoRedoCommandStack):
         asset_and_coord2 = get_asset_and_coord_from_port_id(pm, active_es_id, port2_id)
         asset1 = asset_and_coord1['asset']
         asset2 = asset_and_coord2['asset']
-        stack.update_label(f"Connect {asset1.name or asset.eClass.name} to {asset2.name or asset.eClass.name}")
+        stack.update_label(f"Connect {asset1.name or asset1.eClass.name} to {asset2.name or asset2.eClass.name}")
         asset1_port_location = asset_and_coord1['coord']
         asset2_port_location = asset_and_coord2['coord']
 
