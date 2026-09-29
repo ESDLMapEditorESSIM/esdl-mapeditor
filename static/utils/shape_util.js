@@ -95,6 +95,33 @@ function calculate_multipolygon_center(coords) {
     return calculate_array_polygon_center(largest_exterior.slice());
 }
 
+// unsigned shoelace area of a ring of [x, y] points, only used to compare relative sizes
+function calculate_leaflet_ring_area(ring) {
+    var area = 0;
+    var n = ring.length;
+    for (var i = 0; i < n; i++) {
+        var p1 = ring[i], p2 = ring[(i + 1) % n];
+        area += p1['lat'] * p2['lng'] - p2['lat'] * p1['lng'];
+    }
+    return Math.abs(area) / 2;
+}
+
+// picks the centroid of the sub-polygon with the largest exterior area (rings[i][0]) as the multipolygon's center
+// coords: array of sub-polygons, each an array of rings (index 0 = exterior, rest = holes)
+function calculate_leaflet_multipolygon_center(coords) {
+    let largest_exterior = coords[0][0];
+    let largest_area = calculate_leaflet_ring_area(largest_exterior);
+    for (let i = 1; i < coords.length; i++) {
+        let area = calculate_leaflet_ring_area(coords[i][0]);
+        if (area > largest_area) {
+            largest_exterior = coords[i][0];
+            largest_area = area;
+        }
+    }
+    return calculate_leaflet_polygon_center(largest_exterior.slice());
+}
+
+
 // calculates the centeriod of a polygon
 function calculate_leaflet_polygon_center(pts) {
     var first = pts[0], last = pts[pts.length-1];

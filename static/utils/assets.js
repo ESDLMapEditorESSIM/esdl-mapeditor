@@ -769,7 +769,7 @@ function add_asset(es_bld_id, asset_info, exposed_port_asset_id, carrier_info_ma
             spatial_buffers_plugin.add_spatial_buffers(polygon);
   
         var polygon_center = coords;        // Take the point location as a center or
-        if (asset_info[0] === 'polygon') {   // if its a polygon, calculate the center
+        if (asset_info[0] === 'polygon') {   // if it's a polygon, calculate the center
             polygon_center = calculate_array_polygon_center(coords);
         } else if (asset_info[0] === 'multipolygon') {
             polygon_center = calculate_multipolygon_center(coords);

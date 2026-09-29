@@ -1183,12 +1183,15 @@ def update_polygon_coordinates(message: UpdatePolygonCoordinatesMessage):
         send_alert('Could not update polygon geometry')
         return
 
-    if isinstance(obj.geometry, esdl.MultiPolygon):
-        send_alert('Editing MultiPolygon geometries is not supported')
-        return
+    # if isinstance(obj.geometry, esdl.MultiPolygon):
+    #     send_alert('Editing MultiPolygon geometries is not supported')
+    #     return
 
     try:
-        polygon = create_polygon_from_leaflet_data(message['polygon'], getattr(obj.geometry, 'CRS', None) or 'WGS84')
+        # Old implementation, for now assume all coordinates from the frontend are using CRS WGS84
+        # polygon = create_polygon_from_leaflet_data(message['polygon'], getattr(obj.geometry, 'CRS', None) or 'WGS84')
+        # TODO: in the above function also duplicate coordinates were filtered. Check if that still happens?
+        polygon_or_multi_polygon_shp = Shape.create(message['polygon'])
     except (KeyError, TypeError, ValueError, IndexError):
         logger.exception('Could not update polygon geometry')
         send_alert('Could not update polygon geometry')
@@ -1205,14 +1208,18 @@ def update_polygon_coordinates(message: UpdatePolygonCoordinatesMessage):
 
     undo_redo = pm.get_undo_redo_stack(obj)
     with undo_redo.track_changes(label="Change geometry of {}".format(obj.name or obj.eClass.name)):
-        obj.geometry = polygon
+        obj.geometry = polygon_or_multi_polygon_shp.get_esdl()
         if isinstance(obj, esdl.Area):
             shape_dictionary = get_session_for_esid(active_es_id, 'shape_dictionary') or {}
-            shape_dictionary[obj.id] = Shape.create(polygon)
+            shape_dictionary[obj.id] = polygon_or_multi_polygon_shp
             set_session_for_esid(active_es_id, 'shape_dictionary', shape_dictionary)
         elif not isinstance(obj, (esdl.AbstractBuilding, esdl.Potential)):
             obj.surfaceArea = polygon_area
-            polygon_center = ESDLGeometry.calculate_polygon_center(polygon)
+            if isinstance(obj.geometry, esdl.Polygon):
+                polygon_center = ESDLGeometry.calculate_polygon_center(obj.geometry)
+            elif isinstance(obj.geometry, esdl.MultiPolygon):
+                # For now, assume the first polygon in the list
+                polygon_center = ESDLGeometry.calculate_multipolygon_center(obj.geometry)
             update_polygon_asset_connection_locations(obj_id, polygon_center)
     emit('update_undo_redo_stack', serialize_command_stack(undo_redo))
 
