@@ -77,10 +77,6 @@ export default {
   line-height: 14px;
 }
 
-.kpi-table:has(.exponent:not(:empty)) {
-  --kpi-exponent-width: 5ch;
-}
-
 .kpi-table :deep(.ant-table-cell) {
   vertical-align: top;
 }
@@ -92,6 +88,6 @@ export default {
 }
 
 .distribution-label {
-  text-align: left;
+  text-align: right;
 }
 </style>

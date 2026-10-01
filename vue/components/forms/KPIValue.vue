@@ -1,14 +1,28 @@
 <template>
-  <span v-if="numberParts" class="kpi-number" :title="fullValue">
-    <span class="whole">{{ numberParts.whole }}</span>
-    <span class="fraction">{{ numberParts.fraction }}</span>
-    <span><template v-if="numberParts.truncated">…</template></span>
-    <span class="exponent">{{ numberParts.exponent }}</span>
+  <span v-if="formattedNumber" class="kpi-number" :title="fullValue">
+    <span class="formatted">{{ formattedNumber.text }}</span>
+    <span v-if="formattedNumber.truncated">…</span>
   </span>
   <a-typography-text v-else :ellipsis="true" :title="fullValue" :content="fullValue" />
 </template>
 
 <script>
+const MAX_FRACTION_DIGITS = 8;
+const numberFormatOptions = {
+  useGrouping: true,
+  maximumFractionDigits: MAX_FRACTION_DIGITS,
+  roundingMode: 'trunc',
+};
+const numberFormat = new Intl.NumberFormat('en-US', numberFormatOptions);
+const truncatedNumberFormat = new Intl.NumberFormat('en-US', {
+  ...numberFormatOptions,
+  minimumFractionDigits: MAX_FRACTION_DIGITS,
+});
+const fullNumberFormat = new Intl.NumberFormat('en-US', {
+  useGrouping: false,
+  maximumSignificantDigits: 21,
+});
+
 export default {
   name: 'KPIValue',
   props: {
@@ -22,29 +36,31 @@ export default {
       if (this.value === null) {
         return '';
       }
+      if (typeof this.value === 'number' && Number.isFinite(this.value)) {
+        return fullNumberFormat.format(this.value);
+      }
       return String(this.value);
     },
-    numberParts() {
+    formattedNumber() {
       if (typeof this.value !== 'number' || !Number.isFinite(this.value)) {
         return null;
       }
 
-      let text = this.fullValue;
-      const magnitude = Math.abs(this.value);
-      if ((magnitude > 0 && magnitude < 1e-8) || magnitude >= 1e4) {
-        text = this.value.toExponential();
+      let fractionLength = 0;
+      const decimalSeparatorIndex = this.fullValue.indexOf('.');
+      if (decimalSeparatorIndex >= 0) {
+        fractionLength = this.fullValue.length - decimalSeparatorIndex - 1;
       }
-      const [mantissa, exponent] = text.split('e');
-      const [whole, fraction = ''] = mantissa.split('.');
-      const parts = { whole, fraction: '', truncated: fraction.length > 8, exponent: '' };
-      // Slice the decimal string instead of scaling the float, to avoid rounding.
-      if (fraction) {
-        parts.fraction = '.' + fraction.slice(0, 8);
+      const truncated = fractionLength > MAX_FRACTION_DIGITS;
+      let formatter = numberFormat;
+      if (truncated) {
+        formatter = truncatedNumberFormat;
       }
-      if (exponent) {
-        parts.exponent = 'e' + exponent;
-      }
-      return parts;
+
+      return {
+        text: formatter.format(this.value),
+        truncated,
+      };
     },
   },
 };
@@ -52,20 +68,16 @@ export default {
 
 <style scoped>
 .kpi-number {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 8.5ch 1em var(--kpi-exponent-width, auto);
+  display: flex;
+  justify-content: flex-end;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-.whole {
+.formatted {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   text-align: right;
-}
-
-.fraction,
-.exponent {
-  text-align: left;
 }
 </style>
