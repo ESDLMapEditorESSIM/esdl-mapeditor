@@ -116,7 +116,7 @@ const multipleAssetsSelected = computed(() => {
 });
 
 function get_heat_transition_data() {
-  if (!multipleAssetsSelected) {
+  if (!multipleAssetsSelected.value) {
     retrieve_area_info(currentObjectIDs.value[0]);
   } else {
     socket.emit('etm_heat_transition_get_areas_info', currentObjectIDs.value, function(res) {
