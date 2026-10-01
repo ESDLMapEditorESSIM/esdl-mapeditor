@@ -5181,6 +5181,11 @@
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EReference" name="element" upperBound="-1"
         eType="#//Item"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="geometry" eType="#//Geometry"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="KPIs" eType="#//KPIs" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="costInformation" eType="#//CostInformation"
+        containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="DataTableProfile" eSuperTypes="#//ExternalProfile">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">

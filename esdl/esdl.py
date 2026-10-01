@@ -3059,13 +3059,25 @@ class InstanceYear(AbstractInstanceDate):
 class Plan(AbstractGroupMember):
     """Plan (e.g. a policy plan) with references to its elements (assets, services, ...)"""
     element = EReference(ordered=True, unique=True, containment=False, derived=False, upper=-1)
+    geometry = EReference(ordered=True, unique=True, containment=True, derived=False)
+    KPIs = EReference(ordered=True, unique=True, containment=True, derived=False)
+    costInformation = EReference(ordered=True, unique=True, containment=True, derived=False)
 
-    def __init__(self, *, element=None, **kwargs):
+    def __init__(self, *, element=None, geometry=None, KPIs=None, costInformation=None, **kwargs):
 
         super().__init__(**kwargs)
 
         if element:
             self.element.extend(element)
+
+        if geometry is not None:
+            self.geometry = geometry
+
+        if KPIs is not None:
+            self.KPIs = KPIs
+
+        if costInformation is not None:
+            self.costInformation = costInformation
 
 
 class DatabaseConfiguration(AbstractDataConfiguration):
