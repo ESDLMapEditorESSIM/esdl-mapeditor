@@ -172,18 +172,18 @@ def get_session(key=None, client_id=None, default_value=None):
         client_id = session["client_id"]
     if client_id not in managed_sessions:
         logger.warning("No client id in the managed_sessions is available, cannot return value for key {}".format(key))
-        print("====================================================")
-        print("No client id in the managed_sessions is available, cannot return value for key {}".format(key))
-        print(f"Session information for client_id: {client_id}:")
-        for key in session:
-            print(f"{key}: {session[key]}")
-        print(f"Managed session keys and their lengths for all registered clients: ({client_id}):")
-        for key in managed_sessions:
-            print(f"{key}: {len(managed_sessions[key])}")
-        print("Stacktrace for get_session():")
-        import traceback
-        traceback.print_stack(file=sys.stdout)
-        print("-----------------------------------------------------")
+        # print("====================================================")
+        # print("No client id in the managed_sessions is available, cannot return value for key {}".format(key))
+        # print(f"Session information for client_id: {client_id}:")
+        # for key in session:
+        #     print(f"{key}: {session[key]}")
+        # print(f"Managed session keys and their lengths for all registered clients: ({client_id}):")
+        # for key in managed_sessions:
+        #     print(f"{key}: {len(managed_sessions[key])}")
+        # print("Stacktrace for get_session():")
+        # import traceback
+        # traceback.print_stack(file=sys.stdout)
+        # print("-----------------------------------------------------")
         return None
     else:
         # update last access

@@ -303,7 +303,9 @@ class WorkflowStep:
                                 key, resp_value, query_config
                             )
                 if "status_mapping" in query_config:
-                    if updated_values[STATUS] not in [RunStatus.SUBMITTED.value, RunStatus.RUNNING.value]:
+                    if updated_values[STATUS] not in [
+                        RunStatus.SUBMITTED.value, RunStatus.QUEUED.value, RunStatus.RUNNING.value
+                    ]:
                         query_finished = True
                 elif "stop_query_on" in query_config:
                     key = query_config["stop_query_on"]["key"]
