@@ -19,7 +19,7 @@ from esdl.processing.ESDLEcore import instantiate_type
 from extensions.session_manager import get_session, get_project_manager
 from extensions.profiles import Profiles
 from utils.utils import str2float
-from utils.datetime_utils import parse_date
+from esdl.utils.datetime_utils import parse_date
 
 
 def get_control_strategy_info(asset):

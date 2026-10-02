@@ -11,7 +11,7 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-from flask import session, request
+from flask import current_app, has_app_context, session, request
 from flask_socketio import emit
 from pyecore.ecore import EObject
 
@@ -58,14 +58,14 @@ def change_handler(high_level_change: HighLevelChange, context: ChangeContext):
         # don't act on internal changes
         return
 
-    if not context.client_id and not context.flask_app and not context.resource:
-        logger.debug("No client_id/app/resource in change context, can't do updates to GUI")
+    if not context.client_id or not has_app_context() or context.resource is None:
+        logger.debug("No client_id/app/resource available, can't do updates to GUI")
         return
 
     es = context.resource.contents[0]
     #pm = get_project_manager_with_client_id(context.client_id)
 
-    with (context.flask_app.test_request_context()):
+    with current_app.test_request_context():
         session['client_id'] = context.client_id
         # todo replace managed_sessions with get_session(client_id=xx, 'socketio_sid')
         request.sid = managed_sessions[context.client_id]['socketio_sid']

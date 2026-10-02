@@ -18,7 +18,6 @@ from pyecore.ecore import EClass, EObject
 from pyecore.resources import ResourceSet
 from esdl.processing.string_uri import StringURI
 from esdl.processing import ESDLEnergySystem
-from extensions.session_manager import get_session, get_project_manager
 from esdl.resources.xmlresource import XMLResource
 
 
@@ -168,14 +167,6 @@ def add_object_to_building(es, obj, building_id):
 #         recursively_remove_object_from_area(sub_area, object_id)
 
 
-# todo: move to EnergySystemHandler
-def remove_object_from_energysystem(es, object_id):
-    pm = get_project_manager()
-    active_es_id = get_session('active_es_id')
-    obj = pm.get_by_id(active_es_id, object_id)
-    obj.delete(recursive=True)
-
-
 def get_asset_capability_type(asset):
     if isinstance(asset, esdl.Producer): return 'Producer'
     if isinstance(asset, esdl.Consumer): return 'Consumer'
@@ -247,17 +238,6 @@ def add_profile_to_port(port, profile):
 
     profile_list.append(profile)
 
-
-def remove_profile_from_port(port, profile_id):
-    pm = get_project_manager()
-    active_es_id = get_session('active_es_id')
-
-    profile_list = port.profile
-
-    for profile in set(profile_list):
-        if profile.id == profile_id:
-            profile_list.remove(profile)
-            pm.remove_object_from_dict(active_es_id, profile, True)
 
 def update_ids_in_object(obj: EObject):
     for el in obj.eAllContents():

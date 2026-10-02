@@ -17,7 +17,7 @@ import requests
 import json
 import src.log as log
 import datetime
-from utils.datetime_utils import parse_date
+from esdl.utils.datetime_utils import parse_date
 import src.settings as settings
 import esdl
 

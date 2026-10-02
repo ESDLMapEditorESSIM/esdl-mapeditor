@@ -32,7 +32,7 @@ from esdl.processing import ESDLAsset
 from esdl.units.parser import unit_to_string, build_qau_from_unit_string
 from esdl.profiles.influxdbprofilemanager import InfluxDBProfileManager
 from esdl.undo import UndoRedoCommandStack
-from esdl.undo_wrapper import undo_record_changes
+from src.esdl_integration.undo_wrapper import undo_record_changes
 from esdl.units.conversion import convert_to_unit, ENERGY_IN_PJ
 from extensions.data_manager import db
 from extensions.data_manager.db_interaction import get_db_driver_type, DriverType

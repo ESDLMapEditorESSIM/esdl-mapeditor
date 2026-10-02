@@ -21,7 +21,7 @@ from flask_socketio import SocketIO, emit
 import src.log as log
 from esdl import esdl
 from esdl.processing import ESDLAsset
-from esdl.undo_wrapper import undo_record_changes
+from src.esdl_integration.undo_wrapper import undo_record_changes
 from esdlproject.ProjectManager import load_external_string
 from extensions.boundary_service import is_valid_boundary_id
 from extensions.session_manager import get_project_manager, get_session, get_session_for_esid

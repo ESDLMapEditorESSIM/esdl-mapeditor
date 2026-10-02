@@ -38,7 +38,7 @@ from extensions.settings_storage import SettingsStorage
 from src.essim_kpis import ESSIM_KPIs
 from src.process_es_area_bld import process_energy_system
 from src.tno.shared import excel
-from utils.datetime_utils import parse_date
+from esdl.utils.datetime_utils import parse_date
 
 logger = log.get_logger(__name__)
 

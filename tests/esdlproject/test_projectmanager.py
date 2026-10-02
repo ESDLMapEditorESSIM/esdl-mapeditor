@@ -1,4 +1,8 @@
+import subprocess
+import sys
+import textwrap
 import unittest
+from pathlib import Path
 
 from esdl import esdl
 from esdlproject import Variant
@@ -8,6 +12,51 @@ from tests.test_utils import find_asset_in_es
 
 
 class TestProjectManager(unittest.TestCase):
+
+    def test_without_mapeditor(self):
+        """Projects can be edited and saved without importing the application."""
+        code = textwrap.dedent(
+            """
+            import importlib.abc
+            import logging
+            import sys
+
+            class BlockMapEditorImports(importlib.abc.MetaPathFinder):
+                def find_spec(self, fullname, path=None, target=None):
+                    if fullname.split('.')[0] in {'src', 'extensions', 'utils', 'flask', 'flask_socketio', 'structlog'}:
+                        raise ImportError(fullname)
+
+            sys.meta_path.insert(0, BlockMapEditorImports())
+            logging.basicConfig(level=logging.DEBUG)
+
+            from esdl import esdl
+            from esdlproject.ProjectManager import ProjectManager
+            from esdlproject.variant_api import create_new_variant
+
+            pm = ProjectManager()
+            stack = pm.get_undo_redo_stack()
+            with stack.track_changes('Add pipe'):
+                pm.get_active_energy_system().instance[0].area.asset.append(esdl.Pipe(id='pipe', name='Pipe'))
+            stack.undo()
+            assert not pm.get_active_energy_system().instance[0].area.asset
+            stack.redo()
+            child = create_new_variant(pm.active_variant, 'Child')
+            pm.set_active_variant(child)
+            assert pm.get_active_energy_system().instance[0].area.asset[0].id == 'pipe'
+            loaded = ProjectManager()
+            loaded.load_from_string(pm.save())
+            assert loaded.get_active_energy_system().instance[0].area.asset[0].id == 'pipe'
+            pm.debug()
+        """
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", code],
+            cwd=Path(__file__).resolve().parents[2],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_track_changes(self):
         pm = ProjectManager()

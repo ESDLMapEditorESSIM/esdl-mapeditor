@@ -31,7 +31,7 @@ import src.log as log
 from esdl import esdl, Profiles
 from esdl.processing.string_uri import StringURI
 from esdl.undo import UndoRedoCommandStack
-from esdl.undo_wrapper import undo_record_changes
+from src.esdl_integration.undo_wrapper import undo_record_changes
 from esdl.processing import ESDLAsset, ESDLGeometry
 from esdlproject.ProjectManager import ProjectManager, eobject_to_string, load_external_string
 from extensions.prompt_manager import PromptManager
@@ -57,7 +57,7 @@ from src.process_es_area_bld import (
     call_process_energy_system,
 )
 from src.tno.shared.util import get_nested_dict_value, response_error_message
-from utils.datetime_utils import parse_date
+from esdl.utils.datetime_utils import parse_date
 from src.tno.projects.duplicate_detection import DuplicatePrompt, find_duplicate_variant_collection, generate_renamed_esdl_string
 
 logger = log.get_logger(__name__)

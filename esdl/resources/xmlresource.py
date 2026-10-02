@@ -19,7 +19,6 @@ from pyecore.ecore import EObject, EProxy
 from pyecore.resources.xmi import XMIResource, XMIOptions, XMI_URL, XSI_URL, XSI, XMI
 
 from esdl.resources.resource_type import ProjectManagerResourceType
-from utils.utils import timed
 
 logger = logging.getLogger(__name__)
 

@@ -11,6 +11,7 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+import logging
 import threading
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -18,13 +19,11 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional, Any, List, Callable
 
-from flask import Flask
 from pyecore.ecore import EObject, EStructuralFeature, EReference, EAttribute
 from pyecore.notification import EObserver, Notification, Kind
 from pyecore.resources import Resource
 
 import esdlproject.esdlproject as ep
-import src.log as log
 from esdl.resources.xmlresource import XMLResource
 from esdl.undo_pyecore_patch import patch_notification_system
 from esdlproject import HighLevelChange
@@ -33,7 +32,7 @@ from esdlproject.change_handler import undoChange, applyChange
 
 patch_notification_system()  # patch pyecores notification system, so notification are always send
 
-logger = log.get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class ChangeSource(Enum):
@@ -50,7 +49,6 @@ class ChangeContext:
     source: ChangeSource
     client_id: Optional[str] = None
     resource: Optional[XMLResource] = None
-    flask_app: Optional[Flask] = None
 
 
 class UndoRedoCommandStack:
@@ -122,8 +120,6 @@ class UndoRedoCommandStack:
             self.change_context.resource = context.resource
         if context.client_id:
             self.change_context.client_id = context.client_id
-        if context.flask_app:
-            self.change_context.flask_app = context.flask_app
         if context.source:
             self.change_context.source = context.source
 
@@ -136,16 +132,17 @@ class UndoRedoCommandStack:
         :param label: name of the label of the action that is recorded.
         :param change_context: the context of the change, default INTERNAL
         """
-        logger.debug("Acquiring recording lock", label=label)
+        logger.debug("Acquiring recording lock: %s", label)
         acquired = self.recording_lock.acquire(timeout=60)  # lock is released in stop_recording()
         if acquired:
             self._failed_lock_acquire_count = 0
         else:
             self._failed_lock_acquire_count += 1
-            logger.warning("Could not acquire recording lock", attempt=self._failed_lock_acquire_count, label=label)
+            logger.warning("Could not acquire recording lock: attempt=%s, label=%s",
+                           self._failed_lock_acquire_count, label)
             if self._failed_lock_acquire_count > 5:
                 # Probably this is a deadlock. Some process is not releasing the lock.
-                logger.warning("Forcefully releasing recording lock", label=label)
+                logger.warning("Forcefully releasing recording lock: %s", label)
                 self.recording_lock.release()
                 acquired = self.recording_lock.acquire(timeout=10)
                 if not acquired:
@@ -273,7 +270,7 @@ class UndoRedoCommandStack:
         """
 
         if not self._recording:
-            logger.debug("Undo-redo: Ignoring change NOT RECORDING", abstract_change=abstract_change)
+            logger.debug("Undo-redo: Ignoring change NOT RECORDING: %s", abstract_change)
             return
 
         # see stop_recording(): this detects if changes are made during the execution of the change_handlers
@@ -347,7 +344,7 @@ class UndoRedoCommandStack:
         with self.pause_recording():
             abstract_change = self.top
             self.last_changed = datetime.now(timezone.utc)
-            logger.debug("Undo", abstract_change=abstract_change.label
+            logger.debug("Undo: %s", abstract_change.label
                 if isinstance(abstract_change, ep.HighLevelChange) else abstract_change)
             # if self.top.can_undo:
             if self.can_undo():
@@ -413,7 +410,7 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
     :return: None
     """
     if notification.notifier.eResource is None:  # if the object has not been added to a resource, ignore it.
-        logger.debug("=== convertNotificationToChange ====== !!! No eResource for", notification=notification)
+        logger.debug("=== convertNotificationToChange ====== !!! No eResource for %s", notification)
         return
     if not stack.is_recording():  # ignore all notifications when not recording
         # logger.debug('Ignoring ', notification)
@@ -517,7 +514,7 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
         else:
             # this is a cross-reference
             if notification.new.eResource is None:
-                logger.debug("Add: eResource is none, delay resolution of fragment for ", notification=notification)
+                logger.debug("Add: eResource is none, delay resolution of fragment for %s", notification)
                 if notification not in stack.post_process_list:
                     stack.post_process_list.append(notification)
             else:
@@ -530,13 +527,13 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
         f = notification.feature
         if isinstance(f, EReference) and f.eOpposite and f.eOpposite.containment:
             # bi-directional references generate 2 notifications, we can ignore the opposite
-            logger.debug("  \\ -- f.eOpposite and f.eOposite.containment", feature_name=f.name)
+            logger.debug("  \\ -- f.eOpposite and f.eOposite.containment: %s", f.name)
         owner_fragment = notification.notifier.eURIFragment()
         old_uri_fragment = notification.old.eURIFragment()
         try:
             resolved = notification.notifier.eResource.resolve(old_uri_fragment)
         except AttributeError:
-            logger.debug("Resolving of old URI fragment fails, Ignoring for now:", notification=notification)
+            logger.debug("Resolving of old URI fragment fails, Ignoring for now: %s", notification)
             return
         if not isinstance(resolved, f.eType):
             # TODO: the way pyEcore deletes objects with references in non-deterministic, because it uses a unordered set()
@@ -579,7 +576,7 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
         f = notification.feature
         if isinstance(f, EReference) and f.eOpposite and f.eOpposite.containment:
             # bi-directional references generate 2 notifications, we can ignore the opposite
-            logger.debug("  \\ -- f.eOpposite and f.eOposite.containment", feature_name=f.name)
+            logger.debug("  \\ -- f.eOpposite and f.eOposite.containment: %s", f.name)
         owner_fragment = notification.notifier.eURIFragment()
         if notification.feature.containment:
             if notification.old is not None:  # delete actual value, so we need to store this value and xrefs.
@@ -604,7 +601,7 @@ def convertNotificationToChange(stack: UndoRedoCommandStack, notification: Notif
                 stack.push(change)
                 change = None
     else:
-        logger.warning("Not converted notification: ", notification=notification)
+        logger.warning("Not converted notification: %s", notification)
 
     # add possible xrefs from a deepcopy
     if change:
@@ -786,7 +783,8 @@ class ChangeTracker:
         the change tracker data structure that is created for this.
 
         """
-        logger.info("Creating new ChangeTracker for variant ", variant_name=variant.name, resource=resource, eobj=eobj)
+        logger.info("Creating new ChangeTracker for variant: name=%s, resource=%s, eobj=%s",
+                    variant.name, resource, eobj)
         if eobj:
             resource = eobj.eResource
         elif resource:

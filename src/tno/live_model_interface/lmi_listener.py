@@ -89,8 +89,8 @@ def on_high_level_change(message: HighLevelChangeMessage):
 
     tracker = pm.get_change_tracker_for_variant(variant)
     # add more context to the changes received, for the incremental UI updates
-    context = ChangeContext(source=ChangeSource.EXTERNAL, client_id=client_id, resource=es.eResource, flask_app=LOCAL_APP)
-    with tracker.stack.track_changes(label=hlc.label, change_context=context):
+    context = ChangeContext(source=ChangeSource.EXTERNAL, client_id=client_id, resource=es.eResource)
+    with LOCAL_APP.app_context(), tracker.stack.track_changes(label=hlc.label, change_context=context):
         for change in hlc.change:
             applyChange(change, es.eResource, variant, pm.conflict_handler)
     #lock.release()

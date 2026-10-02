@@ -48,7 +48,8 @@ from esdl.processing.string_uri import StringURI
 from esdl.processing.ESDLEcore import instantiate_type
 from esdl.processing.EcoreDocumentation import EcoreDocumentation
 from esdl.undo import UndoRedoCommandStack
-from esdl.undo_wrapper import undo_record_changes
+from src.esdl_integration.undo_wrapper import undo_record_changes
+from src.esdl_integration.ESDLAsset import remove_object_from_energysystem, remove_profile_from_port
 from esdlproject.ProjectManager import update_energy_system_version
 from extensions.data_manager import db
 from extensions.external_models.external_models_storage import ExternalModelsStorage
@@ -87,7 +88,7 @@ from src.version import __git_branch__ as mapeditor_branch
 from src.version import __git_commit__ as mapeditor_commit
 from src.version import __long_version__ as mapeditor_long_version
 from src.version import __version__ as mapeditor_version
-from utils.datetime_utils import parse_date
+from esdl.utils.datetime_utils import parse_date
 
 print('MapEditor version {}'.format(mapeditor_version))
 print('MapEditor git describe {}'.format(mapeditor_long_version))
@@ -1941,7 +1942,7 @@ def process_command(message, stack: UndoRedoCommandStack):
                     {"es_id": active_es_id, "conn_list": conn_list, "add_to_building": False},
                 )
             # now delete the asset
-            ESDLAsset.remove_object_from_energysystem(active_es, obj_id)
+            remove_object_from_energysystem(active_es, obj_id)
             pm.remove_object_from_dict(active_es.id, asset, True)
             if parent_container:
                 # update ports of the parent asset (in case it contained exposed ports).
@@ -2471,7 +2472,7 @@ def process_command(message, stack: UndoRedoCommandStack):
             for p in ports:
                 if p.id == port_id:
                     # p.profile = esdl_profile
-                    ESDLAsset.remove_profile_from_port(p, profile_id)
+                    remove_profile_from_port(p, profile_id)
 
     if message['cmd'] == 'add_port' or message['cmd'] == 'add_port_with_id':
         # merge add_port and add_port_with_id. Why on earth were there two messages for the same thing!
