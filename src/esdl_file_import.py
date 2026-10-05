@@ -219,22 +219,22 @@ class ESDLFileImport:
             if field_name.startswith("standard_profiles_point"):
                 field_name = "_".join(field_name_split[3:])
                 measurement = "_".join(field_name_split[:3])
-                influx_profile = prof_manager.get_esdl_influxdb_profile(measurement, [field_name], profile_type=prof.profileType)
+                influx_profile = prof_manager.get_esdl_influxdb_profile(measurement, [field_name])
             # TODO: elif field_name.startswith("standard_profiles"):
             elif field_name.startswith("bedrijfstijden_profielen"):
                 field_name = "_".join(field_name_split[2:])
                 measurement = "_".join(field_name_split[:2])
-                influx_profile = prof_manager.get_esdl_influxdb_profile(measurement, [field_name], profile_type=prof.profileType)
+                influx_profile = prof_manager.get_esdl_influxdb_profile(measurement, [field_name])
             elif field_name.startswith("KIP_EH_profielen_point"):
                 field_name = "_".join(field_name_split[4:])
                 measurement = "_".join(field_name_split[:4])
-                influx_profile = prof_manager.get_esdl_influxdb_profile(measurement, [field_name], profile_type=prof.profileType)
+                influx_profile = prof_manager.get_esdl_influxdb_profile(measurement, [field_name])
             # TODO: elif field_name.startswith("KIP_EH_profielen"):
             else:
                 if prof.name in existing_profiles:
                     measurement, field_name = existing_profiles[prof.name]
                     influx_profile = prof_manager.get_esdl_influxdb_profile(
-                        measurement, [field_name], profile_type=prof.profileType
+                        measurement, [field_name]
                     )
                 else:
                     # Unknown profiles need their own series in the database.
@@ -244,7 +244,6 @@ class ESDLFileImport:
                     influx_profile = prof_manager.save_influxdb(
                         measurement=measurement,
                         field_names=[prof_manager.profile_header[1]],
-                        profile_type=prof.profileType,
                     )
             influx_profile.name = prof.name  # equal to f"{measurement}_{field_name}" for standard profiles and a UUID for custom profiles
             influx_profile.profileType = prof.profileType
