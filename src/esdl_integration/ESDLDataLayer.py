@@ -88,6 +88,13 @@ class ESDLDataLayer:
             # Is this the right way?
             obj_info['attributes'] = cat_attrs
 
+            obj_info['capabilities'] = {
+                'ports': isinstance(esdl_object, esdl.ConnectableAsset),
+                'cost_information': esdl_object.eClass.findEStructuralFeature('costInformation') is not None,
+                'kpis': esdl_object.eClass.findEStructuralFeature('KPIs') is not None,
+                'constraints': esdl_object.eClass.findEStructuralFeature('constraint') is not None,
+            }
+
             if isinstance(esdl_object, esdl.ConnectableAsset):
                 obj_info['port_profile_info'] = get_port_profile_info(esdl_object)
                 obj_info['port_connected_to_info'] = get_connected_to_info(esdl_object)
@@ -95,10 +102,13 @@ class ESDLDataLayer:
                 obj_info['port_profile_info'] = list()
                 obj_info['port_connected_to_info'] = list()
 
-            if isinstance(esdl_object, esdl.Asset):
+            if obj_info['capabilities']['cost_information']:
                 obj_info['cost_information'] = get_cost_information(esdl_object)
+            else:
+                obj_info['cost_information'] = list()
 
-            if len(esdl_objects) == 1:
+            obj_info['kpi_information'] = list()
+            if len(esdl_objects) == 1 and obj_info['capabilities']['kpis']:
                 obj_info['kpi_information'] = self.get_kpi_information(esdl_object)
 
             obj_infos.append(obj_info)
@@ -678,6 +688,11 @@ class ESDLDataLayer:
                     else:
                         # Attribute is not a common attribute
                         cat_list.remove(item)
+
+            for capability in common_obj_info['capabilities']:
+                common_obj_info['capabilities'][capability] = (
+                    common_obj_info['capabilities'][capability] and next_obj['capabilities'][capability]
+                )
 
             # Filter 'cost_information'
             cost_info_list = common_obj_info['cost_information']
