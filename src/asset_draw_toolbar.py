@@ -15,7 +15,7 @@ import importlib
 
 import src.log as log
 from src.model_contexts import ModelContexts
-from esdl.processing.ESDLAsset import get_asset_capability_type
+from src.esdl_integration.processing.ESDLAsset import get_asset_capability_type
 from extensions.session_manager import get_session
 from extensions.settings_storage import SettingsStorage
 from flask import Flask

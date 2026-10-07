@@ -18,7 +18,7 @@ from extensions.settings_storage import SettingsStorage
 from extensions.session_manager import get_project_manager, get_session
 from src.process_es_area_bld import get_area_id_from_mapeditor_id
 from esdl import esdl
-from esdl.processing import ESDLAsset, ESDLEnergySystem
+from src.esdl_integration.processing import ESDLAsset, ESDLEnergySystem
 import src.settings as settings
 import requests
 import json

@@ -32,7 +32,7 @@ from esdl import esdl, Profiles
 from esdl.processing.string_uri import StringURI
 from esdl.undo import UndoRedoCommandStack
 from src.esdl_integration.undo_wrapper import undo_record_changes
-from esdl.processing import ESDLAsset, ESDLGeometry
+from src.esdl_integration.processing import ESDLAsset, ESDLGeometry
 from esdlproject.ProjectManager import ProjectManager, eobject_to_string, load_external_string
 from extensions.prompt_manager import PromptManager
 from esdl.units.parser import build_qau_from_unit_string

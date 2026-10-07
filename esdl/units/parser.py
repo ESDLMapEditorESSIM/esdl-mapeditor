@@ -99,11 +99,11 @@ def unit_to_string(qau):
     :param qau: an esdl.QuantityAndUnit instance
     :result: string representation of the unit only of the QuanityAndUnit instance
     """
-    mult = qau.multiplier.name
-    unit = qau.unit.name
-    pmult = qau.perMultiplier.name
-    punit = qau.perUnit.name
-    ptunit = qau.perTimeUnit.name
+    mult = qau.multiplier.name if hasattr(qau.multiplier, 'name') else qau.multiplier
+    unit = qau.unit.name if hasattr(qau.unit, 'name') else qau.unit
+    pmult = qau.perMultiplier.name if hasattr(qau.perMultiplier, 'name') else qau.perMultiplier
+    punit = qau.perUnit.name if hasattr(qau.perUnit, 'name') else qau.perUnit
+    ptunit = qau.perTimeUnit.name if hasattr(qau.perTimeUnit, 'name') else qau.perTimeUnit
 
     s = ''
 

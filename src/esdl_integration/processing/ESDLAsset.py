@@ -17,7 +17,7 @@ from esdl import esdl
 from pyecore.ecore import EClass, EObject
 from pyecore.resources import ResourceSet
 from esdl.processing.string_uri import StringURI
-from esdl.processing import ESDLEnergySystem
+from src.esdl_integration.processing import ESDLEnergySystem
 from esdl.resources.xmlresource import XMLResource
 
 

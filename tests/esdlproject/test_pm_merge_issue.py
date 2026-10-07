@@ -18,7 +18,7 @@ import uuid
 from pyecore.ecore import EObject
 
 from esdl import esdl
-from esdl.processing import ESDLGeometry
+from src.esdl_integration.processing import ESDLGeometry
 from esdlproject.ProjectManager import ProjectManager
 from esdlproject.variant_api import create_new_variant
 from src.log import get_logger

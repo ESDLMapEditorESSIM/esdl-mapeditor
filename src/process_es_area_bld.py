@@ -26,9 +26,9 @@ from shapely import MultiPoint
 import esdl
 from esdl.units.parser import unit_to_string
 from esdl import esdl
-from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEnergySystem
-from esdl.processing.ESDLEnergySystem import get_notes_list
-from esdl.processing.ESDLGeometry import calculate_polygon_center
+from src.esdl_integration.processing import ESDLGeometry, ESDLAsset, ESDLEnergySystem
+from src.esdl_integration.processing.ESDLEnergySystem import get_notes_list
+from src.esdl_integration.processing.ESDLGeometry import calculate_polygon_center
 from esdlproject.ProjectManager import ProjectManager
 from extensions.boundary_service import BoundaryService, is_valid_boundary_id
 from extensions.mapeditor_settings import MapEditorSettings
@@ -43,7 +43,7 @@ from src.incremental_ui.incremental_ui_messages import create_asset_port_message
 from src.log import get_logger
 from src.shape import Shape, ShapePoint, ShapeMultiPolygon
 from src.tno.projects.emits import emit_active_esdl_project
-from esdl.utils.RDWGSConverter import RDWGSConverter
+from src.esdl_integration.processing.RDWGSConverter import RDWGSConverter
 from utils.utils import timed
 
 logger = get_logger(__name__)

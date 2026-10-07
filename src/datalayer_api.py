@@ -14,8 +14,8 @@
 
 from flask import Flask
 from flask_socketio import SocketIO
-from esdl.processing import ESDLEnergySystem
-from esdl.processing.EcoreDocumentation import EcoreDocumentation
+from src.esdl_integration.processing import ESDLEnergySystem
+from esdl.ecore_documentation import EcoreDocumentation
 from src.esdl_integration.ESDLDataLayer import ESDLDataLayer
 from src.esdl_integration.undo_wrapper import undo_record_changes
 from extensions.session_manager import get_project_manager

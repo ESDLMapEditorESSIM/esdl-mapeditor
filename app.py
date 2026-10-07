@@ -42,11 +42,12 @@ import src.esdl_config as esdl_config
 import src.settings as settings
 from commands.profiles import profiles_group
 from esdl import esdl
-from esdl.processing import ESDLAsset, ESDLEcore, ESDLEnergySystem, ESDLGeometry, ESDLQuantityAndUnits
-from esdl.processing.ESDLAsset import get_asset_capability_type, update_ids_in_object
+from src.esdl_integration.processing import ESDLQuantityAndUnits
+from src.esdl_integration.processing import ESDLAsset, ESDLEcore, ESDLEnergySystem, ESDLGeometry
+from src.esdl_integration.processing.ESDLAsset import get_asset_capability_type, update_ids_in_object
 from esdl.processing.string_uri import StringURI
-from esdl.processing.ESDLEcore import instantiate_type
-from esdl.processing.EcoreDocumentation import EcoreDocumentation
+from src.esdl_integration.processing.ESDLEcore import instantiate_type
+from esdl.ecore_documentation import EcoreDocumentation
 from esdl.undo import UndoRedoCommandStack
 from src.esdl_integration.undo_wrapper import undo_record_changes
 from src.esdl_integration.ESDLAsset import remove_object_from_energysystem, remove_profile_from_port

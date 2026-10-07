@@ -12,7 +12,7 @@
 #  Manager:
 #      TNO
 
-from esdl.processing.EcoreDocumentation import EcoreDocumentation
+from esdl.ecore_documentation import EcoreDocumentation
 from esdl import GenericProducer
 
 if __name__ == '__main__':

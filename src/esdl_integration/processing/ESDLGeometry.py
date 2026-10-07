@@ -15,7 +15,7 @@
 import math
 
 from esdl import esdl
-from esdl.utils.RDWGSConverter import RDWGSConverter
+from src.esdl_integration.processing.RDWGSConverter import RDWGSConverter
 
 
 # ---------------------------------------------------------------------------------------------------------------------

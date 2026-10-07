@@ -39,7 +39,7 @@ from requests.exceptions import ConnectionError
 import src.log as log
 import src.settings as settings
 from esdl import esdl
-from esdl.processing.ESDLQuantityAndUnits import build_qau_from_dict, get_or_create_esi_qau
+from src.esdl_integration.processing.ESDLQuantityAndUnits import build_qau_from_dict, get_or_create_esi_qau
 from esdl.profiles.influxdbprofilemanager import ConnectionSettings
 from src.esdl_integration.profiles.credentials import Credentials
 from src.esdl_integration.profiles.datatableprofilemanager import DataTableProfileManager

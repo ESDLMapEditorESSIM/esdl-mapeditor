@@ -26,7 +26,7 @@ from extensions.asset_constraint.asset_constraint_message import (
 )
 from extensions.profiles import Profiles
 from extensions.session_manager import get_project_manager, get_session
-from esdl.processing.ESDLEcore import get_asset_attributes, get_asset_references
+from src.esdl_integration.processing.ESDLEcore import get_asset_attributes, get_asset_references
 
 import src.log as log
 

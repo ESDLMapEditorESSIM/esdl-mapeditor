@@ -14,13 +14,13 @@
 
 from uuid import uuid4
 from typing import Optional
-from esdl.processing import ESDLEcore, ESDLEnergySystem
+from src.esdl_integration.processing import ESDLEcore, ESDLEnergySystem
 from pyecore.ecore import EObject, EReference
 
-from esdl.processing.ESDLEcore import instantiate_type
-from esdl.processing.ESDLQuantityAndUnits import get_or_create_esi_qau
+from src.esdl_integration.processing.ESDLEcore import instantiate_type
+from src.esdl_integration.processing.ESDLQuantityAndUnits import get_or_create_esi_qau
 from esdl.units.parser import unit_to_string, build_qau_from_unit_string
-from esdl.processing.EcoreDocumentation import EcoreDocumentation
+from esdl.ecore_documentation import EcoreDocumentation
 from extensions.esdl_browser import ESDLBrowser # for repr function
 from extensions.session_manager import get_project_manager, get_session
 from extensions.profiles import Profiles

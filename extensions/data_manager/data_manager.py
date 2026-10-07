@@ -32,7 +32,7 @@ from sqlalchemy.schema import DropTable
 from sqlalchemy.sql import text, func
 
 import esdl
-from esdl.processing.ESDLAsset import get_asset_capability_type
+from src.esdl_integration.processing.ESDLAsset import get_asset_capability_type
 from esdl.units.conversion import convert_to_unit, UnitException
 from esdl.units.parser import unit_to_string, qau_to_string, build_qau_from_unit_string
 from extensions.data_manager import db

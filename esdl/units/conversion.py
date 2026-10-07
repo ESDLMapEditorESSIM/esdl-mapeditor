@@ -17,7 +17,7 @@ from typing import Union, Type
 from pyecore.ecore import EObject, EClass, MetaEClass
 
 from esdl import esdl
-from esdl.processing.EcoreDocumentation import EcoreDocumentation
+from esdl.ecore_documentation import EcoreDocumentation
 
 __esdl_ecore_documentation = None
 
@@ -174,6 +174,8 @@ def equals(base_unit: esdl.QuantityAndUnitType, other: esdl.QuantityAndUnitType)
             base_unit.multiplier == other.multiplier and \
             base_unit.perUnit == other.perUnit and \
             base_unit.perMultiplier == other.perMultiplier and \
+            base_unit.perTimeUnit == other.perTimeUnit and \
+            base_unit.perScope == other.perScope and \
             base_unit.physicalQuantity == other.physicalQuantity:
         return True
     return False

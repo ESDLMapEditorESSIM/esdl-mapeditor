@@ -22,7 +22,7 @@ import requests
 import json
 from uuid import uuid4
 from esdl import esdl
-from esdl.processing import ESDLGeometry
+from src.esdl_integration.processing import ESDLGeometry
 import src.log as log
 
 logger = log.get_logger(__name__)

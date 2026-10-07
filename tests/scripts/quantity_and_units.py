@@ -1,4 +1,4 @@
-from esdl.processing.ESDLQuantityAndUnits import *
+from src.esdl_integration.processing.ESDLQuantityAndUnits import *
 from esdl.esdl_handler import EnergySystemHandler
 
 esdl.QuantityAndUnitType.__repr__ = \

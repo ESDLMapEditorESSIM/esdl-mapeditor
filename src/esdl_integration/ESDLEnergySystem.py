@@ -13,7 +13,7 @@
 #      TNO
 
 from esdl import esdl
-from esdl.processing.ESDLEnergySystem import process_area_KPIs_recursive
+from src.esdl_integration.processing.ESDLEnergySystem import process_area_KPIs_recursive
 from extensions.profiles import Profiles
 
 
