@@ -334,11 +334,11 @@ function updateAttribute(name, new_value) {
       title: "Saved",
       duration: 2,
     });
-  });
-  window.PubSubManager.broadcast('ASSET_PROPERTIES', {
-    id: currentObjectID.value,
-    name: name,
-    value: new_value,
+    window.PubSubManager.broadcast('ASSET_PROPERTIES', {
+      id: currentObjectID.value,
+      name: name,
+      value: new_value,
+    });
   });
 }
 

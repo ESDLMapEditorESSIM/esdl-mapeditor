@@ -2233,6 +2233,7 @@ def process_command(message, stack: UndoRedoCommandStack):
             asset_id = message['id']
         param_name = message['param_name']
         param_value = message['param_value']
+        set_param_success = True
 
         if asset_id is None:
             resource = pm.get_energy_system_resource_by_id(active_es_id)
@@ -2276,7 +2277,9 @@ def process_command(message, stack: UndoRedoCommandStack):
 
                 else:
                     send_alert('Error setting attribute {} of {} to {}, unknown attribute'.format(param_name, asset.name, param_value))
+                    set_param_success = False
             except Exception as e:
+                set_param_success = False
                 logger.error('Error setting attribute {} of {} to {}, caused by {}'.format(param_name, asset.name, param_value, str(e)))
                 send_alert('Error setting attribute {} of {} to {}, caused by {}'.format(param_name, asset.name, param_value, str(e)))
                 traceback.print_exc()
@@ -2308,6 +2311,8 @@ def process_command(message, stack: UndoRedoCommandStack):
         #             "zoom": False,
         #          })
         #     emit("add_connections",{"es_id": active_es_id, "conn_list": conn_list})
+
+        return {'success': set_param_success}
 
     if message['cmd'] == 'set_area_bld_polygon':
         area_bld_id = message['area_bld_id']

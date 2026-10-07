@@ -13,6 +13,7 @@
 #      TNO
 
 from uuid import uuid4
+from typing import Optional
 from esdl.processing import ESDLEcore, ESDLEnergySystem
 from pyecore.ecore import EObject, EReference
 
@@ -32,6 +33,15 @@ from extensions.vue_backend.messages.DLA_table_data_message import DLA_table_dat
     DLA_set_table_data_request
 from extensions.vue_backend.messages.DLA_delete_ref_message import DeleteRefMessage
 from extensions.vue_backend.messages.identifier_message import Identifier
+from extensions.vue_backend.messages.object_properties_message import (
+    ContainerDescription,
+    MultiSelectInfo,
+    ObjectCapabilities,
+    ObjectDescription,
+    ObjectPropertiesInfo,
+    ObjectFeature,
+    RawObjectInfo,
+)
 from extensions.vue_backend.messages.DLA_carrier_message import CarrierMessage
 from src.asset_draw_toolbar import AssetDrawToolbar
 from src.edr_client import EDRClient
@@ -50,11 +60,11 @@ class ESDLDataLayer:
         self.esdl_doc = esdl_doc
         pass
 
-    def get_object_info_by_identifier(self, identifier: Identifier):
+    def get_object_info_by_identifier(self, identifier: Identifier) -> RawObjectInfo:
         esdl_object = self.get_object_from_identifier(identifier)
         return self.get_object_info(esdl_object)
 
-    def get_object_parameters_by_identifier(self, identifier: Identifier):
+    def get_object_parameters_by_identifier(self, identifier: Identifier) -> Optional[ObjectPropertiesInfo]:
         if isinstance(identifier['id'], list):
             esdl_objects = list()
             for obj_id in identifier['id']:
@@ -66,62 +76,68 @@ class ESDLDataLayer:
             else:
                 return None
 
-        obj_infos = list()
+        obj_infos: list[ObjectPropertiesInfo] = list()
         num_assets_selected = 0
         selected_asset_type = None
         for esdl_object in esdl_objects:
             num_assets_selected += 1
-            obj_info = self.get_object_info(esdl_object)
+            raw_obj_info = self.get_object_info(esdl_object)
             if not selected_asset_type:
-                selected_asset_type = obj_info['object']['type']
-            else:
-                if selected_asset_type != obj_info['object']['type']:
-                    selected_asset_type = 'Multiple'
+                selected_asset_type = raw_obj_info['object']['type']
+            elif selected_asset_type != raw_obj_info['object']['type']:
+                selected_asset_type = 'Multiple'
 
-            attrs = obj_info['attributes']
-            refs = obj_info['references']
+            attrs = raw_obj_info['attributes']
+            refs = raw_obj_info['references']
             self._convert_attributes_to_primitive_types(attrs)
 
             model_context = ModelContexts.get_instance()
             cat_attrs = model_context.categorize_object_attributes_and_references(esdl_object, attrs, refs)
+            # Build the complete response shape here so every object exposes the same keys.
+            capabilities = ObjectCapabilities(
+                ports=isinstance(esdl_object, esdl.ConnectableAsset),
+                cost_information=esdl_object.eClass.findEStructuralFeature('costInformation') is not None,
+                kpis=esdl_object.eClass.findEStructuralFeature('KPIs') is not None,
+                constraints=esdl_object.eClass.findEStructuralFeature('constraint') is not None,
+            )
 
-            # Is this the right way?
-            obj_info['attributes'] = cat_attrs
+            port_profile_info = list()
+            port_connected_to_info = list()
+            if capabilities['ports']:
+                port_profile_info = get_port_profile_info(esdl_object)
+                port_connected_to_info = get_connected_to_info(esdl_object)
 
-            obj_info['capabilities'] = {
-                'ports': isinstance(esdl_object, esdl.ConnectableAsset),
-                'cost_information': esdl_object.eClass.findEStructuralFeature('costInformation') is not None,
-                'kpis': esdl_object.eClass.findEStructuralFeature('KPIs') is not None,
-                'constraints': esdl_object.eClass.findEStructuralFeature('constraint') is not None,
-            }
+            cost_information = list()
+            if capabilities['cost_information']:
+                cost_information = get_cost_information(esdl_object)
 
-            if isinstance(esdl_object, esdl.ConnectableAsset):
-                obj_info['port_profile_info'] = get_port_profile_info(esdl_object)
-                obj_info['port_connected_to_info'] = get_connected_to_info(esdl_object)
-            else:
-                obj_info['port_profile_info'] = list()
-                obj_info['port_connected_to_info'] = list()
+            kpi_information = list()
+            if len(esdl_objects) == 1 and capabilities['kpis']:
+                kpi_information = self.get_kpi_information(esdl_object)
 
-            if obj_info['capabilities']['cost_information']:
-                obj_info['cost_information'] = get_cost_information(esdl_object)
-            else:
-                obj_info['cost_information'] = list()
-
-            obj_info['kpi_information'] = list()
-            if len(esdl_objects) == 1 and obj_info['capabilities']['kpis']:
-                obj_info['kpi_information'] = self.get_kpi_information(esdl_object)
-
+            obj_info = ObjectPropertiesInfo(
+                object=raw_obj_info['object'],
+                attributes=cat_attrs,
+                references=raw_obj_info['references'],
+                container=raw_obj_info['container'],
+                capabilities=capabilities,
+                port_profile_info=port_profile_info,
+                port_connected_to_info=port_connected_to_info,
+                cost_information=cost_information,
+                kpi_information=kpi_information,
+                multi_select_info=None,
+            )
             obj_infos.append(obj_info)
 
         if len(obj_infos) == 1:
             return obj_infos[0]
-        else:
-            common_obj_data = self.find_common_object_data(obj_infos)
-            common_obj_data['multi_select_info'] = {
-                'num_assets_selected': num_assets_selected,
-                'selected_asset_type': selected_asset_type
-            }
-            return common_obj_data
+
+        common_obj_data = self.find_common_object_data(obj_infos)
+        common_obj_data['multi_select_info'] = MultiSelectInfo(
+            num_assets_selected=num_assets_selected,
+            selected_asset_type=selected_asset_type,
+        )
+        return common_obj_data
 
     @staticmethod
     def get_kpi_information(obj: EObject) -> list[dict]:
@@ -386,20 +402,19 @@ class ESDLDataLayer:
 
         return asset_list
 
-    def get_object_info(self, esdl_object):
+    def get_object_info(self, esdl_object: EObject) -> RawObjectInfo:
         esdl_object_descr = self.get_object_dict(esdl_object)
-        container = esdl_object.eContainer()
-        container_descr = self.get_container_dict(container)
+        container_descr = self.get_container_dict(esdl_object.eContainer())
         attributes = ESDLEcore.get_asset_attributes(esdl_object, self.esdl_doc)
         references = ESDLEcore.get_asset_references(esdl_object, self.esdl_doc, ESDLBrowser.generate_repr)
-        return {
-            'object': esdl_object_descr,
-            'attributes': attributes,
-            'references': references,
-            'container': container_descr
-        }
+        return RawObjectInfo(
+            object=esdl_object_descr,
+            attributes=attributes,
+            references=references,
+            container=container_descr,
+        )
 
-    def _convert_attributes_to_primitive_types(self, attributes):
+    def _convert_attributes_to_primitive_types(self, attributes: list[ObjectFeature]) -> None:
         for attr in attributes:
             if attr['type'] == 'EDouble':
                 attr['value'] = float(attr['value'])
@@ -408,39 +423,42 @@ class ESDLDataLayer:
                 attr['value'] = int(attr['value'])
                 attr['default'] = int(attr['default'])
 
-    def get_container_dict(self, container):
+    def get_container_dict(self, container: Optional[EObject]) -> Optional[ContainerDescription]:
         if container is None:
             return None
-        c_dict = {'doc': container.__doc__, 'type': container.eClass.name,}
-        if hasattr(container, 'name'):
-            c_dict['name'] = container.name
-        else:
-            c_dict['name'] = None
-        if not hasattr(container, 'id') or container.id is None:
-            c_dict['fragment'] = container.eURIFragment()
-        else:
-            c_dict['id'] = container.id
-        if container.eContainer() is not None:
-            c_dict['container'] = self.get_container_dict(container.eContainer())
-        return c_dict
 
-    def get_object_dict(self, esdl_object):
+        container_id = getattr(container, 'id', None)
+        fragment = None
+        if container_id is None:
+            fragment = container.eURIFragment()
+
+        return ContainerDescription(
+            name=getattr(container, 'name', None),
+            doc=container.__doc__,
+            type=container.eClass.name,
+            id=container_id,
+            fragment=fragment,
+            container=self.get_container_dict(container.eContainer()),
+        )
+
+    def get_object_dict(self, esdl_object: EObject) -> ObjectDescription:
         if not hasattr(esdl_object, 'name'):
             name = esdl_object.eClass.name
         else:
             name = esdl_object.name
 
-        object_dict = {
-            'name': name,
-            'doc': esdl_object.__doc__,
-            'type': esdl_object.eClass.name
-        }
-        if not hasattr(esdl_object, 'id'):
-            object_dict['id'] = None
-            object_dict['fragment'] = esdl_object.eURIFragment()
-        else:
-            object_dict['id'] = esdl_object.id
-        return object_dict
+        object_id = getattr(esdl_object, 'id', None)
+        fragment = None
+        if object_id is None:
+            fragment = esdl_object.eURIFragment()
+
+        return ObjectDescription(
+            name=name,
+            doc=esdl_object.__doc__,
+            type=esdl_object.eClass.name,
+            id=object_id,
+            fragment=fragment,
+        )
 
     @staticmethod
     def generate_repr(item):
@@ -636,7 +654,7 @@ class ESDLDataLayer:
             logger.error('Unknown action on environmental profiles')
 
     @staticmethod
-    def find_common_object_data(object_info_list):
+    def find_common_object_data(object_info_list: list[ObjectPropertiesInfo]) -> ObjectPropertiesInfo:
         """
         Finds the common attributes, references in a list of objects. Used when multiple assets on the map are selected.
 
@@ -644,29 +662,39 @@ class ESDLDataLayer:
         :return: one obj_info dict with the common elements that could be edited as a group
         """
 
-        # obj_info is a dict wiht 7 keys:
-        # - object: dict with 4 keys
+        # obj_info is an ObjectPropertiesInfo dict with 10 keys:
+        # - object: dict with 5 keys
         # - attributes: dict with categories (Basic, ESSIM, Advanced) as keys
         # - references: list
-        # - container: dict with 5 keys
+        # - container: dict with 6 keys, or None
+        # - capabilities: dict with 4 keys
         # - port_profile_info: list
         # - port_connected_to_info: list
         # - cost_information: list with 10 elements
-
+        # - kpi_information: list
+        # - multi_select_info: dict with 2 keys, or None
         common_obj_info = object_info_list.pop(0)       # start with first object
-        del common_obj_info['references']
-        del common_obj_info['container']
-        del common_obj_info['port_profile_info']
-        del common_obj_info['port_connected_to_info']
+        # References, containers and port data cannot represent multiple objects.
+        common_obj_info['references'] = list()
+        common_obj_info['container'] = None
+        common_obj_info['port_profile_info'] = list()
+        common_obj_info['port_connected_to_info'] = list()
 
         for next_obj in object_info_list:
 
             # Filter 'object'
             object_dict = common_obj_info['object']
-            for o in object_dict:
-                if o in next_obj['object']:
-                    if object_dict[o] != next_obj['object'][o]:
-                        object_dict[o] = ''
+            next_object_dict = next_obj['object']
+            if object_dict['name'] != next_object_dict['name']:
+                object_dict['name'] = ''
+            if object_dict['doc'] != next_object_dict['doc']:
+                object_dict['doc'] = ''
+            if object_dict['type'] != next_object_dict['type']:
+                object_dict['type'] = ''
+            if object_dict['id'] != next_object_dict['id']:
+                object_dict['id'] = ''
+            if object_dict['fragment'] != next_object_dict['fragment']:
+                object_dict['fragment'] = ''
 
             # Filter 'attributes'
             attr_dict = common_obj_info['attributes']
@@ -689,10 +717,15 @@ class ESDLDataLayer:
                         # Attribute is not a common attribute
                         cat_list.remove(item)
 
-            for capability in common_obj_info['capabilities']:
-                common_obj_info['capabilities'][capability] = (
-                    common_obj_info['capabilities'][capability] and next_obj['capabilities'][capability]
-                )
+            # A panel is available only when every selected object supports it.
+            capabilities = common_obj_info['capabilities']
+            next_capabilities = next_obj['capabilities']
+            capabilities['ports'] = capabilities['ports'] and next_capabilities['ports']
+            capabilities['cost_information'] = (
+                capabilities['cost_information'] and next_capabilities['cost_information']
+            )
+            capabilities['kpis'] = capabilities['kpis'] and next_capabilities['kpis']
+            capabilities['constraints'] = capabilities['constraints'] and next_capabilities['constraints']
 
             # Filter 'cost_information'
             cost_info_list = common_obj_info['cost_information']
