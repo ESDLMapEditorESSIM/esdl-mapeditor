@@ -773,7 +773,7 @@ def process_building(pm: ProjectManager, es_id, asset_list, building_list, area_
     for basset in building.asset:
         if isinstance(basset, esdl.AbstractBuilding):
             process_building(pm, es_id, asset_list, building_list, area_bld_list, conn_list, basset, bld_editor, level + 1)
-        else:
+        elif hasattr(basset, 'port'):
             # Create a list of ports for this asset
             port_list = create_asset_port_message(basset)
 
