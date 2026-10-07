@@ -755,31 +755,10 @@ function set_area_handlers(area) {
     // });
 
     area.on('click', function(e) {
-        var area = e.target;
-        if (deleting_objects == false && editing_objects == false) {        // do not execute when removing/editing objects
-            var area = e.target;
-            var id = area.id;
-
-            // TODO: check if we want to do something with editing areas
-            // if (select_areas.is_select_mode()) {
-            //     // One or more areas have been selected
-            //     if (select_areas.is_selected(area)) {
-            //         // the current area is part of this selection
-            //         let area_list = select_areas.get_selected_areas();
-            //         object_properties_window(area_list);
-            //     } else { // the current area is clicked but was not part of the selection
-            //         object_properties_window(area.id);
-            //         select_areas.deselect_all_areas();
-            //         select_areas.toggle_selected(area);
-            //     }
-            // } else {
-            //     object_properties_window(area.id);
-            //     select_areas.deselect_all_areas();
-            //     select_areas.toggle_selected(area);
-            // }
-
-            // This command does not exist. Should something else be called?
-            // socket.emit('command', {cmd: 'get_area_info', id: id});
+        if (!e.originalEvent.shiftKey && !e.originalEvent.ctrlKey && !e.originalEvent.altKey &&
+                !e.originalEvent.metaKey && deleting_objects == false && editing_objects == false) {
+            var id = get_area_id_from_mapeditor_id(e.target.id);
+            object_properties_window(id);
         }
     });
 
@@ -1302,6 +1281,24 @@ function set_building_contextmenu(layer, id, es_id) {
         callback: function(e) { remove_building(layer); }
     });
 
+    layer.on('click', function(e) {
+        if (!e.originalEvent.shiftKey && !e.originalEvent.ctrlKey && !e.originalEvent.altKey &&
+                !e.originalEvent.metaKey && deleting_objects == false && editing_objects == false) {
+            if (select_assets.is_select_mode()) {
+                if (select_assets.is_selected(layer)) {
+                    object_properties_window(select_assets.get_selected_assets());
+                } else {
+                    object_properties_window(id);
+                    select_assets.deselect_all_assets();
+                    select_assets.toggle_selected(layer);
+                }
+            } else {
+                object_properties_window(id);
+                select_assets.deselect_all_assets();
+                select_assets.toggle_selected(layer);
+            }
+        }
+    });
     select_assets.add_asset_handler(layer);
     window.PubSubManager.broadcast('ADD_BUILDING_TO_LAYER', {
         es_id: es_id,
