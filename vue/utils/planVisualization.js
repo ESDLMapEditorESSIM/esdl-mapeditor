@@ -5,6 +5,11 @@ const PLAN_OPACITY = 0.95;
 const PLAN_MARKER_RADIUS = 17;
 const PLAN_MARKER_WEIGHT = 5;
 const PLAN_POLYGON_WEIGHT = 7;
+const PLAN_GEOMETRY_WEIGHT = 3;
+const PLAN_GEOMETRY_HOVER_WEIGHT = 5;
+const PLAN_GEOMETRY_DASH_ARRAY = "8 6";
+const PLAN_GEOMETRY_FILL_OPACITY = 0.12;
+const PLAN_GEOMETRY_HOVER_FILL_OPACITY = 0.24;
 const PLAN_POLYLINE_OUTLINE_WIDTH = 8;
 const BUILDING_TYPES = new Set([
     "AggregatedBuilding",
@@ -49,15 +54,15 @@ function findPlanElementLayer(esdlId, element) {
 }
 
 /**
- * Creates the non-interactive pane used for plan highlights.
+ * Creates the pane used for plan geometry and highlights.
  */
 function ensurePlanPane() {
     let pane = window.map.getPane(PLAN_PANE_NAME);
     if (!pane) {
         pane = window.map.createPane(PLAN_PANE_NAME);
         pane.style.zIndex = PLAN_PANE_Z_INDEX;
-        pane.style.pointerEvents = "none";
     }
+    pane.style.pointerEvents = "";
 }
 
 /**
@@ -111,6 +116,33 @@ function createPlanHighlight(layer) {
 }
 
 /**
+ * Creates a layer for the geometry stored on the Plan itself.
+ */
+function createPlanGeometry(geometry) {
+    if (!geometry) {
+        return null;
+    }
+
+    const options = {
+        color: PLAN_COLOR,
+        dashArray: PLAN_GEOMETRY_DASH_ARRAY,
+        fill: true,
+        fillOpacity: PLAN_GEOMETRY_FILL_OPACITY,
+        interactive: true,
+        opacity: PLAN_OPACITY,
+        pane: PLAN_PANE_NAME,
+        weight: PLAN_GEOMETRY_WEIGHT,
+    };
+    return window.L.geoJSON(geometry, {
+        pointToLayer: (feature, latLng) => window.L.circleMarker(latLng, {
+            ...options,
+            radius: PLAN_MARKER_RADIUS,
+        }),
+        style: options,
+    });
+}
+
+/**
  * Renders highlights for the elements in the selected plan.
  * @param {string} esdlId
  * @param {import('@/composables/plans').Plan|null} plan
@@ -127,6 +159,26 @@ export function renderPlanLayer(esdlId, plan) {
     }
 
     ensurePlanPane();
+    const geometryLayer = createPlanGeometry(plan.geometry);
+    if (geometryLayer) {
+        geometryLayer.on("mouseover", () => {
+            geometryLayer.setStyle({
+                fillOpacity: PLAN_GEOMETRY_HOVER_FILL_OPACITY,
+                weight: PLAN_GEOMETRY_HOVER_WEIGHT,
+            });
+        });
+        geometryLayer.on("mouseout", () => {
+            geometryLayer.setStyle({
+                fillOpacity: PLAN_GEOMETRY_FILL_OPACITY,
+                weight: PLAN_GEOMETRY_WEIGHT,
+            });
+        });
+        geometryLayer.on("click", (event) => {
+            window.object_properties_window(plan.id);
+            window.L.DomEvent.stopPropagation(event);
+        });
+        planLayer.addLayer(geometryLayer);
+    }
     plan.elements.forEach((element) => {
         const sourceLayer = findPlanElementLayer(esdlId, element);
         if (!sourceLayer) {

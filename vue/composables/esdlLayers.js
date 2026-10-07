@@ -132,7 +132,7 @@ export function useEsdlLayers() {
             /** @type {import('@/composables/visibleLayers').VisibleLayer} */
             const visibleEsdlLayer = {
                 id: `${es_id}_${esLayerName}`,
-                visible: esLayerName !== PLAN_LAYER_NAME,
+                visible: true,
                 description: esLayerName,
                 es_id: es_id,
                 es: es,
