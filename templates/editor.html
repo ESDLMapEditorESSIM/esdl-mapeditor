@@ -1874,6 +1874,14 @@
         contextmenuItems: [],
     });
 
+    var mapResizeObserver = new ResizeObserver(function() {
+        map.invalidateSize({pan: false, debounceMoveend: true});
+    });
+    mapResizeObserver.observe(map.getContainer());
+    map.on('unload', function() {
+        mapResizeObserver.disconnect();
+    });
+
     map.on('keyup', function(e) {
         if (e.keyCode === 27) {
             console.log('esc pressed!')

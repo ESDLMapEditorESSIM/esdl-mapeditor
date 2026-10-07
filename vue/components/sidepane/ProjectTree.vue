@@ -66,12 +66,14 @@ import {useESDLProjects} from '@/composables/esdlProjects';
 import {useEsdlLayers} from '@/composables/esdlLayers';
 import {useLoader} from "@/composables/loader";
 import {useSocketIO} from "@/composables/socketio";
+import {theme} from 'ant-design-vue';
 
 // Composables
 const { esdlProject, getESDLProject, activeVariant, setActiveVariant, getAllVariants } = useESDLProjects();
 const { enableEsdl, disableEsdl, enabledEsdlIdList } = useEsdlLayers();
 const { startLoader, stopLoader } = useLoader();
 const { socket } = useSocketIO();
+const {token} = theme.useToken();
 
 // State for Ant Tree
 const selectedKeys = computed(() => activeVariant() ? [activeVariant().id] : []);
@@ -366,7 +368,7 @@ function refreshVariant(variant) {
 <style scoped lang="scss">
 .is-active {
   font-weight: bold;
-  background-color: #beebff;
+  background-color: v-bind('token.controlItemBgActive');
 }
 
 .menu-item-with-icon i {

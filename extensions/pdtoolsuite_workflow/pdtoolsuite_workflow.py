@@ -75,6 +75,8 @@ class PDToolsuiteWorkflow:
                 kpi_dict = _building_kpis_to_dict(building)
                 kpis_value_dict: dict[str, Union[int, float, str, None]] = {}
                 for kpi_name, kpi in kpi_dict.items():
+                    if not isinstance(kpi, (esdl.DoubleKPI, esdl.IntKPI, esdl.StringKPI)):
+                        continue
                     value = kpi.value
                     if isinstance(value, float) and isnan(value):
                         value = 0.0

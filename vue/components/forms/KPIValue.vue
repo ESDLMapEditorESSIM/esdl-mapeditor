@@ -1,7 +1,6 @@
 <template>
   <span v-if="formattedNumber" class="kpi-number" :title="fullValue">
-    <span class="formatted">{{ formattedNumber.text }}</span>
-    <span v-if="formattedNumber.truncated">…</span>
+    <span class="formatted">{{ formattedNumber.text }}<template v-if="formattedNumber.truncated">…</template></span>
   </span>
   <a-typography-text v-else :ellipsis="true" :title="fullValue" :content="fullValue" />
 </template>
