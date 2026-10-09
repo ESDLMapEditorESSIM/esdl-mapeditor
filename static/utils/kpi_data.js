@@ -176,7 +176,7 @@ function createChartOptions(kpi_info) {
             },
             title: {
                 display: true,
-                text: kpi_item.name
+                text: formatKPIName(kpi_item.name)
             }
         }
     } else {
@@ -216,7 +216,7 @@ function createChartOptions(kpi_info) {
             },
             title: {
                 display: true,
-                text: kpi_item.name
+                text: formatKPIName(kpi_item.name)
             },
             scales: {
                 y: {

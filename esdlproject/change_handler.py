@@ -12,6 +12,8 @@
 #  Manager:
 #      TNO
 
+import logging
+
 from pyecore.ecore import EStructuralFeature, EAttribute, EObject, EClass, EReference
 from pyecore.valuecontainer import ECollection, EList
 
@@ -19,9 +21,8 @@ from esdl.resources.xmlresource import XMLResource
 from esdlproject import Set, Add, Remove, Delete, Variant, DetailedChange
 from esdlproject.MergeConflictHandler import MergeConflictHandler, ConflictResolution, get_variant, \
     update_fragment_list_index
-from src.log import get_logger
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 """
 Implements undo and redo based on a change.

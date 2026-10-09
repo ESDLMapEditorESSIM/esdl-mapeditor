@@ -917,8 +917,10 @@ class Carrier(EObject, metaclass=MetaEClass):
     cost = EReference(ordered=True, unique=True, containment=True, derived=False)
     dataSource = EReference(ordered=True, unique=True, containment=True, derived=False)
     profile = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
+    compoundCarrier = EReference(ordered=True, unique=True,
+                                 containment=False, derived=False, upper=-1)
 
-    def __init__(self, *, name=None, id=None, cost=None, dataSource=None, profile=None):
+    def __init__(self, *, name=None, id=None, cost=None, dataSource=None, profile=None, compoundCarrier=None):
         # if kwargs:
         #    raise AttributeError('unexpected arguments: {}'.format(kwargs))
 
@@ -938,6 +940,9 @@ class Carrier(EObject, metaclass=MetaEClass):
 
         if profile:
             self.profile.extend(profile)
+
+        if compoundCarrier:
+            self.compoundCarrier.extend(compoundCarrier)
 
 
 class Duration(EObject, metaclass=MetaEClass):
@@ -3059,13 +3064,25 @@ class InstanceYear(AbstractInstanceDate):
 class Plan(AbstractGroupMember):
     """Plan (e.g. a policy plan) with references to its elements (assets, services, ...)"""
     element = EReference(ordered=True, unique=True, containment=False, derived=False, upper=-1)
+    geometry = EReference(ordered=True, unique=True, containment=True, derived=False)
+    KPIs = EReference(ordered=True, unique=True, containment=True, derived=False)
+    costInformation = EReference(ordered=True, unique=True, containment=True, derived=False)
 
-    def __init__(self, *, element=None, **kwargs):
+    def __init__(self, *, element=None, geometry=None, KPIs=None, costInformation=None, **kwargs):
 
         super().__init__(**kwargs)
 
         if element:
             self.element.extend(element)
+
+        if geometry is not None:
+            self.geometry = geometry
+
+        if KPIs is not None:
+            self.KPIs = KPIs
+
+        if costInformation is not None:
+            self.costInformation = costInformation
 
 
 class DatabaseConfiguration(AbstractDataConfiguration):
@@ -3114,6 +3131,22 @@ Keep in mind that for portability one should not refer to local files that other
             self.type = type
 
 
+class CompoundCarrier(Carrier):
+    """The CompoundCarrier class provides a means to group carriers, for example the carriers with different temperatures in a heating network."""
+    carrier = EReference(ordered=True, unique=True, containment=False, derived=False, upper=-1)
+    alternative = EReference(ordered=True, unique=True, containment=False, derived=False, upper=-1)
+
+    def __init__(self, *, carrier=None, alternative=None, **kwargs):
+
+        super().__init__(**kwargs)
+
+        if carrier:
+            self.carrier.extend(carrier)
+
+        if alternative:
+            self.alternative.extend(alternative)
+
+
 class Insulation(Asset):
     """Describes insulation that can be added to a building. The relation with the heat consumption is not defined and requires manual modelling"""
     thermalInsulation = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
@@ -3145,30 +3178,6 @@ class EnergyService(Service):
     def __init__(self, **kwargs):
 
         super().__init__(**kwargs)
-
-
-class WindPotential(Potential):
-    """Defines the potential for wind energy. This class can be used instead of 'SearchAreaWind' in case there is more information available."""
-    value = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
-    fullLoadHours = EAttribute(eType=EInt, unique=True, derived=False, changeable=True)
-    area = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
-    height = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
-
-    def __init__(self, *, value=None, fullLoadHours=None, area=None, height=None, **kwargs):
-
-        super().__init__(**kwargs)
-
-        if value is not None:
-            self.value = value
-
-        if fullLoadHours is not None:
-            self.fullLoadHours = fullLoadHours
-
-        if area is not None:
-            self.area = area
-
-        if height is not None:
-            self.height = height
 
 
 class DateTimeProfile(StaticProfile):
@@ -3330,40 +3339,6 @@ class Range(StaticProfile):
             self.midValue = midValue
 
 
-class SolarPotential(Potential):
-    """Defines the potential for solar energy. This class can be used instead of 'SearchAreaSolar' in case there is more information available."""
-    value = EAttribute(eType=EDouble, unique=True, derived=False,
-                       changeable=True, default_value=0.0)
-    solarPotentialType = EAttribute(eType=PVInstallationTypeEnum, unique=True,
-                                    derived=False, changeable=True, default_value=PVInstallationTypeEnum.UNDEFINED)
-    fullLoadHours = EAttribute(eType=EInt, unique=True, derived=False, changeable=True)
-    area = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
-    angle = EAttribute(eType=EInt, unique=True, derived=False, changeable=True)
-    orientation = EAttribute(eType=EInt, unique=True, derived=False, changeable=True)
-
-    def __init__(self, *, value=None, solarPotentialType=None, fullLoadHours=None, area=None, angle=None, orientation=None, **kwargs):
-
-        super().__init__(**kwargs)
-
-        if value is not None:
-            self.value = value
-
-        if solarPotentialType is not None:
-            self.solarPotentialType = solarPotentialType
-
-        if fullLoadHours is not None:
-            self.fullLoadHours = fullLoadHours
-
-        if area is not None:
-            self.area = area
-
-        if angle is not None:
-            self.angle = angle
-
-        if orientation is not None:
-            self.orientation = orientation
-
-
 class ProfileReference(StaticProfile):
     """Used to refer to profiles defined in the Energy System Information section"""
     multiplier = EAttribute(eType=EDouble, unique=True, derived=False,
@@ -3379,32 +3354,6 @@ class ProfileReference(StaticProfile):
 
         if reference is not None:
             self.reference = reference
-
-
-class ResidualHeatSourcePotential(Potential):
-    """Defines the residual heat potential in a specific area."""
-    value = EAttribute(eType=EDouble, unique=True, derived=False,
-                       changeable=True, default_value=0.0)
-    type = EAttribute(eType=ResidualHeatSourceTypeEnum, unique=True, derived=False, changeable=True)
-    associatedConversionAsset = EReference(
-        ordered=True, unique=True, containment=False, derived=False)
-    residualHeatSource = EReference(ordered=True, unique=True, containment=False, derived=False)
-
-    def __init__(self, *, value=None, type=None, associatedConversionAsset=None, residualHeatSource=None, **kwargs):
-
-        super().__init__(**kwargs)
-
-        if value is not None:
-            self.value = value
-
-        if type is not None:
-            self.type = type
-
-        if associatedConversionAsset is not None:
-            self.associatedConversionAsset = associatedConversionAsset
-
-        if residualHeatSource is not None:
-            self.residualHeatSource = residualHeatSource
 
 
 class EnergyCommodity(Commodity):
@@ -3443,53 +3392,6 @@ class Measure(AbstractMeasure):
             self.labelJump = labelJump
 
 
-@abstract
-class AbstractGTPotential(Potential):
-    """Abstract class to describe geothermal potential"""
-    geothermalSource = EReference(ordered=True, unique=True,
-                                  containment=False, derived=False, upper=-1)
-
-    def __init__(self, *, geothermalSource=None, **kwargs):
-
-        super().__init__(**kwargs)
-
-        if geothermalSource:
-            self.geothermalSource.extend(geothermalSource)
-
-
-class UTESPotential(Potential):
-    """Defines the potential for underground thermal energy storage (UTES). E.g. ATES or BTES potential"""
-    value = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
-    type = EAttribute(eType=UTESPotentialTypeEnum, unique=True, derived=False, changeable=True)
-    UTES = EReference(ordered=True, unique=True, containment=False, derived=False, upper=-1)
-
-    def __init__(self, *, value=None, type=None, UTES=None, **kwargs):
-
-        super().__init__(**kwargs)
-
-        if value is not None:
-            self.value = value
-
-        if type is not None:
-            self.type = type
-
-        if UTES:
-            self.UTES.extend(UTES)
-
-
-class BiomassPotential(Potential):
-    """Defines the biomass potential in a specific area."""
-    value = EAttribute(eType=EDouble, unique=True, derived=False,
-                       changeable=True, default_value=0.0)
-
-    def __init__(self, *, value=None, **kwargs):
-
-        super().__init__(**kwargs)
-
-        if value is not None:
-            self.value = value
-
-
 class Glazing(Asset):
     """Allows to specify the glass of a building, e.g. for calculating heat loss"""
     uWindow = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
@@ -3505,42 +3407,6 @@ class Glazing(Asset):
 
         if glazingType is not None:
             self.glazingType = glazingType
-
-
-class SearchAreaWind(Potential):
-    """Specifies search areas for wind turbines. Search areas are a kind of 'legal' areas that have been appointed by the (local) government as possible areas for wind installations. Further research should give insight in the real potential (in terms of energy)."""
-    fullLoadHours = EAttribute(eType=EInt, unique=True, derived=False, changeable=True)
-    area = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
-    height = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
-
-    def __init__(self, *, fullLoadHours=None, area=None, height=None, **kwargs):
-
-        super().__init__(**kwargs)
-
-        if fullLoadHours is not None:
-            self.fullLoadHours = fullLoadHours
-
-        if area is not None:
-            self.area = area
-
-        if height is not None:
-            self.height = height
-
-
-class SearchAreaSolar(Potential):
-    """Specifies search areas for solar installations. Search areas are a kind of 'legal' areas that have been appointed by the (local) government as possible areas for solar installations. Further research should give insight in the real potential (in terms of energy)."""
-    fullLoadHours = EAttribute(eType=EInt, unique=True, derived=False, changeable=True)
-    area = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
-
-    def __init__(self, *, fullLoadHours=None, area=None, **kwargs):
-
-        super().__init__(**kwargs)
-
-        if fullLoadHours is not None:
-            self.fullLoadHours = fullLoadHours
-
-        if area is not None:
-            self.area = area
 
 
 class BuildingTypeDistribution(SpecificLabelDistribution):
@@ -3896,6 +3762,32 @@ class MeasureGroupReference(AbstractMeasure):
 
 
 @abstract
+class AbstractProductionPotential(Potential):
+    """Abstract class for all potentials that relate to production of energy"""
+    power = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
+
+    def __init__(self, *, power=None, **kwargs):
+
+        super().__init__(**kwargs)
+
+        if power is not None:
+            self.power = power
+
+
+@abstract
+class AbstractStoragePotential(Potential):
+    """Abstract class for all potentials that relate to storage of energy"""
+    capacity = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
+
+    def __init__(self, *, capacity=None, **kwargs):
+
+        super().__init__(**kwargs)
+
+        if capacity is not None:
+            self.capacity = capacity
+
+
+@abstract
 class EnergyAsset(ConnectableAsset):
     """An abstract class that describes a connectable Asset using ports. EnergyAssets main subclasses contain the 5 capability type: Producer, Consumer, Storage, Conversion and Transport """
     port = EReference(ordered=True, unique=True, containment=True, derived=False, upper=-1)
@@ -3916,32 +3808,6 @@ class EnergyAsset(ConnectableAsset):
             self.behaviour.extend(behaviour)
 
 
-class GeothermalPotential(AbstractGTPotential):
-    """Defines the geothermal potential in a specific area. This type focusses on temperature and depth of the well. See GeothermalEnergyPotental for class focussing on Energy"""
-    temperature = EAttribute(eType=EInt, unique=True, derived=False, changeable=True)
-    depth = EAttribute(eType=EInt, unique=True, derived=False, changeable=True)
-    potential = EAttribute(eType=GeothermalPotentialEnum, unique=True,
-                           derived=False, changeable=True)
-    powerPerDoublet = EAttribute(eType=GeothermalPowerEnum, unique=True,
-                                 derived=False, changeable=True, default_value=GeothermalPowerEnum.UNKNOWN)
-
-    def __init__(self, *, temperature=None, depth=None, potential=None, powerPerDoublet=None, **kwargs):
-
-        super().__init__(**kwargs)
-
-        if temperature is not None:
-            self.temperature = temperature
-
-        if depth is not None:
-            self.depth = depth
-
-        if potential is not None:
-            self.potential = potential
-
-        if powerPerDoublet is not None:
-            self.powerPerDoublet = powerPerDoublet
-
-
 class DemandResponseService(EnergyService):
     """Indicates a service supporting demand response in the energy system"""
 
@@ -3958,6 +3824,30 @@ class AggregatorService(EnergyService):
         super().__init__(**kwargs)
 
 
+class WindPotential(AbstractProductionPotential):
+    """Defines the potential for wind energy. This class can be used instead of 'SearchAreaWind' in case there is more information available."""
+    value = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
+    fullLoadHours = EAttribute(eType=EInt, unique=True, derived=False, changeable=True)
+    area = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
+    height = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
+
+    def __init__(self, *, value=None, fullLoadHours=None, area=None, height=None, **kwargs):
+
+        super().__init__(**kwargs)
+
+        if value is not None:
+            self.value = value
+
+        if fullLoadHours is not None:
+            self.fullLoadHours = fullLoadHours
+
+        if area is not None:
+            self.area = area
+
+        if height is not None:
+            self.height = height
+
+
 class InfluxDBProfile(LegacyAbstractDatabaseProfile):
     """Describes a profile based on a measurement and field as part of an InfluxDB timeseries query"""
     measurement = EAttribute(eType=EString, unique=True, derived=False, changeable=True)
@@ -3972,6 +3862,66 @@ class InfluxDBProfile(LegacyAbstractDatabaseProfile):
 
         if field is not None:
             self.field = field
+
+
+class SolarPotential(AbstractProductionPotential):
+    """Defines the potential for solar energy. This class can be used instead of 'SearchAreaSolar' in case there is more information available."""
+    value = EAttribute(eType=EDouble, unique=True, derived=False,
+                       changeable=True, default_value=0.0)
+    solarPotentialType = EAttribute(eType=PVInstallationTypeEnum, unique=True,
+                                    derived=False, changeable=True, default_value=PVInstallationTypeEnum.UNDEFINED)
+    fullLoadHours = EAttribute(eType=EInt, unique=True, derived=False, changeable=True)
+    area = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
+    angle = EAttribute(eType=EInt, unique=True, derived=False, changeable=True)
+    orientation = EAttribute(eType=EInt, unique=True, derived=False, changeable=True)
+
+    def __init__(self, *, value=None, solarPotentialType=None, fullLoadHours=None, area=None, angle=None, orientation=None, **kwargs):
+
+        super().__init__(**kwargs)
+
+        if value is not None:
+            self.value = value
+
+        if solarPotentialType is not None:
+            self.solarPotentialType = solarPotentialType
+
+        if fullLoadHours is not None:
+            self.fullLoadHours = fullLoadHours
+
+        if area is not None:
+            self.area = area
+
+        if angle is not None:
+            self.angle = angle
+
+        if orientation is not None:
+            self.orientation = orientation
+
+
+class ResidualHeatSourcePotential(AbstractProductionPotential):
+    """Defines the residual heat potential in a specific area."""
+    value = EAttribute(eType=EDouble, unique=True, derived=False,
+                       changeable=True, default_value=0.0)
+    type = EAttribute(eType=ResidualHeatSourceTypeEnum, unique=True, derived=False, changeable=True)
+    associatedConversionAsset = EReference(
+        ordered=True, unique=True, containment=False, derived=False)
+    residualHeatSource = EReference(ordered=True, unique=True, containment=False, derived=False)
+
+    def __init__(self, *, value=None, type=None, associatedConversionAsset=None, residualHeatSource=None, **kwargs):
+
+        super().__init__(**kwargs)
+
+        if value is not None:
+            self.value = value
+
+        if type is not None:
+            self.type = type
+
+        if associatedConversionAsset is not None:
+            self.associatedConversionAsset = associatedConversionAsset
+
+        if residualHeatSource is not None:
+            self.residualHeatSource = residualHeatSource
 
 
 @abstract
@@ -4011,21 +3961,87 @@ class EnergyMarket(EnergyService):
             self.marketPrice = marketPrice
 
 
-class GeothermalEnergyPotential(AbstractGTPotential):
-    """Defines the geothermal potential in a specific area. This type focusses on energy and depth of the well. See GeothermalPotental for class focussing on temperature"""
-    depth = EAttribute(eType=EInt, unique=True, derived=False, changeable=True)
-    value = EAttribute(eType=EDouble, unique=True, derived=False,
-                       changeable=True, default_value=0.0)
+@abstract
+class AbstractGTPotential(AbstractProductionPotential):
+    """Abstract class to describe geothermal potential"""
+    geothermalSource = EReference(ordered=True, unique=True,
+                                  containment=False, derived=False, upper=-1)
 
-    def __init__(self, *, depth=None, value=None, **kwargs):
+    def __init__(self, *, geothermalSource=None, **kwargs):
 
         super().__init__(**kwargs)
 
-        if depth is not None:
-            self.depth = depth
+        if geothermalSource:
+            self.geothermalSource.extend(geothermalSource)
+
+
+class UTESPotential(AbstractStoragePotential):
+    """Defines the potential for underground thermal energy storage (UTES). E.g. ATES or BTES potential"""
+    value = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
+    type = EAttribute(eType=UTESPotentialTypeEnum, unique=True, derived=False, changeable=True)
+    UTES = EReference(ordered=True, unique=True, containment=False, derived=False, upper=-1)
+
+    def __init__(self, *, value=None, type=None, UTES=None, **kwargs):
+
+        super().__init__(**kwargs)
 
         if value is not None:
             self.value = value
+
+        if type is not None:
+            self.type = type
+
+        if UTES:
+            self.UTES.extend(UTES)
+
+
+class BiomassPotential(AbstractProductionPotential):
+    """Defines the biomass potential in a specific area."""
+    value = EAttribute(eType=EDouble, unique=True, derived=False,
+                       changeable=True, default_value=0.0)
+
+    def __init__(self, *, value=None, **kwargs):
+
+        super().__init__(**kwargs)
+
+        if value is not None:
+            self.value = value
+
+
+class SearchAreaWind(AbstractProductionPotential):
+    """Specifies search areas for wind turbines. Search areas are a kind of 'legal' areas that have been appointed by the (local) government as possible areas for wind installations. Further research should give insight in the real potential (in terms of energy)."""
+    fullLoadHours = EAttribute(eType=EInt, unique=True, derived=False, changeable=True)
+    area = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
+    height = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
+
+    def __init__(self, *, fullLoadHours=None, area=None, height=None, **kwargs):
+
+        super().__init__(**kwargs)
+
+        if fullLoadHours is not None:
+            self.fullLoadHours = fullLoadHours
+
+        if area is not None:
+            self.area = area
+
+        if height is not None:
+            self.height = height
+
+
+class SearchAreaSolar(AbstractProductionPotential):
+    """Specifies search areas for solar installations. Search areas are a kind of 'legal' areas that have been appointed by the (local) government as possible areas for solar installations. Further research should give insight in the real potential (in terms of energy)."""
+    fullLoadHours = EAttribute(eType=EInt, unique=True, derived=False, changeable=True)
+    area = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
+
+    def __init__(self, *, fullLoadHours=None, area=None, **kwargs):
+
+        super().__init__(**kwargs)
+
+        if fullLoadHours is not None:
+            self.fullLoadHours = fullLoadHours
+
+        if area is not None:
+            self.area = area
 
 
 class CompoundMatter(Matter):
@@ -4255,6 +4271,32 @@ class Transport(EnergyAsset):
             self.fullLoadHours = fullLoadHours
 
 
+class GeothermalPotential(AbstractGTPotential):
+    """Defines the geothermal potential in a specific area. This type focusses on temperature and depth of the well. See GeothermalEnergyPotental for class focussing on Energy"""
+    temperature = EAttribute(eType=EInt, unique=True, derived=False, changeable=True)
+    depth = EAttribute(eType=EInt, unique=True, derived=False, changeable=True)
+    potential = EAttribute(eType=GeothermalPotentialEnum, unique=True,
+                           derived=False, changeable=True)
+    powerPerDoublet = EAttribute(eType=GeothermalPowerEnum, unique=True,
+                                 derived=False, changeable=True, default_value=GeothermalPowerEnum.UNKNOWN)
+
+    def __init__(self, *, temperature=None, depth=None, potential=None, powerPerDoublet=None, **kwargs):
+
+        super().__init__(**kwargs)
+
+        if temperature is not None:
+            self.temperature = temperature
+
+        if depth is not None:
+            self.depth = depth
+
+        if potential is not None:
+            self.potential = potential
+
+        if powerPerDoublet is not None:
+            self.powerPerDoublet = powerPerDoublet
+
+
 @abstract
 class AbstractBuilding(ExposedPortsAsset):
     """Describes the shared properties of building, building unit and aggregated building"""
@@ -4314,6 +4356,23 @@ class DrivenByProfile(ControlStrategy):
 
         if port is not None:
             self.port = port
+
+
+class GeothermalEnergyPotential(AbstractGTPotential):
+    """Defines the geothermal potential in a specific area. This type focusses on energy and depth of the well. See GeothermalPotental for class focussing on temperature"""
+    depth = EAttribute(eType=EInt, unique=True, derived=False, changeable=True)
+    value = EAttribute(eType=EDouble, unique=True, derived=False,
+                       changeable=True, default_value=0.0)
+
+    def __init__(self, *, depth=None, value=None, **kwargs):
+
+        super().__init__(**kwargs)
+
+        if depth is not None:
+            self.depth = depth
+
+        if value is not None:
+            self.value = value
 
 
 class StorageStrategy(ControlStrategy):
@@ -5255,11 +5314,9 @@ class HeatPump(AbstractBasicConversion):
     source = EAttribute(eType=SourceTypeEnum, unique=True, derived=False, changeable=True)
     stages = EAttribute(eType=EInt, unique=True, derived=False, changeable=True, default_value=1)
     COP = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
-    additionalHeatingSourceType = EAttribute(
-        eType=AdditionalHeatingSourceTypeEnum, unique=True, derived=False, changeable=True)
     powerFactor = EAttribute(eType=EDouble, unique=True, derived=False, changeable=True)
 
-    def __init__(self, *, source=None, stages=None, COP=None, additionalHeatingSourceType=None, powerFactor=None, **kwargs):
+    def __init__(self, *, source=None, stages=None, COP=None, powerFactor=None, **kwargs):
 
         super().__init__(**kwargs)
 
@@ -5271,9 +5328,6 @@ class HeatPump(AbstractBasicConversion):
 
         if COP is not None:
             self.COP = COP
-
-        if additionalHeatingSourceType is not None:
-            self.additionalHeatingSourceType = additionalHeatingSourceType
 
         if powerFactor is not None:
             self.powerFactor = powerFactor

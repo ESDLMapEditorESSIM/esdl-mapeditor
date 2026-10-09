@@ -21,7 +21,7 @@ from flask_socketio import emit
 
 import esdl
 import src.log as log
-from esdl.processing.ESDLEnergySystem import get_es_visualization_options
+from src.esdl_integration.ESDLEnergySystem import get_es_visualization_options
 from esdl.processing.string_uri import StringURI
 from esdlproject import ESDLProject
 from esdlproject.variant_api import create_new_variant

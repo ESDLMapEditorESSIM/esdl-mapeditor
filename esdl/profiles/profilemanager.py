@@ -24,7 +24,7 @@ import pytz
 from pyecore.ecore import EDate
 
 from esdl import esdl
-from utils.datetime_utils import parse_date
+from esdl.utils.datetime_utils import parse_date
 
 
 class ProfileType(str, Enum):

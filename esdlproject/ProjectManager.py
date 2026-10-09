@@ -1,5 +1,5 @@
+import logging
 import threading
-import time
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Final, Optional, Union, Tuple, List, Any
@@ -8,7 +8,6 @@ from uuid import uuid4
 from pyecore.ecore import EObject
 from pyecore.resources import ResourceSet, URI, Resource
 
-import src.log as log
 from esdl import EnergySystem, esdl
 from esdl.patch import patch_esdl
 from esdl.processing.string_uri import StringURI
@@ -21,9 +20,8 @@ from esdlproject.IgnoredChanges import ignored_change
 from esdlproject.MergeConflictHandler import MergeConflictHandler
 from esdlproject.change_handler import applyChange
 from esdlproject.variant_api import get_parent_variant, get_variant_path_list
-from utils.utils import timed, timed_context
 
-logger = log.get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 def create_empty_energysystem(name, es_description, inst_title, area_title) -> esdl.EnergySystem:
     energy_system = esdl.EnergySystem(id=str(uuid4()), name=name, description=es_description)
@@ -339,8 +337,7 @@ class ProjectManager:
             # Create the resource for the VariantCollection, which will contain the energy system.
             variant_collection_resource: XMLResource = self.rset.create_resource(uri)
             variant_collection_resource.type = ProjectManagerResourceType.VARIANT_COLLECTION
-            with timed_context(f"Loading {uri.plain}"):
-                variant_collection_resource.load()
+            variant_collection_resource.load()
             es = variant_collection_resource.contents[0]
             parse_info = []
             if isinstance(variant_collection_resource, XMLResource):
@@ -407,7 +404,6 @@ class ProjectManager:
                     return result
         return None
 
-    @timed
     def set_active_variant(self, new_variant: Variant) -> bool:
         """
         Set the active variant. This will also generate a snapshot of the current active variant, if it is not already
@@ -420,7 +416,7 @@ class ProjectManager:
         :return: boolean indicating if the new_variant changed, during activation
          (and requires e.g. gui updates)
         """
-        logger.info("Setting active variant", variant_id=new_variant.id, variant_name=new_variant.name)
+        logger.info("Setting active variant: id=%s, name=%s", new_variant.id, new_variant.name)
         logger.debug("set_active_variant(): Acquiring lock")
         with self.active_variant_lock:
             logger.debug("set_active_variant(): Lock acquired")
@@ -432,7 +428,8 @@ class ProjectManager:
                 variant_path_list = get_variant_path_list(new_variant)
                 variant_path_list.remove(new_variant)
                 variant_path_list.reverse()
-                logger.debug("set_active_variant(): Checking parent variants for changes", variants=[v.name for v in variant_path_list])
+                logger.debug("set_active_variant(): Checking parent variants for changes: %s",
+                             [v.name for v in variant_path_list])
                 for parent_variant in variant_path_list:
                     # Find the latest change in the parent with the highest changedAt.
                     parent_variant_changes = [change for change in parent_variant.change if change.changedAt is not None]
@@ -452,8 +449,8 @@ class ProjectManager:
                     if (variant_last_activated_at is None or
                             (parent_latest_change is not None and parent_latest_change > variant_last_activated_at)):
                         logger.debug(
-                            f"set_active_variant(): Parent variant contains changes not in the snapshot, recreating",
-                            parent_variant=parent_variant.name, variant=new_variant.name
+                            "set_active_variant(): Parent variant contains changes not in the snapshot, recreating: "
+                            "parent_variant=%s, variant=%s", parent_variant.name, new_variant.name
                         )
 
                         self.remove_variant_snapshot(new_variant)  # delete previous variant snapshot
@@ -616,7 +613,7 @@ class ProjectManager:
             if es.id == es_id:
                 self.delete_variant(v)
                 return v
-        logger.warning("Did not find variant with energy system ID", es_id=es_id)
+        logger.warning("Did not find variant with energy system ID %s", es_id)
         return None
 
     def get_variant_list(self, v: Variant, variant_list: list[Variant]):
@@ -754,7 +751,6 @@ class ProjectManager:
             #self.set_active_variant(self._select_new_active_variant())
 
 
-    @timed
     def save(self) -> str:
         """
         Saves the current project by storing the active esdl in the project base variant and storing the current changes
@@ -803,7 +799,6 @@ class ProjectManager:
         uri = StringURI("from_string.project", project_string)
         return self.load(uri)
 
-    @timed
     def load(self, uri: URI) -> ESDLProject:
         """
         Loads a project from a URI and returns the project object.
@@ -1064,7 +1059,6 @@ class ProjectManager:
                 raise KeyError("Can't find asset for id={} in uuid_dict of the ESDL model {} "
                                "after rebuilding uuid_dict.".format(object_id, es.id)) from e
 
-    @timed
     def active_energy_system_to_string(self):
         es = self.get_active_energy_system()
         return self.energy_system_to_string(es.id)
@@ -1089,7 +1083,7 @@ class ProjectManager:
         #    print("Memory snapshot ready")
         #    display_mem_usage(snapshot)
         logger.info('ProjectManager debug:')
-        logger.info('All resources: ', resources=self.rset.resources)
+        logger.info('All resources: %s', self.rset.resources)
         for uri, resource in self.rset.resources.items():
             rs_type = resource.type.name if resource.type else None
             if resource.contents:
@@ -1207,10 +1201,7 @@ def eobject_to_string(eobject: EObject, format: ESDLFormat = ESDLFormat.XML, opt
     #if isinstance(resource, XMLResource) or isinstance(resource, JsonResource):
     #    resource.set_content_without_detaching(eobject)
     #else:
-    start = time.time()
     deepcopy = eobject.deepcopy()
-    end = time.time()
-    logger.debug(f"deepcopy() of {eobject.eClass.name} took {round(end - start, 2)}s")
     resource.append(deepcopy)
     resource.save(options=options)
     return string_uri.getvalue()

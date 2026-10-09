@@ -1,5 +1,6 @@
 import { defaultColorScheme } from "@/utils/visualization";
 import { fetchData } from "@/utils/api";
+import { formatKPIName } from "@/utils/kpi";
 
 /** Valid field data types that can be used for layer styling. */
 const FieldType = Object.freeze({
@@ -172,8 +173,8 @@ const getRefFieldSchema = async (esId, objectIds) => {
             : mapEcoreTypeToJsType(ecoreType);
         return {
           value: key,
-          label: `${kpiInfo.name} [${jsType}]`,
-          display: `KPIs > ${kpiInfo.name}`,
+          label: `${formatKPIName(kpiInfo.name)} [${jsType}]`,
+          display: `KPIs > ${formatKPIName(kpiInfo.name)}`,
           type: jsType,
           unit: meta?.unit ?? null,
           disabled: !Object.values(FieldType).includes(jsType),

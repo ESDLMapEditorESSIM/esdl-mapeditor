@@ -1,12 +1,12 @@
+import logging
 from typing import List, Tuple
 
 from pyecore.ecore import EObject, EClass, EReference
 from pyecore.valuecontainer import ECollection
 
 from esdlproject import AbstractChange, Add, Set, DetailedChange, Remove
-from src import log
 
-logger = log.get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def deepcopy_eobject_change(eobject: EObject,

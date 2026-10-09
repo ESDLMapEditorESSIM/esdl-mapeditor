@@ -310,7 +310,7 @@ function show_essim_kpi_selection(select_id) {
             $select.empty();
 
             for (let i=0; i<data.length; i++) {
-                let $option = $('<option>').attr('value', data[i].id).text(data[i].name);
+                let $option = $('<option>').attr('value', data[i].id).text(formatKPIName(data[i].name));
                 $select.append($option);
             }
         },

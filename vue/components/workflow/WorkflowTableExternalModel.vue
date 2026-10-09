@@ -19,7 +19,6 @@
             :tree-data="userGroupsForUser"
             :status="selectedUserGroups.length === 0 ? 'error' : ''"
             @change="updateFilteredRows"
-            @mouseleave="hide_jquery_ui_popup"
           />
         </a-col>
       </a-row>

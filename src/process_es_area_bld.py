@@ -43,7 +43,7 @@ from src.incremental_ui.incremental_ui_messages import create_asset_port_message
 from src.log import get_logger
 from src.shape import Shape, ShapePoint, ShapeMultiPolygon
 from src.tno.projects.emits import emit_active_esdl_project
-from utils.RDWGSConverter import RDWGSConverter
+from esdl.utils.RDWGSConverter import RDWGSConverter
 from utils.utils import timed
 
 logger = get_logger(__name__)

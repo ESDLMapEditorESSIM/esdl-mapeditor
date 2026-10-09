@@ -54,7 +54,7 @@ function changeTable(canvas, table_div, distr_or_value, kpi_name, chart, labels,
     // console.log(labels);
     // console.log(datasets);
 
-    $(table_div).append($('<p>').text(kpi_name).addClass('kpi_table_title'));
+    $(table_div).append($('<p>').text(formatKPIName(kpi_name)).addClass('kpi_table_title'));
     let $table = $('<table>').addClass('pure-table pure-table-striped');
     let $tr = $('<tr>').append($('<th>').text('Label'));
     for (let i=0; i<labels.length; i++) {
@@ -374,7 +374,7 @@ L.Control.KPICharts = L.Control.extend({
                 },
                 title: {
                     display: true,
-                    text: kpi_item.name
+                    text: formatKPIName(kpi_item.name)
                 }
             }
         } else {
@@ -414,7 +414,7 @@ L.Control.KPICharts = L.Control.extend({
                 },
                 title: {
                     display: true,
-                    text: kpi_item.name
+                    text: formatKPIName(kpi_item.name)
                 },
                 scales: {
                     y: {

@@ -123,7 +123,6 @@
                   mode="multiple"
                   style="width: 100%"
                   @change="onSelectDataset"
-                  @mouseleave="removeTooltipPopup"
                 />
               </a-row>
             </a-tab-pane>
@@ -218,7 +217,6 @@
                       :dropdown-match-select-width="false"
                       style="width: 100%"
                       placeholder="Select a saved graph configuration"
-                      @mouseleave="removeTooltipPopup"
                     >
                       <template #title="nodeData">
                         <span
@@ -270,7 +268,6 @@
                     "
                     style="width: 100%"
                     @change="onSelectVariable"
-                    @mouseleave="removeTooltipPopup"
                   />
                   <span
                     v-if="
@@ -331,7 +328,6 @@
                     mode="multiple"
                     style="width: 100%"
                     @change="onSelectGroupBy"
-                    @mouseleave="removeTooltipPopup"
                   />
                   <span
                     v-if="
@@ -385,7 +381,6 @@
                     allow-clear
                     multiple
                     @change="onSelectFilters"
-                    @mouseleave="removeTooltipPopup"
                   />
                   <br />
                 </a-row>
@@ -895,12 +890,14 @@ import {
 } from "@/utils/profileVisualization";
 import { displayNotification, NotificationType } from "@/utils/notification";
 import { formatNumber } from "@/utils/utils";
+import { formatKPIName } from "@/utils/kpi";
 import dayjs from "dayjs";
 import minMax from "dayjs/plugin/minMax";
 import VueJsTree from "@/components/jstree/VueJsTree.vue";
 import { useESDLProjects } from "@/composables/esdlProjects";
 
 const { esdlProject, getESDLProject } = useESDLProjects();
+const kpiFields = ["labels/KPI name", "labels/KPI label"];
 
 dayjs.extend(minMax);
 
@@ -908,11 +905,6 @@ const loadingIcon = h(LoadingOutlined, {
   style: { fontSize: "5rem" },
   spin: true,
 });
-
-// to prevent stuck popup on UI
-const removeTooltipPopup = () => {
-  window.jquery(".ui-tooltip-content").parents("div").remove();
-};
 
 const props = defineProps({
   options: {
@@ -2050,9 +2042,13 @@ const updateVariables = async () => {
       variables.forEach((v) => {
         if (!Object.keys(options).includes(v.name)) {
           // todo: distinguish between SINGLE value and PROFILE datatypes
+          let label = v.label;
+          if (v.name.startsWith("KPI ")) {
+            label = formatKPIName(label);
+          }
           options[v.name] = {
             value: v.name,
-            label: v.label,
+            label,
             ds: [v.dataset],
             unit: v.unit,
             description: v.description,
@@ -2122,10 +2118,13 @@ const updateColumns = async () => {
           return {
             value: optValue,
             label: name,
-            children: val.options.map((option) => ({
-              value: option,
-              label: option,
-            })),
+            children: val.options.map((option) => {
+              let label = option;
+              if (kpiFields.includes(optValue)) {
+                label = formatKPIName(option);
+              }
+              return { value: option, label };
+            }),
           };
         },
       );
@@ -2365,7 +2364,7 @@ const profileTraceHandler = (traces) => {
   sortLegend(traces);
 
   const profileLayout = {
-    title: variableSelected.value,
+    title: variableOptions.value[variableSelected.value].label,
     xaxis: { automargin: true },
     hovermode: showSingleTooltip.value ? "closest" : "x unified",
     hoversubplots: "axis",
@@ -2404,6 +2403,8 @@ const profileTraceHandler = (traces) => {
  */
 const barChartTraceHandler = (traces) => {
   const colorscale = generateColorscale(paletteSelected.value, traces.length);
+  const groupBy = groupbySelected.value.slice(0, maxGroupbySelectedCount);
+  const xLabelAliases = [];
   traces.forEach((t, idx) => {
     t.type = "bar";
     const hasNonZeroValue = t.y.some((value) => value !== 0);
@@ -2415,14 +2416,25 @@ const barChartTraceHandler = (traces) => {
     t.hoverinfo =
       showNonZeroLegendItems.value && !hasNonZeroValue ? "skip" : "all";
     t.marker = { color: colorscale[idx % colorscale.length] };
+    if (kpiFields.includes(groupBy.at(-1))) {
+      t.name = formatKPIName(t.name);
+    }
+    if (groupBy.length > 1 && kpiFields.includes(groupBy[0])) {
+      t.x[1].forEach((name, index) => {
+        const label = window._.escape(formatKPIName(name));
+        xLabelAliases.push([name, label]);
+        xLabelAliases.push([t.x[0][index] + ' - ' + name, window._.escape(t.x[0][index]) + ' - ' + label]);
+      });
+    }
     t.name = wrapLongLabel(t.name);
   });
   sortLegend(traces);
 
   const barChartLayout = {
-    title: variableSelected.value,
+    title: variableOptions.value[variableSelected.value].label,
     xaxis: {
       type: "multicategory",
+      labelalias: Object.fromEntries(xLabelAliases),
       // Controlled by showFullXAxisLabels to toggle automargin on/off.
       // When off, a fixed bottom margin keeps long labels from shrinking the plot area
       automargin: showFullXAxisLabels.value,
@@ -2516,7 +2528,7 @@ const histTraceHandler = (traces) => {
   });
 
   const histLayout = {
-    title: variableSelected.value,
+    title: variableOptions.value[variableSelected.value].label,
     xaxis: {
       title: variableOptions.value[variableSelected.value].unit,
       automargin: true,
@@ -2548,7 +2560,12 @@ const tableTraceHandler = (traces) => {
   const formattedTableHeader = traces[0].header.values.map((col) => [
     `<b>${col[0]}</b>`,
   ]);
-  const tableCellValues = traces[0].cells.values;
+  const tableCellValues = traces[0].cells.values.map((values, index) => {
+    if (kpiFields.includes(traces[0].header.values[index][0])) {
+      return values.map(value => window._.escape(formatKPIName(value)));
+    }
+    return values;
+  });
 
   const tableTrace = [
     {
@@ -2570,7 +2587,7 @@ const tableTraceHandler = (traces) => {
     },
   ];
   const tableLayout = {
-    title: variableSelected.value,
+    title: variableOptions.value[variableSelected.value].label,
     autosize: true,
     margin: { l: 20, t: 65, r: 20, b: 5 },
   };

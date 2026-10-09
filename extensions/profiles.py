@@ -52,7 +52,7 @@ from extensions.session_manager import get_session, get_project_manager
 from extensions.settings_storage import SettingType, SettingsStorage
 from src.edr_client import EDRClient
 from src.roles import is_mapeditor_admin
-from utils.datetime_utils import parse_date
+from esdl.utils.datetime_utils import parse_date
 from utils.utils import str2float, timed
 
 logger = log.get_logger(__name__)

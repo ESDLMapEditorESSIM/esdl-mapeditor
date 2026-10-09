@@ -31,14 +31,14 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
+import logging
 from datetime import datetime
 from typing import List
 from weakref import WeakKeyDictionary
 
 from esdlproject import Variant, DetailedChange, AbstractChange, HighLevelChange
-from src.log import get_logger
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 class ConflictResolution:
     """
@@ -73,7 +73,7 @@ class MergeConflictHandler:
         if variant not in self.resolutions:
             #self.resolutions[variant]: WeakKeyDictionary[DetailedChange, ConflictResolution] = WeakKeyDictionary()
             self.resolutions[variant]: dict[DetailedChange, list[ConflictResolution]] = dict()
-        logger.debug("Adding resolution for change", variant=variant, change=change, resolution=resolution)
+        logger.debug("Adding resolution for change: variant=%s, change=%s, resolution=%s", variant, change, resolution)
         #if change in self.resolutions[variant]:
         #    logger.warning("Resolution already exists for change", change=change)
         if change not in self.resolutions[variant]:
@@ -131,7 +131,7 @@ class MergeConflictHandler:
         if self.resolutions.get(variant, None) and change in self.resolutions[variant]:
             del self.resolutions[variant][change]
         new_change = change.deepcopy()
-        logger.debug(" \\- Applying conflict resolution for change", change=change, merge_conflict=conflict_resolutions)
+        logger.debug(" \\- Applying conflict resolution for change: %s, merge_conflict=%s", change, conflict_resolutions)
         if isinstance(conflict_resolutions, List):
             # reverse the list to make sure asset.0 -> asset.1 and asset.2 -> asset.3 are not updated to
             # asset.0 -> asset.3 as that is wrong. If we reverse it, the individual resolutions are applied correctly.

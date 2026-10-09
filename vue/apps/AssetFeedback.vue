@@ -91,7 +91,6 @@
             :show-search="true"
             allow-clear
             max-tag-count="responsive"
-            @mouseleave="removeTooltipPopup"
           />
         </a-col>
         <a-table
@@ -155,11 +154,6 @@
 import {ref, computed, onMounted, onUnmounted} from 'vue'
 import {useAssetFeedbackList} from '../composables/assetFeedback';
 import {v4 as uuidv4} from 'uuid';
-
-// to prevent stuck popup on UI
-const removeTooltipPopup = () => {
-  window.jquery(".ui-tooltip-content").parents("div").remove();
-};
 
 const {currentAssetFeedbackList} = useAssetFeedbackList();
 

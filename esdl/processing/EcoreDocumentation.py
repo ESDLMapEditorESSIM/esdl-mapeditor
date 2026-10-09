@@ -12,14 +12,16 @@
 #  Manager:
 #      TNO
 
+import logging
+
 from pyecore.resources import ResourceSet, URI
 from pyecore.utils import DynamicEPackage
 from pyecore.ecore import EAnnotation
 from pyecore.resources.resource import HttpURI
-from esdl.resources.xmlresource import XMLResource
-import src.log as log
 
-logger = log.get_logger(__name__)
+from esdl.resources.xmlresource import XMLResource
+
+logger = logging.getLogger(__name__)
 
 esdlVersion = "unknown"
 

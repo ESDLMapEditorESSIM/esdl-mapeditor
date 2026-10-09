@@ -22,7 +22,7 @@ import esdl
 from esdl.profiles.profilemanager import ProfileManager, UnknownProfileNameException, ProfileType
 from influxdb import InfluxDBClient
 
-from utils.datetime_utils import parse_date
+from esdl.utils.datetime_utils import parse_date
 
 
 @dataclass

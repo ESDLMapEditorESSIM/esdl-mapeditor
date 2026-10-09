@@ -10,9 +10,9 @@
   >
     <template #bodyCell="{ column, record }">
       <template v-if="column.key === 'name'">
-        <span>{{ record.name }}</span>
+        <span :title="record.name">{{ formatKPIName(record.name) }}</span>
         <a-tooltip v-if="record.description" :title="record.description" :trigger="['hover', 'focus']">
-          <a-button class="kpi-description" size="small" type="text" :aria-label="'Description for ' + record.name">
+          <a-button class="kpi-description" size="small" type="text" :aria-label="'Description for ' + formatKPIName(record.name)">
             <InfoCircleOutlined style="vertical-align: 0.1rem" />
           </a-button>
         </a-tooltip>
@@ -36,6 +36,7 @@
 <script>
 import { InfoCircleOutlined } from '@ant-design/icons-vue';
 import KPIValue from './KPIValue.vue';
+import { formatKPIName } from '@/utils/kpi';
 
 const columns = [
   { title: 'KPI', dataIndex: 'name', key: 'name', width: '40%' },
@@ -60,6 +61,9 @@ export default {
   data() {
     return { columns, paginationConfig };
   },
+  methods: {
+    formatKPIName,
+  },
 };
 </script>
 
@@ -73,10 +77,6 @@ export default {
   line-height: 14px;
 }
 
-.kpi-table:has(.exponent:not(:empty)) {
-  --kpi-exponent-width: 5ch;
-}
-
 .kpi-table :deep(.ant-table-cell) {
   vertical-align: top;
 }
@@ -88,6 +88,6 @@ export default {
 }
 
 .distribution-label {
-  text-align: left;
+  text-align: right;
 }
 </style>
