@@ -18,7 +18,7 @@ from uuid import uuid4
 from pyecore.ecore import EEnum, EAttribute, EOrderedSet
 
 from esdl import esdl
-from esdlproject.ProjectManager import ProjectManager
+from esdl.project.ProjectManager import ProjectManager
 
 """
 Note previous methods found here have been moved to esdl.units.parser.py to create compatibility with

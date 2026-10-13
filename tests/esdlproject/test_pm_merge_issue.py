@@ -19,8 +19,8 @@ from pyecore.ecore import EObject
 
 from esdl import esdl
 from src.esdl_integration.processing import ESDLGeometry
-from esdlproject.ProjectManager import ProjectManager
-from esdlproject.variant_api import create_new_variant
+from esdl.project.ProjectManager import ProjectManager
+from esdl.project.variant_api import create_new_variant
 from src.log import get_logger
 
 logger = get_logger(__name__)

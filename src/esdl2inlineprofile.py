@@ -8,7 +8,7 @@ from esdl import EnergySystem, EnergySystemInformation, InfluxDBProfile, TimeSer
 from esdl.processing.string_uri import StringURI
 from esdl.profiles.influxdbprofilemanager import InfluxDBProfileManager, ConnectionSettings
 import esdl
-from esdlproject.ProjectManager import load_external_string
+from esdl.project.ProjectManager import load_external_string
 from extensions.profiles import Profiles
 from extensions.session_manager import get_session, get_project_manager
 import src.log as log

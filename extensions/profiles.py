@@ -45,7 +45,7 @@ from src.esdl_integration.profiles.credentials import Credentials
 from src.esdl_integration.profiles.datatableprofilemanager import DataTableProfileManager
 from src.esdl_integration.profiles.influxdbprofilemanager import InfluxDBProfileManager
 from esdl.units.parser import qau_to_string
-from esdlproject.ProjectManager import load_external_string
+from esdl.project.ProjectManager import load_external_string
 from extensions.panel_service import create_panel, get_panel_service_datasource
 from extensions.profile_server import ProfileServerTypeEnum, InfluxDBConnectionSettings, PostgreSQLConnectionSettings, \
     InfluxDBServer, PostgreSQLServer

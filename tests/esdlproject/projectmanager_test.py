@@ -3,9 +3,9 @@ import unittest
 
 from esdl import esdl, GenericProducer, InPort, OutPort, GenericConsumer, HeatCommodity
 from esdl.processing.string_uri import StringURI
-from esdlproject.ChangeSerializer import deepcopy_eobject_change
-from esdlproject.ProjectManager import ProjectManager, resource_as_string
-from esdlproject.variant_api import create_new_variant
+from esdl.project.ChangeSerializer import deepcopy_eobject_change
+from esdl.project.ProjectManager import ProjectManager, resource_as_string
+from esdl.project.variant_api import create_new_variant
 
 
 class MyTestCase(unittest.TestCase):

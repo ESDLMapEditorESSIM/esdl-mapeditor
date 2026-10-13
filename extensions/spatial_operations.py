@@ -19,7 +19,7 @@ from flask_socketio import SocketIO, emit
 from shapely.geometry import Polygon, MultiPoint, Point
 from shapely.ops import triangulate
 
-from esdlproject.ProjectManager import load_external_string
+from esdl.project.ProjectManager import load_external_string
 from extensions.session_manager import get_project_manager, get_session, set_session
 from extensions.boundary_service import BoundaryService, is_valid_boundary_id
 import esdl.esdl as esdl

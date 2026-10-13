@@ -7,7 +7,7 @@ from unittest.mock import patch, MagicMock  # noqa
 from flask import Flask, current_app, has_app_context, has_request_context, request, session
 
 from esdl import esdl
-from esdlproject.ProjectManager import ProjectManager, eobject_to_string, ESDLFormat
+from esdl.project.ProjectManager import ProjectManager, eobject_to_string, ESDLFormat
 from extensions.session_manager import PM_KEY
 from src.incremental_ui import ui_change_handler
 from src.tno.live_model_interface.lmi_listener import on_high_level_change, on_pm_refresh_request

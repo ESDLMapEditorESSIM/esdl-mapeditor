@@ -7,7 +7,7 @@ import pika
 from pika.exchange_type import ExchangeType
 
 from esdl.processing.string_uri import StringURI
-from esdlproject.ProjectManager import ProjectManager
+from esdl.project.ProjectManager import ProjectManager
 from src.tno.envsettings import EnvSettings
 from src.tno.live_model_interface.api import activate_live_model_interface
 

@@ -29,7 +29,7 @@ from esdl import esdl
 from src.esdl_integration.processing import ESDLGeometry, ESDLAsset, ESDLEnergySystem
 from src.esdl_integration.processing.ESDLEnergySystem import get_notes_list
 from src.esdl_integration.processing.ESDLGeometry import calculate_polygon_center
-from esdlproject.ProjectManager import ProjectManager
+from esdl.project.ProjectManager import ProjectManager
 from extensions.boundary_service import BoundaryService, is_valid_boundary_id
 from extensions.mapeditor_settings import MapEditorSettings
 from extensions.session_manager import get_project_manager, get_session, set_session_for_esid, set_session, \

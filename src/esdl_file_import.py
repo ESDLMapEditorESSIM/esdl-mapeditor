@@ -13,7 +13,7 @@ import src.log as log
 from esdl import EnergySystem, TimeSeriesProfile, InfluxDBProfile
 from esdl.processing.string_uri import StringURI
 from esdl.profiles.influxdbprofilemanager import InfluxDBProfileManager, ConnectionSettings
-from esdlproject.ProjectManager import load_external_string
+from esdl.project.ProjectManager import load_external_string
 from extensions.profiles import Profiles
 from extensions.prompt_manager import PromptManager
 from extensions.session_manager import set_session, get_project_manager, get_session

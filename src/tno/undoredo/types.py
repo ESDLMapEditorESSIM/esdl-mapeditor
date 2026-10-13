@@ -14,7 +14,7 @@
 from typing import Optional, TypedDict, List
 
 from esdl.undo import UndoRedoCommandStack
-from esdlproject import HighLevelChange
+from esdl.project import HighLevelChange
 from src.log import get_logger
 
 logger = get_logger(__name__)

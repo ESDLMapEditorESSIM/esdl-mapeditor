@@ -51,7 +51,7 @@ from esdl.ecore_documentation import EcoreDocumentation
 from esdl.undo import UndoRedoCommandStack
 from src.esdl_integration.undo_wrapper import undo_record_changes
 from src.esdl_integration.ESDLAsset import remove_object_from_energysystem, remove_profile_from_port
-from esdlproject.ProjectManager import update_energy_system_version
+from esdl.project.ProjectManager import update_energy_system_version
 from extensions.data_manager import db
 from extensions.external_models.external_models_storage import ExternalModelsStorage
 from extensions.mapeditor_settings import MAPEDITOR_UI_SETTINGS, MapEditorSettings
@@ -117,7 +117,7 @@ models_storage = ExternalModelsStorage(named_locker)
 
 
 # handler to retrieve ESDL documentation
-esdl_doc = EcoreDocumentation(esdlEcoreFile="esdl/esdl.ecore")
+esdl_doc = EcoreDocumentation()
 
 
 def is_running_in_uwsgi():

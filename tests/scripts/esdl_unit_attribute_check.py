@@ -16,7 +16,7 @@ from esdl.ecore_documentation import EcoreDocumentation
 from esdl import GenericProducer
 
 if __name__ == '__main__':
-    doc = EcoreDocumentation(esdlEcoreFile='..\esdl\esdl.ecore')
+    doc = EcoreDocumentation()
     p = GenericProducer()
     attribute = 'power'
     #powerAttribute: EAttribute = p.eClass.findEStructuralFeature('power2')

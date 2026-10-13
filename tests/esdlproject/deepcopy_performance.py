@@ -21,7 +21,7 @@ from esdl.processing.string_uri import StringURI
 from esdl.resources.resource_type import ProjectManagerResourceType
 from esdl.resources.xmlresource import XMLResource
 from esdl.support_functions import get_all_references_for_class, get_all_attributes_for_class
-from esdlproject.ProjectManager import ProjectManager, get_variant_collection
+from esdl.project.ProjectManager import ProjectManager, get_variant_collection
 
 """
 Test the performance of EObject.deepcopy() 

@@ -22,7 +22,7 @@ from esdl import esdl
 from src.esdl_integration.processing import ESDLGeometry, ESDLAsset
 from extensions.session_manager import get_session, get_session_for_esid, get_project_manager
 from extensions.profiles import Profiles
-from esdlproject.ProjectManager import ProjectManager
+from esdl.project.ProjectManager import ProjectManager
 from src.incremental_ui.incremental_ui_messages import create_asset_port_message
 
 

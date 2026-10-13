@@ -662,17 +662,6 @@ class ESDLDataLayer:
         :return: one obj_info dict with the common elements that could be edited as a group
         """
 
-        # obj_info is an ObjectPropertiesInfo dict with 10 keys:
-        # - object: dict with 5 keys
-        # - attributes: dict with categories (Basic, ESSIM, Advanced) as keys
-        # - references: list
-        # - container: dict with 6 keys, or None
-        # - capabilities: dict with 4 keys
-        # - port_profile_info: list
-        # - port_connected_to_info: list
-        # - cost_information: list with 10 elements
-        # - kpi_information: list
-        # - multi_select_info: dict with 2 keys, or None
         common_obj_info = object_info_list.pop(0)       # start with first object
         # References, containers and port data cannot represent multiple objects.
         common_obj_info['references'] = list()
