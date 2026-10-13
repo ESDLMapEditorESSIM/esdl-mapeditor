@@ -1120,7 +1120,8 @@ function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
 
                 // Only show first DistributionKPI if it's also the first KPI in the legend list.
                 let first_kpi_key = Object.keys(area_KPIs)[0];
-                if ('type' in area_KPIs[first_kpi_key] && area_KPIs[first_kpi_key].type == "distributionKPI") {
+                if ('type' in area_KPIs[first_kpi_key] && area_KPIs[first_kpi_key].type == "distributionKPI"
+                        && first_kpi_key in feature.properties.dist_KPIs) {
                     feature.properties.dist_KPIs[first_kpi_key].pieChartMarker.addTo(get_layers(active_layer_id, 'kpi_layer'));
                     feature.properties.dist_KPIs[first_kpi_key].pieChartMarker.bringToFront();
                     feature.properties.dist_KPIs[first_kpi_key].pieChartMarkerVisible = true;
