@@ -82,6 +82,7 @@ kombu==5.3.5
 lxml==5.2.1
     # via
     #   pyecore
+    #   pyesdl
     #   xmldiff
 markupsafe==2.1.5
     # via
@@ -100,7 +101,9 @@ numpy==1.26.4
 openpyxl==3.1.2
     # via -r requirements.in
 ordered-set==4.1.0
-    # via pyecore
+    # via
+    #   pyecore
+    #   pyesdl
 packaging==24.1
     # via
     #   -r requirements.in
@@ -121,7 +124,7 @@ pycparser==2.22
     # via cffi
 pyecore==0.15.2
     # via pyesdl
-pyesdl==26.10.1
+pyesdl==26.10.2
     # via -r requirements.in
 pymongo==3.11.0
     # via -r requirements.in
@@ -147,11 +150,12 @@ pytz==2024.1
     # via
     #   influxdb
     #   pandas
-requests==2.31.0
+requests==2.34.2
     # via
     #   -r requirements.in
     #   flask-oidc
     #   influxdb
+    #   pyesdl
 restrictedpython==7.2a1.dev0
     # via pyecore
 sentinels==1.0.0
