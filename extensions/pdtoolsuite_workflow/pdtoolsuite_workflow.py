@@ -132,8 +132,7 @@ class PDToolsuiteWorkflow:
                 source = source.reference
             reference = None
             if isinstance(source, esdl.DataSource) and source.name == "EPS execution":
-                if source.type == esdl.DataSourceTypeEnum.DATASET:
-                    reference = source.reference
+                reference = source.reference
             return dict(pand_bagid=building.originalIdInSource, reference=reference)
 
         @self.socketio.on("get_electricity_networks_active_es", namespace="/esdl")

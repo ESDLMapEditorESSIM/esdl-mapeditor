@@ -13,6 +13,7 @@
 #      TNO
 import uuid
 from datetime import datetime, timezone
+from typing import Any
 
 from bson import json_util
 from flask import Flask, jsonify, session, request
@@ -22,6 +23,7 @@ from extensions.session_manager import set_session, get_session
 from extensions.settings_storage import SettingsStorage
 from src.tno.live_model_interface.api import deactivate_live_model_interface, activate_live_model_interface
 from src.tno.mongo.core import get_database
+from src.roles import mapeditor_admin_required
 from src.tno.mongo.models import ApplicationContext
 
 logger = log.get_logger(__name__)
@@ -43,6 +45,78 @@ class ApplicationContextExtension:
 
     def register(self):
         logger.info('Registering ApplicationContext extension')
+
+        @self.flask_app.route('/admin/context/applications')
+        @mapeditor_admin_required
+        def get_all_application_contexts():
+            """
+            Get all application contexts for the admin.
+            """
+            db = get_database()
+            return self.flask_app.response_class(
+                json_util.dumps(db.application_contexts.find()), mimetype='application/json'
+            )
+
+        @self.flask_app.route('/admin/context/applications', methods=['POST'])
+        @self.flask_app.route('/admin/context/applications/<application_id>', methods=['PUT'])
+        @mapeditor_admin_required
+        def save_application_context(application_id: str | None = None) -> tuple[Any, int]:
+            """
+            Create or update an application context, keeping its application_id unchanged.
+            """
+            application_json = request.get_json()
+            if not isinstance(application_json, dict):
+                return jsonify({'error': 'Expected an application context object'}), 400
+
+            for field in ('application_id', 'name'):
+                value = application_json.get(field)
+                if not isinstance(value, str) or not value.strip():
+                    return jsonify({'error': f'{field} is required'}), 400
+                application_json[field] = value.strip()
+
+            context_id = application_json['application_id']
+            if context_id == 'default' or '/' in context_id:
+                return jsonify({'error': 'Application ID cannot be default or contain /'}), 400
+            if application_id is not None and context_id != application_id:
+                return jsonify({'error': 'Application ID cannot be changed'}), 400
+
+            is_global = application_json.get('is_global', False)
+            toast_text = application_json.get('toast_text')
+            if not isinstance(is_global, bool) or (toast_text is not None and not isinstance(toast_text, str)):
+                return jsonify({'error': 'Invalid global visibility or toast text'}), 400
+
+            application_context = {
+                'application_id': context_id,
+                'name': application_json['name'],
+                'is_global': is_global,
+                'toast_text': toast_text,
+            }
+            db = get_database()
+            if application_id is None:
+                if db.application_contexts.find_one({'application_id': context_id}):
+                    return jsonify({'error': 'Application ID already exists'}), 409
+                application_context['live_model_interfaces'] = []
+                db.application_contexts.insert_one(application_context)
+                return {}, 201
+
+            updated = db.application_contexts.update_one(
+                {'application_id': application_id}, {'$set': application_context}
+            )
+            if not updated.matched_count:
+                return jsonify({'error': 'Application ID not found'}), 404
+            return {}, 200
+
+        @self.flask_app.route('/admin/context/applications/<application_id>', methods=['DELETE'])
+        @mapeditor_admin_required
+        def delete_application_context(application_id: str) -> tuple[Any, int]:
+            """
+            Delete an application context by application_id.
+            """
+            db = get_database()
+            deleted = db.application_contexts.delete_one({'application_id': application_id})
+            if not deleted.deleted_count:
+                return jsonify({'error': 'Application ID not found'}), 404
+            return {}, 204
 
         @self.flask_app.route('/context/applications')
         def get_user_application_contexts():
