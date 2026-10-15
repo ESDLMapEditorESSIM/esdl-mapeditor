@@ -114,6 +114,28 @@ class PDToolsuiteWorkflow:
 
             return jsonify(building_dicts), 200
 
+        @self.socketio.on("get_eps_building_source", namespace="/esdl")
+        def get_eps_building_source(params: dict) -> dict | None:
+            """
+            Retrieve the EPS datasource and BAG ID for a building in the project.
+            """
+            pm = get_project_manager()
+            es_id = params.get("es_id") or pm.get_active_energy_system().id
+            try:
+                building = pm.get_by_id(es_id, params["id"])
+            except KeyError:
+                return None
+            if not isinstance(building, esdl.AbstractBuilding):
+                return None
+            source = building.dataSource
+            if isinstance(source, esdl.DataSourceReference):
+                source = source.reference
+            reference = None
+            if isinstance(source, esdl.DataSource) and source.name == "EPS execution":
+                if source.type == esdl.DataSourceTypeEnum.DATASET:
+                    reference = source.reference
+            return dict(pand_bagid=building.originalIdInSource, reference=reference)
+
         @self.socketio.on("get_electricity_networks_active_es", namespace="/esdl")
         def get_electricity_networks_json_forms(params):
             el_networks: list[esdl.Asset] = _get_assets_of_type_in_active_es(esdl.ElectricityNetwork)

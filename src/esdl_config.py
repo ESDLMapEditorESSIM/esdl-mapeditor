@@ -804,7 +804,6 @@ esdl_config = {
                                 "name": "Explore EPS results",
                                 "type": "primary",
                                 "next_step": "explore-eps-results",
-                                "enable_if_state": "execution.success",
                             },
                             {
                                 "name": "Apply EPS measures",

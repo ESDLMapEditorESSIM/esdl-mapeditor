@@ -1,5 +1,6 @@
 <template>
   <p v-if="isLoading">Loading...</p>
+  <p v-else-if="errorMessage">{{ errorMessage }}</p>
   <a-tree
     v-else-if="treeData.length"
     :tree-data="treeData"
@@ -28,11 +29,10 @@
 import {onUnmounted, ref} from "vue";
 // eslint-disable-next-line no-unused-vars
 import {BuildOutlined, HomeOutlined, NumberOutlined, TeamOutlined,} from "@ant-design/icons-vue";
-import {useWorkflow} from "@/composables/workflow";
 import {useEsdlBuildings} from "@/composables/esdlBuildings";
+import {formatNumber} from "@/utils/utils";
 import {workflowGetData} from "../../../utils/api.js";
 
-const { getFromState } = useWorkflow();
 const { addBuildingContextMenuItem, removeBuildingContextMenuItem } = useEsdlBuildings();
 
 const props = defineProps({
@@ -46,6 +46,7 @@ const workflowStep = props.workflowStep;
 
 let treeData = ref([]);
 const isLoading = ref(false);
+const errorMessage = ref("");
 
 const contextMenuItemText = "Show EPS Results";
 
@@ -61,23 +62,27 @@ onUnmounted(() => {
   removeBuildingContextMenuItem(contextMenuItemText);
 });
 
-const getEpsDetails = (asset_id) => {
-  window.socket.emit("DLA_get_object_properties", { id: asset_id }, async (res) => {
-    isLoading.value = true;
+const getEpsDetails = (assetId, esId) => {
+  treeData.value = [];
+  errorMessage.value = "";
+  isLoading.value = true;
+  window.socket.emit("get_eps_building_source", { id: assetId, es_id: esId }, async (res) => {
     try {
-      const attrs = res.attributes.Advanced;
-      let pand_bagid;
-      for (const attr of attrs) {
-        if (attr.name === "originalIdInSource") {
-          pand_bagid = attr.value;
-          break;
-        }
+      const epsUrl = workflowStep.custom_data.url.split("{execution_id}")[0];
+      if (!res.reference?.startsWith(epsUrl)) {
+        errorMessage.value = "This building has no execution reference for the configured EPS service. Re-export the ESDL from EPS.";
+        return;
       }
-      const request_params = {};
-      request_params["execution_id"] = getFromState("execution.id");
-      request_params["pand_bagid"] = pand_bagid;
-      const data = await workflowGetData(workflowStep.custom_data.url, request_params)
-      generateTreeData(data);
+      const requestParams = {
+        execution_id: res.reference.slice(epsUrl.length),
+        pand_bagid: res.pand_bagid,
+      };
+      const data = await workflowGetData(workflowStep.custom_data.url, requestParams);
+      if (data) {
+        generateTreeData(data);
+      } else {
+        errorMessage.value = "Could not load EPS results for this building in the referenced execution.";
+      }
     } finally {
       isLoading.value = false;
     }
@@ -103,8 +108,8 @@ class TreeEntryDefinition {
     if (this.render_func) {
       value = this.render_func(data);
     } else {
-      value = data[this.key] || "Onbekend";
-      if (value === "Unknown") {
+      value = data[this.key];
+      if (value === null || value === undefined || value === "" || value === "Unknown") {
         value = "Onbekend";
       }
     }
@@ -132,7 +137,7 @@ const generatePandEntry = (data, baseKey) => {
         data.street_name,
         data.house_number,
         data.house_letter,
-        data.house_addition
+        data.address_addition
       );
     }),
     new TreeEntryDefinition("Bouwjaar", "bouwjaar"),
@@ -327,10 +332,12 @@ const generateResultsEntry = (resultsData, excludeKeys, baseKey) => {
       }
     }
 
-    let readableValue = value || "Onbekend";
-    // The value is a string here. Check if it is a number and then format it as such.
+    let readableValue = value;
+    if (value === null || value === undefined || value === "") {
+      readableValue = "Onbekend";
+    }
     if (!isNaN(readableValue)) {
-      readableValue = parseFloat(readableValue).toLocaleString("nl-NL");
+      readableValue = formatNumber(readableValue);
     }
     const resultEntry = {
       title: `${readableKey}: ${readableValue}`,
