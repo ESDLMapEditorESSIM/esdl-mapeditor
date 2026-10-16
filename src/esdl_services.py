@@ -795,7 +795,7 @@ class ESDLServices:
 
             if "asset_id" in state_params:
                 asset_id = state_params["asset_id"]
-                asset = esh.get_by_id(active_es_id, object_id=asset_id)
+                asset = pm.get_by_id(active_es_id, object_id=asset_id)
 
                 profile_port = None
                 for p in asset.port:
