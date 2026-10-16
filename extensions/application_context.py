@@ -29,6 +29,8 @@ from src.tno.mongo.models import ApplicationContext
 logger = log.get_logger(__name__)
 
 APPLICATION_CONTEXTS_SETTING = "APPLICATION_CONTEXT_IDS"
+SELECTED_APPLICATION_CONTEXT_SETTING = "SELECTED_APPLICATION_CONTEXT_ID"
+DEFAULT_APPLICATION_CONTEXT_ID = "default"
 
 
 class ApplicationContextExtension:
@@ -42,6 +44,23 @@ class ApplicationContextExtension:
         self.socketio = socket
         self.settings_storage = settings_storage
         self.register()
+
+    def _set_application_context(self, application_context: ApplicationContext | None) -> None:
+        """
+        Switch the session's application context and its live model interfaces.
+        """
+        client_id = session['client_id']
+        previous_context = get_session('application_context')
+        if previous_context:
+            for lmi in previous_context.get("live_model_interfaces", []):
+                deactivate_live_model_interface(lmi["lmi_id"], client_id)
+                set_session(f"lmi_{lmi['lmi_id']}", False)
+
+        set_session('application_context', application_context)
+        if application_context:
+            for lmi in application_context.get("live_model_interfaces", []):
+                activate_live_model_interface(lmi["lmi_id"], client_id)
+                set_session(f"lmi_{lmi['lmi_id']}", True)
 
     def register(self):
         logger.info('Registering ApplicationContext extension')
@@ -75,7 +94,7 @@ class ApplicationContextExtension:
                 application_json[field] = value.strip()
 
             context_id = application_json['application_id']
-            if context_id == 'default' or '/' in context_id:
+            if context_id == DEFAULT_APPLICATION_CONTEXT_ID or '/' in context_id:
                 return jsonify({'error': 'Application ID cannot be default or contain /'}), 400
             if application_id is not None and context_id != application_id:
                 return jsonify({'error': 'Application ID cannot be changed'}), 400
@@ -130,32 +149,42 @@ class ApplicationContextExtension:
             # Find all application contexts with the given ids, and also get all contexts with global set to True
             application_contexts: list[ApplicationContext] = db.application_contexts.find({"$or": [{"application_id": {"$in": context_ids}}, {"is_global": True}]})
             active_context: ApplicationContext | None = get_session('application_context')
-            response = dict(application_contexts=application_contexts, active_context_id=active_context["application_id"] if active_context else None)
+            selected_context_id = self.settings_storage.get_for_current_user(
+                SELECTED_APPLICATION_CONTEXT_SETTING, default=DEFAULT_APPLICATION_CONTEXT_ID
+            )
+            response = dict(
+                application_contexts=application_contexts,
+                active_context_id=active_context["application_id"] if active_context else None,
+                selected_context_id=selected_context_id,
+            )
             return json_util.dumps(response)
 
         @self.flask_app.route("/context/applications/<application_id>/activate", methods=["POST"])
-        def activate_application_context(application_id):
+        def activate_application_context(application_id: str) -> tuple[Any, int]:
             """
-            Activate the application context for the given application_id.
+            Activate the application context for the given application_id and remember the selection.
             :param application_id:
             :return:
             """
-            db = get_database()
-            application_context: ApplicationContext | None = db.application_contexts.find_one({"application_id": application_id})
-            if not application_context:
-                return jsonify({"error": "Application ID not found"}), 404
-            set_session('application_context', application_context)
-            client_id = session['client_id']
+            application_context: ApplicationContext | None = None
+            if application_id != DEFAULT_APPLICATION_CONTEXT_ID:
+                db = get_database()
+                context_ids = self.settings_storage.get_for_current_user(APPLICATION_CONTEXTS_SETTING, default=[])
+                application_context = db.application_contexts.find_one(
+                    {
+                        "application_id": application_id,
+                        "$or": [{"application_id": {"$in": context_ids}}, {"is_global": True}],
+                    }
+                )
+                if not application_context:
+                    return jsonify({"error": "Application ID not found"}), 404
 
-            live_model_interfaces = application_context.get("live_model_interfaces", [])
-            for lmi in live_model_interfaces:
-                activate_live_model_interface(lmi["lmi_id"], client_id)
-                set_session(f"lmi_{lmi['lmi_id']}", True)
-
+            self._set_application_context(application_context)
+            self.settings_storage.set_for_current_user(SELECTED_APPLICATION_CONTEXT_SETTING, application_id)
             return {}, 200
 
         @self.flask_app.route("/context/applications/<application_id>/clear", methods=["POST"])
-        def clear_application_context(application_id: str):
+        def clear_application_context(application_id: str) -> tuple[Any, int]:
             """
             Clear the application context for the given application_id.
             :param application_id:
@@ -165,14 +194,10 @@ class ApplicationContextExtension:
             application_context: ApplicationContext | None = db.application_contexts.find_one({"application_id": application_id})
             if not application_context:
                 return jsonify({"error": "Application ID not found"}), 404
-            client_id = session['client_id']
-            set_session('application_context', None)
-
-            live_model_interfaces = application_context.get("live_model_interfaces", [])
-            for lmi in live_model_interfaces:
-                deactivate_live_model_interface(lmi["lmi_id"], client_id)
-                set_session(f"lmi_{lmi['lmi_id']}", False)
-
+            self._set_application_context(None)
+            self.settings_storage.set_for_current_user(
+                SELECTED_APPLICATION_CONTEXT_SETTING, DEFAULT_APPLICATION_CONTEXT_ID
+            )
             return {}, 200
 
         @self.flask_app.route("/context/applications/<application_id>/lmis", methods=["POST"])

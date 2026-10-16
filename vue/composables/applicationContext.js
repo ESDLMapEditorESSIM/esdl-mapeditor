@@ -51,25 +51,17 @@ export function useApplicationContext() {
      * @param applicationContext
      */
     async function activateApplicationContext(applicationContext) {
-        if (activeApplicationContext.value) {
-            await clearApplicationContext();
-        }
-        activeApplicationContext.value = applicationContext;
-        if (activeApplicationContext.value.application_id === defaultApplicationContext.application_id) {
-            return;
-        }
-
         const response = await fetch(`/context/applications/${applicationContext.application_id}/activate`, {
             method: 'POST'
         })
         if (!response.ok) {
             console.error('Error activating application context', response)
             alert('Error activating application context. Please check the console for more information.')
-            await clearApplicationContext();
             return
         }
+        activeApplicationContext.value = applicationContext;
 
-        if (applicationContext.toast_text) {
+        if (applicationContext.application_id !== defaultApplicationContext.application_id && applicationContext.toast_text) {
             displayNotification(NotificationType.INFO, applicationContext.toast_text);
         }
 
@@ -79,36 +71,30 @@ export function useApplicationContext() {
      * Clear the active application context.
      */
     async function clearApplicationContext() {
-        if (activeApplicationContext.value.application_id === defaultApplicationContext.application_id) {
-            return;
-        }
-        const response = await fetch(`/context/applications/${activeApplicationContext.value.application_id}/clear`, {
-            method: 'POST'
-        })
-        if (!response.ok) {
-            console.error('Error clearing application context', response)
-            alert('Error clearing application context. Please check the console for more information.')
-        }
-        activeApplicationContext.value = defaultApplicationContext;
+        await activateApplicationContext(defaultApplicationContext);
     }
 
     /**
      * @typedef {Object} FetchApplicationContextsResponse
      * @property {ApplicationContext[]} application_contexts
      * @property {string} active_context_id
+     * @property {string} selected_context_id
      */
 
     const fetchApplicationContexts = async () => {
         const response = await fetch('/context/applications')
         const jsonResponse = await response.json()
         const applicationContexts = jsonResponse.application_contexts
-        applicationContexts.unshift(defaultApplicationContext)
-        const activeContextId = jsonResponse.active_context_id || defaultApplicationContext.application_id
-        if (activeContextId) {
-            // Find the active context and set it as the active context.
-            activeApplicationContext.value = applicationContexts.find(context => context.application_id === activeContextId)
-        }
         // Always add the default context to the start.
+        applicationContexts.unshift(defaultApplicationContext)
+        // Find the active context and set it as the active context.
+        const activeContext = applicationContexts.find(context => context.application_id === jsonResponse.active_context_id)
+        if (activeContext) {
+            activeApplicationContext.value = activeContext;
+        } else {
+            const selectedContext = applicationContexts.find(context => context.application_id === jsonResponse.selected_context_id)
+            await activateApplicationContext(selectedContext || defaultApplicationContext);
+        }
         return applicationContexts
     }
 
