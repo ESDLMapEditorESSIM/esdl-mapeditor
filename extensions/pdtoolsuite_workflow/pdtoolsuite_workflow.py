@@ -11,8 +11,6 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-import json
-
 import cgi
 from collections import defaultdict
 from math import isfinite, isnan
@@ -147,21 +145,6 @@ class PDToolsuiteWorkflow:
                 el_networks_options.append(el_networks_dict)
 
             return el_networks_options, 200
-
-        @self.flask_app.route("/pdtoolsuite_workflow/mock", methods=["POST"])
-        def mockdata():
-            """
-            Mock data for the P&D Toolsuite workflow.
-            """
-            data = request.data
-            json_data = json.loads(data.decode("utf-8"))
-
-            payload = dict(
-                esdl=json_data["esdl"],
-                business_case_excel="TmFtZSxBZ2UsQ2l0eQpBbGljZSwyNSxOZXcgWW9yawpCb2IsMzAsTG9zIEFuZ2VsZXMKQ2hhcmxpZSwzNSxDaGljYWdvCg ==",
-            )
-
-            return jsonify(payload)
 
         @self.flask_app.route("/pdtoolsuite_workflow/profiles/template", methods=["POST"])
         def generate_profile_template():
