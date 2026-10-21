@@ -614,6 +614,12 @@ class DataManager:
         # In principle we should iterate here over all the instance, but this is not supported elsewhere in the MapEditor
         # adding an extra label for each instance might be consfusing.
         for eobj in es.instance[0].eAllContents():
+            if isinstance(eobj, (esdl.KPI, esdl.StringItem)):
+                container = eobj.eContainer()
+                while container is not None and not isinstance(container, (esdl.Asset, esdl.Area)):
+                    container = container.eContainer()
+                if isinstance(container, esdl.Asset) and container.area is None:
+                    continue
             d = None
             variable_name = None
             is_profile_variable = None
