@@ -1,7 +1,7 @@
 # This Dockerfile is the main one to build a production image with uWSGI support
 
 # ----- BUILD javascript ------
-FROM node:20 as frontend
+FROM node:24.22.1 as frontend
 
 # This is to avoid the ERR_OSSL_EVP_UNSUPPORTED error from webpack.
 # Can be removed when we upgrade webpack or move to another tool.
@@ -29,7 +29,8 @@ WORKDIR /usr/src/app
 
 # Python dependencies including uWSGI.
 COPY requirements.txt requirements-uwsgi.txt /usr/src/app/
-RUN pip install -r requirements.txt -r requirements-uwsgi.txt
+RUN pip install --cert /etc/ssl/certs/ca-certificates.crt --upgrade 'pip>=26.2.2' && \
+    pip install -r requirements.txt -r requirements-uwsgi.txt
 
 # Ensure the instance directory exists with proper permissions
 RUN mkdir -p /usr/src/app/instance && chmod -R 777 /usr/src/app/instance
