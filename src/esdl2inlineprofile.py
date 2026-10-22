@@ -158,7 +158,7 @@ class ESDL2InlineProfile:
                 username=None,
                 password=None,
                 ssl=True,
-                verify_ssl=False,
+                verify_ssl=True,
             )
         else:
             # Find profile server information for the InfluxDBProfile
