@@ -42,7 +42,7 @@ class SelectAreas {
             } else {
                 // Call toggle with first element from list. toggle_selected will handle all layers
                 this.toggle_selected(areas_leaflet_obj[0]);
-                for (let area in areas_leaflet_obj) {
+                for (let area of areas_leaflet_obj) {
                     this.enable_context_menu_items(area);
                 }
             }
@@ -111,7 +111,7 @@ class SelectAreas {
 
     toggle_selected(area_leaflet_obj) {
         // Can be called with area ID "... (1 of 3)" or with only "..." and then it will still handle all layers
-        // console.log("area was selected: ", area_leaflet_obj.name, area_leaflet_obj.selected, area_leaflet_obj);
+        // console.log("area was selected: ", area_leaflet_obj.id, area_leaflet_obj.selected, area_leaflet_obj);
 
         let area_id_without_cntr = get_area_id_from_mapeditor_id(area_leaflet_obj.id);
         let areas = find_areas_by_id(active_layer_id, area_id_without_cntr);

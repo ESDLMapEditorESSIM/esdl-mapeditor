@@ -513,6 +513,10 @@ function restoreStyle(layer) {
 }
 
 function setSelectedAreaStyle(layer) {
+    if (!layer.oldStyle) {
+        // if a user clicks a sub area of a multi-polygon area, the style of the other sub areas has not been saved
+        saveStyle(layer);
+    }
     layer.setStyle({
         weight: 3,
         color: 'black',
