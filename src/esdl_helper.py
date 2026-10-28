@@ -22,8 +22,15 @@ from esdl import esdl
 from src.esdl_integration.processing import ESDLGeometry, ESDLAsset
 from extensions.session_manager import get_session, get_session_for_esid, get_project_manager
 from extensions.profiles import Profiles
+from extensions.toast_notifications import ToastNotifications, ToastNotification, NotificationPlacement, \
+    NotificationType as ToastLevel
 from esdl.project.ProjectManager import ProjectManager
+
+from src.log import get_logger
+from src.shape import ShapeMultiPolygon
 from src.incremental_ui.incremental_ui_messages import create_asset_port_message
+
+logger = get_logger(__name__)
 
 
 def generate_profile_info(profile_list, only_of_type: str = None):
@@ -142,6 +149,9 @@ def get_asset_geom_info(asset):
         if isinstance(geom, esdl.Polygon):
             center = ESDLGeometry.calculate_polygon_center(geom)
             return center
+        if isinstance(geom, esdl.MultiPolygon):
+            center = ESDLGeometry.calculate_multipolygon_center(geom)
+            return center
     return ()
 
 
@@ -184,7 +194,7 @@ def get_tooltip_asset_attrs(asset, shape):
         if 'ui_settings' in user_settings:
             if 'tooltips' in user_settings['ui_settings']:
                 tooltip_settings = user_settings['ui_settings']['tooltips']
-                if (shape == 'marker' or shape == 'polygon') and 'marker_tooltip_format' in tooltip_settings:
+                if (shape == 'marker' or shape == 'polygon' or shape == 'multipolygon') and 'marker_tooltip_format' in tooltip_settings:
                     tooltip_format = tooltip_settings['marker_tooltip_format']
                 elif shape == 'line' and 'line_tooltip_format' in tooltip_settings:
                     tooltip_format = tooltip_settings['line_tooltip_format']
@@ -307,7 +317,28 @@ def energy_asset_to_ui(pm: ProjectManager, es_id, asset):  # , port_asset_mappin
                 tooltip_asset_attrs = get_tooltip_asset_attrs(asset, 'polygon')
                 add_spatial_attributes(asset, tooltip_asset_attrs)
                 return ['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords, tooltip_asset_attrs,
-                        state, port_list, capability_type], extra_attributes, conn_list
+                        state, port_list, capability_type, extra_attributes], conn_list
+        elif isinstance(geom, esdl.MultiPolygon):
+            shape_multipolygon = ShapeMultiPolygon(geom)
+            if not shape_multipolygon.is_valid():
+                error_msg = (
+                    f"Asset '{asset.name}' ({asset.id}): invalid MultiPolygon geometry - "
+                    f"{shape_multipolygon.explain_validity()}"
+                )
+                logger.error(error_msg)
+                ToastNotifications.send(ToastNotification(
+                    title="Invalid asset geometry",
+                    description=error_msg,
+                    type=ToastLevel.ERROR,
+                    placement=NotificationPlacement.BOTTOM_RIGHT,
+                ))
+
+            coords = shape_multipolygon.get_leaflet_coords()
+            capability_type = ESDLAsset.get_asset_capability_type(asset)
+            tooltip_asset_attrs = get_tooltip_asset_attrs(asset, 'multipolygon')
+            add_spatial_attributes(asset, tooltip_asset_attrs)
+            return ['multipolygon', 'asset', asset.name, asset.id, type(asset).__name__, coords,
+                    tooltip_asset_attrs, state, port_list, capability_type, extra_attributes], conn_list
 
     return [], []
 

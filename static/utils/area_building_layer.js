@@ -584,6 +584,45 @@ function can_edit_polygon_geometry(layer) {
     return true;
 }
 
+// Flattens Leaflet LatLngs into a list of individual rings (arrays of LatLng), covering simple polygons,
+// polygons with holes, and true multi-polygons (multiple sub-polygons, each with its own rings).
+function flatten_polygon_rings(latlngs) {
+    if (latlngs.length === 0 || L.LineUtil.isFlat(latlngs)) {
+        return [latlngs];
+    }
+    if (L.LineUtil.isFlat(latlngs[0])) {
+        return latlngs.slice();
+    }
+    var rings = [];
+    for (var i = 0; i < latlngs.length; i++) {
+        rings = rings.concat(latlngs[i]);
+    }
+    return rings;
+}
+
+// leaflet.draw-custom.js's L.Edit.Poly only ever creates a single vertex-editing handler, based on
+// leftover Leaflet 0.7.x logic (poly._holes, which doesn't exist in modern Leaflet and is always
+// undefined). That silently drops holes and crashes on true multi-polygons (e.g. windpark assets),
+// since PolyVerticesEdit's per-vertex code ends up walking a ring array as if it were LatLng points.
+// Patch it to create one vertex handler per ring, across all sub-polygons.
+L.Edit.Poly.prototype.initialize = function (poly) {
+    if (L.Browser.touch) {
+        this.options.moveIcon = this.options.touchMoveIcon;
+    }
+    this.latlngs = flatten_polygon_rings(poly._latlngs);
+    this._poly = poly;
+    this._poly.on('revert-edited', this._updateLatLngs, this);
+};
+
+L.Edit.Poly.prototype._updateLatLngs = function (e) {
+    this.latlngs = flatten_polygon_rings(e.layer._latlngs);
+};
+
+// the "move whole shape" marker only needs one representative ring; use the first ring of the first sub-polygon
+L.Edit.Poly.prototype._defaultShape = function () {
+    return flatten_polygon_rings(this._poly._latlngs)[0];
+};
+
 function set_geometry_edit_contextmenu_text(layer, editing) {
     if (!layer.geometry_edit_contextmenu_items) {
         return;
