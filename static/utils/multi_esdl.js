@@ -180,7 +180,7 @@ function create_new_esdl_layer(es_id, title) {
             kpi_layer: L.featureGroup().addTo(map),
             sim_layer: L.featureGroup().addTo(map),
             notes_layer: L.featureGroup().addTo(map),
-            plan_layer: L.featureGroup(),
+            plan_layer: L.featureGroup().addTo(map),
         },
         sector_list: null,
         carrier_list: null,
@@ -264,7 +264,7 @@ function remove_bld_layer(bld_id) {
  * Shows one or more ESDL layers on the Leaflet map.
  *
  * @param es_id - Identifier of the ESDL instance to show layers from.
- * @param layer_name - Logical layer name (level_name) to show. If omitted, all base layers are shown.
+ * @param layer_name - Logical layer name (level_name) to show. If omitted, all layers are shown.
  * @param es_layer_name - Specific ESDL layer key to search within. If omitted, matches top-level layers.
  */
 function show_esdl_layer_on_map(es_id, layer_name, es_layer_name) {
@@ -275,11 +275,8 @@ function show_esdl_layer_on_map(es_id, layer_name, es_layer_name) {
     }
 
     if (!layer_name) {
-        // Show all base ESDL layers
+        // Show all ESDL layers
         for (const lname of Object.keys(es.layers)) {
-            if (lname === 'plan_layer') {
-                continue;
-            }
             show_esdl_layer_on_map(es_id, lname);
         }
         return;

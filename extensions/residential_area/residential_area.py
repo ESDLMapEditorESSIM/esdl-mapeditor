@@ -23,7 +23,7 @@ from flask_socketio import SocketIO, emit
 from pyecore.resources import ResourceSet
 
 import esdl
-from esdl.processing import ESDLAsset
+from src.esdl_integration.processing import ESDLAsset
 from esdl.processing.string_uri import StringURI
 from extensions.session_manager import set_session, get_project_manager, get_session, get_session_for_esid
 from extensions.settings_storage import SettingsStorage

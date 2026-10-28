@@ -16,6 +16,7 @@ from esdl import esdl
 import uuid
 
 from esdl.units.parser import qau_to_string
+from src.esdl_integration.processing import ESDLGeometry
 
 
 def find_area(area, area_id):
@@ -118,6 +119,22 @@ def get_notes_list(es):
     return notes_list
 
 
+def _get_plan_geometry(geometry):
+    """
+    Get the geometry of a plan. Currently only supports Point, Polygon and MultiPolygon.
+    :param geometry:
+    :return:
+    """
+    if isinstance(geometry, esdl.Point):
+        return {
+            'type': 'Point',
+            'coordinates': [geometry.lon, geometry.lat],
+        }
+    if isinstance(geometry, (esdl.Polygon, esdl.MultiPolygon)):
+        return ESDLGeometry.create_boundary_from_geometry(geometry)
+    return None
+
+
 def get_plan_list(es: esdl.EnergySystem) -> list[dict]:
     """
     Return the Plans and their referenced elements for an EnergySystem.
@@ -144,6 +161,7 @@ def get_plan_list(es: esdl.EnergySystem) -> list[dict]:
                 'id': member.id,
                 'name': member.name,
                 'description': member.description,
+                'geometry': _get_plan_geometry(member.geometry),
                 'group': group_info,
                 'elements': elements,
             })

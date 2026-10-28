@@ -24,7 +24,7 @@ from pathlib import Path
 from flask import session
 
 import src.log as log
-from esdlproject.ProjectManager import ProjectManager
+from esdl.project.ProjectManager import ProjectManager
 from src.settings import PERSIST_SESSIONS, SESSION_PERSISTENCE_PATH, SESSION_PERSISTENCE_FILE, DEFAULT_PROJECT_PATH
 
 SESSION_MANAGER_LISTENER_ID = "session_manager"

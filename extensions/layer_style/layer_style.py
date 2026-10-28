@@ -7,7 +7,7 @@ from flask_socketio import SocketIO
 from pyecore.ecore import EAttribute, EReference
 
 import esdl
-import esdl.processing.ESDLEcore as ESDLEcore
+import src.esdl_integration.processing.ESDLEcore as ESDLEcore
 import src.log as log
 from esdl.units.parser import unit_to_string
 from extensions.session_manager import get_project_manager, get_session

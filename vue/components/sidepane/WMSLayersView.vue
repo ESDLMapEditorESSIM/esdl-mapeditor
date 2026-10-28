@@ -121,10 +121,16 @@ const checkedKeys = computed(() => {
   return checked;
 });
 
-watch(treeData, (newData) => {
-  if (newData && !expandedKeys.value.length) {
-    expandedKeys.value = getInitiallyExpandedKeys(newData);
+watch(treeData, (newData, oldData) => {
+  const oldKeys = new Set(getTreeKeys(oldData || []));
+  const newKeys = new Set(getTreeKeys(newData || []));
+  const keys = expandedKeys.value.filter((key) => newKeys.has(key));
+  for (const key of getInitiallyExpandedKeys(newData || [])) {
+    if (!oldKeys.has(key)) {
+      keys.push(key);
+    }
   }
+  expandedKeys.value = keys;
 }, {immediate: true});
 
 const contextMenuItems = computed(() => {
@@ -218,6 +224,17 @@ function getInitiallyExpandedKeys(nodes) {
       for (const childKey of getInitiallyExpandedKeys(node.children)) {
         keys.push(childKey);
       }
+    }
+  }
+  return keys;
+}
+
+function getTreeKeys(nodes) {
+  const keys = [];
+  for (const node of nodes) {
+    keys.push(node.key);
+    if (node.children?.length) {
+      keys.push(...getTreeKeys(node.children));
     }
   }
   return keys;
@@ -348,12 +365,6 @@ function showWarningMsg(hiddenLayerCount, maxLayerOpenCount) {
 
 <style scoped lang="scss">
 #wms_layers_view {
-  overflow-y: auto;
-
-  .text-only {
-    padding-left: 8px;
-  }
-
   :deep(.ant-tree-treenode) {
     padding-bottom: 0;
   }

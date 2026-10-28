@@ -42,15 +42,16 @@ import src.esdl_config as esdl_config
 import src.settings as settings
 from commands.profiles import profiles_group
 from esdl import esdl
-from esdl.processing import ESDLAsset, ESDLEcore, ESDLEnergySystem, ESDLGeometry, ESDLQuantityAndUnits
-from esdl.processing.ESDLAsset import get_asset_capability_type, update_ids_in_object
+from src.esdl_integration.processing import ESDLQuantityAndUnits
+from src.esdl_integration.processing import ESDLAsset, ESDLEcore, ESDLEnergySystem, ESDLGeometry
+from src.esdl_integration.processing.ESDLAsset import get_asset_capability_type, update_ids_in_object
 from esdl.processing.string_uri import StringURI
-from esdl.processing.ESDLEcore import instantiate_type
-from esdl.processing.EcoreDocumentation import EcoreDocumentation
+from src.esdl_integration.processing.ESDLEcore import instantiate_type
+from esdl.ecore_documentation import EcoreDocumentation
 from esdl.undo import UndoRedoCommandStack
 from src.esdl_integration.undo_wrapper import undo_record_changes
 from src.esdl_integration.ESDLAsset import remove_object_from_energysystem, remove_profile_from_port
-from esdlproject.ProjectManager import update_energy_system_version
+from esdl.project.ProjectManager import update_energy_system_version
 from extensions.data_manager import db
 from extensions.external_models.external_models_storage import ExternalModelsStorage
 from extensions.mapeditor_settings import MAPEDITOR_UI_SETTINGS, MapEditorSettings
@@ -116,7 +117,7 @@ models_storage = ExternalModelsStorage(named_locker)
 
 
 # handler to retrieve ESDL documentation
-esdl_doc = EcoreDocumentation(esdlEcoreFile="esdl/esdl.ecore")
+esdl_doc = EcoreDocumentation()
 
 
 def is_running_in_uwsgi():
@@ -1184,12 +1185,15 @@ def update_polygon_coordinates(message: UpdatePolygonCoordinatesMessage):
         send_alert('Could not update polygon geometry')
         return
 
-    if isinstance(obj.geometry, esdl.MultiPolygon):
-        send_alert('Editing MultiPolygon geometries is not supported')
-        return
+    # if isinstance(obj.geometry, esdl.MultiPolygon):
+    #     send_alert('Editing MultiPolygon geometries is not supported')
+    #     return
 
     try:
-        polygon = create_polygon_from_leaflet_data(message['polygon'], getattr(obj.geometry, 'CRS', None) or 'WGS84')
+        # Old implementation, for now assume all coordinates from the frontend are using CRS WGS84
+        # polygon = create_polygon_from_leaflet_data(message['polygon'], getattr(obj.geometry, 'CRS', None) or 'WGS84')
+        # TODO: in the above function also duplicate coordinates were filtered. Check if that still happens?
+        polygon_or_multi_polygon_shp = Shape.create(message['polygon'])
     except (KeyError, TypeError, ValueError, IndexError):
         logger.exception('Could not update polygon geometry')
         send_alert('Could not update polygon geometry')
@@ -1206,14 +1210,18 @@ def update_polygon_coordinates(message: UpdatePolygonCoordinatesMessage):
 
     undo_redo = pm.get_undo_redo_stack(obj)
     with undo_redo.track_changes(label="Change geometry of {}".format(obj.name or obj.eClass.name)):
-        obj.geometry = polygon
+        obj.geometry = polygon_or_multi_polygon_shp.get_esdl()
         if isinstance(obj, esdl.Area):
             shape_dictionary = get_session_for_esid(active_es_id, 'shape_dictionary') or {}
-            shape_dictionary[obj.id] = Shape.create(polygon)
+            shape_dictionary[obj.id] = polygon_or_multi_polygon_shp
             set_session_for_esid(active_es_id, 'shape_dictionary', shape_dictionary)
         elif not isinstance(obj, (esdl.AbstractBuilding, esdl.Potential)):
             obj.surfaceArea = polygon_area
-            polygon_center = ESDLGeometry.calculate_polygon_center(polygon)
+            if isinstance(obj.geometry, esdl.Polygon):
+                polygon_center = ESDLGeometry.calculate_polygon_center(obj.geometry)
+            elif isinstance(obj.geometry, esdl.MultiPolygon):
+                # For now, assume the first polygon in the list
+                polygon_center = ESDLGeometry.calculate_multipolygon_center(obj.geometry)
             update_polygon_asset_connection_locations(obj_id, polygon_center)
     emit('update_undo_redo_stack', serialize_command_stack(undo_redo))
 
@@ -2019,7 +2027,7 @@ def process_command(message, stack: UndoRedoCommandStack):
         asset_and_coord2 = get_asset_and_coord_from_port_id(pm, active_es_id, port2_id)
         asset1 = asset_and_coord1['asset']
         asset2 = asset_and_coord2['asset']
-        stack.update_label(f"Connect {asset1.name or asset.eClass.name} to {asset2.name or asset.eClass.name}")
+        stack.update_label(f"Connect {asset1.name or asset1.eClass.name} to {asset2.name or asset2.eClass.name}")
         asset1_port_location = asset_and_coord1['coord']
         asset2_port_location = asset_and_coord2['coord']
 
@@ -2233,6 +2241,7 @@ def process_command(message, stack: UndoRedoCommandStack):
             asset_id = message['id']
         param_name = message['param_name']
         param_value = message['param_value']
+        set_param_success = True
 
         if asset_id is None:
             resource = pm.get_energy_system_resource_by_id(active_es_id)
@@ -2276,7 +2285,9 @@ def process_command(message, stack: UndoRedoCommandStack):
 
                 else:
                     send_alert('Error setting attribute {} of {} to {}, unknown attribute'.format(param_name, asset.name, param_value))
+                    set_param_success = False
             except Exception as e:
+                set_param_success = False
                 logger.error('Error setting attribute {} of {} to {}, caused by {}'.format(param_name, asset.name, param_value, str(e)))
                 send_alert('Error setting attribute {} of {} to {}, caused by {}'.format(param_name, asset.name, param_value, str(e)))
                 traceback.print_exc()
@@ -2308,6 +2319,8 @@ def process_command(message, stack: UndoRedoCommandStack):
         #             "zoom": False,
         #          })
         #     emit("add_connections",{"es_id": active_es_id, "conn_list": conn_list})
+
+        return {'success': set_param_success}
 
     if message['cmd'] == 'set_area_bld_polygon':
         area_bld_id = message['area_bld_id']

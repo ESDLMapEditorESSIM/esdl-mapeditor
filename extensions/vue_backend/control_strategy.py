@@ -15,7 +15,7 @@
 from uuid import uuid4
 from pyecore.ecore import EDate
 from esdl import esdl
-from esdl.processing.ESDLEcore import instantiate_type
+from src.esdl_integration.processing.ESDLEcore import instantiate_type
 from extensions.session_manager import get_session, get_project_manager
 from extensions.profiles import Profiles
 from utils.utils import str2float

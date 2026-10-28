@@ -22,8 +22,8 @@ from esdl.processing.string_uri import StringURI
 from esdl.resources.json import JsonOptions
 from esdl.resources.project_resource import ProjectResource
 from esdl.resources.xmlresource import XMLResource
-from esdlproject import ESDLProject
-from esdlproject.ProjectManager import ProjectManager, eobject_to_string, ESDLFormat
+from esdl.project import ESDLProject
+from esdl.project.ProjectManager import ProjectManager, eobject_to_string, ESDLFormat
 from src.log import get_logger
 
 

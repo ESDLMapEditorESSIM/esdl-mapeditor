@@ -2,7 +2,7 @@ import unittest
 import uuid
 
 from esdl import EnergySystem, Transformer
-from esdlproject.ProjectManager import ProjectManager
+from esdl.project.ProjectManager import ProjectManager
 from src.tno.undoredo.types import serialize_command_stack
 
 

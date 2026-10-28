@@ -5,9 +5,9 @@ import unittest
 from pathlib import Path
 
 from esdl import esdl
-from esdlproject import Variant
-from esdlproject.ProjectManager import ProjectManager
-from esdlproject.variant_api import create_new_variant, get_parent_variant
+from esdl.project import Variant
+from esdl.project.ProjectManager import ProjectManager
+from esdl.project.variant_api import create_new_variant, get_parent_variant
 from tests.test_utils import find_asset_in_es
 
 
@@ -30,8 +30,8 @@ class TestProjectManager(unittest.TestCase):
             logging.basicConfig(level=logging.DEBUG)
 
             from esdl import esdl
-            from esdlproject.ProjectManager import ProjectManager
-            from esdlproject.variant_api import create_new_variant
+            from esdl.project.ProjectManager import ProjectManager
+            from esdl.project.variant_api import create_new_variant
 
             pm = ProjectManager()
             stack = pm.get_undo_redo_stack()

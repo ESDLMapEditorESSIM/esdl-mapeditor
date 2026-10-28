@@ -100,12 +100,12 @@ logging.config.dictConfig(
                 "level": "DEBUG" if FLASK_DEBUG else "INFO",
                 "propagate": False,
             },
-            "esdlproject": {
+            "esdl.project": {
                 "handlers": ["default"],
                 "level": "DEBUG" if FLASK_DEBUG else "INFO",
                 "propagate": False,
             },
-            # "esdlproject.ChangeSerializer": {
+            # "esdl.project.ChangeSerializer": {
             #     "handlers": ["default"],
             #     "level": "INFO",
             #     "propagate": False,

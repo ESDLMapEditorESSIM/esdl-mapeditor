@@ -20,8 +20,8 @@ from flask_socketio import SocketIO, emit
 
 import src.log as log
 from esdl.processing.string_uri import StringURI
-from esdlproject import Variant
-from esdlproject.ProjectManager import ProjectManager, load_external_string
+from esdl.project import Variant
+from esdl.project.ProjectManager import ProjectManager, load_external_string
 from extensions.prompt_manager import PromptManager
 from extensions.session_manager import set_session, get_project_manager, set_project_manager, del_session, get_session
 from src.process_es_area_bld import call_process_energy_system

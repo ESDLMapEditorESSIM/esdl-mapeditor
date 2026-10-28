@@ -5,8 +5,8 @@ from pyecore.resources.json import JsonResource
 
 from esdl import esdl
 from esdl.processing.string_uri import StringURI
-from esdlproject.ProjectManager import ProjectManager, resource_as_string
-from esdlproject.change_handler import applyChange
+from esdl.project.ProjectManager import ProjectManager, resource_as_string
+from esdl.project.change_handler import applyChange
 
 import json
 import datetime

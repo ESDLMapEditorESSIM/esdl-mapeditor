@@ -16,8 +16,8 @@ import unittest
 from pprint import pprint
 
 from esdl.patch import patch_esdl
-from esdlproject import Add, DetailedChange
-from esdlproject.ChangeSerializer import filterDoubleConnectedTo
+from esdl.project import Add, DetailedChange
+from esdl.project.ChangeSerializer import filterDoubleConnectedTo
 
 
 class TestFilterChanges(unittest.TestCase):

@@ -20,8 +20,8 @@ from pyecore.ecore import EDate
 
 import esdl
 from esdl import DataTableProfile
-from esdl.profiles.data_configurations.credentials import Credentials
-from esdl.profiles.data_configurations.postgresql import (
+from src.esdl_integration.profiles.credentials import Credentials
+from src.esdl_integration.profiles.postgresql import (
     PostgresqlConfiguration,
     DataTableMetaData,
 )

@@ -32,8 +32,8 @@ from esdl import esdl, Profiles
 from esdl.processing.string_uri import StringURI
 from esdl.undo import UndoRedoCommandStack
 from src.esdl_integration.undo_wrapper import undo_record_changes
-from esdl.processing import ESDLAsset, ESDLGeometry
-from esdlproject.ProjectManager import ProjectManager, eobject_to_string, load_external_string
+from src.esdl_integration.processing import ESDLAsset, ESDLGeometry
+from esdl.project.ProjectManager import ProjectManager, eobject_to_string, load_external_string
 from extensions.prompt_manager import PromptManager
 from esdl.units.parser import build_qau_from_unit_string
 from extensions.external_models.external_models_storage import (
@@ -177,15 +177,6 @@ class ESDLServices:
             self.settings_storage.set_user(user, ESDL_SERVICES_CONFIG, esdl_services_settings)
         return esdl_services_settings
 
-    def get_role_based_services(self, roles: list[str]) -> list[dict[str, Any]]:
-        """Get the services available for this user role from the config."""
-        role_based_esdl_services: dict[str, Any] = esdl_config.esdl_config["role_based_esdl_services"]
-        selected_services = list()
-        for role in roles:
-            role_services = role_based_esdl_services.get(role, [])
-            selected_services.extend(role_services)
-        return selected_services
-
     def restore_settings(self, user: str):
         esdl_services_settings = esdl_config.esdl_config["predefined_esdl_services"]
         self.settings_storage.set_user(user, ESDL_SERVICES_CONFIG, esdl_services_settings)
@@ -204,18 +195,11 @@ class ESDLServices:
         # store the user services list in session for later use
         set_session("services_list", srvs_list)
 
-        # Start with user services, remove those services that the user does not have the role for.
+        # Remove services that the user does not have the role for.
         final_services_list = copy.deepcopy(srvs_list)
         for service in list(final_services_list):
             if "required_role" in service and service["required_role"] not in roles:
                 final_services_list.remove(service)
-
-        service_ids: list[str] = [service["id"] for service in final_services_list]
-        # Get role based services and add them, unless a service with matching ID exists.
-        role_based_services = self.get_role_based_services(roles)
-        for role_based_service in role_based_services:
-            if role_based_service["id"] not in service_ids:
-                final_services_list.append(role_based_service)
 
         return final_services_list
 
@@ -811,7 +795,7 @@ class ESDLServices:
 
             if "asset_id" in state_params:
                 asset_id = state_params["asset_id"]
-                asset = esh.get_by_id(active_es_id, object_id=asset_id)
+                asset = pm.get_by_id(active_es_id, object_id=asset_id)
 
                 profile_port = None
                 for p in asset.port:

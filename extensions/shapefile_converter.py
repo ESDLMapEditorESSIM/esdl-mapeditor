@@ -24,7 +24,7 @@ import zipfile
 import tempfile
 import glob
 from uuid import uuid4
-from esdl.processing.ESDLGeometry import distance
+from src.esdl_integration.processing.ESDLGeometry import distance
 from pyproj import Proj, Transformer
 from pyecore.ecore import EClass
 import shapefile

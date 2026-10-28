@@ -26,14 +26,16 @@ from shapely import MultiPoint
 import esdl
 from esdl.units.parser import unit_to_string
 from esdl import esdl
-from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEnergySystem
-from esdl.processing.ESDLEnergySystem import get_notes_list
-from esdl.processing.ESDLGeometry import calculate_polygon_center
-from esdlproject.ProjectManager import ProjectManager
+from src.esdl_integration.processing import ESDLGeometry, ESDLAsset, ESDLEnergySystem
+from src.esdl_integration.processing.ESDLEnergySystem import get_notes_list
+from src.esdl_integration.processing.ESDLGeometry import calculate_polygon_center
+from esdl.project.ProjectManager import ProjectManager
 from extensions.boundary_service import BoundaryService, is_valid_boundary_id
 from extensions.mapeditor_settings import MapEditorSettings
 from extensions.session_manager import get_project_manager, get_session, set_session_for_esid, set_session, \
     get_session_for_esid
+from extensions.toast_notifications import ToastNotifications, ToastNotification, NotificationPlacement, \
+    NotificationType as ToastLevel
 from src.app import executor
 from src.assets_to_be_added import AssetsToBeAdded
 from extensions.profiles import Profiles
@@ -43,7 +45,7 @@ from src.incremental_ui.incremental_ui_messages import create_asset_port_message
 from src.log import get_logger
 from src.shape import Shape, ShapePoint, ShapeMultiPolygon
 from src.tno.projects.emits import emit_active_esdl_project
-from esdl.utils.RDWGSConverter import RDWGSConverter
+from src.esdl_integration.processing.RDWGSConverter import RDWGSConverter
 from utils.utils import timed
 
 logger = get_logger(__name__)
@@ -479,6 +481,7 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, sho
         boundary_wgs = BoundaryService.get_instance().get_boundary_from_service(boundaries_year, area_scope, str.upper(area_id))
         if boundary_wgs:
             sh = Shape.parse_geojson_geometry(boundary_wgs['geom'])
+            ## TODO: treat it as multipolygon instead of splitting into individual areas with area_id_number suffix?
             if isinstance(sh, ShapeMultiPolygon):
                 num_sub_polygons = len(sh.shape.geoms)
                 polygons = sh.shape.geoms
@@ -711,6 +714,28 @@ def add_asset_to_asset_list(asset_list, asset):
             asset_list.append(
                 ['polygon', 'asset', asset.name, asset.id, type(asset).__name__, coords, attrs, state,
                  port_list, capability_type, extra_attributes])
+        if isinstance(geom, esdl.MultiPolygon):
+            shape_multipolygon = ShapeMultiPolygon(geom)
+            if not shape_multipolygon.is_valid():
+                error_msg = (
+                    f"Asset '{asset.name}' ({asset.id}): invalid MultiPolygon geometry - "
+                    f"{shape_multipolygon.explain_validity()}"
+                )
+                logger.error(error_msg)
+                ToastNotifications.send(ToastNotification(
+                    title="Invalid asset geometry",
+                    description=error_msg,
+                    type=ToastLevel.ERROR,
+                    placement=NotificationPlacement.BOTTOM_RIGHT,
+                ))
+
+            coords = shape_multipolygon.get_leaflet_coords()
+            capability_type = ESDLAsset.get_asset_capability_type(asset)
+            attrs = get_tooltip_asset_attrs(asset, 'multipolygon')
+            add_spatial_attributes(asset, attrs)
+            asset_list.append(
+                ['multipolygon', 'asset', asset.name, asset.id, type(asset).__name__, coords, attrs, state,
+                 port_list, capability_type, extra_attributes])
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -773,7 +798,7 @@ def process_building(pm: ProjectManager, es_id, asset_list, building_list, area_
     for basset in building.asset:
         if isinstance(basset, esdl.AbstractBuilding):
             process_building(pm, es_id, asset_list, building_list, area_bld_list, conn_list, basset, bld_editor, level + 1)
-        else:
+        elif hasattr(basset, 'port'):
             # Create a list of ports for this asset
             port_list = create_asset_port_message(basset)
 

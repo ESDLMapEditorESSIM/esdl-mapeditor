@@ -15,6 +15,7 @@ import {renderPlanLayer} from "@/utils/planVisualization";
  * @property {string|null} name
  * @property {string|null} description
  * @property {{id: string, name: string|null}} group
+ * @property {{type: string, coordinates: Array}|null} geometry
  * @property {PlanElement[]} elements
  */
 

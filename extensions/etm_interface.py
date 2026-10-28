@@ -28,7 +28,7 @@ from sqlalchemy.orm import declarative_base, Session
 
 import src.log as log
 from esdl import esdl, EnergySystem
-from esdl.processing import ESDLAsset
+from src.esdl_integration.processing import ESDLAsset
 from esdl.units.parser import unit_to_string, build_qau_from_unit_string
 from esdl.profiles.influxdbprofilemanager import InfluxDBProfileManager
 from esdl.undo import UndoRedoCommandStack

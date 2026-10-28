@@ -9,9 +9,9 @@ from esdl.processing.string_uri import StringURI
 from esdl.resources.json import JsonResource
 from esdl.resources.xmlresource import XMLResource
 from esdl.undo import ChangeTracker
-from esdlproject import VariantCollection, Variant, ESDLProject, HighLevelChange, Add, Set
+from esdl.project import VariantCollection, Variant, ESDLProject, HighLevelChange, Add, Set
 from esdl.support_functions import clone, deepcopy
-from esdlproject.ProjectManager import create_empty_energysystem
+from esdl.project.ProjectManager import create_empty_energysystem
 
 
 class VariantModelTestCase(unittest.TestCase):

@@ -18,7 +18,7 @@ from pyecore.ecore import EObject
 from esdl import esdl
 from esdl.resources.xmlresource import XMLResource
 from esdl.undo import ChangeSource, ChangeContext
-from esdlproject import HighLevelChange, DetailedChange, Set, Add, Remove, Delete
+from esdl.project import HighLevelChange, DetailedChange, Set, Add, Remove, Delete
 from extensions.session_manager import managed_sessions, get_session
 from src.incremental_ui.connections import create_connection, remove_connection_from_conn_list
 from src.log import get_logger

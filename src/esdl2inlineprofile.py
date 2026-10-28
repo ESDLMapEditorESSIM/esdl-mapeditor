@@ -8,7 +8,7 @@ from esdl import EnergySystem, EnergySystemInformation, InfluxDBProfile, TimeSer
 from esdl.processing.string_uri import StringURI
 from esdl.profiles.influxdbprofilemanager import InfluxDBProfileManager, ConnectionSettings
 import esdl
-from esdlproject.ProjectManager import load_external_string
+from esdl.project.ProjectManager import load_external_string
 from extensions.profiles import Profiles
 from extensions.session_manager import get_session, get_project_manager
 import src.log as log
@@ -158,7 +158,7 @@ class ESDL2InlineProfile:
                 username=None,
                 password=None,
                 ssl=True,
-                verify_ssl=False,
+                verify_ssl=True,
             )
         else:
             # Find profile server information for the InfluxDBProfile
@@ -208,7 +208,7 @@ def convert_esdl_profiles(
         es: EnergySystem,
         profiles_settings: dict[str, object],
 ) -> EnergySystem:
-    """Convert port profiles in all areas, including assets inside buildings."""
+    """Convert port profiles in all areas, including building assets and measures."""
     esi: EnergySystemInformation = es.energySystemInformation
 
     # Remove all InfluxDBProfiles from the global profiles list
@@ -231,7 +231,7 @@ def convert_esdl_profiles(
 
 def convert_asset_profiles(asset: Asset, esi: EnergySystemInformation, handled_profiles: dict[str, TimeSeriesProfile], profiles_settings: dict[str, object]):
     """
-    Convert profiles for all ports in the asset. Recursively convert profiles for all sub-assets.
+    Convert profiles for all ports in the asset, including sub-assets and measure assets.
     """
     ilog = logger.bind(asset_id=asset.id, asset_name=asset.name)
     ilog.debug("Converting profiles for asset")
@@ -250,6 +250,13 @@ def convert_asset_profiles(asset: Asset, esi: EnergySystemInformation, handled_p
         ilog.debug("Recursively converting profiles for sub-assets", asset_id=asset.id, asset_name=asset.name)
         for sub_asset in asset.asset:
             convert_asset_profiles(sub_asset, esi, handled_profiles, profiles_settings)
+
+    measures = getattr(asset, "measures", None)
+    if measures is not None:
+        for measure in measures.measure:
+            for proposed_asset in measure.asset:
+                convert_asset_profiles(proposed_asset, esi, handled_profiles, profiles_settings)
+
 
 def convert_profile_for_port(
         esi: EnergySystemInformation,

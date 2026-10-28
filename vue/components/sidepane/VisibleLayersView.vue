@@ -15,7 +15,9 @@
   -->
 
 <template>
-  <div id="visible_layers_view" style="padding-left: 8px;">
+  <div id="visible_layers_view">
+    <BaseLayerTree class="base-layer-tree" />
+    <hr>
     <a-row justify="space-between" align="middle">
       <h4>Visible layers</h4>
       <button class="hide-all-btn" @click="toggleAllLayers">
@@ -31,14 +33,33 @@
           <transition-group name="layer">
             <!-- Group Item -->
             <div v-for="group in layerGroups" :key="group.id">
-              <div :class="['group-header', { 'active-group': isActiveGroup(group) }]" @click="toggleExpanded(group)">
+              <div :class="['group-header', { 'active-group': isActiveGroup(group), 'variant-group': getGroupVariant(group) }]" @click="clickGroup(group)">
                 <div class="layer-info">
-                  <span>{{ group.description }}</span>
+                  <a-button
+                    v-if="getGroupVariant(group)"
+                    class="group-name"
+                    type="text"
+                    :aria-pressed="isActiveGroup(group)"
+                    :aria-expanded="isGroupExpanded(group.id)"
+                    @click.stop="clickGroup(group)"
+                  >
+                    {{ group.description }}
+                  </a-button>
+                  <span v-else>{{ group.description }}</span>
                   <div class="layer-info-right">
                     <div class="group-visibility-toggle" @click.stop="toggleGroupVisibility(group.id)">
                       <i :class="group.visible ? 'fas fa-eye' : 'fas fa-eye-slash'" />
                     </div>
-                    <i class="fas" :class="isGroupExpanded(group.id) ? 'fa-chevron-down' : 'fa-chevron-right'" />
+                    <a-button
+                      class="group-expansion-toggle"
+                      size="small"
+                      type="text"
+                      :aria-label="'Expand or collapse ' + group.description"
+                      :aria-expanded="isGroupExpanded(group.id)"
+                      @click.stop="toggleExpanded(group)"
+                    >
+                      <i class="fas" :class="isGroupExpanded(group.id) ? 'fa-chevron-down' : 'fa-chevron-right'" />
+                    </a-button>
                   </div>
                 </div>
               </div>
@@ -78,10 +99,14 @@
 import {ref, watch} from 'vue';
 import { VueDraggableNext as draggable } from 'vue-draggable-next';
 import { useVisibleLayers, VisibleLayerType } from '@/composables/visibleLayers';
-const {esdlProject} = useESDLProjects();
+const {esdlProject, getAllVariants, setActiveVariant} = useESDLProjects();
 import LayerStyleEditor from "@/apps/LayerStyleEditor.vue";
 import LayerOpacityPopover from "@/components/popover/LayerOpacityPopover.vue";
 import {useESDLProjects} from "@/composables/esdlProjects";
+import BaseLayerTree from "@/components/sidepane/BaseLayerTree.vue";
+import {theme} from 'ant-design-vue';
+
+const {token} = theme.useToken();
 
 const {
   getVisibleLayerGroups,
@@ -131,9 +156,8 @@ const toggleLayerVisibility = (layer) => {
 
 /**
  * Handles drag-and-drop reordering for groups.
- * @param {Object} evt - The event object from the drag-and-drop action.
  */
-const onEndDrag = (evt) => {
+const onEndDrag = () => {
   const newOrder = layerGroups.value.map(group => group.id);
   updateGroupOrder(newOrder);
 };
@@ -207,9 +231,42 @@ const getLayerDescription = (visibleLayer) => {
 const isActiveGroup = (group) => {
   return group.id === esdlProject.value?.active_es_id;
 };
+
+const getGroupVariant = (group) => {
+  return getAllVariants().find(variant => variant.es_id === group.id);
+};
+
+/**
+ * Activates the variant, or toggles its layer group if already active.
+ */
+const clickGroup = (group) => {
+  const variant = getGroupVariant(group);
+  if (variant && !isActiveGroup(group)) {
+    setActiveVariant(variant.id);
+    return;
+  }
+  toggleExpanded(group);
+};
 </script>
 
 <style scoped lang="scss">
+.base-layer-tree {
+  :deep(.ant-tree-treenode) {
+    padding-bottom: 0;
+  }
+  :deep(.ant-tree-switcher) {
+    line-height: inherit;
+
+    .ant-tree-switcher-line-icon {
+      display: none;
+    }
+  }
+  :deep(.ant-tree-checkbox) {
+    align-self: flex-start;
+    margin-inline-end: auto;
+  }
+}
+
 .layer-groups {
   margin-top: 10px;
 }
@@ -218,24 +275,50 @@ const isActiveGroup = (group) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: #e8e8e8;
+  background-color: v-bind('token.colorFillTertiary');
   padding: 8px;
-  border-bottom: 1px solid #ddd;
+  border-bottom: 1px solid v-bind('token.colorBorderSecondary');
   font-weight: bold;
   cursor: move;
   transition: background-color 0.3s ease;
 
   &:hover {
-    background-color: #d8d8d8;
+    background-color: v-bind('token.colorFillSecondary');
   }
 }
 
 .active-group {
-  background-color: lightblue;
+  background-color: v-bind('token.controlItemBgActive');
 
   &:hover {
-    background-color: darken(lightblue, 10%);
+    background-color: v-bind('token.controlItemBgActive');
   }
+}
+
+.variant-group {
+  cursor: pointer;
+}
+
+.group-name {
+  flex: 1;
+  height: auto;
+  padding: 0;
+  color: inherit;
+  font-weight: inherit;
+  text-align: left;
+  white-space: normal;
+
+  &:not(:disabled):hover, &:not(:disabled):active {
+    color: inherit;
+    background: none;
+  }
+}
+
+.group-expansion-toggle {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  color: inherit;
 }
 
 .layer-item {

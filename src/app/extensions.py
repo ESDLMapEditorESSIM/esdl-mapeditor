@@ -8,7 +8,7 @@ from flask import Flask
 from flask_executor import Executor
 from flask_socketio import SocketIO
 
-from esdl.processing.EcoreDocumentation import EcoreDocumentation
+from esdl.ecore_documentation import EcoreDocumentation
 from extensions.activity_context import ActivityContextExtension
 from extensions.application_context import ApplicationContextExtension
 from extensions.asset_constraint.asset_constraint import AssetConstraint

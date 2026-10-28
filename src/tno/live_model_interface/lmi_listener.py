@@ -25,8 +25,8 @@ from pyecore.resources import ResourceSet
 from esdl.processing.string_uri import StringURI
 from esdl.resources.json import JsonResource
 from esdl.undo import ChangeSource, ChangeContext
-from esdlproject.change_handler import applyChange
-from esdlproject.variant_api import create_new_variant
+from esdl.project.change_handler import applyChange
+from esdl.project.variant_api import create_new_variant
 from extensions.session_manager import get_project_manager_for_client_id, managed_sessions
 from src.log import get_logger
 from src import settings

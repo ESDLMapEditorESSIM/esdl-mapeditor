@@ -32,7 +32,7 @@ from sqlalchemy.schema import DropTable
 from sqlalchemy.sql import text, func
 
 import esdl
-from esdl.processing.ESDLAsset import get_asset_capability_type
+from src.esdl_integration.processing.ESDLAsset import get_asset_capability_type
 from esdl.units.conversion import convert_to_unit, UnitException
 from esdl.units.parser import unit_to_string, qau_to_string, build_qau_from_unit_string
 from extensions.data_manager import db
@@ -614,6 +614,12 @@ class DataManager:
         # In principle we should iterate here over all the instance, but this is not supported elsewhere in the MapEditor
         # adding an extra label for each instance might be consfusing.
         for eobj in es.instance[0].eAllContents():
+            if isinstance(eobj, (esdl.KPI, esdl.StringItem)):
+                container = eobj.eContainer()
+                while container is not None and not isinstance(container, (esdl.Asset, esdl.Area)):
+                    container = container.eContainer()
+                if isinstance(container, esdl.Asset) and container.area is None:
+                    continue
             d = None
             variable_name = None
             is_profile_variable = None

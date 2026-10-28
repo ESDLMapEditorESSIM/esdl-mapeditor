@@ -9,7 +9,7 @@ import psycopg
 from psycopg import Connection, sql
 
 from esdl import esdl, QuantityAndUnitType
-from esdl.profiles.data_configurations.credentials import Credentials
+from src.esdl_integration.profiles.credentials import Credentials
 from esdl.units.parser import unit_to_string, build_qau_from_unit_string
 
 # table name used for storing metadata that is not in the table

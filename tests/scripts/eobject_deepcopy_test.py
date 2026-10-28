@@ -14,7 +14,7 @@
 from pyecore.resources import URI
 
 from esdl import esdl
-from esdlproject.ProjectManager import ProjectManager
+from esdl.project.ProjectManager import ProjectManager
 
 if __name__ == '__main__':
     pm = ProjectManager()

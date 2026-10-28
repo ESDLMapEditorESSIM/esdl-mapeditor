@@ -6,12 +6,14 @@
     :data="treeData" :events="eventHandlersByName" :tree-type-specs="treeTypeSpecs"
   />
   <ActivityContextsAdmin v-if="selectedMenu==='activity_context'" />
+  <ApplicationContextsAdmin v-if="selectedMenu==='application_context'" />
 </template>
 
 <script setup>
 import { ref } from 'vue';
 import VueJsTree from "@/components/jstree/VueJsTree.vue";
 import ActivityContextsAdmin from "@/apps/admin/ActivityContextsAdmin.vue";
+import ApplicationContextsAdmin from "@/apps/admin/ApplicationContextsAdmin.vue";
 
 const treeId = "layer_tree";
 // const $ = window.$;
@@ -23,6 +25,10 @@ const treeData = [
   {
     id: 'activity_context',
     text: 'Activity Contexts',
+  },
+  {
+    id: 'application_context',
+    text: 'Application Contexts',
   },
 ];
 

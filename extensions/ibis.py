@@ -15,14 +15,14 @@
 from flask import Flask, session
 from flask_socketio import SocketIO, emit
 
-from esdlproject.ProjectManager import ProjectManager
+from esdl.project.ProjectManager import ProjectManager
 from extensions.session_manager import get_project_manager, get_session
 import src.settings as settings
 import requests
 import json
 from uuid import uuid4
 from esdl import esdl
-from esdl.processing import ESDLGeometry
+from src.esdl_integration.processing import ESDLGeometry
 import src.log as log
 
 logger = log.get_logger(__name__)
