@@ -438,12 +438,18 @@ class ModelContexts:
         for key in this_model_context_config:
             categorized_attributes_list[key] = list()
 
+            if key == 'Basic' and 'name' in attr_dict:
+                attr_info = deepcopy(attr_dict['name'])
+                del attr_dict['name']
+                categorized_attributes_list[key].append(attr_info)
+
             for objtype in this_model_context_config[key]:
                 if isinstance(object, esdl.getEClassifier(objtype)):
                     for attr in this_model_context_config[key][objtype]:
-                        attr_info = deepcopy(attr_dict[attr])
-                        del attr_dict[attr]
-                        categorized_attributes_list[key].append(attr_info)
+                        if attr in attr_dict:
+                            attr_info = deepcopy(attr_dict[attr])
+                            del attr_dict[attr]
+                            categorized_attributes_list[key].append(attr_info)
 
         categorized_attributes_list['Advanced'] = list()
         for attr in attr_dict:
@@ -462,6 +468,11 @@ class ModelContexts:
         categorized_list = dict()
         for key in this_model_context_config:
             categorized_list[key] = list()
+
+            if key == 'Basic' and 'name' in attr_dict:
+                attr_info = deepcopy(attr_dict['name'])
+                del attr_dict['name']
+                categorized_list[key].append(attr_info)
 
             for objtype in this_model_context_config[key]:
                 if isinstance(object, esdl.getEClassifier(objtype)):

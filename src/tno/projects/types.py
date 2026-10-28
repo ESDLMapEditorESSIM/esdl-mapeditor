@@ -1,7 +1,7 @@
 from typing import TypedDict
 
-from esdlproject import ESDLProject, AbstractChange, HighLevelChange, DetailedChange, VariantCollection
-from esdlproject.ProjectManager import ProjectManager
+from esdl.project import ESDLProject, AbstractChange, HighLevelChange, DetailedChange, VariantCollection
+from esdl.project.ProjectManager import ProjectManager
 
 
 class SerializedVariant(TypedDict):

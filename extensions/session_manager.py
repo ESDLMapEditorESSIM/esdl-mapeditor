@@ -24,7 +24,7 @@ from pathlib import Path
 from flask import session
 
 import src.log as log
-from esdlproject.ProjectManager import ProjectManager
+from esdl.project.ProjectManager import ProjectManager
 from src.settings import PERSIST_SESSIONS, SESSION_PERSISTENCE_PATH, SESSION_PERSISTENCE_FILE, DEFAULT_PROJECT_PATH
 
 SESSION_MANAGER_LISTENER_ID = "session_manager"
@@ -172,18 +172,18 @@ def get_session(key=None, client_id=None, default_value=None):
         client_id = session["client_id"]
     if client_id not in managed_sessions:
         logger.warning("No client id in the managed_sessions is available, cannot return value for key {}".format(key))
-        print("====================================================")
-        print("No client id in the managed_sessions is available, cannot return value for key {}".format(key))
-        print(f"Session information for client_id: {client_id}:")
-        for key in session:
-            print(f"{key}: {session[key]}")
-        print(f"Managed session keys and their lengths for all registered clients: ({client_id}):")
-        for key in managed_sessions:
-            print(f"{key}: {len(managed_sessions[key])}")
-        print("Stacktrace for get_session():")
-        import traceback
-        traceback.print_stack(file=sys.stdout)
-        print("-----------------------------------------------------")
+        # print("====================================================")
+        # print("No client id in the managed_sessions is available, cannot return value for key {}".format(key))
+        # print(f"Session information for client_id: {client_id}:")
+        # for key in session:
+        #     print(f"{key}: {session[key]}")
+        # print(f"Managed session keys and their lengths for all registered clients: ({client_id}):")
+        # for key in managed_sessions:
+        #     print(f"{key}: {len(managed_sessions[key])}")
+        # print("Stacktrace for get_session():")
+        # import traceback
+        # traceback.print_stack(file=sys.stdout)
+        # print("-----------------------------------------------------")
         return None
     else:
         # update last access

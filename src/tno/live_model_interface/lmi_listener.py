@@ -25,8 +25,8 @@ from pyecore.resources import ResourceSet
 from esdl.processing.string_uri import StringURI
 from esdl.resources.json import JsonResource
 from esdl.undo import ChangeSource, ChangeContext
-from esdlproject.change_handler import applyChange
-from esdlproject.variant_api import create_new_variant
+from esdl.project.change_handler import applyChange
+from esdl.project.variant_api import create_new_variant
 from extensions.session_manager import get_project_manager_for_client_id, managed_sessions
 from src.log import get_logger
 from src import settings
@@ -89,8 +89,8 @@ def on_high_level_change(message: HighLevelChangeMessage):
 
     tracker = pm.get_change_tracker_for_variant(variant)
     # add more context to the changes received, for the incremental UI updates
-    context = ChangeContext(source=ChangeSource.EXTERNAL, client_id=client_id, resource=es.eResource, flask_app=LOCAL_APP)
-    with tracker.stack.track_changes(label=hlc.label, change_context=context):
+    context = ChangeContext(source=ChangeSource.EXTERNAL, client_id=client_id, resource=es.eResource)
+    with LOCAL_APP.app_context(), tracker.stack.track_changes(label=hlc.label, change_context=context):
         for change in hlc.change:
             applyChange(change, es.eResource, variant, pm.conflict_handler)
     #lock.release()

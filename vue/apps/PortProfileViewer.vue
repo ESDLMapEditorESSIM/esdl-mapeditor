@@ -20,7 +20,6 @@
             "
             :disabled="isLoadingData"
             @change="onSelectProfiles"
-            @mouseleave="removeTooltipPopup"
           />
           <a-tooltip :title="profileSelectorMsg">
             <a-button size="small" type="text">
@@ -102,11 +101,6 @@ import AnalyticsPlot from "@/components/plot/AnalyticsPlot.vue";
 
 const { currentObjectID } = useObject();
 const { getActiveEsdlLayerId } = useEsdlLayers();
-
-// to prevent stuck popup on UI
-const removeTooltipPopup = () => {
-  window.jquery(".ui-tooltip-content").parents("div").remove();
-};
 
 const loadingIcon = h(LoadingOutlined, {
   style: { fontSize: "5rem" },

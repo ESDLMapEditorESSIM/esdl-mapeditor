@@ -28,11 +28,11 @@ from sqlalchemy.orm import declarative_base, Session
 
 import src.log as log
 from esdl import esdl, EnergySystem
-from esdl.processing import ESDLAsset
+from src.esdl_integration.processing import ESDLAsset
 from esdl.units.parser import unit_to_string, build_qau_from_unit_string
 from esdl.profiles.influxdbprofilemanager import InfluxDBProfileManager
 from esdl.undo import UndoRedoCommandStack
-from esdl.undo_wrapper import undo_record_changes
+from src.esdl_integration.undo_wrapper import undo_record_changes
 from esdl.units.conversion import convert_to_unit, ENERGY_IN_PJ
 from extensions.data_manager import db
 from extensions.data_manager.db_interaction import get_db_driver_type, DriverType
@@ -235,20 +235,39 @@ class ETMInterface:
                     "name": area.name,
                     "info": info
                 }
+            elif area_id.startswith("BU"):
+                return {
+                    "name": area.name,
+                    "info": None
+                }
             else:
                 return None
+
+        @self.socketio.on('etm_heat_transition_get_areas_info', namespace='/esdl')
+        def etm_heat_transition_get_area_info(area_ids):
+            # Get profiles for all clusters from the EDR if not done already
+            self.get_edr_profiles()
+
+            return area_ids
 
         @self.socketio.on('etm_heat_transition_apply', namespace='/esdl')
         @undo_record_changes("Add heat transition vision data")
         def etm_heat_transition_apply(message, stack:UndoRedoCommandStack):
-            # area_id could have "(3 of 5)" in it, if the Area clicked is the third polygon af a total of five polygons
-            area_id = get_area_id_from_mapeditor_id(message["area_id"])
             active_es_id = get_session('active_es_id')
             pm = get_project_manager()
-            area = pm.get_by_id(active_es_id, area_id)
-            stack.update_label(f"Add heat transition vision data to {area.name}")
-            etm_sankey = ETMSankeyToESDL(None)
-            etm_sankey.apply_heat_transition(area, message["technology_info"])
+
+            # Use a set to make sure that areas with (1 of 5) and (2 of 5) are treated as one
+            selected_area_ids = set()
+            for aid in message["area_ids"]:
+                # area_id could have "(3 of 5)" in it, if the Area clicked is the third polygon af a total of five polygons
+                selected_area_ids.add(get_area_id_from_mapeditor_id(aid))
+
+            for selected_area_id in selected_area_ids:
+                logger.info(f"Applying heat transition for area {selected_area_id}")
+                area = pm.get_by_id(active_es_id, selected_area_id)
+                stack.update_label(f"Add heat transition vision data to {area.name}")
+                etm_sankey = ETMSankeyToESDL(None)
+                etm_sankey.apply_heat_transition(area, message["technology_info"])
 
         @self.flask_app.route('/etm_interface/etm_scenarios')
         def get_etm_scenarios():
@@ -282,7 +301,6 @@ class ETMInterface:
                     # Call this function as it requires to retrieve boundaries from the boundary service, before
                     # KPIs can be updated
                     call_process_energy_system.submit(force_update_es_id=es.id, zoom=False)  # run in seperate thread
-
 
     def get_settings(self):
         if self.settings_storage.has_system(ETM_INTERFACE_SYSTEM_CONFIG):
@@ -1315,6 +1333,7 @@ class ETMSankeyToESDL:
         # TODO: Deal with QaU, deal with "space heater" and "space heater combined", deal with tapwater
         gas_demand_households_heating = None
         energy_natural_gas_profile_PJ = None
+        original_area_scope = area.scope
 
         # Check that the percentages in technology info do not go over 100%
         total_percentage = 0
@@ -1324,6 +1343,7 @@ class ETMSankeyToESDL:
             logger.error("Total percentage of technology_info is over 100%")
             return
 
+        # Find the asset in the area that represents gas usage for household space heating and hot water
         for asset in area.asset:
             if asset.name == "Final demand_Natural gas_Households space heating and hot water":
                 gas_demand_households_heating = asset
@@ -1331,40 +1351,89 @@ class ETMSankeyToESDL:
                 break
 
         if gas_demand_households_heating and energy_natural_gas_profile_PJ:
+            # recalculate final demands based on given distribution
             final_heating_demand_PJ = energy_natural_gas_profile_PJ * 0.9
             final_heating_demand_heatpump_PJ =  final_heating_demand_PJ * technology_info[0]["percentage"] / 100
             final_heating_demand_district_heating_PJ =  final_heating_demand_PJ * technology_info[1]["percentage"] / 100
             final_heating_demand_hybrid_heatpump_PJ =  final_heating_demand_PJ * technology_info[2]["percentage"] / 100
 
+            # Calculate primary demands (based on assumptions on COPs...)
             electricity_demand_PJ = (
                 final_heating_demand_heatpump_PJ / 3.5 +                            # COP heatpump = 3.5
                 final_heating_demand_hybrid_heatpump_PJ * 0.6 / 3.5                 # Hybrid HP: 60% via E, COP = 3.5
             )
+            biogas_demand_PJ = final_heating_demand_hybrid_heatpump_PJ * 0.4 / 0.9  # Hybrid HP: 40% via biogas, COP = 0.9
             steam_hotwater_demand_PJ = final_heating_demand_district_heating_PJ     # efficiency = 1
 
             for asset in area.asset:
                 if asset.name == "Final demand_Electricity_Households space heating and hot water":
+                    logger.info(f"- Final demand_Electricity_Households space heating and hot water - old: {asset.port[0].profile[0].value}")
                     asset.port[0].profile[0].value += electricity_demand_PJ
-                if asset.name == "Final demand_Steam hot water_Households space heating and hot water":
+                    logger.info(f"- Final demand_Electricity_Households space heating and hot water - new: {asset.port[0].profile[0].value}")
+                if asset.name == "- Final demand_Steam hot water_Households space heating and hot water":
+                    logger.info(f"Final demand_Steam hot water_Households space heating and hot water - old: {asset.port[0].profile[0].value}")
                     asset.port[0].profile[0].value += steam_hotwater_demand_PJ
+                    logger.info(f"- Final demand_Steam hot water_Households space heating and hot water - old: {asset.port[0].profile[0].value}")
 
+            # Remaining gas usage
+            logger.info(
+                f"- Final demand_Natural gas_Households space heating and hot water - old: {gas_demand_households_heating.port[0].profile[0].value}")
+            gas_demand_households_heating.port[0].profile[0].value = (
+                    final_heating_demand_PJ / 0.9 * (1 - (
+                        technology_info[0]["percentage"] +
+                        technology_info[1]["percentage"] +
+                        technology_info[2]["percentage"]
+                    ) / 100)
+            )
+            logger.info(
+                f"- Final demand_Natural gas_Households space heating and hot water - new: {gas_demand_households_heating.port[0].profile[0].value}")
+
+            # If this calculation was done at neighborhood level, also change the KPIs (such that visualization will be updated)
+            if original_area_scope != esdl.AreaScopeEnum.MUNICIPALITY:
+                area_kpis = area.KPIs
+                for kpi in area_kpis.kpi:
+                    if kpi.name == "Final demand_Electricity_Households space heating and hot water":
+                        kpi.value += electricity_demand_PJ
+                    if kpi.name == "Final demand_Steam hot water_Households space heating and hot water":
+                        kpi.value += steam_hotwater_demand_PJ
+                    if kpi.name == "Final demand_Natural gas_Households space heating and hot water":
+                        kpi.value = gas_demand_households_heating.port[0].profile[0].value
+
+            # If applicable (when a neighborhood or district was chosen) find the containing area with
+            # scope MUNICIPALITY. That's where all import assets can be found
+            while isinstance(area.eContainer(), esdl.Area) and area.scope != esdl.AreaScopeEnum.MUNICIPALITY:
+                area = area.eContainer()
+
+            # Change the imported energy at MUNICIPALITY level
+            for asset in area.asset:
                 # TODO: now it is assumed extra energy is imported
                 if asset.name == "Primary demand_Electricity_Import":
                     asset.port[0].profile[0].value += electricity_demand_PJ
                 if asset.name == "Primary demand_Steam hot water_Import":
                     asset.port[0].profile[0].value += steam_hotwater_demand_PJ
+                # TODO: Fix biogas
                 if asset.name == "Primary demand_Biomass_Biogas":
-                    # Hybrid heatpump: 40% via biogas, efficiency 90%
-                    asset.port[0].profile[0].value += final_heating_demand_hybrid_heatpump_PJ * 0.4 / 0.9
+                    asset.port[0].profile[0].value += biogas_demand_PJ
+                # TODO: Find out what to do with imported natural gas
 
-            # Remaining gas usage
-            gas_demand_households_heating.port[0].profile[0].value = (
-                    final_heating_demand_PJ / 0.9 * (1 - (
-                        technology_info[0]["percentage"] +
-                        technology_info[1]["percentage"]
-                    ) / 100)
-            )
+            # If the area scope is not MUNICIPALITY, then the changes have been made at a lower level and the
+            # municipality level data must be modified too.
+            if original_area_scope != esdl.AreaScopeEnum.MUNICIPALITY:
+                for asset in area.asset:
+                    if asset.name == "Final demand_Electricity_Households space heating and hot water":
+                        asset.port[0].profile[0].value += electricity_demand_PJ
+                    if asset.name == "Final demand_Steam hot water_Households space heating and hot water":
+                        asset.port[0].profile[0].value += steam_hotwater_demand_PJ
+                    # TODO: Fix biogas
+                    if asset.name == "Primary demand_Biomass_Biogas":
+                        asset.port[0].profile[0].value += biogas_demand_PJ
+                    if asset.name == "Final demand_Natural gas_Households space heating and hot water":
+                        # Apply the delta in the neighborhood/district also in the municipality
+                        asset.port[0].profile[0].value += (
+                            gas_demand_households_heating.port[0].profile[0].value - energy_natural_gas_profile_PJ
+                        )
 
+            # Recalculate MUNICIPALITY KPIs
             self.recalculate_kpis(area)
 
             container = area
@@ -1376,4 +1445,4 @@ class ETMSankeyToESDL:
             # find_boundaries_in_ESDL(container)
             find_and_send_KPI_information_in_ESDL(container)
         else:
-            logger.error("Cannot apply heat transition measures. Maybe ETM data is not loaded")
+            logger.error(f"Cannot apply heat transition measures for area {area.name}. Maybe ETM data is not loaded")

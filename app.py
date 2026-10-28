@@ -42,14 +42,16 @@ import src.esdl_config as esdl_config
 import src.settings as settings
 from commands.profiles import profiles_group
 from esdl import esdl
-from esdl.processing import ESDLAsset, ESDLEcore, ESDLEnergySystem, ESDLGeometry, ESDLQuantityAndUnits
-from esdl.processing.ESDLAsset import get_asset_capability_type, update_ids_in_object
+from src.esdl_integration.processing import ESDLQuantityAndUnits
+from src.esdl_integration.processing import ESDLAsset, ESDLEcore, ESDLEnergySystem, ESDLGeometry
+from src.esdl_integration.processing.ESDLAsset import get_asset_capability_type, update_ids_in_object
 from esdl.processing.string_uri import StringURI
-from esdl.processing.ESDLEcore import instantiate_type
-from esdl.processing.EcoreDocumentation import EcoreDocumentation
+from src.esdl_integration.processing.ESDLEcore import instantiate_type
+from esdl.ecore_documentation import EcoreDocumentation
 from esdl.undo import UndoRedoCommandStack
-from esdl.undo_wrapper import undo_record_changes
-from esdlproject.ProjectManager import update_energy_system_version
+from src.esdl_integration.undo_wrapper import undo_record_changes
+from src.esdl_integration.ESDLAsset import remove_object_from_energysystem, remove_profile_from_port
+from esdl.project.ProjectManager import update_energy_system_version
 from extensions.data_manager import db
 from extensions.external_models.external_models_storage import ExternalModelsStorage
 from extensions.mapeditor_settings import MAPEDITOR_UI_SETTINGS, MapEditorSettings
@@ -87,7 +89,7 @@ from src.version import __git_branch__ as mapeditor_branch
 from src.version import __git_commit__ as mapeditor_commit
 from src.version import __long_version__ as mapeditor_long_version
 from src.version import __version__ as mapeditor_version
-from utils.datetime_utils import parse_date
+from esdl.utils.datetime_utils import parse_date
 
 print('MapEditor version {}'.format(mapeditor_version))
 print('MapEditor git describe {}'.format(mapeditor_long_version))
@@ -115,7 +117,7 @@ models_storage = ExternalModelsStorage(named_locker)
 
 
 # handler to retrieve ESDL documentation
-esdl_doc = EcoreDocumentation(esdlEcoreFile="esdl/esdl.ecore")
+esdl_doc = EcoreDocumentation()
 
 
 def is_running_in_uwsgi():
@@ -1948,7 +1950,7 @@ def process_command(message, stack: UndoRedoCommandStack):
                     {"es_id": active_es_id, "conn_list": conn_list, "add_to_building": False},
                 )
             # now delete the asset
-            ESDLAsset.remove_object_from_energysystem(active_es, obj_id)
+            remove_object_from_energysystem(active_es, obj_id)
             pm.remove_object_from_dict(active_es.id, asset, True)
             if parent_container:
                 # update ports of the parent asset (in case it contained exposed ports).
@@ -2239,6 +2241,7 @@ def process_command(message, stack: UndoRedoCommandStack):
             asset_id = message['id']
         param_name = message['param_name']
         param_value = message['param_value']
+        set_param_success = True
 
         if asset_id is None:
             resource = pm.get_energy_system_resource_by_id(active_es_id)
@@ -2282,7 +2285,9 @@ def process_command(message, stack: UndoRedoCommandStack):
 
                 else:
                     send_alert('Error setting attribute {} of {} to {}, unknown attribute'.format(param_name, asset.name, param_value))
+                    set_param_success = False
             except Exception as e:
+                set_param_success = False
                 logger.error('Error setting attribute {} of {} to {}, caused by {}'.format(param_name, asset.name, param_value, str(e)))
                 send_alert('Error setting attribute {} of {} to {}, caused by {}'.format(param_name, asset.name, param_value, str(e)))
                 traceback.print_exc()
@@ -2314,6 +2319,8 @@ def process_command(message, stack: UndoRedoCommandStack):
         #             "zoom": False,
         #          })
         #     emit("add_connections",{"es_id": active_es_id, "conn_list": conn_list})
+
+        return {'success': set_param_success}
 
     if message['cmd'] == 'set_area_bld_polygon':
         area_bld_id = message['area_bld_id']
@@ -2478,7 +2485,7 @@ def process_command(message, stack: UndoRedoCommandStack):
             for p in ports:
                 if p.id == port_id:
                     # p.profile = esdl_profile
-                    ESDLAsset.remove_profile_from_port(p, profile_id)
+                    remove_profile_from_port(p, profile_id)
 
     if message['cmd'] == 'add_port' or message['cmd'] == 'add_port_with_id':
         # merge add_port and add_port_with_id. Why on earth were there two messages for the same thing!

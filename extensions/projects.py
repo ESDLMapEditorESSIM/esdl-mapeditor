@@ -21,10 +21,10 @@ from flask_socketio import emit
 
 import esdl
 import src.log as log
-from esdl.processing.ESDLEnergySystem import get_es_visualization_options
+from src.esdl_integration.ESDLEnergySystem import get_es_visualization_options
 from esdl.processing.string_uri import StringURI
-from esdlproject import ESDLProject
-from esdlproject.variant_api import create_new_variant
+from esdl.project import ESDLProject
+from esdl.project.variant_api import create_new_variant
 from extensions.session_manager import get_project_manager, set_session, del_session, get_session
 from src.app import executor, socketio
 from src.process_es_area_bld import process_energy_system

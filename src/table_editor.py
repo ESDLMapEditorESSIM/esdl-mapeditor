@@ -19,8 +19,8 @@ from threading import BoundedSemaphore
 
 from esdl import Asset
 import esdl
-from esdl.processing.ESDLDataLayer import ESDLDataLayer
-from esdl.processing.EcoreDocumentation import EcoreDocumentation
+from src.esdl_integration.ESDLDataLayer import ESDLDataLayer
+from esdl.ecore_documentation import EcoreDocumentation
 
 from extensions.session_manager import get_session, get_project_manager
 from extensions.settings_storage import SettingsStorage

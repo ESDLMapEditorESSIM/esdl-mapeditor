@@ -48,8 +48,9 @@ export function useEsdlAreas() {
      * @param {*} text 
      * @param {*} icon 
      * @param {*} onclick 
+     * @param {*} allow_multiple
      */
-    const addAreaContextMenuItem = (text, icon, onclick) => {
+    const addAreaContextMenuItem = (text, icon, onclick, allow_multiple) => {
         for (const [id, esdlAreas] of Object.entries(esdlAreasDict.value)) {
             for (const esdlArea of esdlAreas) {
                 const layer = esdlArea.layer;
@@ -66,6 +67,9 @@ export function useEsdlAreas() {
                             // Pass the id of the area and the mouse coordinates to the onclick function.
                             onclick(e, callback_info);
                         },
+                        extra_options: {
+                            allow_multiple: allow_multiple,
+                        }
                     });
                 }
             }

@@ -11,6 +11,7 @@
     <a-card>
       <h2>{{ area_name }} ({{ area_id }})</h2>
       <a-table
+        v-if="area_info_present"
         :columns="columns"
         :data-source="area_info"
         :pagination="false"
@@ -51,6 +52,7 @@ const isLoading = ref(true);
 const { currentObjectID } = useObject();
 const area_name = ref("");
 const area_id = ref("");
+const area_info_present = ref(false);
 
 const columns = ref([
   {
@@ -106,8 +108,23 @@ const technologies = ref([
   }
 ]);
 
+const currentObjectIDs = computed(() => {
+  return (Array.isArray(currentObjectID.value) ? currentObjectID.value : [currentObjectID.value]);
+});
+const multipleAssetsSelected = computed(() => {
+  return (this.currentObjectIDs.length > 1);
+});
+
 function get_heat_transition_data() {
-  retrieve_area_info(currentObjectID.value);
+  if (!multipleAssetsSelected.value) {
+    retrieve_area_info(currentObjectIDs.value[0]);
+  } else {
+    socket.emit('etm_heat_transition_get_areas_info', currentObjectIDs.value, function(res) {
+      area_name.value = "Multiple areas selected";
+      area_id.value = currentObjectIDs.value.join(", ");
+      isLoading.value = false;
+    });
+  }
 }
 get_heat_transition_data();
 
@@ -116,10 +133,13 @@ function retrieve_area_info(id) {
     if (res) {
       area_name.value = res.name;
       area_id.value = id;
-      area_info.value[0].number = res.info.num_woon;
-      area_info.value[1].number = res.info.num_utiliteit;
-      area_info.value[2].number = res.info.num_industrie;
-      area_info.value[3].number = res.info.num_overige;
+      if (res.info) {
+        area_info.value[0].number = res.info.num_woon;
+        area_info.value[1].number = res.info.num_utiliteit;
+        area_info.value[2].number = res.info.num_industrie;
+        area_info.value[3].number = res.info.num_overige;
+        area_info_present.value = true;
+      }
     } else {
       console.log("ERROR: No result returned for area with ID " + id);
     }
@@ -144,7 +164,7 @@ function apply_measures() {
   socket.emit(
     'etm_heat_transition_apply',
     {
-      area_id: area_id.value,
+      area_ids: currentObjectIDs.value,
       technology_info: technologies.value
     }
   );

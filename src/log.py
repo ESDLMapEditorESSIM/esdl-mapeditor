@@ -85,11 +85,11 @@ logging.config.dictConfig(
                 "level": "WARNING",
                 "propagate": False,
             },
-            # "esdl.undo": {
-            #     "handlers": ["default"],
-            #     "level": "DEBUG" if FLASK_DEBUG else "INFO",
-            #     "propagate": False,
-            # },
+            "esdl": {
+                "handlers": ["default"],
+                "level": "DEBUG" if FLASK_DEBUG else "INFO",
+                "propagate": False,
+            },
             "extensions": {
                 "handlers": ["default"],
                 "level": "DEBUG" if FLASK_DEBUG else "INFO",
@@ -100,12 +100,12 @@ logging.config.dictConfig(
                 "level": "DEBUG" if FLASK_DEBUG else "INFO",
                 "propagate": False,
             },
-            # "esdlproject": {
-            #     "handlers": ["default"],
-            #     "level": "DEBUG" if FLASK_DEBUG else "INFO",
-            #     "propagate": False,
-            # },
-            # "esdlproject.ChangeSerializer": {
+            "esdl.project": {
+                "handlers": ["default"],
+                "level": "DEBUG" if FLASK_DEBUG else "INFO",
+                "propagate": False,
+            },
+            # "esdl.project.ChangeSerializer": {
             #     "handlers": ["default"],
             #     "level": "INFO",
             #     "propagate": False,

@@ -86,7 +86,6 @@
             :disabled="formMode === formModeEnum.UPDATE && profileForm.profileType === profileTypeEnum.OUTPUT"
             :filter-tree-node="filterTreeNode"
             @change="onSelectProfile"
-            @mouseleave="removeTooltipPopup"
           />
         </a-form-item>
 
@@ -124,7 +123,6 @@
         <a-select
           v-model:value="profileForm.profileType"
           :options="profileTypeOptions"
-          @mouseleave="removeTooltipPopup"
         />
       </a-form-item>
 
@@ -148,7 +146,6 @@
           :options="predefinedQaUOptions"
           allow-clear
           :disabled="isLoadingData"
-          @mouseleave="removeTooltipPopup"
         />
       </a-form-item>
       <!-- If the user opts for custom QaU type. -->
@@ -171,7 +168,6 @@
               :options="cQaUOptions.map((opt) => ({ value: opt, label: opt }))"
               allow-clear
               :disabled="isLoadingData"
-              @mouseleave="removeTooltipPopup"
             />
           </a-form-item>
         </a-col>
@@ -214,11 +210,6 @@ import AnalyticsPlot from "@/components/plot/AnalyticsPlot.vue";
 import { config } from "@/utils/profileVisualization";
 import { fetchData } from "@/utils/api";
 import { displayNotification, NotificationType } from "@/utils/notification";
-
-// to prevent stuck popup on UI
-const removeTooltipPopup = () => {
-  window.jquery(".ui-tooltip-content").parents("div").remove();
-};
 
 const loadingIcon = h(LoadingOutlined, {
   spin: true,

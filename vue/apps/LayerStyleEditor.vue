@@ -94,7 +94,6 @@
               tree-node-filter-prop="label"
               @focus="vizLayer.loadRefSchema()"
               @change="(field) => vizLayer.onSelectField(field)"
-              @mouseleave="removeTooltipPopup"
             />
           </a-col>
           <a-space
@@ -488,11 +487,6 @@ const fmtNl = (n) =>
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   });
-
-// to prevent stuck popup on UI
-const removeTooltipPopup = () => {
-  window.jquery(".ui-tooltip-content").parents("div").remove();
-};
 
 // NOTE: As a placeholder for future extension to support other data source type.
 // At the moment, only ESDL data source is supported and created during onMounted() and watch() of enabledEsdlIdList below.

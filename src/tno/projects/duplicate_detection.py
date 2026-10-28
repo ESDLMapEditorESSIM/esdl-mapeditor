@@ -21,7 +21,7 @@ from pyecore.resources import ResourceSet
 
 from esdl.processing.string_uri import StringURI
 from extensions.prompt_manager import Prompt, PromptChoice, PromptType
-from esdlproject.ProjectManager import ProjectManager
+from esdl.project.ProjectManager import ProjectManager
 
 
 class DuplicateChoice(str, Enum):

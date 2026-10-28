@@ -14,10 +14,10 @@
 
 from flask import Flask
 from flask_socketio import SocketIO
-from esdl.processing import ESDLEnergySystem
-from esdl.processing.EcoreDocumentation import EcoreDocumentation
-from esdl.processing.ESDLDataLayer import ESDLDataLayer
-from esdl.undo_wrapper import undo_record_changes
+from src.esdl_integration.processing import ESDLEnergySystem
+from esdl.ecore_documentation import EcoreDocumentation
+from src.esdl_integration.ESDLDataLayer import ESDLDataLayer
+from src.esdl_integration.undo_wrapper import undo_record_changes
 from extensions.session_manager import get_project_manager
 from extensions.vue_backend.control_strategy import get_control_strategy_info, set_control_strategy
 from extensions.vue_backend.cost_information import set_cost_information

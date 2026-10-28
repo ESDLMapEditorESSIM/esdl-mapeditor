@@ -4,8 +4,8 @@ from datetime import datetime, timezone
 
 from flask import session
 
-from esdlproject import Variant, VariantCollection
-from esdlproject.ProjectManager import ProjectManager
+from esdl.project import Variant, VariantCollection
+from esdl.project.ProjectManager import ProjectManager
 from extensions.session_manager import get_project_manager, get_session, managed_sessions, PM_KEY
 from src.app import executor
 from src.log import get_logger

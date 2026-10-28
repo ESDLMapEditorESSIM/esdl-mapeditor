@@ -25,9 +25,9 @@ from flask_socketio import SocketIO, emit
 import esdl
 import src.log as log
 from esdl import Pipe, Line, Point, EnergyAsset, AbstractConductor, Polygon
-from esdl.processing import ESDLAsset
-from esdl.processing import ESDLGeometry
-from esdlproject.ProjectManager import ProjectManager
+from src.esdl_integration.processing import ESDLAsset
+from src.esdl_integration.processing import ESDLGeometry
+from esdl.project.ProjectManager import ProjectManager
 from extensions.session_manager import get_project_manager, get_session, get_session_for_esid
 from src.esdl_helper import asset_state_to_ui, get_tooltip_asset_attrs, add_spatial_attributes, add_extra_attributes
 from src.incremental_ui.incremental_ui_messages import create_asset_port_message

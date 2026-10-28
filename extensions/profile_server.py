@@ -21,10 +21,10 @@ from influxdb import InfluxDBClient
 from logging import getLogger
 
 from esdl import esdl
-from esdl.profiles.data_configurations.credentials import Credentials
-from esdl.profiles.datatableprofilemanager import DataTableProfileManager
+from src.esdl_integration.profiles.credentials import Credentials
+from src.esdl_integration.profiles.datatableprofilemanager import DataTableProfileManager
 from esdl.profiles.profilemanager import ProfileType
-from utils.datetime_utils import parse_date
+from esdl.utils.datetime_utils import parse_date
 
 logger = getLogger(__name__)
 

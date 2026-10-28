@@ -11,8 +11,6 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-import json
-
 import cgi
 from collections import defaultdict
 from math import isfinite, isnan
@@ -75,6 +73,8 @@ class PDToolsuiteWorkflow:
                 kpi_dict = _building_kpis_to_dict(building)
                 kpis_value_dict: dict[str, Union[int, float, str, None]] = {}
                 for kpi_name, kpi in kpi_dict.items():
+                    if not isinstance(kpi, (esdl.DoubleKPI, esdl.IntKPI, esdl.StringKPI)):
+                        continue
                     value = kpi.value
                     if isinstance(value, float) and isnan(value):
                         value = 0.0
@@ -112,6 +112,27 @@ class PDToolsuiteWorkflow:
 
             return jsonify(building_dicts), 200
 
+        @self.socketio.on("get_eps_building_source", namespace="/esdl")
+        def get_eps_building_source(params: dict) -> dict | None:
+            """
+            Retrieve the EPS datasource and BAG ID for a building in the project.
+            """
+            pm = get_project_manager()
+            es_id = params.get("es_id") or pm.get_active_energy_system().id
+            try:
+                building = pm.get_by_id(es_id, params["id"])
+            except KeyError:
+                return None
+            if not isinstance(building, esdl.AbstractBuilding):
+                return None
+            source = building.dataSource
+            if isinstance(source, esdl.DataSourceReference):
+                source = source.reference
+            reference = None
+            if isinstance(source, esdl.DataSource) and source.name == "EPS execution":
+                reference = source.reference
+            return dict(pand_bagid=building.originalIdInSource, reference=reference)
+
         @self.socketio.on("get_electricity_networks_active_es", namespace="/esdl")
         def get_electricity_networks_json_forms(params):
             el_networks: list[esdl.Asset] = _get_assets_of_type_in_active_es(esdl.ElectricityNetwork)
@@ -124,21 +145,6 @@ class PDToolsuiteWorkflow:
                 el_networks_options.append(el_networks_dict)
 
             return el_networks_options, 200
-
-        @self.flask_app.route("/pdtoolsuite_workflow/mock", methods=["POST"])
-        def mockdata():
-            """
-            Mock data for the P&D Toolsuite workflow.
-            """
-            data = request.data
-            json_data = json.loads(data.decode("utf-8"))
-
-            payload = dict(
-                esdl=json_data["esdl"],
-                business_case_excel="TmFtZSxBZ2UsQ2l0eQpBbGljZSwyNSxOZXcgWW9yawpCb2IsMzAsTG9zIEFuZ2VsZXMKQ2hhcmxpZSwzNSxDaGljYWdvCg ==",
-            )
-
-            return jsonify(payload)
 
         @self.flask_app.route("/pdtoolsuite_workflow/profiles/template", methods=["POST"])
         def generate_profile_template():

@@ -39,12 +39,13 @@ from requests.exceptions import ConnectionError
 import src.log as log
 import src.settings as settings
 from esdl import esdl
-from esdl.processing.ESDLQuantityAndUnits import build_qau_from_dict, get_or_create_esi_qau
-from esdl.profiles.data_configurations.credentials import Credentials
-from esdl.profiles.datatableprofilemanager import DataTableProfileManager
-from esdl.profiles.influxdbprofilemanager import ConnectionSettings, InfluxDBProfileManager
+from src.esdl_integration.processing.ESDLQuantityAndUnits import build_qau_from_dict, get_or_create_esi_qau
+from esdl.profiles.influxdbprofilemanager import ConnectionSettings
+from src.esdl_integration.profiles.credentials import Credentials
+from src.esdl_integration.profiles.datatableprofilemanager import DataTableProfileManager
+from src.esdl_integration.profiles.influxdbprofilemanager import InfluxDBProfileManager
 from esdl.units.parser import qau_to_string
-from esdlproject.ProjectManager import load_external_string
+from esdl.project.ProjectManager import load_external_string
 from extensions.panel_service import create_panel, get_panel_service_datasource
 from extensions.profile_server import ProfileServerTypeEnum, InfluxDBConnectionSettings, PostgreSQLConnectionSettings, \
     InfluxDBServer, PostgreSQLServer
@@ -52,7 +53,7 @@ from extensions.session_manager import get_session, get_project_manager
 from extensions.settings_storage import SettingType, SettingsStorage
 from src.edr_client import EDRClient
 from src.roles import is_mapeditor_admin
-from utils.datetime_utils import parse_date
+from esdl.utils.datetime_utils import parse_date
 from utils.utils import str2float, timed
 
 logger = log.get_logger(__name__)

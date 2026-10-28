@@ -16,7 +16,7 @@ import unittest
 
 from esdl import esdl
 from esdl.resources.json import JsonOptions
-from esdlproject.ProjectManager import eobject_to_string, ESDLFormat, ProjectManager
+from esdl.project.ProjectManager import eobject_to_string, ESDLFormat, ProjectManager
 
 
 class TestNewUndo(unittest.TestCase):

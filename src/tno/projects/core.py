@@ -5,8 +5,8 @@ from flask import session, has_request_context, request
 
 from esdl.resources.json import JsonOptions
 from esdl.undo import ChangeSource, ChangeContext
-from esdlproject import HighLevelChange
-from esdlproject.ProjectManager import ProjectManager, eobject_to_string, ESDLFormat
+from esdl.project import HighLevelChange
+from esdl.project.ProjectManager import ProjectManager, eobject_to_string, ESDLFormat
 from extensions.session_manager import SESSION_MANAGER_LISTENER_ID, get_project_manager, get_session
 from src import log
 from src.incremental_ui.ui_change_handler import INCREMENTAL_UI_LISTENER_ID, change_handler

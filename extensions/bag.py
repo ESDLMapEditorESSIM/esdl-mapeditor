@@ -17,7 +17,7 @@ from flask_socketio import SocketIO, emit
 from extensions.session_manager import get_project_manager
 import src.settings as settings
 import requests
-from esdl.processing import ESDLAsset, ESDLGeometry, ESDLEnergySystem
+from src.esdl_integration.processing import ESDLAsset, ESDLGeometry, ESDLEnergySystem
 import esdl
 from geomet import wkt
 import src.log as log

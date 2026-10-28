@@ -129,7 +129,18 @@ window.etm_interface_area_info_update = function(event, info) {
     etm_interface_plugin.area_info_update(event, get_area_id_from_mapeditor_id(info.id));
 }
 window.etm_interface_heat_transition = function(event, info) {
-    etm_interface_plugin.area_heat_transition(event, get_area_id_from_mapeditor_id(info.id));
+    // console.log(event);     // {containerPoint: B, layerPoint: B, latlng: j, relatedTarget: undefined}
+    // console.log(info);      // {id: 'BU01140409', lat: '52.767538816828996', lng: '7.062474264260807'}
+    let selected_area_list = [info.id];
+    if (select_areas.is_select_mode()) {
+        // One or more areas have been selected
+        let clicked_area_layer_list = find_areas_by_id(active_layer_id, info.id);
+        if (select_areas.is_selected(clicked_area_layer_list[0])) {
+            // the current area is part of this selection
+            selected_area_list = select_areas.get_selected_areas();
+        }
+    }
+    etm_interface_plugin.area_heat_transition(event, selected_area_list);
 }
 
 $(document).ready(function() {

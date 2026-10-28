@@ -17,7 +17,7 @@ from flask_socketio import SocketIO, emit
 from si_prefix import si_format
 from extensions.settings_storage import SettingsStorage
 from extensions.session_manager import get_project_manager, get_session, set_session, del_session
-from esdl.processing import ESDLEcore
+from src.esdl_integration.processing import ESDLEcore
 from src.esdl_helper import get_port_profile_info
 from extensions.essim import ESSIM
 import src.log as log

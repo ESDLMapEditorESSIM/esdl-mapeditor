@@ -39,6 +39,8 @@ class ActivityContextMenuJsFunction(TypedDict):
     icon: str
     # The JS function to activate. Must be available on window!
     js_function: str
+    # Works on multiple selected elements
+    allow_multiple: bool | None
 
 
 @dataclass

@@ -23,8 +23,8 @@ import uuid
 import re
 
 from esdl import esdl
-from esdl.processing import ESDLGeometry
-from esdl.undo_wrapper import undo_record_changes
+from src.esdl_integration.processing import ESDLGeometry
+from src.esdl_integration.undo_wrapper import undo_record_changes
 from extensions.session_manager import get_project_manager, get_session, get_session_for_esid, \
     set_session_for_esid
 from extensions.settings_storage import SettingsStorage

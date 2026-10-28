@@ -14,7 +14,7 @@
 from typing import List
 
 from esdl import esdl
-from esdl.processing import ESDLGeometry
+from src.esdl_integration.processing import ESDLGeometry
 
 
 def identical_connection(conn, check_list: List[dict]):

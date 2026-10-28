@@ -180,7 +180,7 @@ function create_new_esdl_layer(es_id, title) {
             kpi_layer: L.featureGroup().addTo(map),
             sim_layer: L.featureGroup().addTo(map),
             notes_layer: L.featureGroup().addTo(map),
-            plan_layer: L.featureGroup(),
+            plan_layer: L.featureGroup().addTo(map),
         },
         sector_list: null,
         carrier_list: null,
@@ -190,7 +190,8 @@ function create_new_esdl_layer(es_id, title) {
         area_legend_choice: null,
         area_dist_kpis_ranges: {},
         building_kpi_list: null,
-        building_legend_choice: null
+        building_legend_choice: null,
+        building_marker_resize: 1.0
     };
 
     esdl_list[es_id] = esdl_list_item;
@@ -263,7 +264,7 @@ function remove_bld_layer(bld_id) {
  * Shows one or more ESDL layers on the Leaflet map.
  *
  * @param es_id - Identifier of the ESDL instance to show layers from.
- * @param layer_name - Logical layer name (level_name) to show. If omitted, all base layers are shown.
+ * @param layer_name - Logical layer name (level_name) to show. If omitted, all layers are shown.
  * @param es_layer_name - Specific ESDL layer key to search within. If omitted, matches top-level layers.
  */
 function show_esdl_layer_on_map(es_id, layer_name, es_layer_name) {
@@ -274,11 +275,8 @@ function show_esdl_layer_on_map(es_id, layer_name, es_layer_name) {
     }
 
     if (!layer_name) {
-        // Show all base ESDL layers
+        // Show all ESDL layers
         for (const lname of Object.keys(es.layers)) {
-            if (lname === 'plan_layer') {
-                continue;
-            }
             show_esdl_layer_on_map(es_id, lname);
         }
         return;
@@ -435,6 +433,31 @@ function find_layer_by_id(es_id, layer_name, id, type) {
             }
         }
     }
+}
+
+function find_areas_by_id(es_id, id) {
+    // Selects all leaflet layers belonging to an ESDL area (even if it is a multi-polygon)
+    // When called with or without "... (1 of 3)" all layers will be returned
+    let mapeditor_id = get_area_id_from_mapeditor_id(id);
+    let areas = [];
+    let layer_list = esdl_list[es_id].layers['area_layer'].getLayers();
+    for (let i = 0; i < layer_list.length; i++) {
+        let layer = layer_list[i];
+        if (layer instanceof L.GeoJSON) {
+            let geojson_layer_list = Object.entries(layer._layers);   // _layers is an Object with ids as keys
+            for (let j = 0; j < geojson_layer_list.length; j++) {
+                let geojson_layer = geojson_layer_list[j];
+                if (
+                    (geojson_layer[1].feature.properties.id === id) ||
+                    (get_area_id_from_mapeditor_id(geojson_layer[1].feature.properties.id) === mapeditor_id) ||
+                    (get_area_id_from_mapeditor_id(geojson_layer[1].feature.properties.id) === id)
+                ) {
+                    areas.push(geojson_layer[1]);
+                }
+            }
+        }
+    }
+    return areas;
 }
 
 function clear_layers(es_id, layer_name) {

@@ -35,7 +35,7 @@ from flask_socketio import SocketIO, emit
 from pyecore.resources import URI, Resource
 
 import src.log as log
-from esdlproject.ProjectManager import update_energy_system_version
+from esdl.project.ProjectManager import update_energy_system_version
 from extensions.esdl_drive.api import DRIVE_URL, get_drive_post_headers, browse_endpoint, resource_endpoint, \
     upload_esdl_to_drive, DrivePutParams
 from extensions.session_manager import get_session, set_session, get_project_manager

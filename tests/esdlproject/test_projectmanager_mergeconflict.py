@@ -37,8 +37,8 @@ from typing import TypeVar, cast
 from pyecore.ecore import EObject
 
 from esdl import esdl
-from esdlproject import Variant
-from esdlproject.ProjectManager import ProjectManager
+from esdl.project import Variant
+from esdl.project.ProjectManager import ProjectManager
 from src.log import get_logger
 
 logger = get_logger(__name__)

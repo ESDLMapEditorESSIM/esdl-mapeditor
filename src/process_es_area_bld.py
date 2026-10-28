@@ -26,10 +26,10 @@ from shapely import MultiPoint
 import esdl
 from esdl.units.parser import unit_to_string
 from esdl import esdl
-from esdl.processing import ESDLGeometry, ESDLAsset, ESDLEnergySystem
-from esdl.processing.ESDLEnergySystem import get_notes_list
-from esdl.processing.ESDLGeometry import calculate_polygon_center
-from esdlproject.ProjectManager import ProjectManager
+from src.esdl_integration.processing import ESDLGeometry, ESDLAsset, ESDLEnergySystem
+from src.esdl_integration.processing.ESDLEnergySystem import get_notes_list
+from src.esdl_integration.processing.ESDLGeometry import calculate_polygon_center
+from esdl.project.ProjectManager import ProjectManager
 from extensions.boundary_service import BoundaryService, is_valid_boundary_id
 from extensions.mapeditor_settings import MapEditorSettings
 from extensions.session_manager import get_project_manager, get_session, set_session_for_esid, set_session, \
@@ -45,7 +45,7 @@ from src.incremental_ui.incremental_ui_messages import create_asset_port_message
 from src.log import get_logger
 from src.shape import Shape, ShapePoint, ShapeMultiPolygon
 from src.tno.projects.emits import emit_active_esdl_project
-from utils.RDWGSConverter import RDWGSConverter
+from src.esdl_integration.processing.RDWGSConverter import RDWGSConverter
 from utils.utils import timed
 
 logger = get_logger(__name__)
@@ -300,7 +300,7 @@ def create_building_KPIs(building):
 
     if building.KPIs:
         for kpi in building.KPIs.kpi:
-            if is_valid_kpi_value(kpi.value):
+            if not isinstance(kpi, esdl.DistributionKPI) and is_valid_kpi_value(kpi.value):
                 KPIs[kpi.name] = kpi.value
 
     return KPIs
@@ -339,7 +339,7 @@ def process_area_KPI_information(area_KPIs, area_geometry):
                         'value': kpi.value,
                         'unit': unit
                     }
-            else:
+            elif isinstance(kpi.distribution, esdl.StringLabelDistribution):
                 distribution_kpis[kpi.name] = {"type": "distributionKPI",
                                                "value": [],
                                                "unit": unit}
@@ -764,6 +764,9 @@ def process_building(pm: ProjectManager, es_id, asset_list, building_list, area_
         geometry = building.geometry
         # TODO: this function call doesn't work for a CompoundAsset
         bld_KPIs = create_building_KPIs(building)
+        bld_dist_KPIs = {}
+        if not bld_editor:
+            _, bld_dist_KPIs = process_area_KPI_information(building.KPIs, geometry)
 
         # Collect extra attributes that might be required to draw specific icons, ...
         extra_attributes = add_extra_attributes(building)
@@ -772,12 +775,12 @@ def process_building(pm: ProjectManager, es_id, asset_list, building_list, area_
             if isinstance(geometry, esdl.Point):
                 building_list.append(
                     ['point', building.name, building.id, type(building).__name__, [geometry.lat, geometry.lon],
-                     building_has_assets, bld_KPIs, extra_attributes, port_list])
+                     building_has_assets, bld_KPIs, extra_attributes, port_list, bld_dist_KPIs])
                 bld_coord = (geometry.lat, geometry.lon)
             elif isinstance(geometry, esdl.Polygon):
                 boundary = ESDLGeometry.create_boundary_from_geometry(geometry)
                 building_list.append(['polygon', building.name, building.id, type(building).__name__,
-                                      boundary['coordinates'], building_has_assets, bld_KPIs, extra_attributes, port_list])
+                                      boundary['coordinates'], building_has_assets, bld_KPIs, extra_attributes, port_list, bld_dist_KPIs])
                 bld_coord = ESDLGeometry.calculate_polygon_center(geometry)
     elif building.containingBuilding:       # BuildingUnit
         bld_geom = building.containingBuilding.geometry
@@ -795,7 +798,7 @@ def process_building(pm: ProjectManager, es_id, asset_list, building_list, area_
     for basset in building.asset:
         if isinstance(basset, esdl.AbstractBuilding):
             process_building(pm, es_id, asset_list, building_list, area_bld_list, conn_list, basset, bld_editor, level + 1)
-        else:
+        elif hasattr(basset, 'port'):
             # Create a list of ports for this asset
             port_list = create_asset_port_message(basset)
 

@@ -15,7 +15,7 @@
 from flask import Flask
 from flask_socketio import SocketIO, emit
 import src.log as log
-from esdl.processing.ESDLAsset import get_asset_capability_type
+from src.esdl_integration.processing.ESDLAsset import get_asset_capability_type
 from esdl import esdl
 from uuid import uuid4
 

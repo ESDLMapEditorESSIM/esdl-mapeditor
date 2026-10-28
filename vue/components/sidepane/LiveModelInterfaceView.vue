@@ -16,8 +16,8 @@
 
 <template>
   <div id="live_model_interfaces">
-    <div v-if="liveModelInterfaces.length" style="padding: 5px">
-      <a-card v-for="liveModelInterface in liveModelInterfaces" :key="liveModelInterface.lmi_id" :title="liveModelInterface.name" style="width: 250px" hoverable="true">
+    <div v-if="liveModelInterfaces.length">
+      <a-card v-for="liveModelInterface in liveModelInterfaces" :key="liveModelInterface.lmi_id" :title="liveModelInterface.name" hoverable="true">
         <template #extra>
           <input v-model="liveModelInterface.enabled" :checked="liveModelInterface.enabled" type="checkbox" :disabled="!liveModelInterface.can_be_disabled" @change="updateLiveModelInterface(liveModelInterface.lmi_id, liveModelInterface.enabled)">
         </template>
@@ -46,18 +46,3 @@ function updateLiveModelInterface(lmi_id, enabled) {
   }).catch(error => console.error('Error:', error));
 }
 </script>
-
-<style lang="scss">
-#live_model_interfaces {
-  //padding: 10px;
-  overflow-x: hidden;
-  overflow-y: auto;
-  resize: horizontal;
-  height: 100%;
-  min-width: 200px;
-
-  .text-only {
-    padding-left: 8px;
-  }
-}
-</style>

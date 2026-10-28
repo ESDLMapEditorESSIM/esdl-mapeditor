@@ -98,7 +98,6 @@
                 "
                 :disabled="currentConstraint !== null"
                 @change="onSelectConstraintType"
-                @mouseleave="removeTooltipPopup"
               />
             </a-form-item>
 
@@ -123,7 +122,6 @@
                 v-model:value="formData.attributeReference"
                 :options="attributeReferenceOptions"
                 allow-clear
-                @mouseleave="removeTooltipPopup"
               />
             </a-form-item>
 
@@ -254,7 +252,6 @@
                     label: option
                   })) || []"
                   :disabled="isFieldDisabled('maximum')"
-                  @mouseleave="removeTooltipPopup"
                 />
               </a-form-item>
               <a-form-item label="Minimum">
@@ -265,7 +262,6 @@
                     label: option
                   })) || []"
                   :disabled="isFieldDisabled('minimum')"
-                  @mouseleave="removeTooltipPopup"
                 />
               </a-form-item>
             </a-col>
@@ -324,11 +320,6 @@ const props = defineProps({
     default: false
   }
 });
-
-// to prevent stuck popup on UI
-const removeTooltipPopup = () => {
-  window.jquery(".ui-tooltip-content").parents("div").remove();
-};
 
 // ENUM
 const SegmentOptions = Object.freeze({

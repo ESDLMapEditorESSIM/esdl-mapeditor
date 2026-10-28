@@ -35,18 +35,56 @@
         </a>
       </li>
     </ul>
-    <div id="tab-content" :class="{side_pane_hidden: !showSidePane}">
-      <LayersView v-if="isActiveTab('WMS_Layers')" />
-      <!-- v-show keeps LayerStyleEditor mounted across tab switches, so LayerStyleEditor inside it can stay mounted. -->
-      <VisibleLayersView v-show="isActiveTab('visible_layers')" />
-      <ProjectView v-if="isActiveTab('Project')" />
-      <LiveModelInterfaceView v-if="isActiveTab('live_model_interfaces')" />
+    <div id="tab-content" :class="{side_pane_hidden: !showSidePane}" :style="{width: paneWidth + 'px'}">
+      <div class="pane-header">
+        <h4>{{ activeTab?.title }}</h4>
+        <a-button
+          type="default"
+          size="small"
+          title="Collapse side pane"
+          aria-label="Collapse side pane"
+          @click="toggleSidePaneView"
+        >
+          <template #icon>
+            <i class="fas fa-chevron-left" />
+          </template>
+        </a-button>
+      </div>
+      <div class="pane-content">
+        <LayersView v-show="isActiveTab('WMS_Layers')" />
+        <!-- v-show keeps LayerStyleEditor mounted across tab switches, so LayerStyleEditor inside it can stay mounted. -->
+        <VisibleLayersView v-show="isActiveTab('visible_layers')" />
+        <ProjectView v-if="isActiveTab('Project')" />
+        <LiveModelInterfaceView v-show="isActiveTab('live_model_interfaces')" />
+      </div>
     </div>
+    <div
+      v-if="showSidePane"
+      class="pane-divider"
+      :class="{resizing: isResizing}"
+      role="separator"
+      aria-label="Resize side pane"
+      aria-orientation="vertical"
+      aria-controls="tab-content"
+      aria-valuemin="200"
+      aria-valuemax="500"
+      :aria-valuenow="paneWidth"
+      tabindex="0"
+      @pointerdown="startResize"
+      @pointermove="resizePane"
+      @pointerup="stopResize"
+      @pointercancel="stopResize"
+      @lostpointercapture="stopResize"
+      @keydown.left.prevent="paneWidth = Math.max(200, paneWidth - 10)"
+      @keydown.right.prevent="paneWidth = Math.min(500, paneWidth + 10)"
+      @keydown.home.prevent="paneWidth = 200"
+      @keydown.end.prevent="paneWidth = 500"
+    />
   </div>
 </template>
 
 <script setup>
-import {ref} from "vue"
+import {computed, ref} from "vue"
 import {useSidePane} from "../composables/sidePane";
 import ProjectView from "../components/sidepane/ProjectView.vue";
 import LayersView from "../components/sidepane/WMSLayersView.vue";
@@ -54,7 +92,7 @@ import LiveModelInterfaceView from "../components/sidepane/LiveModelInterfaceVie
 import VisibleLayersView from "@/components/sidepane/VisibleLayersView.vue";
 
 // eslint-disable-next-line no-unused-vars
-const {showSidePane, initTabs, clickTab, isActiveTab} = useSidePane();
+const {showSidePane, initTabs, clickTab, isActiveTab, toggleSidePaneView} = useSidePane();
 
 const sidePaneTabs = ref([{
   key: 'Project',
@@ -80,6 +118,35 @@ const sidePaneTabs = ref([{
 
 initTabs(sidePaneTabs);
 
+const activeTab = computed(() => sidePaneTabs.value.find(tab => isActiveTab(tab.key)));
+
+const paneWidth = ref(300);
+const isResizing = ref(false);
+let resizeStartX = 0;
+let resizeStartWidth = 0;
+
+function startResize(event) {
+  if (event.button !== 0) {
+    return;
+  }
+  resizeStartX = event.clientX;
+  resizeStartWidth = paneWidth.value;
+  isResizing.value = true;
+  event.currentTarget.setPointerCapture(event.pointerId);
+  event.preventDefault();
+}
+
+function resizePane(event) {
+  if (!isResizing.value) {
+    return;
+  }
+  paneWidth.value = Math.min(500, Math.max(200, resizeStartWidth + event.clientX - resizeStartX));
+}
+
+function stopResize() {
+  isResizing.value = false;
+}
+
 </script>
 
 <style scoped lang="scss">
@@ -95,12 +162,48 @@ initTabs(sidePaneTabs);
       max-width: 0;
       padding: 0;
     }
-    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    box-sizing: border-box;
+    flex-shrink: 0;
     min-width: 200px;
     max-width: 500px;
     transition: max-width .2s ease-in;
+    overflow: hidden;
+  }
+
+  .pane-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-shrink: 0;
+    padding: 8px;
+    border-bottom: 1px solid #efeff1;
+
+    h4 {
+      margin: 0;
+    }
+  }
+
+  .pane-content {
+    flex: 1;
+    min-height: 0;
+    padding: 8px;
     overflow: auto;
-    resize: horizontal;
+  }
+
+  .pane-divider {
+    flex: 0 0 5px;
+    background-color: #efeff1;
+    cursor: col-resize;
+    touch-action: none;
+    user-select: none;
+
+    &:hover, &:focus-visible, &.resizing {
+      background-color: slategray;
+    }
   }
 
   ul.tabs {

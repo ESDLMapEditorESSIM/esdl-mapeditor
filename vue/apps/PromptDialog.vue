@@ -5,6 +5,7 @@
       :closable="false"
       :maskClosable="false"
       :footer="null"
+      :z-index="100002"
       width="520px"
   >
     <div class="prompt-message">

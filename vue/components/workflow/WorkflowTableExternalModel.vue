@@ -19,7 +19,6 @@
             :tree-data="userGroupsForUser"
             :status="selectedUserGroups.length === 0 ? 'error' : ''"
             @change="updateFilteredRows"
-            @mouseleave="hide_jquery_ui_popup"
           />
         </a-col>
       </a-row>
@@ -205,7 +204,7 @@ const getTagColor = (text) => {
     return "orange";
   } else if (up === "NEED_INPUT") {
     return "purple";
-  } else if (up === "REGISTERED" || up === "INITIALIZED" || up === "SUBMITTED") {
+  } else if (up === "REGISTERED" || up === "INITIALIZED" || up === "SUBMITTED" || up === "QUEUED") {
     return "default";
   } else if (up === "RUNNING" || up === "IN_PROGRESS" || up === "CALCULATING") {
     return "blue";

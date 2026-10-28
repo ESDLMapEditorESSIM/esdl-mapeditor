@@ -16,14 +16,11 @@
 
 <template>
   <div id="project-view">
-    <BaseLayerTree />
-    <hr>
     <ProjectTree />
   </div>
 </template>
 
 <script setup>
-import BaseLayerTree from "@/components/sidepane/BaseLayerTree.vue";
 import ProjectTree from "@/components/sidepane/ProjectTree.vue";
 </script>
 

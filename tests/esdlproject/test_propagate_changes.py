@@ -15,8 +15,8 @@
 import unittest
 
 import esdl
-from esdlproject import Variant
-from esdlproject.ProjectManager import ProjectManager, eobject_to_string
+from esdl.project import Variant
+from esdl.project.ProjectManager import ProjectManager, eobject_to_string
 
 
 class PropagateChanges(unittest.TestCase):

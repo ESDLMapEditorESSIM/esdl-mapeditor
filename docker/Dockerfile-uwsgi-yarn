@@ -1,34 +1,20 @@
 # Alternative way of building the complete image with uWSGI support and Yarn to build the javascript library.
 # Creates a bigger image than Dockerfile-uwsgi
+FROM node:24.22.1 AS node
 FROM python:3.10-slim
 
-# NodeJS major version, see https://github.com/nodesource/distributions
-ARG NODE_MAJOR=16
-#ENV NODE_OPTIONS=--openssl-legacy-provider
+COPY --from=node /usr/local/bin/node /usr/local/bin/node
+COPY --from=node /usr/local/lib/node_modules/ /usr/local/lib/node_modules/
 
 # Install external dependencies.
-RUN apt-get -y update
-RUN apt-get install -y gcc libpcre3 libpcre3-dev zlib1g zlib1g-dev libssl-dev curl ca-certificates gnupg
-# configure nodeJS
-RUN mkdir -p /etc/apt/keyrings && \
-    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg && \
-    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list && \
-    apt-get update
-
-#    curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | gpg --dearmor -o /etc/apt/keyrings/yarn.gpg && \
-#    echo "deb [signed-by=/etc/apt/keyrings/yarn.gpg] https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list && \
-
-
-# get nodejs from the nodistro repository otherwise newer nodejs will be installed from debian bookwurm.
-RUN apt-get install -y -t nodistro nodejs
+RUN apt-get -y update && \
+    apt-get install -y gcc libpcre2-dev zlib1g zlib1g-dev libssl-dev curl ca-certificates gnupg
 
 # install Yarn etc.
-RUN corepack enable
-
-#RUN curl -sL https://deb.nodesource.com/setup_18.x | bash - && \
-#    curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - && \
-#    echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list && \
-#    apt-get update && apt-get install -y nodejs yarn
+RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && \
+    ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx && \
+    ln -s ../lib/node_modules/corepack/dist/corepack.js /usr/local/bin/corepack && \
+    corepack enable
 
 RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app
@@ -40,7 +26,9 @@ RUN yarn install
 
 # Python dependencies.
 COPY requirements.txt requirements-uwsgi.txt /usr/src/app/
-RUN pip install -r requirements.txt -r requirements-uwsgi.txt
+RUN python -m pip install --no-cache-dir --disable-pip-version-check \
+    "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70" && \
+    pip install -r requirements.txt -r requirements-uwsgi.txt
 
 # Add everything in the image.
 COPY . /usr/src/app
