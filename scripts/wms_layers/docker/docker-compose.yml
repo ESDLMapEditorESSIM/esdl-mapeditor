@@ -7,7 +7,7 @@ volumes:
 
 services:
   geoserver:
-    image: kartoza/geoserver:2.25.2
+    image: kartoza/geoserver:3.0.2
     ports:
       - "${GEOSERVER_PORT:-9432}:8080"
     volumes:

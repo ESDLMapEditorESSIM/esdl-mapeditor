@@ -198,8 +198,10 @@ class WMSLayers:
 
     def query_wms_layer_feature_properties(self, url: str) -> Optional[Dict]:
         feature_props: Optional[Dict] = None
+        resp = None
         try:
             resp = requests.get(url)
+            resp.raise_for_status()
             if resp.status_code == 200:
                 data = resp.json()
                 if 'features' in data and len(data['features']) > 0:
@@ -207,7 +209,13 @@ class WMSLayers:
                 else:
                     feature_props = {}
         except Exception as e:
-            logger.warning(f"An unexpected error occurred while querying layer feature: {str(e)}")
+            if resp is not None:
+                logger.warning(
+                    "Error querying WMS layer feature: %s; HTTP %s; Content-Type: %s; response: %.1000s",
+                    str(e), resp.status_code, resp.headers.get('Content-Type'), resp.text
+                )
+            else:
+                logger.warning(f"An unexpected error occurred while querying layer feature: {str(e)}")
         return feature_props
     
     def get_service_getcapabilities(self, url: str, service_type: str = "WMS") -> ServiceGetCapabilitiesResp:

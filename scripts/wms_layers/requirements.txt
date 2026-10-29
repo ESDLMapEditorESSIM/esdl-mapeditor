@@ -1,3 +1,4 @@
 
 geoserver-rest==2.6.0
 psycopg2-binary==2.9.9
+pyESDL==26.10.2
