@@ -31,7 +31,7 @@
 </template>
 
 <script setup>
-import {ref, computed, watch} from 'vue';
+import {ref, computed} from 'vue';
 import { useBaseLayers } from '@/composables/baseLayers';
 
 // Composables
@@ -64,16 +64,6 @@ const treeData = computed(() => {
     baseLayersNode,
   ];
 });
-
-let expandedInitialized = false;
-watch(treeData, (newData) => {
-  // Expand the top-level node (Base layers) after data initialization.
-  if (!expandedInitialized && newData.length) {
-    expandedKeys.value = newData.map((node) => node.key);
-    expandedInitialized = true;
-  }
-}, { immediate: true });
-
 
 async function onCheck(_, info) {
   const node = info.node;

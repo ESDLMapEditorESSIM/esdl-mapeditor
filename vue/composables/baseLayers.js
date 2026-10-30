@@ -38,6 +38,42 @@ const baseLayerDefinitions = [
         enabled: false,
     },
     {
+        label: 'BRT Standaard',
+        layer: L.tileLayer('https://service.pdok.nl/kadaster/brt-achtergrondkaart/wmts/v2_0/standaard/EPSG:3857/{z}/{x}/{y}.png', {
+            maxZoom: 25,
+            maxNativeZoom: 19,
+            attribution: '&copy; <a href="https://www.kadaster.nl/">Kadaster</a> | <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>'
+        }),
+        enabled: false,
+    },
+    {
+        label: 'BRT Grijs',
+        layer: L.tileLayer('https://service.pdok.nl/kadaster/brt-achtergrondkaart/wmts/v2_0/grijs/EPSG:3857/{z}/{x}/{y}.png', {
+            maxZoom: 25,
+            maxNativeZoom: 19,
+            attribution: '&copy; <a href="https://www.kadaster.nl/">Kadaster</a> | <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>'
+        }),
+        enabled: false,
+    },
+    {
+        label: 'BRT Pastel',
+        layer: L.tileLayer('https://service.pdok.nl/kadaster/brt-achtergrondkaart/wmts/v2_0/pastel/EPSG:3857/{z}/{x}/{y}.png', {
+            maxZoom: 25,
+            maxNativeZoom: 19,
+            attribution: '&copy; <a href="https://www.kadaster.nl/">Kadaster</a> | <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>'
+        }),
+        enabled: false,
+    },
+    {
+        label: 'PDOK Luchtfoto',
+        layer: L.tileLayer('https://service.pdok.nl/hwh/luchtfotorgb/wmts/v1_0/Actueel_orthoHR/EPSG:3857/{z}/{x}/{y}.jpeg', {
+            maxZoom: 25,
+            maxNativeZoom: 21,
+            attribution: '&copy; <a href="https://www.beeldmateriaal.nl/">Beeldmateriaal Nederland</a> | <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>'
+        }),
+        enabled: false,
+    },
+    {
         label: 'Google Streets',
         layer: L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
             maxZoom: 20,
