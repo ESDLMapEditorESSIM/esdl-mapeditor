@@ -14,19 +14,21 @@
 import csv
 import os
 import subprocess
+from pathlib import Path
 from uuid import uuid4
-import psycopg
+import psycopg2
 #from psycopg2 import extensions
 
+from dotenv import load_dotenv
 from geo.Geoserver import Geoserver, GeoserverException
-from psycopg import Cursor
+from psycopg2.extensions import cursor as Cursor
+
+# Load script settings before application imports initialize configuration.
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
 from extensions.settings_storage import SettingsStorage, SettingType
 from src.tno.locking import NamedLocker
 from src.wms_layers import LAYERS_SETTING, LAYERS_GROUP_SETTING
-from dotenv import load_dotenv
-
-load_dotenv()
 
 
 def _get_identifier(setting_type: SettingType, project_name: str) -> str | None:
@@ -46,7 +48,7 @@ def _get_identifier(setting_type: SettingType, project_name: str) -> str | None:
 
 def connect_to_postgres(host: str, port: int, database: str, user: str, password: str) -> Cursor:
     print(f"Connecting to postgres, host: '{host}', port: '{port}', database: '{database}'")
-    conn = psycopg.connect(host=host, port=port, database=database, user=user, password=password)
+    conn = psycopg2.connect(host=host, port=port, dbname=database, user=user, password=password)
     return conn.cursor()
 
 
@@ -337,9 +339,9 @@ def load_layers() -> None:
                     setting_type,
                     os.environ.get("PROJECT_NAME"),
                     layer_name,
-                    f"{os.environ.get('GEOSERVER_URL')}/wms",
+                    f"{os.environ.get('GEOSERVER_URL').rstrip('/')}/wms",
                     layer_name,
-                    f"{os.environ.get('GEOSERVER_URL')}/wms/ows?service=WMS&request=GetLegendGraphic&"
+                    f"{os.environ.get('GEOSERVER_URL').rstrip('/')}/wms?service=WMS&request=GetLegendGraphic&"
                     f"FORMAT=image/png&LAYER={layer_name}&LEGEND_OPTIONS=fontsize:10;fontname:serif;fontColor:505050",
                     layer_opacity,
                 )
