@@ -743,6 +743,9 @@ function add_asset(es_bld_id, asset_info, exposed_port_asset_id, carrier_info_ma
         polygon.type = asset_info[4];
         polygon.asspot = asset_info[1];
         polygon.attrs = asset_info[6];
+        if (polygon.asspot === 'asset') {
+            polygon.ports = asset_info[8];
+        }
         // esdl_layer.addLayer(polygon);
 
         polygon.off('remove');
@@ -839,7 +842,7 @@ function add_asset(es_bld_id, asset_info, exposed_port_asset_id, carrier_info_ma
 
         if (user_settings.ui_settings.tooltips.show_asset_information_on_map)
             line.setText(get_tooltip_text(tt_format['line'], line.name, line.attrs) +
-                '                   ', {repeat: true});
+                '                   ', {repeat: true, attributes: {class: line.carrierClasses}});
     }
 }
 
@@ -917,6 +920,7 @@ function update_line_color(line_layer) {
                                       dashArray:"", opacity: 1.0, pane: 'lineSelectionPane'};
             //$('#mapid .zoomline').css({'stroke-width': size_line});
             var selectline = L.polyline(line_layer.getLatLngs(), selectline_options);
+            selectline.ports = line_layer.ports;
             line_layer.selectline = selectline;
             add_object_to_layer(es_bld_id, 'esdl_layer', selectline);
             if (L.DomUtil.hasClass(line_layer._path, 'notselectedline')) {

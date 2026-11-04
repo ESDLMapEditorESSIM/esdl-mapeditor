@@ -72,12 +72,14 @@ import GlobalLoader from "@/components/GlobalLoader.vue";
 import {LoaderScopes, useLoader} from "@/composables/loader";
 import {registerNotificationListeners} from "@/utils/notification";
 import {formatKPIName} from "@/utils/kpi";
+import {registerAssetCarriers} from "@/utils/assetCarrierClasses";
 
 // Vue.config.productionTip = false
 
 const {activeLoaders, startLoader, stopLoader} = useLoader();
 window.LoaderScopes = LoaderScopes;
 window.formatKPIName = formatKPIName;
+window.registerAssetCarriers = registerAssetCarriers;
 window.show_loader = (scope = LoaderScopes.DEFAULT) => {
     const loaderId = startLoader(scope);
     console.debug("Show loader", activeLoaders);

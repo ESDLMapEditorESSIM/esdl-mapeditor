@@ -16,6 +16,7 @@
 
 <template>
   <div id="visible_layers_view">
+    <AssetVisibilityStyle />
     <BaseLayerTree class="base-layer-tree" />
     <hr>
     <a-row justify="space-between" align="middle">
@@ -64,6 +65,28 @@
                 </div>
               </div>
 
+              <div v-if="isGroupExpanded(group.id) && getCarriers(group.id).length" class="carrier-filters">
+                <span>Carrier</span>
+                <a-select
+                  class="carrier-select"
+                  size="small"
+                  :value="selectedCarrierByEsdlId.get(group.id) || ''"
+                  allow-clear
+                  @change="carrierId => toggleCarrier(group.id, carrierId)"
+                >
+                  <a-select-option value="">All carriers</a-select-option>
+                  <a-select-option v-for="carrier in getCarriers(group.id)" :key="carrier.id" :value="carrier.id">
+                    {{ carrier.name }}
+                  </a-select-option>
+                </a-select>
+                <span>Hide</span>
+                <a-switch
+                  size="small"
+                  :checked="hideOthersByEsdlId.get(group.id) || false"
+                  @change="hide => hideOthersByEsdlId.set(group.id, hide)"
+                />
+              </div>
+
               <!-- Individual Layers in Group -->
               <draggable v-if="isGroupExpanded(group.id)" v-model="group.layers" group="layers" @end="onEndDragLayer(group.id)">
                 <div v-for="layer in group.layers" :key="layer.id" class="layer-item">
@@ -105,8 +128,13 @@ import LayerOpacityPopover from "@/components/popover/LayerOpacityPopover.vue";
 import {useESDLProjects} from "@/composables/esdlProjects";
 import BaseLayerTree from "@/components/sidepane/BaseLayerTree.vue";
 import {theme} from 'ant-design-vue';
+import {useAssetVisibility} from '@/composables/assetVisibility';
+import {useCarriers} from '@/composables/carriers';
+import AssetVisibilityStyle from '@/components/leaflet/AssetVisibilityStyle.vue';
 
 const {token} = theme.useToken();
+const {getCarriers} = useCarriers();
+const {selectedCarrierByEsdlId, hideOthersByEsdlId, toggleCarrier} = useAssetVisibility();
 
 const {
   getVisibleLayerGroups,
@@ -269,6 +297,18 @@ const clickGroup = (group) => {
 
 .layer-groups {
   margin-top: 10px;
+}
+
+.carrier-filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+
+  .carrier-select {
+    flex: 1;
+    min-width: 0;
+  }
 }
 
 .group-header {
