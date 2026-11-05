@@ -72,7 +72,7 @@ class TestProjectManager(unittest.TestCase):
             variant1_es.instance[0].area.asset.append(pipe1)
 
         # Check that the change is added to the variant.
-        self.assertEquals(len(pm.get_active_variant().change), 1)
+        self.assertEqual(len(pm.get_active_variant().change), 1)
         self.assertEqual(pm.get_active_variant().change[0].label, "Add pipe1")
 
         variant2 = create_new_variant(variant_collection, "Variant2")
@@ -134,9 +134,9 @@ class TestProjectManager(unittest.TestCase):
         # Add a child variant.
         child_variant = create_new_variant(parent_variant, "Child variant")
         pm.set_active_variant(child_variant)
-        self.assertEquals(pm.get_active_variant().parentVariant, parent_variant)
+        self.assertEqual(pm.get_active_variant().parentVariant, parent_variant)
         # The change from the parent is not in the child. After all, the change is from the parent.
-        self.assertEquals(len(pm.get_active_variant().change), 0)
+        self.assertEqual(len(pm.get_active_variant().change), 0)
 
         # Check that pipe1 is in child variant.
         found_pipe1_child = find_asset_in_es(pm.get_active_energy_system(), esdl.Pipe, "pipe1") is not None

@@ -69,8 +69,7 @@ If you've updated this code and want to test it locally with the rest of the sta
 
 ### Prerequisites
 
-Python 3: Please make sure you have installed the appropriate version of Python 3. For the most actual up to date
-version, please refer to the `Dockerfile` in the `docker` directory.
+Python 3.13 is used for local development and the Docker images.
 
 Make sure that pip is installed. We use pip-tools to manage our dependencies. For just running the mapeditor it is not
 required to install it, but if you want to update dependencies, you do need it. You can install it through pip, using

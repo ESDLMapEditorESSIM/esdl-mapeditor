@@ -54,12 +54,12 @@ class TestOnPmRefreshRequest(unittest.TestCase):
 
         # Assert
         mock_send_rabbitmq_message.assert_called()
-        self.assertEquals(mock_send_rabbitmq_message.call_count, 2)
+        self.assertEqual(mock_send_rabbitmq_message.call_count, 2)
         args = mock_send_rabbitmq_message.call_args_list[0].args
-        self.assertEquals(args[1], "events.pm")
+        self.assertEqual(args[1], "events.pm")
         msg: ProjectManagerMessage = args[0]
-        self.assertEquals(msg['client_id'], mocked_client_id1)
-        self.assertEquals(msg['project_name'], client1_pm.project.name)
+        self.assertEqual(msg['client_id'], mocked_client_id1)
+        self.assertEqual(msg['project_name'], client1_pm.project.name)
         b64_project = msg['b64_project']
         second_pm = ProjectManager()
         project_string = base64.b64decode(b64_project).decode()

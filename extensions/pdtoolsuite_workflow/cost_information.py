@@ -1,5 +1,5 @@
 import base64
-import cgi
+from werkzeug.http import parse_options_header
 import os
 from typing import Tuple
 from flask import Flask, jsonify, request
@@ -124,6 +124,6 @@ def _get_progress(process_id: str) -> Tuple[str, int]:
 def _download_result(process_id: str) -> Tuple[bytes, str]:
     url = f"{ESDL_COST_SERVICE_HOST}/cost-information/{process_id}/result"
     r = requests.get(url, timeout=DEFAULT_TIMEOUT)
-    parsed_header = cgi.parse_header(r.headers["Content-Disposition"])[-1]
+    parsed_header = parse_options_header(r.headers["Content-Disposition"])[-1]
     filename = os.path.basename(parsed_header["filename"])
     return r.content, filename
