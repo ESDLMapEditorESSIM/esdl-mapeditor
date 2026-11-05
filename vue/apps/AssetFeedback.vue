@@ -173,10 +173,11 @@ const columns = [
   },
 ];
 
-const selectedSeverityState = ref(['ERROR', 'WARNING']);
+const selectedSeverityState = ref(['ERROR', 'WARNING', 'INFO']);
 const severityOptions = [
   { label: 'ERROR', value: 'ERROR' },
   { label: 'WARNING', value: 'WARNING' },
+  { label: 'INFO', value: 'INFO' },
 ];
 
 const asset_feedback_list = ref([]);
@@ -188,7 +189,7 @@ const selectedAssetKeys = ref([]);
 const general_feedback_list = ref([]);
 
 const severity_color_mapping = {
-  // "INFO": "color:#00FF00",
+  "INFO": "color:#00FF00",
   "WARNING": "color:#FFA500",
   "ERROR": "color:#FF0000",
 }
@@ -200,7 +201,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   // Reset to default
-  asset_feedback_list.value = ['ERROR', 'WARNING'];
+  asset_feedback_list.value = ['ERROR', 'WARNING', 'INFO'];
   clearAssetFeedbackFromMap();
   console.debug("AssetFeedback unmounted");
 });

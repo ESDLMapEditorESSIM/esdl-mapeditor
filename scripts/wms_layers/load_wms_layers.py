@@ -17,7 +17,7 @@ import subprocess
 from pathlib import Path
 from uuid import uuid4
 import psycopg2
-#from psycopg2 import extensions
+# from psycopg2 import extensions
 
 from dotenv import load_dotenv
 from geo.Geoserver import Geoserver, GeoserverException
@@ -149,7 +149,7 @@ def add_wms_group(
     layer_groups: dict, parent_uuid: str, setting_type: SettingType, project_name: str, description: str
 ) -> str:
     for group_id, group in layer_groups.items():
-        if description == group["description"] and group_id in layer_groups[parent_uuid]["child_ids"]:
+        if description == group.get("description") and group_id in layer_groups[parent_uuid]["child_ids"]:
             return group_id  # layer group already exits
     if setting_type == SettingType.SYSTEM:
         project_name = SettingType.SYSTEM.value
@@ -251,20 +251,19 @@ def load_layers() -> None:
     if settings_storage.has(setting_type, identifier, LAYERS_GROUP_SETTING):
         layer_groups = settings_storage.get(setting_type, identifier, LAYERS_GROUP_SETTING)
     else:
+        layer_groups = {}
+    if root_key not in layer_groups:
         if setting_type == SettingType.SYSTEM:
-            description = "Standard Layers"
+            layer_groups[root_key] = {"child_ids": []}
         else:
-            description = f"Project Layers for {identifier}"
-        layer_groups = {
-            root_key: {
+            layer_groups[root_key] = {
                 "setting_type": "project",
                 "project_name": identifier,
-                "description": description,
+                "description": f"Project Layers for {identifier}",
                 "is_root": True,
                 "child_ids": [],
                 "readonly": False,
             }
-        }
 
     # add base folder to mapeditor layer groups
     base_folder_name = os.path.normpath(os.environ.get("FOLDER_PATH")).split(os.path.sep)[-1]

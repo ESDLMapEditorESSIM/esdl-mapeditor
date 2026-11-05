@@ -89,6 +89,7 @@ function debounce(func, wait) {
  */
 export const VisibleLayerType = Object.freeze({
     WMS: 'WMS',
+    WMTS: 'WMTS',
     WFS: 'WFS',
     ESDL: 'ESDL',
     UNKNOWN: 'Unknown'
@@ -96,6 +97,7 @@ export const VisibleLayerType = Object.freeze({
 
 const serviceType = Object.freeze({
     WMS: "WMS",
+    WMTS: "WMTS",
     WFS: "WFS"
 });
 
@@ -402,7 +404,7 @@ export function useVisibleLayers() {
         console.debug("Updating visible layers order on map.");
         getVisibleLayerList().slice().reverse().forEach(layer => {
             const layerType = getLayerType(layer);
-            if (layerType === VisibleLayerType.WMS || layerType === VisibleLayerType.WFS) {
+            if (layerType === VisibleLayerType.WMS || layerType === VisibleLayerType.WMTS || layerType === VisibleLayerType.WFS) {
                 const serviceLayer = getWmsLayerList().layers[layer.id];
                 if (serviceLayer?.layer_ref) {
                     serviceLayer.layer_ref.bringToFront();
@@ -438,7 +440,7 @@ export function useVisibleLayers() {
             return;
         }
         const layerType = getLayerType(layerToHide);
-        if (layerType === VisibleLayerType.WMS || layerType === VisibleLayerType.WFS) {
+        if (layerType === VisibleLayerType.WMS || layerType === VisibleLayerType.WMTS || layerType === VisibleLayerType.WFS) {
             hideLayer(layerId);
         } else if (layerType === VisibleLayerType.ESDL) {
             hideEsdlLayerFromMap(layerToHide.es_id, layerToHide.description, layerToHide.es_layer_name);
@@ -496,7 +498,7 @@ export function useVisibleLayers() {
             return;
         }
         const layerType = getLayerType(layerToShow);
-        if (layerType === VisibleLayerType.WMS || layerType === VisibleLayerType.WFS) {
+        if (layerType === VisibleLayerType.WMS || layerType === VisibleLayerType.WMTS || layerType === VisibleLayerType.WFS) {
             showLayer(layerId);
         } else if (layerType === VisibleLayerType.ESDL) {
             showEsdlLayerOnMap(layerToShow.es_id, layerToShow.description, layerToShow.es_layer_name);
@@ -547,7 +549,7 @@ export function useVisibleLayers() {
         const targetLayer = getVisibleLayerById(id);
         const type = getLayerType(targetLayer);
         if (targetLayer && opacity >= 0 && opacity <= 1) {
-            if (type === serviceType.WMS) {
+            if (type === serviceType.WMS || type === serviceType.WMTS) {
                 targetLayer.layer_ref.setOpacity(opacity);
             } else if (type === serviceType.WFS) {
                 // Update the stored style
@@ -571,7 +573,7 @@ export function useVisibleLayers() {
         const type = getLayerType(targetLayer);
         if (targetLayer) {
             let opacity;
-            if (type === serviceType.WMS) {
+            if (type === serviceType.WMS || type === serviceType.WMTS) {
                 opacity = targetLayer.layer_ref.options.opacity;
             } else if (type === serviceType.WFS) {
                 opacity = targetLayer.style?.opacity !== undefined ? targetLayer.style.opacity : 1.0;

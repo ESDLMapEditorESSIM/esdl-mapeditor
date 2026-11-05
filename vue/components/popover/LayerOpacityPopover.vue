@@ -50,7 +50,10 @@
         isOpened = true;
         const type = layer.type ? layer.type : "WMS";
         const layerDescription = layer.description;
-        const currentLayerOpacity = type === "WMS" ? layer.layer_ref.options.opacity : layer.style?.opacity;
+        let currentLayerOpacity = layer.style?.opacity;
+        if (type === "WMS" || type === "WMTS") {
+          currentLayerOpacity = layer.layer_ref.options.opacity;
+        }
         popoverTitle = `Adjust '${layerDescription}' layer opacity`;
         layerOpacity = currentLayerOpacity;
       } else {
