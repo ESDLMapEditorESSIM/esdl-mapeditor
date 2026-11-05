@@ -16,6 +16,7 @@ import AboutBox from '@/apps/AboutBox.vue';
 import ReleaseNotes from '@/apps/ReleaseNotes.vue';
 import {useReleaseNotes} from "./composables/releaseNotes";
 import SearchAssets from '@/apps/SearchAssets.vue';
+import FilterAssets from "@/apps/FilterAssets.vue";
 import AssetFeedback from '@/apps/AssetFeedback.vue';
 import AssetTableEditor from '@/apps/AssetTableEditor.vue';
 import CustomIconsSettings from "@/apps/CustomIconsSettings.vue";
@@ -73,6 +74,7 @@ import {LoaderScopes, useLoader} from "@/composables/loader";
 import {registerNotificationListeners} from "@/utils/notification";
 import {formatKPIName} from "@/utils/kpi";
 import {registerAssetCarriers} from "@/utils/assetCarrierClasses";
+
 
 // Vue.config.productionTip = false
 
@@ -177,6 +179,10 @@ window.show_tooltip = (object_title, object_id, el_id, es_id) => {
 
 window.search_assets_window = () => {
     mountSidebarComponent(SearchAssets);
+}
+
+window.filter_assets_window = () => {
+    mountSidebarComponent(FilterAssets);
 }
 
 window.asset_feedback_window = (asset_feedback_info) => {
