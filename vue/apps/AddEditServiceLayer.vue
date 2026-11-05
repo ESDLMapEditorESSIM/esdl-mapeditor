@@ -172,7 +172,10 @@
       <a-row style="padding-top: 8px;">
         <a-col :span="24">
           <a-space>
-            <a-button type="primary" @click="layerType === serviceType.WMS ? onWmsUpdateBtnClick() : onWfsUpdateBtnClick()">
+            <a-button v-if="layerType === serviceType.WFS" type="primary" @click="onWfsUpdateBtnClick">
+              Update WFS Layer
+            </a-button>
+            <a-button v-else type="primary" @click="onWmsUpdateBtnClick">
               {{ `Update ${layerType} Layer` }}
             </a-button>
             <a-button @click="cancel">Cancel</a-button>
@@ -200,6 +203,7 @@ import { displayNotification, NotificationType } from '@/utils/notification';
 
 const serviceType = Object.freeze({
   WMS: "WMS",
+  WMTS: "WMTS",
   WFS: "WFS"
 });
 
@@ -250,7 +254,7 @@ onBeforeMount(() => {
         url: lyr_info.url,
         layerName: lyr_info.layer_name,
       }
-      if (layerType.value === serviceType.WMS) {
+      if (layerType.value === serviceType.WMS || layerType.value === serviceType.WMTS) {
         layerForm.value = {
           ...basicInfo,
           legendUrl: lyr_info.legend_url,
@@ -448,7 +452,7 @@ const onWmsAddToMapBtnClick = async () => {
 const onWmsUpdateBtnClick = () => {
   updateServiceLayer(
     currentObjectID.value,
-    serviceType.WMS,
+    layerType.value,
     {
       description: layerForm.value.description,
       url: layerForm.value.url,
