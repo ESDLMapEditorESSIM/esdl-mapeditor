@@ -26,6 +26,32 @@ logger = log.get_logger(__name__)
 # Add new release notes at the beginning of this list
 release_notes = [
     {
+        "version": "26.11.0",
+        "date": "2026-11-06T16:00:00Z",
+        "general_message": "On November 6th 2026, we've released the new ESDL MapEditor version 26.11.0. " +
+                           "See below for a list of the most important new features and bug fixes",
+        "categories": [
+            {
+                "name": "New features",
+                "items": [
+                    "Introduction of the Project Manager, with scenario management, variants, changes, undo/redo",
+                    "Major improvements in ESDL Analytics, with functionality like load duration curves, histograms, sorting, filtering, improved profile handling, improved handling of KPIs at different Area scopes and buildings, saving and loading configs for reuse.",
+                    "Much stronger profile handling and visualization (with among others DataTableProfiles and postgres profile support)",
+                    "New LayerStyleEditor giving the user lots of flexibility in how to visualize spatial ESDL based data on the map, and to save and reuse styles",
+                    "Significantly improved workflow engine and external service orchestration, with service logging and resulting feedback on the map)",
+                    "Full re-implementation of the port profile editor",
+                    "Support for ESDL concepts like Plans, MultiPolygons, Constraints, MeasureGroups",
+                    "Improvement of WFS / WMS layer implementation, including styling",
+                    "Improvement of sidebar implementation, with KPIs among other info and now also available for buildings and areas",
+                    "Migrate ESDL MapEditor to (finally) use pyESDL (not providing new functionality, but resulting in some clean up and code deduplication)",
+                    "Implementation of application, model and activity contexts, enabling and disabling certain functionality on user request",
+                    "Implementation of a live model interface, enabling real-time reactions on user's actions",
+                    "Filtering on carriers and unconnected assets"
+                ]
+            }
+        ]
+    },
+    {
         "version": "25.10.0",
         "date": "2025-10-20T16:00:00Z",
         "general_message": "On October 20th 2025, we've released the new ESDL MapEditor version 25.10.0. " +
