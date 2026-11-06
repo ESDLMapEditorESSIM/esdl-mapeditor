@@ -1,55 +1,53 @@
-import time
 import unittest
+from tempfile import TemporaryDirectory
+from unittest.mock import Mock, patch
 
 from flask import Flask
-
-#from app import app
 from flask_socketio import SocketIO
-from sqlalchemy.orm import Session
 
-# from esdl.esdl_handler import EnergySystemHandler
+from esdl import esdl
+from esdl.project.ProjectManager import ProjectManager
 from extensions.data_manager import db
 from extensions.data_manager.data_manager import DataManager
-from extensions.data_manager.db_model import DataSet
+from extensions.data_manager.db_model import Data, DataSet
+from extensions.settings_storage import SettingsStorage
 
-app = Flask(__name__)
-socket = SocketIO(app)
-dm = DataManager(app, socket)
 
 class DataManagerTestcases(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp_dir = TemporaryDirectory()
+        self.addCleanup(self.temp_dir.cleanup)
+        self.app = Flask(__name__)
+        database_uri = f"sqlite:///{self.temp_dir.name}/data_manager.db"
+        with patch("extensions.data_manager.data_manager.settings.SQLALCHEMY_DATABASE_URI", database_uri):
+            self.dm = DataManager(self.app, SocketIO(self.app), Mock(spec=SettingsStorage))
 
-    @unittest.skip("Test doesn't work with the project manager currently")
-    def test_db_insert_data(self):
-        import sqlite3
-        print("SQLite Version is:", sqlite3.sqlite_version)
-        print("DB-API Version is:", sqlite3.version)
-        session = db.session
-        with app.app_context():
-            #ds = db.session.query(DataSet).first()
-            esh = EnergySystemHandler()
+    def tearDown(self) -> None:
+        with self.app.app_context():
+            db.session.remove()
+            db.engine.dispose()
 
-            #es, parse_info = esh.load_file('esdl/Aa en Hunze ETM.esdl')
-            #es, parse_info = esh.load_file('esdl/Drenthe ETM.esdl')
-            #es, parse_info = esh.load_file('esdl/RES-Noord-HollandZuid.esdl')
-            #es, parse_info = esh.load_file(r'C:\Users\werkmane\OneDrive - TNO\Documents\ESDL\EnergySystems\NWN\OMOTES test case.esdl')
-            #es, parse_info = esh.load_file(r'C:\Users\werkmane\OneDrive - TNO\Documents\ESDL\EnergySystems\NWN\OMOTES test case(2).esdl')
-            #es, parse_info = esh.load_file(r'C:\Users\werkmane\OneDrive - TNO\Documents\ESDL\EnergySystems\NWN\OMOTES test case_no_storage.esdl')
-            #es, parse_info = esh.load_file(r"C:\Users\werkmane\OneDrive - TNO\Documents\ESDL\EnergySystems\EIGEN\EPS - Apeldoorn - Alle maatregelen - Energy Hub - In-line Profiles.esdl")
-            es, parse_info = esh.load_file(r"C:\Users\werkmane\OneDrive - TNO\Documents\ESDL\EnergySystems\EIGEN\EPS - Apeldoorn - Alle maatregelen - Energy Hub - In-line Profiles - With Cost Information.esdl")
-            #es, parse_info = esh.load_file(r'C:\Users\werkmane\OneDrive - TNO\Documents\ESDL\EnergySystems\NWN\OMOTES test case_with_storage.esdl')
-            #es, parse_info = esh.load_file('esdl/Laurens_Ennatuurlijk.esdl')
-            #es, parse_info = esh.load_file('esdl/omotes_test_case_no_influxdb.esdl')
+    def test_db_insert_data(self) -> None:
+        """Persist an energy system's asset data and filter options."""
+        pm = ProjectManager()
+        es = pm.get_active_energy_system()
+        turbine = esdl.WindTurbine(id="wind-turbine", name="Wind turbine", power=1500.0)
+        es.instance[0].area.asset.append(turbine)
+        owner = "test@example.com"
 
-            tables = dm.process_esdl(es, owner="ewoud.werkman@tno.nl", scenario_name="Variant no storage")
-            session.add_all(tables)
-            session.commit()
-            ds = [d for d in tables if isinstance(d, DataSet)][0]
-            dm.update_filter_options(session, ds)
-            time.sleep(0.5)
+        with self.app.app_context():
+            tables = self.dm.process_esdl(es, owner=owner, energy_unit="")
+            db.session.add_all(tables)
+            db.session.commit()
+            dataset = db.session.query(DataSet).one()
+            self.dm.update_filter_options(db.session, dataset)
+            data = db.session.query(Data).one()
 
-
-
-
+            self.assertEqual(dataset.energy_system_id, es.id)
+            self.assertEqual(dataset.created_by, owner)
+            self.assertEqual(data.dataset_id, dataset.id)
+            self.assertEqual(data.value, turbine.power)
+            self.assertEqual(data.variable.name, "Power (W)")
 
 
 if __name__ == "__main__":

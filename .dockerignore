@@ -1,4 +1,7 @@
 *venv*
+.git
+.env
+.env.*
 credentials/client_secrets_local.json
 credentials/client_secrets_local-docker.json
 credentials/client_secrets_local_docker.json

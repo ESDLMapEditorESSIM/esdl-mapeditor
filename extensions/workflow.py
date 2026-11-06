@@ -14,7 +14,7 @@
 import json
 
 import base64
-import cgi
+from werkzeug.http import parse_options_header
 from flask_executor import Executor
 from flask_socketio import emit
 import os
@@ -170,7 +170,7 @@ class Workflow:
                 return unreachable_service_response(url, e)
             if r.status_code == 200:
                 # Get the filename from the header.
-                parsed_header = cgi.parse_header(r.headers["Content-Disposition"])[-1]
+                parsed_header = parse_options_header(r.headers["Content-Disposition"])[-1]
                 filename = os.path.basename(parsed_header["filename"])
                 # Encode the file to base64. In this way, we can send it to the frontend.
                 result = base64.b64encode(r.content).decode()

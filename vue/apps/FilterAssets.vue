@@ -144,7 +144,7 @@ function find_assets_without_carrier_assignment(es_id) {
       } else {
         asset_feedback_dict[assetId] = [message];
       }
-    };
+    }
   }
   return asset_feedback_dict;
 }

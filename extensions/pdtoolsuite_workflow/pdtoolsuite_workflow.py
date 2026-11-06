@@ -11,7 +11,7 @@
 #      TNO         - Initial implementation
 #  Manager:
 #      TNO
-import cgi
+from werkzeug.http import parse_options_header
 from collections import defaultdict
 from math import isfinite, isnan
 
@@ -293,6 +293,6 @@ def _download_profiles_result(process_id: str) -> Tuple[bytes, str]:
     """
     url = f"{ESDL_UPLOAD_PROFILES_HOST}/process/{process_id}/result"
     r = requests.get(url, timeout=DEFAULT_TIMEOUT)
-    parsed_header = cgi.parse_header(r.headers["Content-Disposition"])[-1]
+    parsed_header = parse_options_header(r.headers["Content-Disposition"])[-1]
     filename = os.path.basename(parsed_header["filename"])
     return r.content, filename

@@ -80,6 +80,7 @@ data_manager.db
 *.xmi
 *.esdl
 !tests/esdl/*.esdl
+!tests/resources/SimpleES.esdl
 download/
 /projects/
 html/
