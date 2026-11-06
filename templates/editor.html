@@ -988,7 +988,7 @@
                         title = carrier_info_mapping[1]['name'];
                     }
 
-                    let line = L.polyline(coords, {color: linecolor, weight: linewidth, dashArray: '3,10', draggable: true, title: title});
+                    let line = L.polyline(coords, {color: linecolor, weight: linewidth, dashArray: '3,10', draggable: true, title: title, className: 'esdl-connection'});
                     if (title) {
                         let popup = L.popup();
                         popup.setContent(title);
@@ -1036,6 +1036,7 @@
                     line.id = con['from-port-id'] + con['to-port-id']
                     line.from_port_id = con['from-port-id'];
                     line.to_port_id = con['to-port-id'];
+                    line.ports = [{carrier: con['from-port-carrier']}, {carrier: con['to-port-carrier']}];
                     add_object_to_layer(es_bld_id, 'connection_layer', line);
                 }
                 window.PubSubManager.broadcast('ADD_CONNECTIONS', connections);
@@ -1072,7 +1073,6 @@
 
             socket.on('carrier_list', function(carr_list) {
                 set_carrier_list(carr_list['es_id'], carr_list['carrier_list']);
-                window.PubSubManager.broadcast('CARRIER_LIST', carr_list);
             });
 
             socket.on('plans', function(message) {
@@ -1293,7 +1293,12 @@
 
                     // Update the name of the asset, but assume the ESDL class (layer.type) has not changed
                     layer.title = layer.type + ': ' + name;
-                    layer.ports = ports;
+                    for (const assetLayer of [layer, layer.marker, layer.polygon, layer.selectline]) {
+                        if (assetLayer) {
+                            assetLayer.ports = ports;
+                            assetLayer.updateCarrierClasses();
+                        }
+                    }
                     if (layer instanceof L.Marker) {
 
                         if (layer.asspot) {
@@ -1959,6 +1964,19 @@
                     maxZoom: 25,
                     maxNativeZoom: 19,
                     attribution: '&copy; <a href="https://www.kadaster.nl/">Kadaster</a> | <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>'
+                })
+            },
+            {
+                label: 'TOP raster',
+                layer: L.tileLayer.wms('https://service.pdok.nl/kadaster/brt-topraster/wms/v1_0', {
+                    layers: 'top1000raster,top500raster,top250raster,top100raster,top50raster,top25raster',
+                    format: 'image/png',
+                    minZoom: 8,
+                    maxZoom: 25,
+                    maxNativeZoom: 16,
+                    bounds: [[50.2129, 2.52713], [55.7212, 7.37403]],
+                    noWrap: true,
+                    attribution: '&copy; <a href="https://www.kadaster.nl/">Kadaster, Basisregistratie Topografie (BRT)</a> | <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>'
                 })
             },
             {

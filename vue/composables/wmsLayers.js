@@ -20,7 +20,7 @@
  * A composable for managing items currently visible.
  *
  */
-import {ref, toValue} from "vue";
+import {markRaw, ref, toValue} from "vue";
 import { setLeafletFeatureStyle } from "../utils/layerStyle";
 import {useServiceLayerFeaturePopup} from "./serviceLayerFeaturePopup";
 import {useVisibleLayerState} from "./visibleLayerState";
@@ -80,13 +80,22 @@ async function updateGlobalServiceLayerList(layerList, visibleId) {
             // Create a leaflet layer reference depending on service type.
             // If type is undefined, assume WMS type and apply WMS handling for backward compatibility.
             if (layer_info.type === undefined || layer_info.type === 'WMS') {
-                layer_info.layer_ref = L.tileLayer.wms(layer_info.url, {
+                layer_info.layer_ref = markRaw(L.tileLayer.wms(layer_info.url, {
+                    ...layer_info.tile_options,
+                    minZoom: layer_info.min_zoom_level ?? 0,
                     layers: layer_info.layer_name,
                     format: 'image/png',
                     transparent: true,
                     opacity: layer_info.opacity ?? 0.7,
                     attribution: layer_info.attribution || ''
-                });
+                }));
+            } else if (layer_info.type === 'WMTS') {
+                layer_info.layer_ref = markRaw(L.tileLayer(layer_info.url, {
+                    ...layer_info.tile_options,
+                    minZoom: layer_info.min_zoom_level ?? 0,
+                    opacity: layer_info.opacity ?? 0.7,
+                    attribution: layer_info.attribution || ''
+                }));
             } else if (layer_info.type === 'WFS') {
                 // Without providing a map bbox, the given url will retrieve 0 feature,
                 // and only load WFS layer into layer_ref as a reference.
@@ -267,7 +276,7 @@ const hideLayer = (layerId) => {
  * Update a service layer settings in MongoDB.
  *
  * @param {string} layerId
- * @param {"WMS" | "WFS"} type
+ * @param {"WMS" | "WMTS" | "WFS"} type
  * @param {WmsLayerInfo | WfsLayerInfo} layerInfo
  */
 const updateServiceLayer = (layerId, type, layerInfo) => {

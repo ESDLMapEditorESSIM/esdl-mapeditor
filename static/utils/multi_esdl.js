@@ -387,6 +387,7 @@ function clear_esdl_layer_list() {
 }
 
 function add_object_to_layer(es_id, layer_name, object) {
+    window.registerAssetCarriers(es_id, object);
     esdl_list[es_id].layers[layer_name].addLayer(object);
 }
 
@@ -579,6 +580,7 @@ function set_carrier_list(es_id, carrier_list) {
         update_carrier_style_class(carrier_info_mapping[carrier_list[i].id]);
     }
     esdl_list[es_id].carrier_info_mapping = carrier_info_mapping;
+    window.PubSubManager.broadcast('CARRIER_LIST', {es_id: es_id, carrier_list: carrier_list});
 }
 
 function get_carrier_list(es_id) {

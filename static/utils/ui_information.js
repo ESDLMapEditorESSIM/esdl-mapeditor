@@ -102,7 +102,7 @@ function update_asset_tooltip(asset_id, attribute_name, value) {
         if (tt_format['line'].includes('{'+attribute_name+'}'))
             attrs[attribute_name] = value;
         asset_leaflet_obj.setText(get_tooltip_text(tt_format['line'], asset_leaflet_obj.name, attrs)+'                   ',
-            {repeat: true});
+            {repeat: true, attributes: {class: asset_leaflet_obj.carrierClasses}});
     }
 }
 

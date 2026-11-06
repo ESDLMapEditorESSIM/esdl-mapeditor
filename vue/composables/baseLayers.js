@@ -65,6 +65,20 @@ const baseLayerDefinitions = [
         enabled: false,
     },
     {
+        label: 'TOP raster',
+        layer: L.tileLayer.wms('https://service.pdok.nl/kadaster/brt-topraster/wms/v1_0', {
+            layers: 'top1000raster,top500raster,top250raster,top100raster,top50raster,top25raster',
+            format: 'image/png',
+            minZoom: 8,
+            maxZoom: 25,
+            maxNativeZoom: 16,
+            bounds: [[50.2129, 2.52713], [55.7212, 7.37403]],
+            noWrap: true,
+            attribution: '&copy; <a href="https://www.kadaster.nl/">Kadaster, Basisregistratie Topografie (BRT)</a> | <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>'
+        }),
+        enabled: false,
+    },
+    {
         label: 'PDOK Luchtfoto',
         layer: L.tileLayer('https://service.pdok.nl/hwh/luchtfotorgb/wmts/v1_0/Actueel_orthoHR/EPSG:3857/{z}/{x}/{y}.jpeg', {
             maxZoom: 25,

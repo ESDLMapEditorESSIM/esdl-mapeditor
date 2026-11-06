@@ -15,31 +15,36 @@
   -->
 
 <template>
-  <a-tree
-    v-model:expanded-keys="expandedKeys"
-    :show-icon="true"
-    :tree-data="treeData"
-    checkable
-    :check-strictly="true"
-    :checked-keys="checkedBaseLayers"
-    @check="onCheck"
-  >
-    <template #icon="{ iconClass }">
-      <span v-if="iconClass" :class="iconClass" />
-    </template>
-  </a-tree>
+  <div class="base-layers">
+    <a-tree
+      v-model:expanded-keys="expandedKeys"
+      :virtual="false"
+      :show-icon="true"
+      :tree-data="treeData"
+      checkable
+      :check-strictly="true"
+      :checked-keys="checkedBaseLayers"
+      @check="onCheck"
+    >
+      <template #icon="{ iconClass }">
+        <span v-if="iconClass" :class="iconClass" />
+      </template>
+    </a-tree>
+  </div>
 </template>
 
 <script setup>
 import {ref, computed} from 'vue';
 import { useBaseLayers } from '@/composables/baseLayers';
+import {theme} from 'ant-design-vue';
 
 // Composables
 const { baseLayerDefinitions, showBaseLayer, hideBaseLayer, getBaseLayerByLabel } = useBaseLayers();
+const {token} = theme.useToken();
 
 // State for Ant Tree
 const checkedBaseLayers = ref([baseLayerDefinitions[0].label]);
-const expandedKeys = ref([]);
+const expandedKeys = ref(['group_base_layers']);
 
 // Convert project data to Ant Tree format
 const treeData = computed(() => {
@@ -85,6 +90,28 @@ async function onCheck(_, info) {
   } else {
     hideBaseLayer(layer);
     checkedBaseLayers.value = checkedBaseLayers.value.filter(key => key !== node.key);
+    if (checkedBaseLayers.value.length === 0) {
+      const defaultLayer = baseLayerDefinitions[0];
+      showBaseLayer(defaultLayer);
+      checkedBaseLayers.value = [defaultLayer.label];
+    }
   }
 }
 </script>
+
+<style scoped lang="scss">
+.base-layers {
+  :deep(.ant-tree-list-holder) {
+    max-height: min(160px, 20vh);
+    overflow-y: auto;
+  }
+
+  :deep(.ant-tree-list-holder-inner > .ant-tree-treenode:first-child) {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    align-self: stretch;
+    background-color: v-bind('token.colorBgContainer');
+  }
+}
+</style>
