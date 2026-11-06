@@ -2,6 +2,10 @@ stages:
   - build
   - test
 
+default:
+  tags:
+    - GEIS
+
 variables:
   TAG: $CI_COMMIT_SHA
   BRANCH: $CI_COMMIT_REF_SLUG
