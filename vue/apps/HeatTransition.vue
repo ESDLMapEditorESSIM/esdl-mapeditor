@@ -112,7 +112,7 @@ const currentObjectIDs = computed(() => {
   return (Array.isArray(currentObjectID.value) ? currentObjectID.value : [currentObjectID.value]);
 });
 const multipleAssetsSelected = computed(() => {
-  return (this.currentObjectIDs.length > 1);
+  return (currentObjectIDs.value.length > 1);
 });
 
 function get_heat_transition_data() {
