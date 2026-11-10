@@ -99,6 +99,10 @@ class AssetConstraint:
             constraint.id = str(uuid4())
 
         attrs = get_asset_attributes(constraint)
+        # eGet returns the ESDL default (e.g. an enum literal) for unset attributes; report them as None.
+        for attr in attrs:
+            if not constraint.eIsSet(attr["name"]):
+                attr["value"] = None
         refs = get_asset_references(constraint)
 
         return {
@@ -279,8 +283,8 @@ class AssetConstraint:
             name=constraint.name,
             description=constraint.description,
             attributeReference=constraint.attributeReference,
-            maximum=getattr(constraint.maximum, "name", None),
-            minimum=getattr(constraint.minimum, "name", None)
+            maximum=constraint.maximum.name if constraint.eIsSet("maximum") else None,
+            minimum=constraint.minimum.name if constraint.eIsSet("minimum") else None,
         )
 
         return msg
@@ -368,8 +372,10 @@ class AssetConstraint:
             name=constraintMsg["name"],
             description=constraintMsg.get("description"),
             attributeReference=constraintMsg.get("attributeReference"),
-            maximum=esdl.PipeDiameterEnum.from_string(constraintMsg.get("maximum")),
-            minimum=esdl.PipeDiameterEnum.from_string(constraintMsg.get("minimum"))
         )
+        # Leave maximum/minimum unset when no value is given, so ESDL defaults are not stored as assigned values.
+        for field in ("maximum", "minimum"):
+            if constraintMsg.get(field):
+                setattr(c, field, esdl.PipeDiameterEnum.from_string(constraintMsg[field]))
 
         return c
