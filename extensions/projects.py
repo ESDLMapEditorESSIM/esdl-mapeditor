@@ -184,29 +184,29 @@ class DeleteVariantRequest(TypedDict):
 def delete_variant(message: DeleteVariantRequest):
     pm = get_project_manager()
     variant = pm.get_variant_by_id(message['id'])
-    if variant is not None:
-        vc_variants = []
-        pm.get_variant_list(variant, vc_variants)
-        # only set active variant when this is not the last variant in the list
-        auto_update = len(vc_variants) > 1 or len(pm.project.variantCollection) > 1
-        if variant.variantCollection:
-            # if the variant is a child of a VariantCollection, delete the VariantCollection too
-            pm.delete_variant(variant.variantCollection)  # this will delete all child variants too
-        else:
-            pm.delete_variant(variant)
+    if variant is None:
+        return
+
+    parent_variant = variant.parentVariant
+    if variant.variantCollection:
+        # if the variant is a child of a VariantCollection, delete the VariantCollection too
+        pm.delete_variant(variant.variantCollection)  # this will delete all child variants too
+    else:
+        pm.delete_variant(variant)
 
     # in case the user wants to delete the last variant, initialize an empty project
     if len(pm.get_variants()) == 0:
         pm.init_empty_project()
 
-    if not pm.get_active_variant() or auto_update:
+    if not pm.get_active_variant():
         # if the active variant was deleted, set the parent variant as active
-        if variant.parentVariant:
-            logger.debug("Setting parent variant as active variant", variant_name=variant.parentVariant.name)
-            pm.set_active_variant(variant.parentVariant)
+        if parent_variant:
+            logger.debug("Setting parent variant as active variant", variant_name=parent_variant.name)
+            pm.set_active_variant(parent_variant)
         else:
-            logger.debug("Selecting first variant as active variant", variant_name=variant.name)
-            pm.set_active_variant(pm._select_new_active_variant())
+            first_variant = pm.get_variants()[0]
+            logger.debug("Selecting first variant as active variant", variant_name=first_variant.name)
+            pm.set_active_variant(first_variant)
 
     emit_active_esdl_project()
     # No need to process the energy system, as the set_active_variant will check for changes

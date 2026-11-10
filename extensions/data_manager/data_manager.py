@@ -902,7 +902,7 @@ class DataManager:
         pm = get_project_manager()
         variant = pm.get_variant_by_id(variant_id)
         log.info("Getting or creating variant snapshot")
-        es = pm.get_or_create_variant_snapshot(variant)
+        es = pm.get_energy_system(variant)
         log.info("Retrieved variant snapshot", es_id=es.id)
 
         if variant is None:
