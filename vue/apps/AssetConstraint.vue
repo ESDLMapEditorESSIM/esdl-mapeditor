@@ -39,17 +39,37 @@
             :columns="columns"
             :pagination="false"
             size="middle"
+            table-layout="fixed"
             :scroll="{ y: 'calc(100vh - 180px)' }"
           >
             <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'type'">
-                <a-tag color="blue">
-                  {{ record.type }}
+              <template v-if="column.key === 'name'">
+                <div class="cell-ellipsis" :title="record.name">
+                  {{ record.name }}
+                </div>
+                <a-tag
+                  :color="constraintTypeColor[record.type]"
+                  class="type-tag"
+                  :title="record.type"
+                >
+                  {{ record.type?.replace(/Constraint$/, "") }}
                 </a-tag>
               </template>
 
+              <template v-if="column.key === 'value'">
+                <div
+                  v-for="item in getConstraintValues(record)"
+                  :key="item.label"
+                  class="cell-ellipsis"
+                  :title="`${item.label}: ${item.text}`"
+                >
+                  <span class="value-label">{{ item.label }}:</span> {{ item.text }}
+                </div>
+                <span v-if="!getConstraintValues(record).length" class="value-label">–</span>
+              </template>
+
               <template v-if="column.key === 'action'">
-                <div class="action-buttons">
+                <div class="action-buttons action-buttons-vertical">
                   <a-button
                     type="text"
                     size="small"
@@ -247,6 +267,7 @@
               <a-form-item label="Maximum">
                 <a-select
                   v-model:value="formData.maximum"
+                  allow-clear
                   :options="formData.EEnum?.maximum?.map((option) => ({
                     value: option,
                     label: option
@@ -257,6 +278,7 @@
               <a-form-item label="Minimum">
                 <a-select
                   v-model:value="formData.minimum"
+                  allow-clear
                   :options="formData.EEnum?.minimum?.map((option) => ({
                     value: option,
                     label: option
@@ -392,6 +414,12 @@ const initPipeDiameterConstraintForm = {
   minimum: null,
 };
 
+const constraintTypeColor = {
+  [ConstraintType.PROFILE]: "blue",
+  [ConstraintType.RANGED]: "green",
+  [ConstraintType.PIPEDIAMETER]: "orange",
+};
+
 // Form state (default to Profile Constraint)
 const formData = reactive({ ...initProfileConstraintForm });
 
@@ -403,15 +431,16 @@ const columns = [
     title: "Name",
     dataIndex: "name",
     key: "name",
+    width: "30%",
   },
   {
-    title: "Type",
-    key: "type",
+    title: "Value",
+    key: "value",
   },
   {
     title: "Actions",
     key: "action",
-    width: 100,
+    width: 70,
     align: "right",
   },
 ];
@@ -537,7 +566,8 @@ const resetForm = async () => {
     Object.keys(initPipeDiameterConstraintForm).forEach((field) => {
       const attribute = emptyConstraint["attrs"].find((attr) => attr["name"] === field);
       if (attribute) {
-        newForm[field] = attribute["value"];
+        // A new ESDL object has null for unset attributes; keep the initial default then.
+        newForm[field] = attribute["value"] ?? initPipeDiameterConstraintForm[field];
 
         if (attribute["type"] === "EEnum") {
           if (!Object.hasOwn(newForm, "EEnum")) {
@@ -654,6 +684,37 @@ const constructProfileDisplayedName = (profileObj) => {
   return displayedName;
 }
 
+// Returns the assigned values of a constraint as [{ label, text }] for the table's Value column.
+const getConstraintValues = (record) => {
+  const items = [];
+  const hasValue = (v) => v !== null && v !== undefined && v !== "";
+
+  if (record.type === ConstraintType.RANGED) {
+    const range = record.range ?? {};
+    const text = [
+      ["minValue", range.min_value],
+      ["midValue", range.mid_value],
+      ["maxValue", range.max_value],
+    ]
+      .filter(([, v]) => hasValue(v))
+      .map(([label, v]) => `${label}: ${v}`)
+      .join(" · ");
+    if (text) {
+      items.push({ label: "range", text });
+    }
+  } else {
+    for (const field of ["maximum", "minimum"]) {
+      const v = record[field];
+      if (!hasValue(v)) continue;
+      const text = record.type === ConstraintType.PROFILE
+        ? constructProfileDisplayedName(v.profileObj)
+        : v;
+      items.push({ label: field, text });
+    }
+  }
+  return items;
+};
+
 const onAddConstraint = async () => {
   constraints.value.push({ ...formData });
   await setAssetConstraint(
@@ -754,9 +815,36 @@ const onDeleteConstraint = async (id) => {
   height: 100%;
 }
 
+.cell-ellipsis {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.value-label {
+  color: #8c8c8c;
+}
+
+.type-tag {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .action-buttons {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.action-buttons-vertical {
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
 }
 </style>
