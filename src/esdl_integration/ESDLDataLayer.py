@@ -25,7 +25,7 @@ from extensions.esdl_browser import ESDLBrowser # for repr function
 from extensions.session_manager import get_project_manager, get_session
 from extensions.profiles import Profiles
 from extensions.vue_backend.messages.DLA_sector_message import SectorMessage
-from extensions.vue_backend.object_properties import get_object_properties_info
+from extensions.vue_backend.kpi_information import get_kpi_information
 from extensions.vue_backend.cost_information import get_cost_information, _create_cost_qau
 from extensions.vue_backend.constraint_information import get_constraint_information
 from extensions.vue_backend.table_data import get_table_data, set_table_data
@@ -113,7 +113,7 @@ class ESDLDataLayer:
 
             kpi_information = list()
             if len(esdl_objects) == 1 and capabilities['kpis']:
-                kpi_information = self.get_kpi_information(esdl_object)
+                kpi_information = get_kpi_information(esdl_object)
 
             obj_info = ObjectPropertiesInfo(
                 object=raw_obj_info['object'],
@@ -138,52 +138,6 @@ class ESDLDataLayer:
             selected_asset_type=selected_asset_type,
         )
         return common_obj_data
-
-    @staticmethod
-    def get_kpi_information(obj: EObject) -> list[dict]:
-        """
-        Collect read-only KPI values, including nested KPIs and distributions.
-        """
-        kpis = getattr(obj, 'KPIs', None)
-        if kpis is None:
-            return []
-
-        result: list[dict] = []
-        for kpi in kpis.eAllContents():
-            if not isinstance(kpi, esdl.KPI):
-                continue
-
-            names = [kpi.name or kpi.eClass.name]
-            parent = kpi.eContainer()
-            while isinstance(parent, esdl.KPI):
-                names.insert(0, parent.name or parent.eClass.name)
-                parent = parent.eContainer()
-
-            qau = kpi.quantityAndUnit
-            if isinstance(qau, esdl.QuantityAndUnitReference):
-                qau = qau.reference
-            unit = unit_to_string(qau) if qau is not None else ''
-            info = {
-                'key': len(result),
-                'name': ' / '.join(names),
-                'description': kpi.description,
-                'type': kpi.eClass.name,
-                'unit': unit,
-            }
-            if isinstance(kpi, esdl.DistributionKPI):
-                info['items'] = []
-                if kpi.distribution is not None:
-                    for item in kpi.distribution.eContents:
-                        if isinstance(item, esdl.StringItem):
-                            label = item.label
-                        else:
-                            label = f'{item.from_} to {item.to}'
-                        info['items'].append({'label': label, 'value': item.value, 'unit': unit})
-            else:
-                info['value'] = kpi.value
-            result.append(info)
-
-        return result
 
     def get_object_parameters_by_asset_type(self, asset_type):
         """

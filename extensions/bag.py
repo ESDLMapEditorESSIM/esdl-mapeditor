@@ -22,6 +22,7 @@ import esdl
 from geomet import wkt
 import src.log as log
 from src.process_es_area_bld import create_building_KPIs
+from extensions.vue_backend.kpi_information import get_kpi_information
 
 logger = log.get_logger(__name__)
 
@@ -78,7 +79,10 @@ class BAG:
                                                 geometry = bld.geometry
                                                 boundary_wgs = ESDLGeometry.create_boundary_from_geometry(geometry)
                                                 bld_KPIs = create_building_KPIs(bld)
-                                                bld_list.append(ESDLGeometry.create_geojson(bld.id, bld.name, bld_KPIs, boundary_wgs))
+                                                feature = ESDLGeometry.create_geojson(bld.id, bld.name, bld_KPIs, boundary_wgs)
+                                                feature['properties']['type'] = bld.eClass.name
+                                                feature['properties']['kpi_info'] = get_kpi_information(bld)
+                                                bld_list.append(feature)
 
                                         if bld_list:
                                             emit('geojson', {"layer": "bld_layer", "geojson": bld_list})

@@ -860,7 +860,8 @@
                                 name: list[i][1],
                                 type: list[i][3],
                                 KPIs: list[i][6],
-                                dist_KPIs: list[i][9]
+                                dist_KPIs: list[i][9],
+                                kpi_info: extra_attrs.kpi_info
                             }
                         });
                     }
@@ -888,7 +889,8 @@
                                 "name": list[i][1],
                                 "type": list[i][3],
                                 "KPIs": KPIs,
-                                "dist_KPIs": list[i][9] || {}
+                                "dist_KPIs": list[i][9] || {},
+                                "kpi_info": extra_attrs.kpi_info
                             }
                         });
 

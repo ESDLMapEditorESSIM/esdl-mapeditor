@@ -20,6 +20,7 @@ import {
     Collapse,
     DatePicker,
     Divider,
+    Descriptions,
     Dropdown,
     Empty,
     Form,
@@ -111,6 +112,7 @@ export function mountApp(component, elementSelector) {
     app.use(Col);
     app.use(Collapse);
     app.use(DatePicker);
+    app.use(Descriptions);
     app.use(Divider);
     app.use(Dropdown);
     app.use(Empty);

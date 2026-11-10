@@ -161,6 +161,7 @@ export function renderPlanLayer(esdlId, plan) {
     ensurePlanPane();
     const geometryLayer = createPlanGeometry(plan.geometry);
     if (geometryLayer) {
+        window.bindMapObjectPopup(geometryLayer, () => plan);
         geometryLayer.on("mouseover", () => {
             geometryLayer.setStyle({
                 fillOpacity: PLAN_GEOMETRY_HOVER_FILL_OPACITY,

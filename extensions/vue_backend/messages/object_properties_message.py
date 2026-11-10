@@ -1,4 +1,4 @@
-from typing import Any, Optional, TypedDict
+from typing import Any, NotRequired, Optional, TypedDict
 
 
 ObjectFeature = dict[str, Any]
@@ -29,6 +29,22 @@ class MultiSelectInfo(TypedDict):
     selected_asset_type: Optional[str]
 
 
+class KPIDistributionItem(TypedDict):
+    label: str | None
+    value: float
+    unit: str
+
+
+class KPIInfo(TypedDict):
+    key: int
+    name: str
+    description: str | None
+    type: str
+    unit: str
+    value: NotRequired[str | int | float | None]
+    items: NotRequired[list[KPIDistributionItem]]
+
+
 class RawObjectInfo(TypedDict):
     object: ObjectDescription
     attributes: list[ObjectFeature]
@@ -45,5 +61,5 @@ class ObjectPropertiesInfo(TypedDict):
     port_profile_info: list[dict[str, Any]]
     port_connected_to_info: list[dict[str, Any]]
     cost_information: list[dict[str, Any]]
-    kpi_information: list[dict[str, Any]]
+    kpi_information: list[KPIInfo]
     multi_select_info: Optional[MultiSelectInfo]

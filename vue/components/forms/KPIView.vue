@@ -1,21 +1,32 @@
 <template>
   <a-table
     class="kpi-table"
-    :columns="columns"
+    :class="{ 'kpi-table-compact': compact }"
+    :columns="tableColumns"
     :data-source="kpiInfo"
-    size="middle"
+    :size="tableSize"
     table-layout="fixed"
-    :pagination="paginationConfig"
+    :pagination="pagination"
     :locale="{ emptyText: 'No KPIs available' }"
   >
     <template #bodyCell="{ column, record }">
       <template v-if="column.key === 'name'">
-        <span :title="record.name">{{ formatKPIName(record.name) }}</span>
-        <a-tooltip v-if="record.description" :title="record.description" :trigger="['hover', 'focus']">
-          <a-button class="kpi-description" size="small" type="text" :aria-label="'Description for ' + formatKPIName(record.name)">
-            <InfoCircleOutlined style="vertical-align: 0.1rem" />
-          </a-button>
-        </a-tooltip>
+        <span :class="{ 'compact-distribution-name': compact && record.type === 'DistributionKPI' }">
+          <span :title="record.name">{{ formatKPIName(record.name) }}</span>
+          <a-tooltip v-if="record.description" :title="record.description" :trigger="['hover', 'focus']">
+            <a-button class="kpi-description" size="small" type="text" :aria-label="'Description for ' + formatKPIName(record.name)">
+              <InfoCircleOutlined style="vertical-align: 0.1rem" />
+            </a-button>
+          </a-tooltip>
+        </span>
+        <template v-if="compact && record.type === 'DistributionKPI'">
+          <div v-for="(item, index) in record.items" :key="index" class="compact-distribution-item">
+            <span>{{ item.label }}</span>
+            <KPIValue :value="item.value" />
+            <span>{{ record.unit }}</span>
+          </div>
+          <span v-if="!record.items.length">No values</span>
+        </template>
       </template>
       <template v-if="column.key === 'value'">
         <template v-if="record.type === 'DistributionKPI'">
@@ -33,7 +44,8 @@
   </a-table>
 </template>
 
-<script>
+<script setup>
+import { computed } from 'vue';
 import { InfoCircleOutlined } from '@ant-design/icons-vue';
 import KPIValue from './KPIValue.vue';
 import { formatKPIName } from '@/utils/kpi';
@@ -46,25 +58,55 @@ const columns = [
 
 const paginationConfig = { hideOnSinglePage: true };
 
-export default {
-  name: 'KPIView',
-  components: {
-    KPIValue,
-    InfoCircleOutlined,
+const props = defineProps({
+  kpiInfo: {
+    type: Array,
+    default: () => [],
   },
-  props: {
-    kpiInfo: {
-      type: Array,
-      default: () => [],
+  compact: {
+    type: Boolean,
+    default: false,
+  },
+});
+
+const tableColumns = computed(() => {
+  if (!props.compact) {
+    return columns;
+  }
+  const distributionValueCell = (record) => {
+    if (record.type === 'DistributionKPI') {
+      return { colSpan: 0 };
+    }
+    return {};
+  };
+  return [
+    {
+      ...columns[0], width: '60%',
+      customCell: (record) => {
+        if (record.type === 'DistributionKPI') {
+          return { colSpan: 3 };
+        }
+        return {};
+      },
     },
-  },
-  data() {
-    return { columns, paginationConfig };
-  },
-  methods: {
-    formatKPIName,
-  },
-};
+    { ...columns[1], width: '25%', customCell: distributionValueCell },
+    { ...columns[2], customCell: distributionValueCell },
+  ];
+});
+
+const tableSize = computed(() => {
+  if (props.compact) {
+    return 'small';
+  }
+  return 'middle';
+});
+
+const pagination = computed(() => {
+  if (props.compact) {
+    return false;
+  }
+  return paginationConfig;
+});
 </script>
 
 <style scoped>
@@ -89,5 +131,21 @@ export default {
 
 .distribution-label {
   text-align: right;
+}
+
+.kpi-table-compact :deep(.ant-table.ant-table-small .ant-table-cell) {
+  padding-block: 3px;
+}
+
+.compact-distribution-name {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.compact-distribution-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 100px) auto;
+  gap: 8px;
+  align-items: baseline;
 }
 </style>

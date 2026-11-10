@@ -17,6 +17,7 @@ import uuid
 
 from esdl.units.parser import qau_to_string
 from src.esdl_integration.processing import ESDLGeometry
+from extensions.vue_backend.kpi_information import get_kpi_information
 
 
 def find_area(area, area_id):
@@ -164,6 +165,8 @@ def get_plan_list(es: esdl.EnergySystem) -> list[dict]:
                 'geometry': _get_plan_geometry(member.geometry),
                 'group': group_info,
                 'elements': elements,
+                'type': member.eClass.name,
+                'kpi_info': get_kpi_information(member),
             })
     return plans
 

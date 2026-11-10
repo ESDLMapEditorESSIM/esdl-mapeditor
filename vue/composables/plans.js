@@ -17,6 +17,8 @@ import {renderPlanLayer} from "@/utils/planVisualization";
  * @property {{id: string, name: string|null}} group
  * @property {{type: string, coordinates: Array}|null} geometry
  * @property {PlanElement[]} elements
+ * @property {string} type
+ * @property {Object[]} kpi_info
  */
 
 export const PLAN_LAYER_NAME = "plan_layer";

@@ -544,8 +544,6 @@ function highlightAreaOrBuilding(e) {
     // if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
     //     layer.bringToFront();
     // }
-
-    layer.openPopup();
 }
 
 function resetHighlightArea(e) {
@@ -557,14 +555,12 @@ function resetHighlightArea(e) {
         restoreStyle(layer);
     }
 //    geojson_area_layer.resetStyle(layer);         // Interferes with the contextmenu
-    layer.closePopup();
 }
 
 function resetHighlightBuilding(e) {
     let layer = e.target;
     // geojson_building_layer.resetStyle(layer);    // Interferes with the contextmenu
     restoreStyle(layer);
-    layer.closePopup();
 }
 
 var geometry_edit_control = null;
@@ -824,29 +820,6 @@ function set_wfs_handlers(marker) {
         updatefun = extensions[i];
         updatefun({type: 'add_contextmenu', layer: marker, layer_type: 'wfs'});
     }
-}
-
-function format_KPI_value(value) {
-    if (typeof(value) == "number") {
-        value_str = value.toString();
-        index_of_decimal_seperator = value_str.indexOf('.');
-        if (index_of_decimal_seperator >= 0) {
-            if (index_of_decimal_seperator < value_str.length - 3) {
-                value = Math.round((1000*value)+Number.EPSILON) / 1000;
-                value_str = value.toString();
-            }
-            return value_str;
-        } else
-            return value_str;
-    } else
-        return value;
-}
-
-function format_KPI_unit(unit) {
-    if (unit.indexOf('Mg') >= 0) {
-        return unit.replace('Mg', 'ton');
-    } else
-        return unit;
 }
 
 /**
@@ -1184,57 +1157,9 @@ function add_geojson_area_layer(area_data, group_name, map_esdl_layer) {
                 window.PubSubManager.broadcast('ADD_AREA_TO_LAYER', { id: feature.properties.id, feature: feature, layer: layer });
                 layer.id = feature.properties.id;
 
-                // An area without KPIs gets a popup with its name and id between parenthesis
-                let text = "ID: " + feature.properties.id;
-                if (feature.properties.name) {
-                    text = feature.properties.name + " (" + text + ")";
-                }
-
-                // Create the contents for an Area popup with a table with KPI values
-                if (Object.keys(feature.properties.KPIs).length != 0) {
-                    text = "<b>"+ text +"</b>";
-                    text += "<br><br><table class=\"kpi_table\">";
-                    text += "<thead><tr><th>KPI</th><th>Value</th><th>Unit</th></tr></thead><tbody>"
-                    for (let key in feature.properties.KPIs) {
-                        text += "<tr><td>" + _.escape(formatKPIName(key)) + "</td><td align=\"right\">" + format_KPI_value(feature.properties.KPIs[key]['value']) + "</td>";
-                        if (!(feature.properties.KPIs[key]['unit'] === "")) {
-                            text += "<td>" + format_KPI_unit(feature.properties.KPIs[key]['unit']) + "</td></tr>";
-                        } else {
-                            text += "<td>&nbsp;</td></tr>";
-                        }
-                    }
-                    text += "</tbody></table>"
-                }
-
-                let popup = L.popup();
-                popup.setContent(text);
-                layer.bindPopup(popup);
-
-                layer.on('mouseover', function (e) {
-                    // only highlight an area and display its popup when the area shape is fully visible
-                    // (to prevent moving of the map on mouse over)
-                    if (e.sourceTarget._map.getBounds().contains(e.sourceTarget.getBounds())) {
-                        let popup = e.target.getPopup();
-                        let this_map = e.sourceTarget._map;     // can be area map and building map
-                        popup.setLatLng(e.latlng).openOn(this_map);
-                        highlightAreaOrBuilding(e);
-                    }
-                });
-
-                layer.on('mouseout', function(e) {
-                    e.target.closePopup();
-                    resetHighlightArea(e);
-                });
-
-                layer.on('mousemove', function (e) {
-                    e.target.closePopup();
-
-                    if (e.sourceTarget._map.getBounds().contains(e.sourceTarget.getBounds())) {
-                        let popup = e.target.getPopup();
-                        let this_map = e.sourceTarget._map;     // can be area map and building map
-                        popup.setLatLng(e.latlng).openOn(this_map);
-                    }
-                });
+                window.bindMapObjectPopup(layer, () => feature.properties);
+                layer.on('mouseover', highlightAreaOrBuilding);
+                layer.on('mouseout', resetHighlightArea);
 
                 set_area_handlers(layer);
             }
@@ -1376,24 +1301,7 @@ function add_building_layer(es_id, building_data) {
                 return;
             }
             if (feature.properties) {
-                let text = "<table>";
-                // Render the KPI's for a popup. These were set in the preprocess_layer_data function.
-                for (let key in feature.properties.KPIs) {
-                    const kpi = feature.properties.KPIs[key]
-                    if (typeof kpi === "number") {
-                        if (Math.floor(kpi) === kpi)
-                            kpi_string = feature.properties.KPIs[key].toFixed(0);
-                        else
-                            kpi_string = feature.properties.KPIs[key].toFixed(2);
-                    } else {
-                        kpi_string = feature.properties.KPIs[key];
-                    }
-                    text += "<tr><td>" + _.escape(formatKPIName(key)) + "</td><td style=\"float:right\">" + kpi_string + "</td></tr>";
-                }
-                text += "</table>";
-
-                // Bind the KPI popup on hover of a building.
-                layer.bindPopup(text, {maxWidth: "auto", closeButton: false, autoPan: false, offset: L.point(0, -20)});
+                window.bindMapObjectPopup(layer, () => feature.properties);
                 layer.on('mouseover', highlightAreaOrBuilding);
                 layer.on('mouseout', resetHighlightBuilding);
             }
@@ -1644,8 +1552,10 @@ function update_area_layer(esdl_layer_id, area_kpi_list) {
     area_layers.eachLayer(function(featuregroup_instance) {
         if (featuregroup_instance instanceof L.FeatureGroup) {
             featuregroup_instance.eachLayer(function (layer) {
-                if (layer.id in area_kpi_map) {
-                    let new_area_kpi_info = area_kpi_map[layer.id];
+                const area_id = get_area_id_from_mapeditor_id(layer.id);
+                if (area_id in area_kpi_map) {
+                    let new_area_kpi_info = area_kpi_map[area_id];
+                    layer.feature.properties.kpi_info = new_area_kpi_info.properties.kpi_info;
                     if (new_area_kpi_info.properties.hasOwnProperty("KPIs")) {
                         // TODO: Can completely new KPIs be added?  How to deal with those?
                         // For now only handle replacement of information of already existing KPIs

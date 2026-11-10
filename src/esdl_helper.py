@@ -20,6 +20,7 @@ from pyecore.ecore import EEnum
 from esdl.units.parser import qau_to_string
 from esdl import esdl
 from src.esdl_integration.processing import ESDLGeometry, ESDLAsset
+from extensions.vue_backend.kpi_information import get_kpi_information
 from extensions.session_manager import get_session, get_session_for_esid, get_project_manager
 from extensions.profiles import Profiles
 from extensions.toast_notifications import ToastNotifications, ToastNotification, NotificationPlacement, \
@@ -248,6 +249,8 @@ def add_extra_attributes(asset: esdl.Asset, extra_attributes: dict = None) -> di
         if len(asset.asset) > 0:
             first_asset_type = asset.asset[0].eClass.name
             extra_attributes['compoundFirstAssetType'] = first_asset_type
+
+    extra_attributes['kpi_info'] = get_kpi_information(asset)
 
     return extra_attributes
 

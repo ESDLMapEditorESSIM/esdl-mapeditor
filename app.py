@@ -45,6 +45,7 @@ from esdl import esdl
 from src.esdl_integration.processing import ESDLQuantityAndUnits
 from src.esdl_integration.processing import ESDLAsset, ESDLEcore, ESDLEnergySystem, ESDLGeometry
 from src.esdl_integration.processing.ESDLAsset import get_asset_capability_type, update_ids_in_object
+from extensions.vue_backend.kpi_information import get_kpi_information
 from esdl.processing.string_uri import StringURI
 from src.esdl_integration.processing.ESDLEcore import instantiate_type
 from esdl.ecore_documentation import EcoreDocumentation
@@ -1532,6 +1533,8 @@ def process_command(message, stack: UndoRedoCommandStack):
                 area_geojson = ESDLGeometry.create_geojson(new_area.id, new_area.name, [], boundary_wgs)
                 area_geojson['properties']['dist_KPIs'] = {}
                 area_geojson['properties']['geometry_type'] = type(geometry).__name__
+                area_geojson['properties']['type'] = new_area.eClass.name
+                area_geojson['properties']['kpi_info'] = get_kpi_information(new_area)
                 area_list.append(area_geojson)
                 # pm.add_object_to_dict(active_es_id, new_area)
                 emit('geojson', {"layer": "area_layer", "geojson": area_list})

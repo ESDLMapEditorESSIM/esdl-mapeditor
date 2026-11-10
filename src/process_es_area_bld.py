@@ -24,11 +24,11 @@ from flask_socketio import emit
 from shapely import MultiPoint
 
 import esdl
-from esdl.units.parser import unit_to_string
 from esdl import esdl
 from src.esdl_integration.processing import ESDLGeometry, ESDLAsset, ESDLEnergySystem
 from src.esdl_integration.processing.ESDLEnergySystem import get_notes_list
 from src.esdl_integration.processing.ESDLGeometry import calculate_polygon_center
+from extensions.vue_backend.kpi_information import get_kpi_information, serialize_kpi
 from esdl.project.ProjectManager import ProjectManager
 from extensions.boundary_service import BoundaryService, is_valid_boundary_id
 from extensions.mapeditor_settings import MapEditorSettings
@@ -265,7 +265,8 @@ def is_valid_kpi_value(value):
     return not isinstance(value, float) or math.isfinite(value)
 
 
-def create_building_KPIs(building):
+def create_building_KPIs(building: esdl.AbstractBuilding | esdl.CompoundAsset) -> dict:
+    """Collect building attributes and scalar KPIs for the map."""
     KPIs = {}
 
     try:
@@ -306,7 +307,7 @@ def create_building_KPIs(building):
     return KPIs
 
 
-def process_area_KPI_information(area_KPIs, area_geometry):
+def process_area_KPI_information(area_KPIs: esdl.KPIs | None, area_geometry: esdl.Geometry | None) -> tuple[dict, dict]:
     """
     This function processes all information related to area KPIs (categories, units, values) such that it can
     be sent to the front end for displaying it
@@ -321,31 +322,19 @@ def process_area_KPI_information(area_KPIs, area_geometry):
 
     if area_KPIs:
         for kpi in area_KPIs.kpi:
-            kpi_qau = kpi.quantityAndUnit
-            if kpi_qau:
-                if isinstance(kpi_qau, esdl.QuantityAndUnitReference):
-                    kpi_qau = kpi_qau.reference
-
-                if not kpi_qau:  # Reference field in the ESDL could be "" (but should never be)
-                    unit = ''
-                else:
-                    unit = unit_to_string(kpi_qau)
-            else:
-                unit = ''
-
+            info = serialize_kpi(kpi)
             if not isinstance(kpi, esdl.DistributionKPI):
-                if is_valid_kpi_value(kpi.value):
+                if is_valid_kpi_value(info['value']):
                     regular_KPIs[kpi.name] = {
-                        'value': kpi.value,
-                        'unit': unit
+                        'value': info['value'],
+                        'unit': info['unit']
                     }
             elif isinstance(kpi.distribution, esdl.StringLabelDistribution):
-                distribution_kpis[kpi.name] = {"type": "distributionKPI",
-                                               "value": [],
-                                               "unit": unit}
-                for str_val in kpi.distribution.stringItem:
-                    distribution_kpis[kpi.name]["value"].append({"name": str_val.label,
-                                                                 "value": str_val.value})
+                distribution_kpis[kpi.name] = {
+                    "type": "distributionKPI",
+                    "value": [{"name": item['label'], "value": item['value']} for item in info['items']],
+                    "unit": info['unit'],
+                }
 
                 if area_geometry:
                     shape = Shape.create(area_geometry)
@@ -379,7 +368,9 @@ def find_area_info_KPIs(area_list, this_area):
         "name": area_name,
         "scope": area_scope.name,
         "KPIs": geojson_KPIs,
-        "dist_KPIs": geojson_dist_kpis
+        "dist_KPIs": geojson_dist_kpis,
+        "type": this_area.eClass.name,
+        "kpi_info": get_kpi_information(this_area),
     }
 
     if this_area.scope == esdl.AreaScopeEnum.SERVICE_AREA:
@@ -438,6 +429,7 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, sho
     area_KPIs = this_area.KPIs
     geojson_KPIs, geojson_dist_kpis = process_area_KPI_information(area_KPIs, area_geometry)
 
+    kpi_info = get_kpi_information(this_area)
     area_shape = None
 
     if area_geometry:
@@ -447,6 +439,8 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, sho
             "scope": area_scope.name,
             "KPIs": geojson_KPIs,
             "dist_KPIs": geojson_dist_kpis,
+            "type": this_area.eClass.name,
+            "kpi_info": kpi_info,
             "parent_area_id": parent_area.id if parent_area else None,
             "geometry_type": type(area_geometry).__name__,
         }
@@ -509,6 +503,8 @@ def find_area_info_geojson(area_list, pot_list, this_area, shape_dictionary, sho
                     "scope": area_scope.name,
                     "KPIs": geojson_KPIs,
                     "dist_KPIs": geojson_dist_kpis,
+                    "type": this_area.eClass.name,
+                    "kpi_info": kpi_info,
                     "geometry_type": boundary_wgs['geom']['type'],
                 }))
 

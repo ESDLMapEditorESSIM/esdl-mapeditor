@@ -96,7 +96,9 @@ class IBISBedrijventerreinen:
                     "properties": {
                         "id": area['code'],
                         "name": area['name'],
-                        "KPIs": []
+                        "KPIs": [],
+                        "type": "Area",
+                        "kpi_info": [],
                     }
                 })
 
